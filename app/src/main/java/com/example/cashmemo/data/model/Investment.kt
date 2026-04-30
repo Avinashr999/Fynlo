@@ -18,5 +18,7 @@ data class Investment(
     val rate: Double = 0.0,
     val realized: Double = 0.0,
     val withdrawn: Double = 0.0,
-    val notes: String = ""
+    val notes: String = "",
+    val projectId: String = "personal",
+    val updatedAt: Long = 0L
 )

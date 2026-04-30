@@ -12,5 +12,7 @@ data class Goal(
     val targetAmount: Double,
     val savedAmount: Double = 0.0,
     val deadline: String = "",
-    val notes: String = ""
+    val notes: String = "",
+    val projectId: String = "personal",
+    val updatedAt: Long = 0L
 )

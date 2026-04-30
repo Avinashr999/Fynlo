@@ -11,5 +11,7 @@ data class Person(
     val name: String,
     val phone: String = "",
     val type: String = "Individual", // Individual, Business, etc.
-    val notes: String = ""
+    val notes: String = "",
+    val projectId: String = "personal",
+    val updatedAt: Long = 0L
 )

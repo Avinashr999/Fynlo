@@ -20,5 +20,7 @@ data class Debt(
     val paid: Double = 0.0,
     val status: String = "Active", // Active, Cleared, Overdue
     val collateral: String = "",
-    val notes: String = ""
+    val notes: String = "",
+    val projectId: String = "personal",
+    val updatedAt: Long = 0L
 )

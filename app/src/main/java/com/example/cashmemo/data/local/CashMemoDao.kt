@@ -14,11 +14,15 @@ import com.example.cashmemo.data.model.Goal
 import com.example.cashmemo.data.model.Investment
 import com.example.cashmemo.data.model.Payment
 import com.example.cashmemo.data.model.Person
+import com.example.cashmemo.data.model.Project
 import com.example.cashmemo.data.model.Transaction
 import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface CashMemoDao {
+
+    // ─── Borrowers ────────────────────────────────────────────────────────────
+
     @Query("SELECT * FROM borrowers")
     fun getAllBorrowers(): Flow<List<Borrower>>
 
@@ -31,14 +35,23 @@ interface CashMemoDao {
     @Delete
     suspend fun deleteBorrower(borrower: Borrower)
 
+    // ─── Payments ─────────────────────────────────────────────────────────────
+
     @Query("SELECT * FROM payments WHERE loanId = :loanId")
     fun getPaymentsForLoan(loanId: String): Flow<List<Payment>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertPayment(payment: Payment)
 
+    // ─── Debt Payments ────────────────────────────────────────────────────────
+
+    @Query("SELECT * FROM debt_payments WHERE debtId = :debtId")
+    fun getDebtPayments(debtId: String): Flow<List<DebtPayment>>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertDebtPayment(payment: DebtPayment)
+
+    // ─── Accounts ─────────────────────────────────────────────────────────────
 
     @Query("SELECT * FROM accounts")
     fun getAllAccounts(): Flow<List<Account>>
@@ -52,6 +65,8 @@ interface CashMemoDao {
     @Query("UPDATE accounts SET balance = balance + :amount WHERE name = :name")
     suspend fun updateAccountBalance(name: String, amount: Double)
 
+    // ─── Transactions ─────────────────────────────────────────────────────────
+
     @Query("SELECT * FROM transactions ORDER BY date DESC")
     fun getAllTransactions(): Flow<List<Transaction>>
 
@@ -61,6 +76,8 @@ interface CashMemoDao {
     @Delete
     suspend fun deleteTransaction(transaction: Transaction)
 
+    // ─── Investments ──────────────────────────────────────────────────────────
+
     @Query("SELECT * FROM investments")
     fun getAllInvestments(): Flow<List<Investment>>
 
@@ -69,6 +86,8 @@ interface CashMemoDao {
 
     @Delete
     suspend fun deleteInvestment(investment: Investment)
+
+    // ─── Debts ────────────────────────────────────────────────────────────────
 
     @Query("SELECT * FROM debts")
     fun getAllDebts(): Flow<List<Debt>>
@@ -82,7 +101,8 @@ interface CashMemoDao {
     @Delete
     suspend fun deleteDebt(debt: Debt)
 
-    // People / Contact Management
+    // ─── People ───────────────────────────────────────────────────────────────
+
     @Query("SELECT * FROM people ORDER BY name ASC")
     fun getAllPeople(): Flow<List<Person>>
 
@@ -92,31 +112,62 @@ interface CashMemoDao {
     @Delete
     suspend fun deletePerson(person: Person)
 
-    // Budgets & Goals
+    // ─── Budgets ──────────────────────────────────────────────────────────────
+
     @Query("SELECT * FROM budgets")
     fun getAllBudgets(): Flow<List<Budget>>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertBudget(budget: Budget)
+
     @Delete
     suspend fun deleteBudget(budget: Budget)
 
+    // ─── Goals ────────────────────────────────────────────────────────────────
+
     @Query("SELECT * FROM goals")
     fun getAllGoals(): Flow<List<Goal>>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertGoal(goal: Goal)
+
     @Delete
     suspend fun deleteGoal(goal: Goal)
 
+    // ─── Projects (new in v2.0) ───────────────────────────────────────────────
+
+    @Query("SELECT * FROM projects ORDER BY createdAt ASC")
+    fun getAllProjects(): Flow<List<Project>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertProject(project: Project)
+
+    @Delete
+    suspend fun deleteProject(project: Project)
+
+    @Query("SELECT * FROM projects WHERE id = :id LIMIT 1")
+    suspend fun getProjectById(id: String): Project?
+
+    // ─── Bulk delete (restore / wipe) ─────────────────────────────────────────
+
     @Query("DELETE FROM accounts")
     suspend fun deleteAllAccounts()
+
     @Query("DELETE FROM transactions")
     suspend fun deleteAllTransactions()
+
     @Query("DELETE FROM borrowers")
     suspend fun deleteAllBorrowers()
+
     @Query("DELETE FROM investments")
     suspend fun deleteAllInvestments()
+
     @Query("DELETE FROM debts")
     suspend fun deleteAllDebts()
+
     @Query("DELETE FROM people")
     suspend fun deleteAllPeople()
+
+    @Query("DELETE FROM projects")
+    suspend fun deleteAllProjects()
 }

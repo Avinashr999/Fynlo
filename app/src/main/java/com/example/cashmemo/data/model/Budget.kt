@@ -9,5 +9,7 @@ import kotlinx.serialization.Serializable
 data class Budget(
     @PrimaryKey val category: String, // Category name as key (Food, Fuel, etc.)
     val limitAmount: Double,
-    val period: String = "Monthly" // Monthly, Weekly
+    val period: String = "Monthly", // Monthly, Weekly
+    val projectId: String = "personal",
+    val updatedAt: Long = 0L
 )

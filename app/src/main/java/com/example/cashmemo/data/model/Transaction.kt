@@ -19,5 +19,7 @@ data class Transaction(
     val desc: String = "",
     val ref: String = "",
     val notes: String = "",
-    val tags: String = ""
+    val tags: String = "",
+    val projectId: String = "personal",
+    val updatedAt: Long = 0L
 )

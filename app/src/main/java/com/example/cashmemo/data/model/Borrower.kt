@@ -20,5 +20,7 @@ data class Borrower(
     val type: String = "Simple Interest", // Simple Interest, Both, Compound Interest
     val paid: Double = 0.0,
     val status: String = "Active", // Active, Overdue, Cleared
-    val notes: String = ""
+    val notes: String = "",
+    val projectId: String = "personal",
+    val updatedAt: Long = 0L
 )

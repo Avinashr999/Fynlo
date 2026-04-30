@@ -13,5 +13,7 @@ data class Account(
     val balance: Double,
     val icon: String = "",
     val color: String = "#3b82f6",
-    val notes: String = ""
+    val notes: String = "",
+    val projectId: String = "personal",
+    val updatedAt: Long = 0L
 )
