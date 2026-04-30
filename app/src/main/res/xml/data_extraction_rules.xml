@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<data-extraction-rules>
+    <cloud-backup>
+        <include domain="database" path="cashmemo_database" />
+        <include domain="database" path="cashmemo_database-shm" />
+        <include domain="database" path="cashmemo_database-wal" />
+    </cloud-backup>
+    <device-transfer>
+        <include domain="database" path="cashmemo_database" />
+        <include domain="database" path="cashmemo_database-shm" />
+        <include domain="database" path="cashmemo_database-wal" />
+    </device-transfer>
+</data-extraction-rules>

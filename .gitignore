@@ -1,0 +1,29 @@
+# Android
+*.iml
+.gradle/
+/local.properties
+/build/
+/app/build/
+/captures/
+.externalNativeBuild/
+.cxx/
+
+# IntelliJ / Android Studio
+/.idea/caches/
+/.idea/libraries/
+/.idea/modules.xml
+/.idea/workspace.xml
+/.idea/navEditor.xml
+/.idea/assetWizardSettings.xml
+.DS_Store
+
+# Keystore / secrets (never commit these)
+*.jks
+*.keystore
+keystore.properties
+
+# Gradle wrapper jar (optional – keeps repo lighter)
+gradle/wrapper/gradle-wrapper.jar
+
+# OS
+Thumbs.db

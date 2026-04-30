@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1016532477819",
+    "project_id": "com-example-cashmemo-37d57",
+    "storage_bucket": "com-example-cashmemo-37d57.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1016532477819:android:30f61137aadd0146a43fde",
+        "android_client_info": {
+          "package_name": "com.example.cashmemo"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBoyGWyGtqo72pZGH6BRi4ZDoN3GmSo34c"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
