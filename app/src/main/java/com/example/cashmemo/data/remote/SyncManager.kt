@@ -19,7 +19,7 @@ import kotlinx.coroutines.flow.StateFlow
  * FinanceRepository, so it never triggers a second Firestore write.
  */
 class SyncManager(
-    private val userId: String,
+    val userId: String,
     private val dao: CashMemoDao
 ) {
     private val db     = Firebase.firestore

@@ -23,45 +23,53 @@ class CashMemoApplication : Application() {
 
     val authManager: AuthManager by lazy { AuthManager() }
 
-    lateinit var firestoreRepository: FirestoreRepository
-    lateinit var syncManager: SyncManager
-    lateinit var repository: FinanceRepository
+    // Always initialised — starts with real UID if already signed in,
+    // placeholder if not. initRemote() replaces them after auth.
+    var firestoreRepository: FirestoreRepository = FirestoreRepository("")
+    var syncManager: SyncManager = SyncManager("", database.dao())
+    
+    // Repository is created ONCE and never replaced.
+    // firestore + syncManager inside it are swapped via updateRemote().
+    val repository: FinanceRepository by lazy {
+        FinanceRepository(database.dao(), database, firestoreRepository, syncManager)
+    }
 
     override fun onCreate() {
         super.onCreate()
 
-        // Build offline-capable repository immediately
-        val placeholderFirestore = FirestoreRepository("")
-        val placeholderSync      = SyncManager("", database.dao())
-        repository = FinanceRepository(
-            database.dao(), database, placeholderFirestore, placeholderSync
-        )
-
-        // Sign in (anonymous if no Google account yet) then start sync
         CoroutineScope(Dispatchers.IO).launch {
             runCatching {
                 authManager.ensureSignedIn()
                 val uid = authManager.userId
                 if (uid.isNotEmpty()) {
-                    android.util.Log.d("CashMemoSync", "Auth UID: $uid | isGoogle: ${authManager.isSignedInWithGoogle}")
+                    android.util.Log.d("CashMemoSync",
+                        "Auth UID: $uid | isGoogle: ${authManager.isSignedInWithGoogle}")
                     initRemote(uid)
                 }
             }
         }
     }
 
-    /** Called after Google Sign-In completes — re-init with real Google UID. */
     fun onGoogleSignInComplete(uid: String) {
         CoroutineScope(Dispatchers.IO).launch {
             runCatching { initRemote(uid) }
         }
     }
 
-    private fun initRemote(uid: String) {
-        if (::syncManager.isInitialized) syncManager.stopListening()
+    fun initRemote(uid: String) {
+        // Stop old listeners if any
+        if (syncManager.userId.isNotEmpty()) syncManager.stopListening()
+
         firestoreRepository = FirestoreRepository(uid)
         syncManager         = SyncManager(uid, database.dao())
+
+        // Swap into the singleton repository so all writes go to right UID
+        // and the status StateFlow updates correctly
         repository.updateRemote(firestoreRepository, syncManager)
+
+        // Start listeners — first snapshot delivers ALL existing Firestore
+        // docs as ADDED changes → writes them into Room → Room flows
+        // emit → UI recomposes automatically (Room is reactive)
         syncManager.startListening()
     }
 }

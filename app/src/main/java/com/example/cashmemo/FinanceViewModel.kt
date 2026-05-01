@@ -26,11 +26,11 @@ class FinanceViewModel(private val repository: FinanceRepository) : ViewModel() 
     val currentProjectId: StateFlow<String> = _currentProjectId.asStateFlow()
 
     val projects = repository.allProjects
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     val currentProject: StateFlow<Project?> = combine(projects, _currentProjectId) { list, pid ->
         list.find { it.id == pid }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
     fun switchProject(projectId: String) { _currentProjectId.value = projectId }
 
@@ -54,47 +54,47 @@ class FinanceViewModel(private val repository: FinanceRepository) : ViewModel() 
     val borrowers: StateFlow<List<Borrower>> =
         combine(repository.allBorrowers, _currentProjectId) { list, pid ->
             list.filter { it.projectId == pid }
-        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+        }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     val transactions: StateFlow<List<Transaction>> =
         combine(repository.allTransactions, _currentProjectId) { list, pid ->
             list.filter { it.projectId == pid }
-        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+        }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     // All accounts across ALL projects — used by wizard and account pickers
     val allAccountsUnfiltered: StateFlow<List<Account>> =
         repository.allAccounts
-            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+            .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     val accounts: StateFlow<List<Account>> =
         combine(repository.allAccounts, _currentProjectId) { list, pid ->
             list.filter { it.projectId == pid }
-        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+        }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     val investments: StateFlow<List<Investment>> =
         combine(repository.allInvestments, _currentProjectId) { list, pid ->
             list.filter { it.projectId == pid }
-        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+        }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     val debts: StateFlow<List<Debt>> =
         combine(repository.allDebts, _currentProjectId) { list, pid ->
             list.filter { it.projectId == pid }
-        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+        }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     val people: StateFlow<List<Person>> =
         combine(repository.allPeople, _currentProjectId) { list, pid ->
             list.filter { it.projectId == pid }
-        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+        }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     val budgets: StateFlow<List<Budget>> =
         combine(repository.allBudgets, _currentProjectId) { list, pid ->
             list.filter { it.projectId == pid }
-        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+        }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     val goals: StateFlow<List<Goal>> =
         combine(repository.allGoals, _currentProjectId) { list, pid ->
             list.filter { it.projectId == pid }
-        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+        }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     // ─── Search ───────────────────────────────────────────────────────────────
 
@@ -110,7 +110,7 @@ class FinanceViewModel(private val repository: FinanceRepository) : ViewModel() 
                 it.notes.contains(query, ignoreCase = true) ||
                 it.date.contains(query)
             }
-        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+        }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     fun updateSearchQuery(query: String) { _searchQuery.value = query }
 
@@ -120,7 +120,7 @@ class FinanceViewModel(private val repository: FinanceRepository) : ViewModel() 
         trans.filter { it.type.lowercase() == "expense" }
             .groupBy { it.category }
             .mapValues { entry -> entry.value.sumOf { it.amount } }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyMap())
 
     // ─── Financial Summary (auto-uses project-filtered flows) ─────────────────
 
@@ -164,7 +164,7 @@ class FinanceViewModel(private val repository: FinanceRepository) : ViewModel() 
             debtBurden         = if (net != 0.0) ((totalDebtPrincipal + totalDebtInterest) / net) * 100 else 0.0,
             accountBreakdown   = accountsMap
         )
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), FinancialSummary())
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, FinancialSummary())
 
     // ─── Helpers ──────────────────────────────────────────────────────────────
 
