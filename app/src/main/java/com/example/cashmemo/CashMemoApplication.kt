@@ -23,28 +23,33 @@ class CashMemoApplication : Application() {
 
     val authManager: AuthManager by lazy { AuthManager() }
 
-    val firestoreRepository: FirestoreRepository by lazy {
-        FirestoreRepository(authManager.userId)
-    }
-
-    val syncManager: SyncManager by lazy {
-        SyncManager(authManager.userId, database.dao())
-    }
-
-    val repository: FinanceRepository by lazy {
-        FinanceRepository(database.dao(), database, firestoreRepository, syncManager)
-    }
+    // These are initialised AFTER auth so userId is never empty
+    lateinit var firestoreRepository: FirestoreRepository
+    lateinit var syncManager: SyncManager
+    lateinit var repository: FinanceRepository
 
     override fun onCreate() {
         super.onCreate()
-        // Sign in anonymously then start Firestore listeners
+
+        // Step 1: build offline-capable repository immediately so the app
+        // can open and show Room data without waiting for network.
+        val placeholderFirestore = FirestoreRepository("")   // no-op until auth ready
+        val placeholderSync      = SyncManager("", database.dao())
+        repository = FinanceRepository(database.dao(), database, placeholderFirestore, placeholderSync)
+
+        // Step 2: sign in anonymously, then swap in the real Firestore/Sync
+        // instances on the same repository object.
         CoroutineScope(Dispatchers.IO).launch {
             runCatching {
                 authManager.ensureSignedIn()
-                // Re-init with real userId now that auth is ready
-                val realFirestore = FirestoreRepository(authManager.userId)
-                val realSync      = SyncManager(authManager.userId, database.dao())
-                realSync.startListening()
+                val uid = authManager.userId
+                if (uid.isNotEmpty()) {
+                    firestoreRepository = FirestoreRepository(uid)
+                    syncManager         = SyncManager(uid, database.dao())
+                    // Hot-swap the real instances into the repository
+                    repository.updateRemote(firestoreRepository, syncManager)
+                    syncManager.startListening()
+                }
             }
         }
     }

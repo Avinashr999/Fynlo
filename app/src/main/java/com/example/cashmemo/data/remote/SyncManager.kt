@@ -223,6 +223,9 @@ class SyncManager(
         _status.value = SyncStatus.Synced
     }
 
+    fun setSyncing() { _status.value = SyncStatus.Syncing }
+    fun setSynced()  { _status.value = SyncStatus.Synced  }
+
     /** Call from Application.onTerminate or when user signs out. */
     fun stopListening() {
         listeners.forEach { it.remove() }

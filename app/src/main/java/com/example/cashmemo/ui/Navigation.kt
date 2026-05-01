@@ -2,6 +2,7 @@
 
 import androidx.compose.animation.*
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.filled.Business
@@ -13,6 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.navigation.NavController
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -339,6 +341,7 @@ fun MainNavigation(viewModel: FinanceViewModel) {
                     sheetState = sheetState
                 ) {
                     QuickActionMenu(
+                        navController = navController,
                         onActionClick = { actionType ->
                             showSheet = false
                             when (actionType) {
@@ -356,7 +359,7 @@ fun MainNavigation(viewModel: FinanceViewModel) {
 }
 
 @Composable
-fun QuickActionMenu(onActionClick: (String) -> Unit) {
+fun QuickActionMenu(navController: NavController, onActionClick: (String) -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()

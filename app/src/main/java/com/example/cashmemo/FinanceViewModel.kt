@@ -262,6 +262,83 @@ class FinanceViewModel(private val repository: FinanceRepository) : ViewModel() 
         viewModelScope.launch { repository.deleteGoal(goal) }
     }
 
+    fun executeFlow(result: com.example.cashmemo.data.model.FlowResult) {
+        viewModelScope.launch {
+            val id = java.util.UUID.randomUUID().toString()
+            when (result.eventType) {
+                "Received" -> {
+                    val t = com.example.cashmemo.data.model.Transaction(
+                        id = id,
+                        date = result.date,
+                        type = "Income",
+                        amount = result.amount,
+                        toAcct = result.toAccount,
+                        category = result.category,
+                        desc = result.description,
+                        notes = result.notes,
+                        projectId = result.projectId
+                    )
+                    repository.insertTransaction(t)
+                }
+                "Spent" -> {
+                    val t = com.example.cashmemo.data.model.Transaction(
+                        id = id,
+                        date = result.date,
+                        type = "Expense",
+                        amount = result.amount,
+                        fromAcct = result.fromAccount,
+                        category = result.category,
+                        desc = result.description,
+                        notes = result.notes,
+                        projectId = result.projectId
+                    )
+                    repository.insertTransaction(t)
+                }
+                "Moved" -> {
+                    val t = com.example.cashmemo.data.model.Transaction(
+                        id = id,
+                        date = result.date,
+                        type = "Transfer",
+                        amount = result.amount,
+                        fromAcct = result.fromAccount,
+                        toAcct = result.toAccount,
+                        category = "Transfer",
+                        desc = result.description.ifBlank { "Transfer: ${result.fromAccount} -> ${result.toAccount}" },
+                        notes = result.notes,
+                        projectId = result.projectId
+                    )
+                    repository.insertTransaction(t)
+                }
+                "Lent" -> {
+                    val borrower = com.example.cashmemo.data.model.Borrower(
+                        id = id,
+                        name = result.personName,
+                        phone = result.personPhone,
+                        amount = result.amount,
+                        rate = 0.0, // Default for wizard
+                        date = result.date,
+                        notes = result.notes,
+                        projectId = result.projectId
+                    )
+                    repository.insertBorrowerWithSource(borrower, result.fromAccount, result.projectId)
+                }
+                "Borrowed" -> {
+                    val debt = com.example.cashmemo.data.model.Debt(
+                        id = id,
+                        name = result.personName,
+                        phone = result.personPhone,
+                        amount = result.amount,
+                        rate = 0.0, // Default for wizard
+                        date = result.date,
+                        notes = result.notes,
+                        projectId = result.projectId
+                    )
+                    repository.insertDebtWithDestination(debt, result.toAccount, result.projectId)
+                }
+            }
+        }
+    }
+
     // ─── Export / Import ──────────────────────────────────────────────────────
 
     suspend fun exportAllData(): String = repository.getAllDataAsJson()

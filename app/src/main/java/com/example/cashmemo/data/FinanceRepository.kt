@@ -18,10 +18,16 @@ import kotlinx.serialization.json.Json
 class FinanceRepository(
     private val dao: CashMemoDao,
     private val db: CashMemoDatabase,
-    private val firestore: FirestoreRepository,
-    private val syncManager: SyncManager
+    private var firestore: FirestoreRepository,
+    private var syncManager: SyncManager
 ) {
-    val syncStatus: StateFlow<SyncStatus> = syncManager.status
+    val syncStatus: StateFlow<SyncStatus> get() = syncManager.status
+
+    /** Called after anonymous auth completes — swaps in the real instances. */
+    fun updateRemote(newFirestore: FirestoreRepository, newSync: SyncManager) {
+        firestore   = newFirestore
+        syncManager = newSync
+    }
     val allBorrowers: Flow<List<Borrower>>       = dao.getAllBorrowers()
     val allTransactions: Flow<List<Transaction>> = dao.getAllTransactions()
     val allAccounts: Flow<List<Account>>         = dao.getAllAccounts()
@@ -33,7 +39,11 @@ class FinanceRepository(
     val allProjects: Flow<List<Project>>         = dao.getAllProjects()
     private val ioScope = CoroutineScope(Dispatchers.IO)
     private fun sync(block: suspend FirestoreRepository.() -> Unit) {
-        ioScope.launch { runCatching { firestore.block() } }
+        ioScope.launch {
+            syncManager.setSyncing()
+            runCatching { firestore.block() }
+            syncManager.setSynced()
+        }
     }
     suspend fun insertProject(project: Project) {
         val p = project.copy(updatedAt = System.currentTimeMillis())
