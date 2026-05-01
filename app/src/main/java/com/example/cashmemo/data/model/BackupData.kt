@@ -9,5 +9,6 @@ data class BackupData(
     val borrowers: List<Borrower>,
     val investments: List<Investment>,
     val debts: List<Debt>,
-    val people: List<Person>
+    val people: List<Person>,
+    val projects: List<Project> = emptyList()   // added in v2.0
 )

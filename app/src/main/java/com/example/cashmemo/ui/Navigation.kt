@@ -1,9 +1,10 @@
-package com.example.cashmemo.ui
+﻿package com.example.cashmemo.ui
 
 import androidx.compose.animation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.Business
 import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -35,7 +36,8 @@ sealed class Screen(val route: String, val label: String, val icon: ImageVector)
     object Budgets : Screen("budgets", "Budgeting", Icons.Default.AccountBalanceWallet)
     object Goals : Screen("goals", "Savings Goals", Icons.Default.Star)
     object Login : Screen("login", "Login", Icons.Default.Lock)
-    object Profile : Screen("profile", "Profile", Icons.Default.Person)
+    object Profile  : Screen("profile",  "Profile",  Icons.Default.Person)
+    object Projects : Screen("projects", "Projects", Icons.Default.Business)
 }
 
 val bottomNavItems = listOf(
@@ -145,6 +147,15 @@ fun MainNavigation(viewModel: FinanceViewModel) {
                     onClick = { 
                         navController.navigate(Screen.People.route)
                         scope.launch { drawerState.close() } 
+                    }
+                )
+                NavigationDrawerItem(
+                    icon = { Icon(Icons.Default.Business, contentDescription = null) },
+                    label = { Text("Manage Projects") },
+                    selected = currentRoute == Screen.Projects.route,
+                    onClick = {
+                        navController.navigate(Screen.Projects.route)
+                        scope.launch { drawerState.close() }
                     }
                 )
                 NavigationDrawerItem(
@@ -288,6 +299,7 @@ fun MainNavigation(viewModel: FinanceViewModel) {
                 composable(Screen.Budgets.route) { BudgetScreen(viewModel) }
                 composable(Screen.Goals.route) { GoalScreen(viewModel) }
                 composable(Screen.Profile.route) { ProfileScreen(onLogout = { isLoggedIn = false }) }
+                composable(Screen.Projects.route) { ProjectsScreen(viewModel) }
                 
                 composable("customer/{borrowerId}") { backStackEntry ->
                     val borrowerId = backStackEntry.arguments?.getString("borrowerId") ?: ""
