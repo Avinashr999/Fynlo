@@ -1,21 +1,32 @@
-package com.example.cashmemo.ui.screens
+﻿package com.example.cashmemo.ui.screens
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.example.cashmemo.CashMemoApplication
 
 @Composable
-fun ProfileScreen(onLogout: () -> Unit) {
+fun ProfileScreen(onLogout: () -> Unit, onSignOut: () -> Unit = {}) {
+    val context = LocalContext.current
+    val app     = context.applicationContext as CashMemoApplication
+    val isGoogle = app.authManager.isSignedInWithGoogle
+    val email    = app.authManager.userEmail
+    val name     = app.authManager.userName
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -26,62 +37,121 @@ fun ProfileScreen(onLogout: () -> Unit) {
     ) {
         Text(
             "Profile & Security",
-            style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
+            style    = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
             modifier = Modifier.padding(vertical = 16.dp).align(Alignment.Start)
         )
 
+        // ── Account card ──────────────────────────────────────────────────────
         Card(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+            shape    = RoundedCornerShape(16.dp),
+            colors   = CardDefaults.cardColors(
+                containerColor = if (isGoogle)
+                    Color(0xFF1565C0).copy(alpha = 0.1f)
+                else
+                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+            )
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Person, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                    Icon(
+                        if (isGoogle) Icons.Default.AccountCircle else Icons.Default.Person,
+                        contentDescription = null,
+                        tint     = if (isGoogle) Color(0xFF1565C0) else MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(28.dp)
+                    )
                     Spacer(Modifier.width(12.dp))
-                    Text("User Profile", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
+                    Column {
+                        Text(
+                            if (isGoogle) "Google Account" else "Local Account",
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                        )
+                        if (isGoogle) {
+                            Text(name,  style = MaterialTheme.typography.bodyMedium)
+                            Text(email, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        } else {
+                            Text("Not signed in with Google", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
                 }
-                Spacer(Modifier.height(8.dp))
-                Text("Account Holder: Primary User", style = MaterialTheme.typography.bodyMedium)
-                Text("Role: Admin (Owner)", style = MaterialTheme.typography.bodySmall)
+            }
+        }
+
+        Spacer(Modifier.height(12.dp))
+
+        // ── Sync status card ──────────────────────────────────────────────────
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape    = RoundedCornerShape(16.dp),
+            colors   = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.3f)
+            )
+        ) {
+            Row(
+                modifier          = Modifier.padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(Icons.Default.Cloud, contentDescription = null, tint = MaterialTheme.colorScheme.secondary)
+                Spacer(Modifier.width(12.dp))
+                Column {
+                    Text("Cloud Sync", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold))
+                    Text(
+                        if (isGoogle) "✓ Syncing across all your devices via Google account"
+                        else "⚠ Syncing to this device only — sign in with Google for cross-device sync",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
         }
 
         Spacer(Modifier.height(16.dp))
 
+        // ── Security card ─────────────────────────────────────────────────────
         Card(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp)
+            shape    = RoundedCornerShape(16.dp)
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Default.Lock, contentDescription = null, tint = MaterialTheme.colorScheme.secondary)
                     Spacer(Modifier.width(12.dp))
-                    Text("Security Settings", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
+                    Text("Security", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
                 }
-                Spacer(Modifier.height(16.dp))
-                
+                Spacer(Modifier.height(12.dp))
                 Text("Current security mode is PIN protected.", style = MaterialTheme.typography.bodySmall)
-                
-                Spacer(Modifier.height(16.dp))
-                
+                Spacer(Modifier.height(12.dp))
                 Button(
-                    onClick = { /* TODO: Change PIN */ },
+                    onClick  = { },
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-                    Text("Change Login PIN")
-                }
+                    shape    = RoundedCornerShape(8.dp)
+                ) { Text("Change Login PIN") }
             }
         }
 
-        Spacer(Modifier.height(32.dp))
+        Spacer(Modifier.height(24.dp))
 
+        // ── Sign out Google ───────────────────────────────────────────────────
+        if (isGoogle) {
+            OutlinedButton(
+                onClick  = {
+                    app.authManager.signOut()
+                    onSignOut()
+                },
+                modifier = Modifier.fillMaxWidth().height(52.dp),
+                shape    = RoundedCornerShape(16.dp)
+            ) {
+                Text("Sign out of Google", fontWeight = FontWeight.SemiBold)
+            }
+            Spacer(Modifier.height(12.dp))
+        }
+
+        // ── Lock app ──────────────────────────────────────────────────────────
         Button(
-            onClick = onLogout,
+            onClick  = onLogout,
             modifier = Modifier.fillMaxWidth().height(56.dp),
-            shape = RoundedCornerShape(16.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+            shape    = RoundedCornerShape(16.dp),
+            colors   = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
         ) {
             Text("Logout & Lock App", fontWeight = FontWeight.Bold)
         }

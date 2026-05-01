@@ -1,118 +1,178 @@
-package com.example.cashmemo.ui.screens
+﻿package com.example.cashmemo.ui.screens
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Backspace
-import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.AccountBalanceWallet
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.cashmemo.CashMemoApplication
+import com.example.cashmemo.data.GoogleSignInHelper
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.common.api.ApiException
+import kotlinx.coroutines.launch
 
 @Composable
-fun LoginScreen(onLoginSuccess: () -> Unit) {
-    var pin by remember { mutableStateOf("") }
-    val correctPin = "1234" // Default PIN for now
+fun LoginScreen(onSignedIn: () -> Unit) {
+    val context = LocalContext.current
+    val app     = context.applicationContext as CashMemoApplication
+    val scope   = rememberCoroutineScope()
+    var loading by remember { mutableStateOf(false) }
+    var error   by remember { mutableStateOf("") }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Icon(
-            Icons.Default.Lock,
-            contentDescription = null,
-            modifier = Modifier.size(64.dp),
-            tint = MaterialTheme.colorScheme.primary
-        )
-        
-        Text(
-            "Enter PIN",
-            style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
-            modifier = Modifier.padding(top = 16.dp)
-        )
-        
-        Text(
-            "Access your private financial records",
-            style = MaterialTheme.typography.bodySmall,
-            modifier = Modifier.padding(bottom = 32.dp)
-        )
-
-        // PIN Indicators
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-            modifier = Modifier.padding(bottom = 48.dp)
-        ) {
-            repeat(4) { index ->
-                val isFilled = index < pin.length
-                Box(
-                    modifier = Modifier
-                        .size(20.dp)
-                        .background(
-                            if (isFilled) MaterialTheme.colorScheme.primary 
-                            else MaterialTheme.colorScheme.surfaceVariant,
-                            CircleShape
-                        )
-                )
-            }
-        }
-
-        // Numeric Keypad
-        val keys = listOf("1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "DEL")
-        
-        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            for (i in 0 until 4) {
-                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                    for (j in 0 until 3) {
-                        val key = keys[i * 3 + j]
-                        if (key.isNotEmpty()) {
-                            KeyButton(
-                                text = key,
-                                onClick = {
-                                    if (key == "DEL") {
-                                        if (pin.isNotEmpty()) pin = pin.dropLast(1)
-                                    } else if (pin.length < 4) {
-                                        pin += key
-                                        if (pin.length == 4) {
-                                            if (pin == correctPin) onLoginSuccess()
-                                            else pin = "" // Reset on wrong PIN
-                                        }
-                                    }
-                                }
-                            )
-                        } else {
-                            Spacer(Modifier.size(80.dp))
-                        }
-                    }
+    val launcher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        scope.launch {
+            loading = true
+            error   = ""
+            runCatching {
+                val task    = GoogleSignIn.getSignedInAccountFromIntent(result.data)
+                val account = task.getResult(ApiException::class.java)
+                val idToken = account.idToken ?: throw Exception("No ID token")
+                val signInResult = app.authManager.signInWithGoogle(idToken)
+                if (signInResult.isSuccess) {
+                    val uid = app.authManager.userId
+                    app.onGoogleSignInComplete(uid)
+                    onSignedIn()
+                } else {
+                    error = signInResult.exceptionOrNull()?.message ?: "Sign-in failed"
                 }
+            }.onFailure {
+                error = it.message ?: "Sign-in failed. Please try again."
             }
+            loading = false
         }
     }
-}
 
-@Composable
-fun KeyButton(text: String, onClick: () -> Unit) {
-    Surface(
-        onClick = onClick,
-        modifier = Modifier.size(80.dp),
-        shape = CircleShape,
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+    Box(
+        modifier         = Modifier
+            .fillMaxSize()
+            .background(
+                Brush.verticalGradient(
+                    colors = listOf(Color(0xFF1565C0), Color(0xFF0D47A1), Color(0xFF01579B))
+                )
+            ),
+        contentAlignment = Alignment.Center
     ) {
-        Box(contentAlignment = Alignment.Center) {
-            if (text == "DEL") {
-                Icon(Icons.Default.Backspace, contentDescription = "Delete")
-            } else {
-                Text(text = text, style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold))
+        Column(
+            horizontalAlignment   = Alignment.CenterHorizontally,
+            verticalArrangement   = Arrangement.spacedBy(24.dp),
+            modifier              = Modifier.padding(32.dp)
+        ) {
+            // App icon
+            Box(
+                modifier         = Modifier
+                    .size(90.dp)
+                    .clip(RoundedCornerShape(24.dp))
+                    .background(Color.White.copy(alpha = 0.15f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    Icons.Default.AccountBalanceWallet,
+                    contentDescription = null,
+                    tint               = Color.White,
+                    modifier           = Modifier.size(50.dp)
+                )
+            }
+
+            Text(
+                "Cash Memo",
+                fontSize   = 32.sp,
+                fontWeight = FontWeight.ExtraBold,
+                color      = Color.White
+            )
+
+            Text(
+                "Your personal finance manager.\nSign in to sync across all your devices.",
+                fontSize   = 15.sp,
+                color      = Color.White.copy(alpha = 0.8f),
+                textAlign  = TextAlign.Center,
+                lineHeight = 22.sp
+            )
+
+            Spacer(Modifier.height(8.dp))
+
+            // Google Sign-In button
+            Button(
+                onClick = {
+                    val client = GoogleSignInHelper.getClient(context)
+                    launcher.launch(client.signInIntent)
+                },
+                enabled = !loading,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp),
+                shape  = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color.White,
+                    contentColor   = Color(0xFF1A1A1A)
+                )
+            ) {
+                if (loading) {
+                    CircularProgressIndicator(
+                        modifier  = Modifier.size(22.dp),
+                        color     = Color(0xFF1565C0),
+                        strokeWidth = 2.5.dp
+                    )
+                } else {
+                    // Google "G" logo colours
+                    Box(
+                        modifier         = Modifier
+                            .size(22.dp)
+                            .clip(CircleShape)
+                            .background(Color(0xFF4285F4)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("G", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                    }
+                    Spacer(Modifier.width(12.dp))
+                    Text(
+                        "Continue with Google",
+                        fontSize   = 16.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
+
+            // Skip option — keeps anonymous auth
+            TextButton(onClick = onSignedIn) {
+                Text(
+                    "Continue without signing in",
+                    color    = Color.White.copy(alpha = 0.65f),
+                    fontSize = 13.sp
+                )
+            }
+
+            if (error.isNotBlank()) {
+                Card(
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer
+                    ),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text(
+                        error,
+                        modifier = Modifier.padding(12.dp),
+                        color    = MaterialTheme.colorScheme.onErrorContainer,
+                        fontSize = 13.sp
+                    )
+                }
             }
         }
     }

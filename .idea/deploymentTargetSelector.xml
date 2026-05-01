@@ -4,10 +4,10 @@
     <selectionStates>
       <SelectionState runConfigName="Cash Memo">
         <option name="selectionMode" value="DROPDOWN" />
-        <DropdownSelection timestamp="2026-04-25T11:14:26.566430600Z">
+        <DropdownSelection timestamp="2026-05-01T08:23:58.181683400Z">
           <Target type="DEFAULT_BOOT">
             <handle>
-              <DeviceId pluginId="PhysicalDevice" identifier="serial=3C15CA0055F00000" />
+              <DeviceId pluginId="LocalEmulator" identifier="path=C:\Users\user\.android\avd\Pixel_6.avd" />
             </handle>
           </Target>
         </DropdownSelection>

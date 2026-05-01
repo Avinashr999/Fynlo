@@ -1,4 +1,4 @@
-[versions]
+﻿[versions]
 firebaseBom = "33.7.0"
 agp = "9.2.0"
 coreKtx = "1.18.0"
@@ -38,6 +38,7 @@ firebase-ai = { group = "com.google.firebase", name = "firebase-ai", version.ref
 firebase-bom       = { group = "com.google.firebase", name = "firebase-bom",           version.ref = "firebaseBom" }
 firebase-firestore = { group = "com.google.firebase", name = "firebase-firestore-ktx" }
 firebase-auth      = { group = "com.google.firebase", name = "firebase-auth-ktx" }
+google-signin    = { group = "com.google.android.gms", name = "play-services-auth", version = "21.0.0" }
 room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }
 room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }
 room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "room" }

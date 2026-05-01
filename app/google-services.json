@@ -12,7 +12,20 @@
           "package_name": "com.example.cashmemo"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "1016532477819-1eath9a4ckfm4r5merkijfmq2dc2t6j8.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.cashmemo",
+            "certificate_hash": "9c1df32256f9873898de2f62d7c94b33a7cc20f2"
+          }
+        },
+        {
+          "client_id": "1016532477819-i121rp15tdpsq64ifd705b7mr0ifpqr0.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyBoyGWyGtqo72pZGH6BRi4ZDoN3GmSo34c"
@@ -20,7 +33,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1016532477819-i121rp15tdpsq64ifd705b7mr0ifpqr0.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }

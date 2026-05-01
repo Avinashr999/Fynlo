@@ -67,7 +67,9 @@ fun MainNavigation(viewModel: FinanceViewModel) {
     var showLendingDialog by remember { mutableStateOf(false) }
     var showDebtDialog by remember { mutableStateOf(false) }
     var showInvestmentDialog by remember { mutableStateOf(false) }
+    val app = context.applicationContext as com.example.cashmemo.CashMemoApplication
     var isLoggedIn by remember { mutableStateOf(false) }
+    var showLogin  by remember { mutableStateOf(!app.authManager.isSignedInWithGoogle) }
     val syncStatus by viewModel.syncStatus.collectAsState()
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -76,6 +78,13 @@ fun MainNavigation(viewModel: FinanceViewModel) {
     val showFab = when (currentRoute) {
         Screen.Settings.route, Screen.About.route, Screen.People.route, Screen.Profile.route -> false
         else -> drawerState.isClosed
+    }
+
+    if (showLogin) {
+        LoginScreen(
+            onSignedIn = { showLogin = false }
+        )
+        return@MainNavigation
     }
 
     if (!isLoggedIn) {

@@ -23,7 +23,6 @@ class CashMemoApplication : Application() {
 
     val authManager: AuthManager by lazy { AuthManager() }
 
-    // These are initialised AFTER auth so userId is never empty
     lateinit var firestoreRepository: FirestoreRepository
     lateinit var syncManager: SyncManager
     lateinit var repository: FinanceRepository
@@ -31,26 +30,35 @@ class CashMemoApplication : Application() {
     override fun onCreate() {
         super.onCreate()
 
-        // Step 1: build offline-capable repository immediately so the app
-        // can open and show Room data without waiting for network.
-        val placeholderFirestore = FirestoreRepository("")   // no-op until auth ready
+        // Build offline-capable repository immediately
+        val placeholderFirestore = FirestoreRepository("")
         val placeholderSync      = SyncManager("", database.dao())
-        repository = FinanceRepository(database.dao(), database, placeholderFirestore, placeholderSync)
+        repository = FinanceRepository(
+            database.dao(), database, placeholderFirestore, placeholderSync
+        )
 
-        // Step 2: sign in anonymously, then swap in the real Firestore/Sync
-        // instances on the same repository object.
+        // Sign in (anonymous if no Google account yet) then start sync
         CoroutineScope(Dispatchers.IO).launch {
             runCatching {
                 authManager.ensureSignedIn()
                 val uid = authManager.userId
-                if (uid.isNotEmpty()) {
-                    firestoreRepository = FirestoreRepository(uid)
-                    syncManager         = SyncManager(uid, database.dao())
-                    // Hot-swap the real instances into the repository
-                    repository.updateRemote(firestoreRepository, syncManager)
-                    syncManager.startListening()
-                }
+                if (uid.isNotEmpty()) initRemote(uid)
             }
         }
+    }
+
+    /** Called after Google Sign-In completes — re-init with real Google UID. */
+    fun onGoogleSignInComplete(uid: String) {
+        CoroutineScope(Dispatchers.IO).launch {
+            runCatching { initRemote(uid) }
+        }
+    }
+
+    private fun initRemote(uid: String) {
+        if (::syncManager.isInitialized) syncManager.stopListening()
+        firestoreRepository = FirestoreRepository(uid)
+        syncManager         = SyncManager(uid, database.dao())
+        repository.updateRemote(firestoreRepository, syncManager)
+        syncManager.startListening()
     }
 }
