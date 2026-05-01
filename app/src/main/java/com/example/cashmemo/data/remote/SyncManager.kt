@@ -105,9 +105,11 @@ class SyncManager(
         listeners += col("accounts").addSnapshotListener { snap, err ->
             if (err != null || snap == null) { _status.value = SyncStatus.Offline; return@addSnapshotListener }
             scope.launch {
+                android.util.Log.d("CashMemoSync", "Accounts snapshot: ${snap.documentChanges.size} changes")
                 snap.documentChanges.forEach { change ->
                     runCatching {
                         val doc = change.document
+                        android.util.Log.d("CashMemoSync", "Inserting account from Firestore")
                         dao.insertAccount(Account(
                             id        = doc.id,
                             name      = doc.str("name"),
