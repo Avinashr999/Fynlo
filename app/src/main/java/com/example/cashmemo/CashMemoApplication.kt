@@ -42,7 +42,10 @@ class CashMemoApplication : Application() {
             runCatching {
                 authManager.ensureSignedIn()
                 val uid = authManager.userId
-                if (uid.isNotEmpty()) initRemote(uid)
+                if (uid.isNotEmpty()) {
+                    android.util.Log.d("CashMemoSync", "Auth UID: $uid | isGoogle: ${authManager.isSignedInWithGoogle}")
+                    initRemote(uid)
+                }
             }
         }
     }

@@ -26,6 +26,7 @@ fun ProfileScreen(onLogout: () -> Unit, onSignOut: () -> Unit = {}) {
     val isGoogle = app.authManager.isSignedInWithGoogle
     val email    = app.authManager.userEmail
     val name     = app.authManager.userName
+    val uid      = app.authManager.userId
 
     Column(
         modifier = Modifier
@@ -69,6 +70,7 @@ fun ProfileScreen(onLogout: () -> Unit, onSignOut: () -> Unit = {}) {
                         if (isGoogle) {
                             Text(name,  style = MaterialTheme.typography.bodyMedium)
                             Text(email, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text("UID: ${uid.take(12)}...", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         } else {
                             Text("Not signed in with Google", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
