@@ -61,6 +61,11 @@ class FinanceViewModel(private val repository: FinanceRepository) : ViewModel() 
             list.filter { it.projectId == pid }
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    // All accounts across ALL projects — used by wizard and account pickers
+    val allAccountsUnfiltered: StateFlow<List<Account>> =
+        repository.allAccounts
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
     val accounts: StateFlow<List<Account>> =
         combine(repository.allAccounts, _currentProjectId) { list, pid ->
             list.filter { it.projectId == pid }

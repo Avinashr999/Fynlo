@@ -36,7 +36,7 @@ fun SmartFlowWizardScreen(
     onDone: () -> Unit
 ) {
     val transactions     by viewModel.transactions.collectAsState()
-    val accounts         by viewModel.accounts.collectAsState()
+    val accounts         by viewModel.allAccountsUnfiltered.collectAsState()
     val currentProjectId by viewModel.currentProjectId.collectAsState()
     val today = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
 
