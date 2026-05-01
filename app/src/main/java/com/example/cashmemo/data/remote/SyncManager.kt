@@ -63,6 +63,7 @@ class SyncManager(
                             updatedAt = doc.lng("updatedAt")
                         )
                         dao.insertBorrower(remote)
+                        android.util.Log.d("CashMemoSync", "Inserted borrower: ${remote.id} name=${remote.name} proj=${remote.projectId}")
                     }
                 }
                 _status.value = SyncStatus.Synced
@@ -94,6 +95,7 @@ class SyncManager(
                             updatedAt = doc.lng("updatedAt")
                         )
                         dao.insertTransaction(remote)
+                        android.util.Log.d("CashMemoSync", "Inserted transaction: ${remote.id} cat=${remote.category} proj=${remote.projectId}")
                     }
                 }
                 _status.value = SyncStatus.Synced
