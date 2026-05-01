@@ -35,10 +35,12 @@ class SyncManager(
     /** Start real-time listeners for every collection. */
     fun startListening() {
         if (userId.isEmpty()) return
+        android.util.Log.d("CashMemoSync", "SyncManager.startListening() uid=$userId")
 
         listeners += col("borrowers").addSnapshotListener { snap, err ->
             if (err != null || snap == null) { _status.value = SyncStatus.Offline; return@addSnapshotListener }
             scope.launch {
+                android.util.Log.d("CashMemoSync", "Borrowers snapshot: ${snap.documentChanges.size} changes")
                 snap.documentChanges.forEach { change ->
                     runCatching {
                         val doc = change.document
@@ -70,6 +72,7 @@ class SyncManager(
         listeners += col("transactions").addSnapshotListener { snap, err ->
             if (err != null || snap == null) { _status.value = SyncStatus.Offline; return@addSnapshotListener }
             scope.launch {
+                android.util.Log.d("CashMemoSync", "Transactions snapshot: ${snap.documentChanges.size} changes")
                 snap.documentChanges.forEach { change ->
                     runCatching {
                         val doc = change.document
