@@ -39,6 +39,7 @@ sealed class Screen(val route: String, val label: String, val icon: ImageVector)
     object Goals : Screen("goals", "Savings Goals", Icons.Default.Star)
     object Login : Screen("login", "Login", Icons.Default.Lock)
     object Profile  : Screen("profile",  "Profile",  Icons.Default.Person)
+    object FlowWizard : Screen("flow_wizard", "Flow Wizard", Icons.Default.AutoAwesome)
     object Projects : Screen("projects", "Projects", Icons.Default.Business)
 }
 
@@ -306,6 +307,12 @@ fun MainNavigation(viewModel: FinanceViewModel) {
                 composable(Screen.Goals.route) { GoalScreen(viewModel) }
                 composable(Screen.Profile.route) { ProfileScreen(onLogout = { isLoggedIn = false }) }
                 composable(Screen.Projects.route) { ProjectsScreen(viewModel) }
+                composable(Screen.FlowWizard.route) {
+                    SmartFlowWizardScreen(
+                        viewModel = viewModel,
+                        onDone    = { navController.navigateUp() }
+                    )
+                }
                 
                 composable("customer/{borrowerId}") { backStackEntry ->
                     val borrowerId = backStackEntry.arguments?.getString("borrowerId") ?: ""
@@ -357,6 +364,7 @@ fun QuickActionMenu(onActionClick: (String) -> Unit) {
             .padding(bottom = 32.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        FilledTonalButton(onClick = { navController.navigate(Screen.FlowWizard.route) }, modifier = Modifier.fillMaxWidth().height(48.dp).padding(bottom = 8.dp), shape = RoundedCornerShape(12.dp)) { Icon(Icons.Default.AutoAwesome, contentDescription = null, modifier = Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text("Use Smart Flow Wizard", fontWeight = FontWeight.SemiBold) }
         Text(
             "Quick Log", 
             style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),

@@ -6,6 +6,7 @@ import com.example.cashmemo.data.AuthManager
 import com.example.cashmemo.data.FinanceRepository
 import com.example.cashmemo.data.local.CashMemoDatabase
 import com.example.cashmemo.data.local.MIGRATION_3_4
+import com.example.cashmemo.data.local.MIGRATION_4_5
 import com.example.cashmemo.data.remote.FirestoreRepository
 import com.example.cashmemo.data.remote.SyncManager
 import kotlinx.coroutines.CoroutineScope
@@ -16,7 +17,7 @@ class CashMemoApplication : Application() {
 
     val database: CashMemoDatabase by lazy {
         Room.databaseBuilder(this, CashMemoDatabase::class.java, "cashmemo_database")
-            .addMigrations(MIGRATION_3_4)
+            .addMigrations(MIGRATION_3_4, MIGRATION_4_5)
             .build()
     }
 

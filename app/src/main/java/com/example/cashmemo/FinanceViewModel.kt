@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.cashmemo.data.FinanceRepository
 import com.example.cashmemo.data.SyncStatus
 import com.example.cashmemo.data.model.*
+import com.example.cashmemo.data.model.FlowResult
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch

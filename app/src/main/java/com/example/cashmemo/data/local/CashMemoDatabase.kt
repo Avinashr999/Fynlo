@@ -1,10 +1,11 @@
-package com.example.cashmemo.data.local
+﻿package com.example.cashmemo.data.local
 
 import androidx.room.Database
 import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.example.cashmemo.data.model.*
+import com.example.cashmemo.data.model.FlowTemplate
 
 @Database(
     entities = [
@@ -18,9 +19,10 @@ import com.example.cashmemo.data.model.*
         Person::class,
         Budget::class,
         Goal::class,
-        Project::class      // new in v2.0
+        Project::class,
+        FlowTemplate::class // new in v2.0 Phase 4
     ],
-    version = 4,
+    version = 5,
     exportSchema = false
 )
 abstract class CashMemoDatabase : RoomDatabase() {
@@ -72,5 +74,28 @@ val MIGRATION_3_4 = object : Migration(3, 4) {
             VALUES ('personal', 'Personal', 'person', '#3b82f6', 'INR', '', 0)
             """.trimIndent()
         )
+    }
+}
+
+
+/**
+ * Migration 4 -> 5
+ * Creates the flow_templates table for saved wizard templates.
+ */
+val MIGRATION_4_5 = object : Migration(4, 5) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("""
+            CREATE TABLE IF NOT EXISTS `flow_templates` (
+                `id`          TEXT NOT NULL,
+                `name`        TEXT NOT NULL,
+                `eventType`   TEXT NOT NULL,
+                `category`    TEXT NOT NULL DEFAULT '',
+                `fromAccount` TEXT NOT NULL DEFAULT '',
+                `toAccount`   TEXT NOT NULL DEFAULT '',
+                `projectId`   TEXT NOT NULL DEFAULT 'personal',
+                `updatedAt`   INTEGER NOT NULL DEFAULT 0,
+                PRIMARY KEY(`id`)
+            )
+        """.trimIndent())
     }
 }
