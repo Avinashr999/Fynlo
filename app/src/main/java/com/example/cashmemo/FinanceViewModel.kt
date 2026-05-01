@@ -22,11 +22,22 @@ class FinanceViewModel(private val repository: FinanceRepository) : ViewModel() 
 
     // ─── Active project ───────────────────────────────────────────────────────
 
-    private val _currentProjectId = MutableStateFlow("personal")
+    private val _currentProjectId = MutableStateFlow("")
     val currentProjectId: StateFlow<String> = _currentProjectId.asStateFlow()
 
     val projects = repository.allProjects
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+        init {
+        // Auto-select the first available project on startup
+        viewModelScope.launch {
+            projects.collect { list ->
+                if (_currentProjectId.value.isEmpty() && list.isNotEmpty()) {
+                    _currentProjectId.value = list.first().id
+                }
+            }
+        }
+    }
 
     val currentProject: StateFlow<Project?> = combine(projects, _currentProjectId) { list, pid ->
         list.find { it.id == pid }
@@ -53,12 +64,12 @@ class FinanceViewModel(private val repository: FinanceRepository) : ViewModel() 
 
     val borrowers: StateFlow<List<Borrower>> =
         combine(repository.allBorrowers, _currentProjectId) { list, pid ->
-            list.filter { it.projectId == pid }
+            list.filter { it.projectId == pid || it.projectId.isEmpty() || it.projectId == "personal" }
         }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     val transactions: StateFlow<List<Transaction>> =
         combine(repository.allTransactions, _currentProjectId) { list, pid ->
-            list.filter { it.projectId == pid }
+            list.filter { it.projectId == pid || it.projectId.isEmpty() || it.projectId == "personal" }
         }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     // All accounts across ALL projects — used by wizard and account pickers
@@ -68,32 +79,32 @@ class FinanceViewModel(private val repository: FinanceRepository) : ViewModel() 
 
     val accounts: StateFlow<List<Account>> =
         combine(repository.allAccounts, _currentProjectId) { list, pid ->
-            list.filter { it.projectId == pid }
+            list.filter { it.projectId == pid || it.projectId.isEmpty() || it.projectId == "personal" }
         }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     val investments: StateFlow<List<Investment>> =
         combine(repository.allInvestments, _currentProjectId) { list, pid ->
-            list.filter { it.projectId == pid }
+            list.filter { it.projectId == pid || it.projectId.isEmpty() || it.projectId == "personal" }
         }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     val debts: StateFlow<List<Debt>> =
         combine(repository.allDebts, _currentProjectId) { list, pid ->
-            list.filter { it.projectId == pid }
+            list.filter { it.projectId == pid || it.projectId.isEmpty() || it.projectId == "personal" }
         }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     val people: StateFlow<List<Person>> =
         combine(repository.allPeople, _currentProjectId) { list, pid ->
-            list.filter { it.projectId == pid }
+            list.filter { it.projectId == pid || it.projectId.isEmpty() || it.projectId == "personal" }
         }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     val budgets: StateFlow<List<Budget>> =
         combine(repository.allBudgets, _currentProjectId) { list, pid ->
-            list.filter { it.projectId == pid }
+            list.filter { it.projectId == pid || it.projectId.isEmpty() || it.projectId == "personal" }
         }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     val goals: StateFlow<List<Goal>> =
         combine(repository.allGoals, _currentProjectId) { list, pid ->
-            list.filter { it.projectId == pid }
+            list.filter { it.projectId == pid || it.projectId.isEmpty() || it.projectId == "personal" }
         }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     // ─── Search ───────────────────────────────────────────────────────────────
@@ -169,7 +180,7 @@ class FinanceViewModel(private val repository: FinanceRepository) : ViewModel() 
     // ─── Helpers ──────────────────────────────────────────────────────────────
 
     private val today get() = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
-    private val pid   get() = _currentProjectId.value
+    private val pid   get() = _currentProjectId.value.ifEmpty { "personal" }
 
     // ─── Add / Delete actions ─────────────────────────────────────────────────
 
