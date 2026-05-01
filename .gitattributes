@@ -1,0 +1,22 @@
+# Enforce LF line endings across the repo
+* text=auto eol=lf
+
+# Windows scripts must keep CRLF
+*.bat       text eol=crlf
+*.cmd       text eol=crlf
+
+# Shell scripts must be LF (gradlew etc.)
+*.sh        text eol=lf
+gradlew     text eol=lf
+
+# Common binary types
+*.png       binary
+*.jpg       binary
+*.jpeg      binary
+*.gif       binary
+*.webp      binary
+*.ico       binary
+*.jar       binary
+*.zip       binary
+*.keystore  binary
+*.jks       binary
