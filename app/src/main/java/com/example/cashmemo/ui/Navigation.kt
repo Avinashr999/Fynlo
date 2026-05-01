@@ -12,6 +12,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
@@ -67,9 +68,9 @@ fun MainNavigation(viewModel: FinanceViewModel) {
     var showLendingDialog by remember { mutableStateOf(false) }
     var showDebtDialog by remember { mutableStateOf(false) }
     var showInvestmentDialog by remember { mutableStateOf(false) }
+    val context = LocalContext.current
     val app = context.applicationContext as com.example.cashmemo.CashMemoApplication
-    var isLoggedIn by remember { mutableStateOf(false) }
-    var showLogin  by remember { mutableStateOf(!app.authManager.isSignedInWithGoogle) }
+    var isLoggedIn by remember { mutableStateOf(app.authManager.isSignedInWithGoogle) }
     val syncStatus by viewModel.syncStatus.collectAsState()
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -80,16 +81,9 @@ fun MainNavigation(viewModel: FinanceViewModel) {
         else -> drawerState.isClosed
     }
 
-    if (showLogin) {
-        LoginScreen(
-            onSignedIn = { showLogin = false }
-        )
-        return@MainNavigation
-    }
-
     if (!isLoggedIn) {
-        LoginScreen(onLoginSuccess = { isLoggedIn = true })
-        return
+        LoginScreen(onSignedIn = { isLoggedIn = true })
+        return@MainNavigation
     }
 
     // Dialog Triggering
