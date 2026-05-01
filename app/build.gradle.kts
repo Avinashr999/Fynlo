@@ -1,4 +1,4 @@
-plugins {
+﻿plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
@@ -15,8 +15,8 @@ android {
         applicationId = "com.example.cashmemo"
         minSdk = 24
         targetSdk = 36
-        versionCode = 80
-        versionName = "1.8.0"
+        versionCode = 90
+        versionName = "2.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -69,6 +69,11 @@ dependencies {
 
     // PDF Generation
     implementation("com.itextpdf:itext7-core:7.2.5")
+
+    // Firebase
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.firestore)
+    implementation(libs.firebase.auth)
 
     testImplementation(libs.junit)
     androidTestImplementation(platform(libs.androidx.compose.bom))

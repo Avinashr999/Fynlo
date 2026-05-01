@@ -21,6 +21,8 @@ import androidx.navigation.compose.rememberNavController
 import com.example.cashmemo.FinanceViewModel
 import com.example.cashmemo.ui.screens.*
 import com.example.cashmemo.ui.components.*
+import com.example.cashmemo.ui.components.SyncStatusBadge
+import com.example.cashmemo.data.SyncStatus
 import kotlinx.coroutines.launch
 
 sealed class Screen(val route: String, val label: String, val icon: ImageVector) {
@@ -63,6 +65,7 @@ fun MainNavigation(viewModel: FinanceViewModel) {
     var showDebtDialog by remember { mutableStateOf(false) }
     var showInvestmentDialog by remember { mutableStateOf(false) }
     var isLoggedIn by remember { mutableStateOf(false) }
+    val syncStatus by viewModel.syncStatus.collectAsState()
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
@@ -215,6 +218,9 @@ fun MainNavigation(viewModel: FinanceViewModel) {
                 
                 CenterAlignedTopAppBar(
                     title = { Text("Cash Memo") },
+                    actions = {
+                        SyncStatusBadge(status = syncStatus)
+                    },
                     navigationIcon = {
                         if (canNavigateBack) {
                             IconButton(onClick = { navController.navigateUp() }) {

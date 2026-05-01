@@ -1,4 +1,5 @@
-[versions]
+﻿[versions]
+firebaseBom = "33.7.0"
 agp = "9.2.0"
 coreKtx = "1.18.0"
 junit = "4.13.2"
@@ -34,6 +35,9 @@ androidx-compose-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-te
 androidx-compose-material3 = { group = "androidx.compose.material3", name = "material3" }
 androidx-compose-material-icons-extended = { group = "androidx.compose.material", name = "material-icons-extended" }
 firebase-ai = { group = "com.google.firebase", name = "firebase-ai", version.ref = "firebaseAi" }
+firebase-bom       = { group = "com.google.firebase", name = "firebase-bom",           version.ref = "firebaseBom" }
+firebase-firestore = { group = "com.google.firebase", name = "firebase-firestore-ktx" }
+firebase-auth      = { group = "com.google.firebase", name = "firebase-auth-ktx" }
 room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }
 room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }
 room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "room" }

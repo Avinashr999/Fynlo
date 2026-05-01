@@ -1,8 +1,9 @@
-package com.example.cashmemo
+﻿package com.example.cashmemo
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.cashmemo.data.FinanceRepository
+import com.example.cashmemo.data.SyncStatus
 import com.example.cashmemo.data.model.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
@@ -14,6 +15,9 @@ class FinanceViewModel(private val repository: FinanceRepository) : ViewModel() 
 
     private val _uiState = MutableStateFlow<UiState>(UiState.Initial)
     val uiState: StateFlow<UiState> = _uiState.asStateFlow()
+
+    // Sync status forwarded from repository -> SyncManager
+    val syncStatus: StateFlow<SyncStatus> = repository.syncStatus
 
     // ─── Active project ───────────────────────────────────────────────────────
 
