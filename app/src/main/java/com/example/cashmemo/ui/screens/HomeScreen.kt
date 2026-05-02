@@ -23,7 +23,7 @@ import com.example.cashmemo.ui.components.PolishedSummaryCard
 import com.example.cashmemo.ui.components.ProjectSwitcherChip
 import com.example.cashmemo.ui.components.SpendingAnalyticsCard
 import com.example.cashmemo.ui.components.WealthDistributionBar
-import androidx.compose.ui.platform.LocalConfiguration
+import java.util.Locale
 
 @Composable
 fun HomeScreen(viewModel: FinanceViewModel, onNavigateToScreen: (String) -> Unit = {}) {
@@ -34,7 +34,7 @@ fun HomeScreen(viewModel: FinanceViewModel, onNavigateToScreen: (String) -> Unit
     val currentProject   by viewModel.currentProject.collectAsState()
     val isSyncReady      by viewModel.isSyncReady.collectAsState()
     val haptic           = LocalHapticFeedback.current
-    val locale = LocalConfiguration.current.locales.get(0)()
+    val locale = remember { Locale.getDefault() }()
 
     // Show loading screen while waiting for Firestore first sync
     if (!isSyncReady) {
