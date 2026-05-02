@@ -52,6 +52,7 @@ sealed class Screen(val route: String, val label: String, val icon: ImageVector)
     object ProfitLoss : Screen("profit_loss",    "Profit & Loss",    Icons.Default.List)
     object DebtPayoff : Screen("debt_payoff",    "Debt Payoff",      Icons.Default.Schedule)
     object NetWorthH  : Screen("net_worth_hist", "Net Worth History",Icons.AutoMirrored.Filled.TrendingUp)
+    object MoneyFlow  : Screen("money_flow",     "Money Flow",       Icons.Default.SwapHoriz)
 }
 
 val bottomNavItems = listOf(
@@ -273,6 +274,12 @@ fun MainNavigation(viewModel: FinanceViewModel) {
                     selected = currentRoute == Screen.NetWorthH.route,
                     onClick  = { navController.navigate(Screen.NetWorthH.route); scope.launch { drawerState.close() } }
                 )
+                NavigationDrawerItem(
+                    icon     = { Icon(Icons.Default.SwapHoriz, null) },
+                    label    = { Text("Money Flow") },
+                    selected = currentRoute == Screen.MoneyFlow.route,
+                    onClick  = { navController.navigate(Screen.MoneyFlow.route); scope.launch { drawerState.close() } }
+                )
                 HorizontalDivider(Modifier.padding(vertical = 4.dp))
                 NavigationDrawerItem(
                     icon = { Icon(Icons.Default.Settings, contentDescription = null) },
@@ -426,6 +433,7 @@ fun MainNavigation(viewModel: FinanceViewModel) {
                 composable(Screen.ProfitLoss.route) { ProfitLossScreen(viewModel) }
                 composable(Screen.DebtPayoff.route) { DebtPayoffScreen(viewModel) }
                 composable(Screen.NetWorthH.route)  { NetWorthHistoryScreen(viewModel) }
+                composable(Screen.MoneyFlow.route)   { MoneyFlowScreen(viewModel) }
                 composable(Screen.FlowWizard.route) {
                     SmartFlowWizardScreen(
                         viewModel = viewModel,
