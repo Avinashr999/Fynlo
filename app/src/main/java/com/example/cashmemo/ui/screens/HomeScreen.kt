@@ -9,6 +9,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountBalanceWallet
 import androidx.compose.material3.*
+import androidx.compose.ui.Alignment
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -31,7 +32,22 @@ fun HomeScreen(viewModel: FinanceViewModel, onNavigateToScreen: (String) -> Unit
     val projects         by viewModel.projects.collectAsState()
     val currentProjectId by viewModel.currentProjectId.collectAsState()
     val currentProject   by viewModel.currentProject.collectAsState()
+    val isSyncReady        by viewModel.isSyncReady.collectAsState()
     val haptic = LocalHapticFeedback.current
+
+    // Show loading screen while waiting for Firestore first sync
+    if (!isSyncReady) {
+        Box(
+            modifier = Modifier.fillMaxSize().statusBarsPadding(),
+            contentAlignment = androidx.compose.ui.Alignment.Center
+        ) {
+            Column(horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                CircularProgressIndicator()
+                Text("Syncing your data...\", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+        return
+    }
 
     Column(
         modifier = Modifier

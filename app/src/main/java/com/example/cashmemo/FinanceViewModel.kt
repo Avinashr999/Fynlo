@@ -28,8 +28,14 @@ class FinanceViewModel(private val repository: FinanceRepository) : ViewModel() 
     val projects = repository.allProjects
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
-        init {
-        // Auto-select the first available project on startup
+        // True once we have at least one project — used to show loading state
+    val isSyncReady: StateFlow<Boolean> = projects
+        .map { it.isNotEmpty() }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+
+    init {
+        // Keep watching projects — auto-select first one whenever it arrives
+        // This handles both: projects already in Room AND projects arriving via Firestore sync
         viewModelScope.launch {
             projects.collect { list ->
                 if (_currentProjectId.value.isEmpty() && list.isNotEmpty()) {
