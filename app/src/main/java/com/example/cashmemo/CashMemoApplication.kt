@@ -70,20 +70,25 @@ class CashMemoApplication : Application() {
 
         CoroutineScope(Dispatchers.IO).launch {
             runCatching {
-                // Wait for Firestore to sync data into Room first (2 seconds)
-                kotlinx.coroutines.delay(2000)
+                // Wait for Firestore to populate Room.
+                // Poll up to 15 seconds until accounts arrive from Firestore.
+                var waited = 0
+                var localAccounts = database.dao().getAllAccounts().first()
+                while (localAccounts.isEmpty() && waited < 15000) {
+                    kotlinx.coroutines.delay(500)
+                    waited += 500
+                    localAccounts = database.dao().getAllAccounts().first()
+                }
 
-                // Only normalize if local DB already has data (not empty after clear)
-                val localAccounts = database.dao().getAllAccounts().first()
+                // Only normalize + push if we have real data (not empty after clear)
                 if (localAccounts.isNotEmpty()) {
                     val firstProject = database.dao().getAllProjects().first().firstOrNull()
                     if (firstProject != null && firstProject.id != "personal") {
                         repository.normalizeLegacyProjectIds(firstProject.id)
-                        // Only push back AFTER normalization, and only if data exists
                         repository.pushAllCollectionsToFirestore()
                     }
                 }
-                // If local DB is empty, Firestore listener already handles populating it
+                // If still empty after 15s, Firestore has no data for this user
             }
         }
     }

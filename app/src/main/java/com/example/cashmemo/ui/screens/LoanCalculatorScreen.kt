@@ -7,6 +7,8 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.Event
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -29,9 +31,37 @@ fun LoanCalculatorScreen() {
     var tenure     by remember { mutableStateOf("") }
     var tenureUnit by remember { mutableStateOf("Months") } // Months / Years
     var intType    by remember { mutableStateOf("Reducing Balance") }
+    var loanDate   by remember { mutableStateOf(java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy"))) }
+    var dueDate    by remember { mutableStateOf("") }
     var expanded   by remember { mutableStateOf(false) }
 
     val intTypes = listOf("Reducing Balance", "Simple Interest", "Compound Interest")
+
+    // Exact days from loan date to today
+    val daysElapsed = remember(loanDate) {
+        runCatching {
+            val fmt = java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy")
+            java.time.temporal.ChronoUnit.DAYS.between(
+                java.time.LocalDate.parse(loanDate, fmt), java.time.LocalDate.now()
+            ).toInt().coerceAtLeast(0)
+        }.getOrDefault(0)
+    }
+    val isOverdue = remember(dueDate) {
+        if (dueDate.isBlank()) false
+        else runCatching {
+            val fmt = java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy")
+            java.time.LocalDate.parse(dueDate, fmt).isBefore(java.time.LocalDate.now())
+        }.getOrDefault(false)
+    }
+    val daysOverdue = remember(dueDate) {
+        if (dueDate.isBlank()) 0
+        else runCatching {
+            val fmt = java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy")
+            java.time.temporal.ChronoUnit.DAYS.between(
+                java.time.LocalDate.parse(dueDate, fmt), java.time.LocalDate.now()
+            ).toInt().coerceAtLeast(0)
+        }.getOrDefault(0)
+    }
 
     val tenureMonths = remember(tenure, tenureUnit) {
         val t = tenure.toIntOrNull() ?: 0
@@ -149,6 +179,34 @@ fun LoanCalculatorScreen() {
                         }
                     }
                 }
+
+                HorizontalDivider()
+                Text("Loan Dates (for outstanding calculation)",
+                    style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+
+                OutlinedTextField(
+                    value = loanDate, onValueChange = { loanDate = it },
+                    label = { Text("Loan Date (DD-MM-YYYY)") },
+                    leadingIcon = { Icon(Icons.Default.CalendarMonth, null) },
+                    modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp), singleLine = true
+                )
+                OutlinedTextField(
+                    value = dueDate, onValueChange = { dueDate = it },
+                    label = { Text("Due Date (DD-MM-YYYY) — optional") },
+                    leadingIcon = { Icon(Icons.Default.Event, null) },
+                    modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp), singleLine = true
+                )
+                if (daysElapsed > 0) {
+                    Surface(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                        shape = RoundedCornerShape(8.dp)) {
+                        Row(Modifier.fillMaxWidth().padding(10.dp), Arrangement.SpaceBetween) {
+                            Text("Days elapsed: $daysElapsed", style = MaterialTheme.typography.bodySmall)
+                            if (isOverdue) Text("Overdue: $daysOverdue days",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Color(0xFFEF4444))
+                        }
+                    }
+                }
             }
         }
 
@@ -193,6 +251,74 @@ fun LoanCalculatorScreen() {
                         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text("Method: $intType", style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+
+            // Outstanding balance based on actual dates
+            if (daysElapsed > 0 && (principal.toDoubleOrNull() ?: 0.0) > 0) {
+                Spacer(Modifier.height(12.dp))
+                val loanDateFmt = runCatching {
+                    val fmt = java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy")
+                    val d = java.time.LocalDate.parse(loanDate, fmt)
+                    d.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd"))
+                }.getOrDefault("")
+                val dueDateFmt = runCatching {
+                    if (dueDate.isBlank()) ""
+                    else {
+                        val fmt = java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy")
+                        val d = java.time.LocalDate.parse(dueDate, fmt)
+                        d.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd"))
+                    }
+                }.getOrDefault("")
+                val p = principal.toDoubleOrNull() ?: 0.0
+                val r = rate.toDoubleOrNull() ?: 0.0
+                val accrued = com.example.cashmemo.logic.InterestEngine.calcIntAccrued(
+                    amount = p, rate = r, loanDate = loanDateFmt,
+                    intType = intType, dueDate = dueDateFmt
+                )
+                val outstanding = p + accrued
+                val perDay = if (daysElapsed > 0) accrued / daysElapsed else 0.0
+
+                Card(Modifier.fillMaxWidth(), RoundedCornerShape(16.dp),
+                    CardDefaults.cardColors(Color(0xFFEF4444).copy(alpha = 0.08f))) {
+                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("Outstanding as of Today",
+                            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold))
+                        HorizontalDivider()
+                        Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
+                            Text("Days Elapsed", style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text("$daysElapsed days", style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold))
+                        }
+                        Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
+                            Text("Interest Accrued", style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text("₹ ${String.format(locale, "%,.2f", accrued)}",
+                                style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
+                                color = Color(0xFFEF4444))
+                        }
+                        Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
+                            Text("Per Day Interest", style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text("₹ ${String.format(locale, "%,.2f", perDay)}",
+                                style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold))
+                        }
+                        if (isOverdue) {
+                            Surface(color = Color(0xFFEF4444).copy(alpha = 0.1f), shape = RoundedCornerShape(8.dp)) {
+                                Text("Overdue by $daysOverdue days",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = Color(0xFFEF4444),
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
+                            }
+                        }
+                        HorizontalDivider()
+                        Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
+                            Text("Total Outstanding", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold))
+                            Text("₹ ${String.format(locale, "%,.2f", outstanding)}",
+                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.ExtraBold),
+                                color = Color(0xFFEF4444))
+                        }
+                    }
                 }
             }
 
