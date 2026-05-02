@@ -325,6 +325,7 @@ fun MainNavigation(viewModel: FinanceViewModel) {
                 )
             } // close scrollable Column
             } // close ModalDrawerSheet
+        }  // close drawerContent lambda
     ) {
         Scaffold(
             topBar = {
