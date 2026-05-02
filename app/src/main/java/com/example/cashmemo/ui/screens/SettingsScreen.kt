@@ -212,7 +212,7 @@ fun SettingsScreen(viewModel: FinanceViewModel, onNavigateToAbout: () -> Unit) {
         Spacer(modifier = Modifier.weight(1f))
         
         Text(
-            "Version 1.8.0",
+            "Version ${com.example.cashmemo.BuildConfig.VERSION_NAME}",
             modifier = Modifier.align(Alignment.CenterHorizontally),
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant

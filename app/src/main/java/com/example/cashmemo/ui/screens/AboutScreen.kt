@@ -36,7 +36,7 @@ fun AboutScreen() {
             style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.ExtraBold),
             modifier = Modifier.padding(top = 16.dp)
         )
-        Text("Version 1.8.0", style = MaterialTheme.typography.labelMedium)
+        Text("Version ${com.example.cashmemo.BuildConfig.VERSION_NAME}", style = MaterialTheme.typography.labelMedium)
         
         Spacer(Modifier.height(32.dp))
         
