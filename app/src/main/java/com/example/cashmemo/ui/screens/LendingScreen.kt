@@ -293,18 +293,31 @@ fun EmptyLendingState() {
 
 @Composable
 fun EmiCalculatorDialog(onDismiss: () -> Unit) {
-    var principal by remember { mutableStateOf("") }
-    var rate      by remember { mutableStateOf("") }
-    var tenure    by remember { mutableStateOf("") }
-    val locale    = remember { java.util.Locale.getDefault() }
+    var principal  by remember { mutableStateOf("") }
+    var rate       by remember { mutableStateOf("") }
+    var tenure     by remember { mutableStateOf("") }
+    var useReducing by remember { mutableStateOf(true) }
+    val locale     = remember { java.util.Locale.getDefault() }
 
-    val emi = remember(principal, rate, tenure) {
+    // Reducing balance EMI
+    val emiReducing = remember(principal, rate, tenure) {
         val p = principal.toDoubleOrNull() ?: return@remember null
         val r = (rate.toDoubleOrNull() ?: return@remember null) / 100.0 / 12.0
         val n = tenure.toIntOrNull() ?: return@remember null
-        if (r == 0.0) return@remember p / n
-        p * r * Math.pow(1 + r, n.toDouble()) / (Math.pow(1 + r, n.toDouble()) - 1)
+        if (r == 0.0) p / n
+        else p * r * Math.pow(1 + r, n.toDouble()) / (Math.pow(1 + r, n.toDouble()) - 1)
     }
+
+    // Simple interest EMI
+    val emiSimple = remember(principal, rate, tenure) {
+        val p = principal.toDoubleOrNull() ?: return@remember null
+        val r = rate.toDoubleOrNull() ?: return@remember null
+        val n = tenure.toIntOrNull() ?: return@remember null
+        val totalInterest = p * r / 100.0 * (n / 12.0)
+        (p + totalInterest) / n
+    }
+
+    val emi      = if (useReducing) emiReducing else emiSimple
     val total    = emi?.let { it * (tenure.toIntOrNull() ?: 0) }
     val interest = total?.let { it - (principal.toDoubleOrNull() ?: 0.0) }
 
@@ -325,6 +338,22 @@ fun EmiCalculatorDialog(onDismiss: () -> Unit) {
                     label = { Text("Tenure (months)") }, singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp))
+
+                // Method toggle
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilterChip(
+                        selected = useReducing,
+                        onClick  = { useReducing = true },
+                        label    = { Text("Reducing Balance") },
+                        modifier = Modifier.weight(1f)
+                    )
+                    FilterChip(
+                        selected = !useReducing,
+                        onClick  = { useReducing = false },
+                        label    = { Text("Simple Interest") },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
 
                 if (emi != null) {
                     HorizontalDivider()
