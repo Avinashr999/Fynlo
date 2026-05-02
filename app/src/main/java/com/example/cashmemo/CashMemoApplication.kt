@@ -70,13 +70,20 @@ class CashMemoApplication : Application() {
 
         CoroutineScope(Dispatchers.IO).launch {
             runCatching {
-                // Normalize legacy projectIds to real project UUID
-                val firstProject = database.dao().getAllProjects().first().firstOrNull()
-                if (firstProject != null && firstProject.id != "personal") {
-                    repository.normalizeLegacyProjectIds(firstProject.id)
+                // Wait for Firestore to sync data into Room first (2 seconds)
+                kotlinx.coroutines.delay(2000)
+
+                // Only normalize if local DB already has data (not empty after clear)
+                val localAccounts = database.dao().getAllAccounts().first()
+                if (localAccounts.isNotEmpty()) {
+                    val firstProject = database.dao().getAllProjects().first().firstOrNull()
+                    if (firstProject != null && firstProject.id != "personal") {
+                        repository.normalizeLegacyProjectIds(firstProject.id)
+                        // Only push back AFTER normalization, and only if data exists
+                        repository.pushAllCollectionsToFirestore()
+                    }
                 }
-                // Push ALL collections to Firestore with correct normalized projectIds
-                repository.pushAllCollectionsToFirestore()
+                // If local DB is empty, Firestore listener already handles populating it
             }
         }
     }
