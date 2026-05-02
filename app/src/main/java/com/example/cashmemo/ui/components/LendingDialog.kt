@@ -43,7 +43,7 @@ fun AddLendingDialog(
     var selectedSource by remember { mutableStateOf(sources[0]) }
     var sourceEntityName by remember { mutableStateOf("") }
 
-    val interestTypes = listOf("Simple Interest", "Compound Interest", "Both")
+    val interestTypes = listOf("Simple Interest", "Reducing Balance", "Compound Interest", "Both")
 
     Dialog(
         onDismissRequest = onDismiss,

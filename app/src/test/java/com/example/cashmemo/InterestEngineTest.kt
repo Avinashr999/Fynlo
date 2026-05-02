@@ -56,6 +56,17 @@ class InterestEngineTest {
         assertEquals(si, ci, 1.0)
     }
 
+    @Test fun `Reducing Balance interest is less than Simple Interest`() {
+        val si = InterestEngine.calcIntAccrued(10000.0, 12.0, "2023-01-01", "Simple Interest", asOf = "2024-01-01")
+        val rb = InterestEngine.calcIntAccrued(10000.0, 12.0, "2023-01-01", "Reducing Balance", asOf = "2024-01-01")
+        assertTrue("Reducing ($rb) should be less than Simple ($si)", rb < si)
+    }
+
+    @Test fun `Reducing Balance returns positive interest`() {
+        val rb = InterestEngine.calcIntAccrued(10000.0, 12.0, "2023-01-01", "Reducing Balance", asOf = "2024-01-01")
+        assertTrue("Reducing balance interest should be > 0, got $rb", rb > 0.0)
+    }
+
     @Test fun `overdue loan switches to compound calculation`() {
         val overdue = InterestEngine.calcIntAccrued(10000.0, 12.0, "2022-01-01", "Simple Interest", dueDate = "2023-01-01", asOf = "2024-01-01")
         val ci      = InterestEngine.calcIntAccrued(10000.0, 12.0, "2022-01-01", "Compound Interest", asOf = "2024-01-01")
