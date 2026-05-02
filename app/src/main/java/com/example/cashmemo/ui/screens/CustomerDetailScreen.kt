@@ -53,6 +53,8 @@ fun CustomerDetailScreen(
     )
     val totalOutstanding = InterestEngine.calcOutstanding(borrower.amount, interest, borrower.paid)
 
+    val context = androidx.compose.ui.platform.LocalContext.current
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -63,10 +65,26 @@ fun CustomerDetailScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = { /* TODO: Edit */ }) {
-                        Icon(Icons.Default.Edit, contentDescription = "Edit")
+                    IconButton(onClick = {
+                        // Generate and share loan statement PDF
+                        val file = java.io.File(context.cacheDir, "loan_statement_${borrower.name.replace(" ","_")}.pdf")
+                        file.outputStream().use { os ->
+                            com.example.cashmemo.logic.ExportUtility.generateLoanStatementPDF(
+                                os, borrower, history, interest, totalOutstanding
+                            )
+                        }
+                        val uri = androidx.core.content.FileProvider.getUriForFile(context, "com.srilms.cashmemo.provider", file)
+                        context.startActivity(android.content.Intent.createChooser(
+                            android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                                type = "application/pdf"
+                                putExtra(android.content.Intent.EXTRA_STREAM, uri)
+                                addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                            }, "Share Loan Statement"
+                        ))
+                    }) {
+                        Icon(androidx.compose.material.icons.Icons.Default.PictureAsPdf, contentDescription = "Export PDF")
                     }
-                    IconButton(onClick = { 
+                    IconButton(onClick = {
                         viewModel.deleteBorrower(borrower)
                         onNavigateBack()
                     }) {

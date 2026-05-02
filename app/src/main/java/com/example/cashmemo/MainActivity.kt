@@ -14,6 +14,7 @@ import com.example.cashmemo.ui.theme.CashMemoTheme
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        com.example.cashmemo.ui.theme.ThemeController.load(this)
         enableEdgeToEdge()
         
         val app = application as CashMemoApplication

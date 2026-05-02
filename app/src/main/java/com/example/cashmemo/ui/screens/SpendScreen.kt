@@ -40,9 +40,9 @@ fun SpendScreen(viewModel: FinanceViewModel) {
     var showDialog   by remember { mutableStateOf(false) }
 
     val thisMonth = remember { LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM")) }
-    val expenses  = transactions.filter { it.type.equals("expense", ignoreCase = true) && it.date.startsWith(thisMonth) }
-    val total     = expenses.sumOf { it.amount }
-    val byCat     = expenses.groupBy { it.category }.mapValues { e -> e.value.sumOf { it.amount } }.entries.sortedByDescending { it.value }
+    val expenses  = remember(transactions) { transactions.filter { it.type.equals("expense", ignoreCase = true) && it.date.startsWith(thisMonth) } }
+    val total     = remember(expenses) { expenses.sumOf { it.amount } }
+    val byCat     = remember(expenses) { expenses.groupBy { it.category }.mapValues { e -> e.value.sumOf { it.amount } }.entries.sortedByDescending { it.value } }
 
     if (showDialog) {
         AddTransactionDialog(

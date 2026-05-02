@@ -78,9 +78,9 @@ fun SettingsScreen(viewModel: FinanceViewModel, onNavigateToAbout: () -> Unit) {
                 Text("Appearance", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
                 Spacer(Modifier.height(12.dp))
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FilterChip(selected = ThemeController.darkModeOverride == null,  onClick = { ThemeController.darkModeOverride = null  }, label = { Text("System") }, modifier = Modifier.weight(1f))
-                    FilterChip(selected = ThemeController.darkModeOverride == false, onClick = { ThemeController.darkModeOverride = false }, label = { Text("Light")  }, modifier = Modifier.weight(1f))
-                    FilterChip(selected = ThemeController.darkModeOverride == true,  onClick = { ThemeController.darkModeOverride = true  }, label = { Text("Dark")   }, modifier = Modifier.weight(1f))
+                    FilterChip(selected = ThemeController.darkModeOverride == null,  onClick = { ThemeController.darkModeOverride = null;  ThemeController.save(context) }, label = { Text("System") }, modifier = Modifier.weight(1f))
+                    FilterChip(selected = ThemeController.darkModeOverride == false, onClick = { ThemeController.darkModeOverride = false; ThemeController.save(context) }, label = { Text("Light")  }, modifier = Modifier.weight(1f))
+                    FilterChip(selected = ThemeController.darkModeOverride == true,  onClick = { ThemeController.darkModeOverride = true;  ThemeController.save(context) }, label = { Text("Dark")   }, modifier = Modifier.weight(1f))
                 }
             }
         }

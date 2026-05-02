@@ -39,16 +39,18 @@ fun DebtScreen(viewModel: FinanceViewModel) {
             it.notes.contains(searchQuery, ignoreCase = true)
         }
     }
-    var editingDebt by remember { mutableStateOf<Debt?>(null) }
-    var payingDebt by remember { mutableStateOf<Debt?>(null) }
+    var editingDebt   by remember { mutableStateOf<Debt?>(null) }
+    var payingDebt    by remember { mutableStateOf<Debt?>(null) }
+    var showAddDialog by remember { mutableStateOf(false) }
 
-    if (editingDebt != null) {
+    if (showAddDialog || editingDebt != null) {
         AddDebtDialog(
             viewModel = viewModel,
             onDismiss = { editingDebt = null },
             onConfirm = { debt, dest ->
                 viewModel.addDebtWithDestination(debt, dest)
                 editingDebt = null
+                showAddDialog = false
             },
             initialDebt = editingDebt
         )
@@ -108,7 +110,7 @@ fun DebtScreen(viewModel: FinanceViewModel) {
         }
 
         if (filteredDebts.isEmpty()) {
-            EmptyDebtState()
+            EmptyDebtState(onAdd = { showAddDialog = true })
         } else {
             LazyColumn(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -265,7 +267,7 @@ fun DebtCard(debt: Debt, onEdit: () -> Unit, onDelete: () -> Unit, onPay: () -> 
 }
 
 @Composable
-fun EmptyDebtState() {
+fun EmptyDebtState(onAdd: () -> Unit = {}) {
     Column(
         modifier = Modifier.fillMaxSize().padding(top = 64.dp),
         horizontalAlignment = Alignment.CenterHorizontally
@@ -273,5 +275,12 @@ fun EmptyDebtState() {
         Icon(Icons.Default.CreditCard, contentDescription = null, modifier = Modifier.size(64.dp), tint = Color.LightGray)
         Spacer(Modifier.height(16.dp))
         Text("No active debts", style = MaterialTheme.typography.titleMedium, color = Color.Gray)
+        Text("Track loans you've taken from others.", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+        Spacer(Modifier.height(20.dp))
+        Button(onClick = onAdd, shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp)) {
+            Icon(Icons.Default.Add, null, Modifier.size(16.dp))
+            Spacer(Modifier.width(6.dp))
+            Text("Add First Debt")
+        }
     }
 }

@@ -38,6 +38,24 @@ private val LightColorScheme = lightColorScheme(
 /** App-wide theme override: null = follow system, true = force dark, false = force light */
 object ThemeController {
     var darkModeOverride by mutableStateOf<Boolean?>(null)
+
+    fun load(context: android.content.Context) {
+        val prefs = context.getSharedPreferences("cashmemo_theme", android.content.Context.MODE_PRIVATE)
+        darkModeOverride = when (prefs.getString("mode", "system")) {
+            "dark"  -> true
+            "light" -> false
+            else    -> null
+        }
+    }
+
+    fun save(context: android.content.Context) {
+        val prefs = context.getSharedPreferences("cashmemo_theme", android.content.Context.MODE_PRIVATE)
+        prefs.edit().putString("mode", when (darkModeOverride) {
+            true  -> "dark"
+            false -> "light"
+            null  -> "system"
+        }).apply()
+    }
 }
 
 @Composable

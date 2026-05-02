@@ -89,6 +89,31 @@ class FinanceRepository(
         // Sync AFTER withTransaction commits so we push the updated balance
         affectedAccounts.forEach { syncAccountByName(it) }
     }
+    suspend fun editTransaction(old: Transaction, new: Transaction) {
+        // If amount or type changed, reverse old balance effect then apply new
+        val amountChanged = old.amount != new.amount
+        db.withTransaction {
+            if (amountChanged) {
+                // Reverse old
+                when (old.type.lowercase()) {
+                    "expense"  -> dao.updateAccountBalance(old.fromAcct,  old.amount)
+                    "income"   -> dao.updateAccountBalance(old.toAcct,   -old.amount)
+                }
+                // Apply new
+                when (new.type.lowercase()) {
+                    "expense"  -> dao.updateAccountBalance(new.fromAcct, -new.amount)
+                    "income"   -> dao.updateAccountBalance(new.toAcct,    new.amount)
+                }
+            }
+            dao.insertTransaction(new)
+            sync { setTransaction(new) }
+        }
+        if (amountChanged) {
+            val acct = if (new.type.lowercase() == "expense") new.fromAcct else new.toAcct
+            syncAccountByName(acct)
+        }
+    }
+
     suspend fun deleteTransaction(transaction: Transaction) {
         db.withTransaction {
             when (transaction.type.lowercase()) {

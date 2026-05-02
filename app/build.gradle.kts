@@ -12,7 +12,7 @@ android {
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.example.cashmemo"
+        applicationId = "com.srilms.cashmemo"
         minSdk = 24
         targetSdk = 36
         versionCode = 110

@@ -161,10 +161,11 @@ fun TransactionHistoryScreen(viewModel: FinanceViewModel) {
                             modifier = Modifier.padding(vertical = 8.dp)
                         )
                     }
-                    items(grouped[date] ?: emptyList()) { transaction ->
-                    TransactionItem(
-                            txn      = transaction,
-                                onDelete = { viewModel.deleteTransaction(transaction) }
+                        items(grouped[date] ?: emptyList()) { transaction ->
+                            TransactionItem(
+                                txn      = transaction,
+                                onDelete = { viewModel.deleteTransaction(transaction) },
+                                onEdit   = { viewModel.editTransaction(transaction, it) }
                             )
                         }
                 }
@@ -174,10 +175,11 @@ fun TransactionHistoryScreen(viewModel: FinanceViewModel) {
 }
 
 @Composable
-fun TransactionItem(txn: Transaction, onDelete: () -> Unit = {}) {
+fun TransactionItem(txn: Transaction, onDelete: () -> Unit = {}, onEdit: (Transaction) -> Unit = {}) {
     val isExpense = txn.type.lowercase() == "expense"
     val isIncome  = txn.type.lowercase() == "income"
     var showDeleteConfirm by remember { mutableStateOf(false) }
+    var showEditDialog    by remember { mutableStateOf(false) }
 
     if (showDeleteConfirm) {
         AlertDialog(
@@ -186,11 +188,17 @@ fun TransactionItem(txn: Transaction, onDelete: () -> Unit = {}) {
             text  = { Text("Delete ₹${String.format(java.util.Locale.getDefault(), "%,.0f", txn.amount)} ${txn.category}? This will reverse the account balance.") },
             confirmButton = {
                 Button(onClick = { onDelete(); showDeleteConfirm = false },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF4444))) {
-                    Text("Delete")
-                }
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF4444))) { Text("Delete") }
             },
             dismissButton = { TextButton(onClick = { showDeleteConfirm = false }) { Text("Cancel") } }
+        )
+    }
+
+    if (showEditDialog) {
+        com.example.cashmemo.ui.components.EditTransactionDialog(
+            transaction = txn,
+            onDismiss   = { showEditDialog = false },
+            onConfirm   = { updated -> onEdit(updated); showEditDialog = false }
         )
     }
     val amountColor = when {
@@ -246,6 +254,10 @@ fun TransactionItem(txn: Transaction, onDelete: () -> Unit = {}) {
                     )
                 )
 
+                IconButton(onClick = { showEditDialog = true }) {
+                    Icon(Icons.Default.Edit, contentDescription = "Edit",
+                        modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f))
+                }
                 IconButton(onClick = { showDeleteConfirm = true }) {
                     Icon(Icons.Default.Delete, contentDescription = "Delete",
                         modifier = Modifier.size(20.dp), tint = Color(0xFFEF4444).copy(alpha = 0.7f))
