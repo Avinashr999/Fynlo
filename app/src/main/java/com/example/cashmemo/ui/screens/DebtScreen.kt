@@ -1,4 +1,4 @@
-package com.example.cashmemo.ui.screens
+﻿package com.example.cashmemo.ui.screens
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -10,6 +10,7 @@ import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -75,15 +76,35 @@ fun DebtScreen(viewModel: FinanceViewModel) {
             modifier = Modifier.padding(vertical = 16.dp)
         )
 
-        OutlinedTextField(
-            value         = searchQuery,
-            onValueChange = { searchQuery = it },
-            label         = { Text("Search debts...") },
-            leadingIcon   = { Icon(Icons.Default.Search, null) },
-            singleLine    = true,
-            modifier      = Modifier.fillMaxWidth().padding(bottom = 12.dp),
-            shape         = RoundedCornerShape(12.dp)
-        )
+        val suggestions = remember(searchQuery, debts) {
+            if (searchQuery.length < 1) emptyList()
+            else debts.filter { it.name.contains(searchQuery, ignoreCase = true) }.map { it.name }.distinct().take(5)
+        }
+        var expanded by remember { mutableStateOf(false) }
+        ExposedDropdownMenuBox(
+            expanded = expanded && suggestions.isNotEmpty(),
+            onExpandedChange = {},
+            modifier = Modifier.padding(bottom = 12.dp)
+        ) {
+            OutlinedTextField(
+                value         = searchQuery,
+                onValueChange = { searchQuery = it; expanded = true },
+                label         = { Text("Search debts...") },
+                leadingIcon   = { Icon(Icons.Default.Search, null) },
+                trailingIcon  = { if (searchQuery.isNotBlank()) IconButton(onClick = { searchQuery = ""; expanded = false }) { Icon(Icons.Default.Clear, null, Modifier.size(18.dp)) } },
+                singleLine    = true,
+                modifier      = Modifier.fillMaxWidth().menuAnchor(androidx.compose.material3.ExposedDropdownMenuAnchorType.PrimaryNotEditable, true),
+                shape         = RoundedCornerShape(12.dp)
+            )
+            ExposedDropdownMenu(expanded = expanded && suggestions.isNotEmpty(), onDismissRequest = { expanded = false }) {
+                suggestions.forEach { name ->
+                    DropdownMenuItem(
+                        text    = { Text(name) },
+                        onClick = { searchQuery = name; expanded = false }
+                    )
+                }
+            }
+        }
 
         if (filteredDebts.isEmpty()) {
             EmptyDebtState()
