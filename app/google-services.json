@@ -14,6 +14,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "1016532477819-tnbkj1c7g1qor11a3p79vvctporsdjcs.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.cashmemo.finance",
+            "certificate_hash": "9c1df32256f9873898de2f62d7c94b33a7cc20f2"
+          }
+        },
+        {
           "client_id": "1016532477819-i121rp15tdpsq64ifd705b7mr0ifpqr0.apps.googleusercontent.com",
           "client_type": 3
         }
