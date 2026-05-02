@@ -75,6 +75,7 @@ fun MainNavigation(viewModel: FinanceViewModel) {
     val app = context.applicationContext as com.example.cashmemo.CashMemoApplication
     var isLoggedIn by remember { mutableStateOf(app.authManager.isSignedInWithGoogle) }
     val pinManager = remember { PinManager(context) }
+    // Start locked if PIN is set — user must enter PIN on every fresh app launch
     var isPinUnlocked by remember { mutableStateOf(!pinManager.isPinSet) }
     val syncStatus by viewModel.syncStatus.collectAsState()
 
@@ -88,6 +89,15 @@ fun MainNavigation(viewModel: FinanceViewModel) {
 
     if (!isLoggedIn) {
         LoginScreen(onSignedIn = { isLoggedIn = true })
+        return@MainNavigation
+    }
+
+    if (!isPinUnlocked) {
+        PinScreen(
+            mode      = PinMode.ENTER,
+            onSuccess = { isPinUnlocked = true },
+            onSkip    = null
+        )
         return@MainNavigation
     }
 
