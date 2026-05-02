@@ -53,7 +53,7 @@ fun ProfitLossScreen(viewModel: FinanceViewModel) {
                 onClick = {
                     val file = java.io.File(context.cacheDir, "pl_report_${java.time.LocalDate.now()}.pdf")
                     file.outputStream().use { com.example.cashmemo.logic.ExportUtility.generatePDF(it, summary, transactions, borrowers, investments) }
-                    val uri = androidx.core.content.FileProvider.getUriForFile(context, "com.srilms.cashmemo.provider", file)
+                    val uri = androidx.core.content.FileProvider.getUriForFile(context, "com.cashmemo.finance.provider", file)
                     context.startActivity(android.content.Intent.createChooser(
                         android.content.Intent(android.content.Intent.ACTION_SEND).apply {
                             type = "application/pdf"; putExtra(android.content.Intent.EXTRA_STREAM, uri)

@@ -34,7 +34,7 @@
 
         <provider
             android:name="androidx.core.content.FileProvider"
-            android:authorities="com.srilms.cashmemo.provider"
+            android:authorities="com.cashmemo.finance.provider"
             android:exported="false"
             android:grantUriPermissions="true">
             <meta-data

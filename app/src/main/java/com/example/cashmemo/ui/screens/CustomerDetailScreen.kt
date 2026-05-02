@@ -73,7 +73,7 @@ fun CustomerDetailScreen(
                                 os, borrower, history, interest, totalOutstanding
                             )
                         }
-                        val uri = androidx.core.content.FileProvider.getUriForFile(context, "com.srilms.cashmemo.provider", file)
+                        val uri = androidx.core.content.FileProvider.getUriForFile(context, "com.cashmemo.finance.provider", file)
                         context.startActivity(android.content.Intent.createChooser(
                             android.content.Intent(android.content.Intent.ACTION_SEND).apply {
                                 type = "application/pdf"
