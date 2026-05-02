@@ -2,7 +2,9 @@ package com.example.cashmemo.ui
 
 import androidx.compose.animation.*
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.filled.Business
@@ -189,7 +191,12 @@ fun MainNavigation(viewModel: FinanceViewModel) {
         drawerState = drawerState,
         drawerContent = {
             ModalDrawerSheet {
-                Spacer(Modifier.height(12.dp))
+            Column(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .verticalScroll(rememberScrollState())
+            ) {
+            Spacer(Modifier.height(12.dp))
                 Text(
                     "Cash Memo Pro", 
                     modifier = Modifier.padding(16.dp), 
@@ -306,7 +313,6 @@ fun MainNavigation(viewModel: FinanceViewModel) {
                         scope.launch { drawerState.close() } 
                     }
                 )
-                Spacer(Modifier.weight(1f))
                 NavigationDrawerItem(
                     icon = { Icon(Icons.Default.Lock, contentDescription = null) },
                     label = { Text("Logout & Lock") },
@@ -317,8 +323,8 @@ fun MainNavigation(viewModel: FinanceViewModel) {
                     },
                     modifier = Modifier.padding(bottom = 16.dp)
                 )
-            }
-        }
+            } // close scrollable Column
+            } // close ModalDrawerSheet
     ) {
         Scaffold(
             topBar = {
