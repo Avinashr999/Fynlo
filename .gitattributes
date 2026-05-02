@@ -20,3 +20,4 @@ gradlew     text eol=lf
 *.zip       binary
 *.keystore  binary
 *.jks       binary
+*.toml text eol=lf
