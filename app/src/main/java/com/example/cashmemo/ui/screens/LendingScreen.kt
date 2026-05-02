@@ -297,7 +297,9 @@ fun EmiCalculatorDialog(onDismiss: () -> Unit) {
     var principal  by remember { mutableStateOf("") }
     var rate       by remember { mutableStateOf("") }
     var tenure     by remember { mutableStateOf("") }
-    var useReducing by remember { mutableStateOf(true) }
+    var useReducing  by remember { mutableStateOf(true) }
+    var useSimple    by remember { mutableStateOf(false) }
+    // useCompound = !useReducing && !useSimple
     val locale     = remember { java.util.Locale.getDefault() }
 
     // Reducing balance EMI
@@ -318,7 +320,20 @@ fun EmiCalculatorDialog(onDismiss: () -> Unit) {
         (p + totalInterest) / n
     }
 
-    val emi      = if (useReducing) emiReducing else emiSimple
+    // Compound interest EMI (annual compounding + equal monthly payments)
+    val emiCompound = remember(principal, rate, tenure) {
+        val p = principal.toDoubleOrNull() ?: return@remember null
+        val r = rate.toDoubleOrNull() ?: return@remember null
+        val n = tenure.toIntOrNull() ?: return@remember null
+        val totalAmount = p * Math.pow(1 + r / 100.0, n / 12.0)
+        totalAmount / n
+    }
+
+    val emi      = when {
+        useReducing  -> emiReducing
+        useSimple    -> emiSimple
+        else         -> emiCompound
+    }
     val total    = emi?.let { it * (tenure.toIntOrNull() ?: 0) }
     val interest = total?.let { it - (principal.toDoubleOrNull() ?: 0.0) }
 
@@ -341,17 +356,23 @@ fun EmiCalculatorDialog(onDismiss: () -> Unit) {
                     modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp))
 
                 // Method toggle
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     FilterChip(
                         selected = useReducing,
-                        onClick  = { useReducing = true },
-                        label    = { Text("Reducing Balance") },
+                        onClick  = { useReducing = true; useSimple = false },
+                        label    = { Text("Reducing", style = MaterialTheme.typography.labelSmall) },
                         modifier = Modifier.weight(1f)
                     )
                     FilterChip(
-                        selected = !useReducing,
-                        onClick  = { useReducing = false },
-                        label    = { Text("Simple Interest") },
+                        selected = useSimple,
+                        onClick  = { useReducing = false; useSimple = true },
+                        label    = { Text("Simple", style = MaterialTheme.typography.labelSmall) },
+                        modifier = Modifier.weight(1f)
+                    )
+                    FilterChip(
+                        selected = !useReducing && !useSimple,
+                        onClick  = { useReducing = false; useSimple = false },
+                        label    = { Text("Compound", style = MaterialTheme.typography.labelSmall) },
                         modifier = Modifier.weight(1f)
                     )
                 }
