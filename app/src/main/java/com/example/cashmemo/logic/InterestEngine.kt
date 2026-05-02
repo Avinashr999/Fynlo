@@ -43,29 +43,36 @@ object InterestEngine {
         val isOverdue = dueDate.isNotEmpty() && daysBetween(dueDate, asOf) > 0
 
         return when {
-            // Reducing Balance — EMI method, interest on outstanding principal
+            // Reducing Balance — EMI method, always reducing regardless of overdue
             intType == "Reducing Balance" -> {
                 val rMonthly = rAnnual / 12.0
                 val months   = totalDays / 30
                 if (rMonthly == 0.0 || months == 0L) 0.0
                 else {
-                    // Total interest paid on reducing balance over the period
                     val n = months.toDouble()
                     val totalPayable = effectivePrincipal * rMonthly * Math.pow(1 + rMonthly, n) / (Math.pow(1 + rMonthly, n) - 1) * n
                     Math.round(totalPayable - effectivePrincipal).toDouble()
                 }
             }
-            // Compound Interest or Both or overdue Simple Interest
-            isOverdue || intType == "Compound Interest" || intType == "Both" -> {
+            // Compound Interest — always compound regardless of overdue
+            intType == "Compound Interest" -> {
                 val fullYears = totalDays / 365
                 val remainingDays = totalDays % 365
                 var currentTotal = effectivePrincipal
                 repeat(fullYears.toInt()) { currentTotal += (currentTotal * rAnnual) }
                 val siForPartialYear = (currentTotal * rAnnual * remainingDays.toDouble()) / 365.0
-                val finalAmount = currentTotal + siForPartialYear
-                Math.round(finalAmount - effectivePrincipal).toDouble()
+                Math.round(currentTotal + siForPartialYear - effectivePrincipal).toDouble()
             }
-            // Simple Interest (default)
+            // Both — simple until due date, compound after due date (overdue penalty)
+            intType == "Both" && isOverdue -> {
+                val fullYears = totalDays / 365
+                val remainingDays = totalDays % 365
+                var currentTotal = effectivePrincipal
+                repeat(fullYears.toInt()) { currentTotal += (currentTotal * rAnnual) }
+                val siForPartialYear = (currentTotal * rAnnual * remainingDays.toDouble()) / 365.0
+                Math.round(currentTotal + siForPartialYear - effectivePrincipal).toDouble()
+            }
+            // Simple Interest (default) — always flat SI, even when overdue
             else -> {
                 val tYears = totalDays.toDouble() / 365.0
                 Math.round(effectivePrincipal * rAnnual * tYears).toDouble()

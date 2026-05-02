@@ -67,13 +67,15 @@ class InterestEngineTest {
         assertTrue("Reducing balance interest should be > 0, got $rb", rb > 0.0)
     }
 
-    @Test fun `overdue loan switches to compound calculation`() {
-        val overdue = InterestEngine.calcIntAccrued(10000.0, 12.0, "2022-01-01", "Simple Interest", dueDate = "2023-01-01", asOf = "2024-01-01")
-        val ci      = InterestEngine.calcIntAccrued(10000.0, 12.0, "2022-01-01", "Compound Interest", asOf = "2024-01-01")
-        assertEquals(ci, overdue, 1.0)
+    @Test fun `overdue Simple Interest stays as simple interest`() {
+        // Simple Interest type should NOT switch to compound even when overdue
+        val overdueSI = InterestEngine.calcIntAccrued(10000.0, 12.0, "2022-01-01", "Simple Interest", dueDate = "2023-01-01", asOf = "2024-01-01")
+        val plainSI   = InterestEngine.calcIntAccrued(10000.0, 12.0, "2022-01-01", "Simple Interest", asOf = "2024-01-01")
+        assertEquals("Overdue SI should stay as SI", plainSI, overdueSI, 1.0)
     }
-    @Test fun `Both type uses compound calculation`() {
-        val both = InterestEngine.calcIntAccrued(10000.0, 12.0, "2022-01-01", "Both", asOf = "2024-01-01")
+
+    @Test fun `Both type switches to compound when overdue`() {
+        val both = InterestEngine.calcIntAccrued(10000.0, 12.0, "2022-01-01", "Both", dueDate = "2023-01-01", asOf = "2024-01-01")
         val ci   = InterestEngine.calcIntAccrued(10000.0, 12.0, "2022-01-01", "Compound Interest", asOf = "2024-01-01")
         assertEquals(ci, both, 1.0)
     }
