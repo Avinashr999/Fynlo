@@ -158,7 +158,7 @@ fun PinScreen(
                                     },
                                     modifier = Modifier.size(72.dp),
                                     shape = RoundedCornerShape(18.dp)
-                                ) { Icon(Icons.Default.Backspace, null) }
+                                ) { Icon(Icons.AutoMirrored.Filled.Backspace, null) }
                                 else -> Button(
                                     onClick = { onKey(key) },
                                     modifier = Modifier.size(72.dp),
