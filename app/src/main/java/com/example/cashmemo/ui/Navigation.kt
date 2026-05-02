@@ -46,8 +46,12 @@ sealed class Screen(val route: String, val label: String, val icon: ImageVector)
     object Login : Screen("login", "Login", Icons.Default.Lock)
     object Profile  : Screen("profile",  "Profile",  Icons.Default.Person)
     object FlowWizard : Screen("flow_wizard", "Flow Wizard", Icons.Default.AutoAwesome)
-    object Projects : Screen("projects", "Projects", Icons.Default.Business)
-    object Recurring : Screen("recurring", "Recurring", Icons.Default.Repeat)
+    object Projects  : Screen("projects",       "Projects",         Icons.Default.Business)
+    object Recurring  : Screen("recurring",      "Recurring",        Icons.Default.Repeat)
+    object Monthly    : Screen("monthly",        "Monthly Summary",  Icons.Default.BarChart)
+    object ProfitLoss : Screen("profit_loss",    "Profit & Loss",    Icons.Default.Assessment)
+    object DebtPayoff : Screen("debt_payoff",    "Debt Payoff",      Icons.Default.Timeline)
+    object NetWorthH  : Screen("net_worth_hist", "Net Worth History",Icons.Default.ShowChart)
 }
 
 val bottomNavItems = listOf(
@@ -78,6 +82,18 @@ fun MainNavigation(viewModel: FinanceViewModel) {
     val pinManager = remember { PinManager(context) }
     // Start locked if PIN is set — user must enter PIN on every fresh app launch
     var isPinUnlocked by remember { mutableStateOf(!pinManager.isPinSet) }
+
+    // Onboarding — show only on first launch
+    val prefs = remember { context.getSharedPreferences("cashmemo_prefs", android.content.Context.MODE_PRIVATE) }
+    var showOnboarding by remember { mutableStateOf(!prefs.getBoolean("onboarding_done", false)) }
+
+    if (showOnboarding) {
+        OnboardingScreen(onComplete = {
+            prefs.edit().putBoolean("onboarding_done", true).apply()
+            showOnboarding = false
+        })
+        return@MainNavigation
+    }
     val syncStatus by viewModel.syncStatus.collectAsState()
 
     // Offline banner — use real network state, not Firestore status
@@ -227,13 +243,42 @@ fun MainNavigation(viewModel: FinanceViewModel) {
                     selected = currentRoute == Screen.Recurring.route,
                     onClick  = { navController.navigate(Screen.Recurring.route); scope.launch { drawerState.close() } }
                 )
+                HorizontalDivider(Modifier.padding(vertical = 4.dp))
+                Text("Reports", style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(start = 16.dp, top = 4.dp, bottom = 2.dp))
+                NavigationDrawerItem(
+                    icon     = { Icon(Icons.Default.BarChart, null) },
+                    label    = { Text("Monthly Summary") },
+                    selected = currentRoute == Screen.Monthly.route,
+                    onClick  = { navController.navigate(Screen.Monthly.route); scope.launch { drawerState.close() } }
+                )
+                NavigationDrawerItem(
+                    icon     = { Icon(Icons.Default.Assessment, null) },
+                    label    = { Text("Profit & Loss") },
+                    selected = currentRoute == Screen.ProfitLoss.route,
+                    onClick  = { navController.navigate(Screen.ProfitLoss.route); scope.launch { drawerState.close() } }
+                )
+                NavigationDrawerItem(
+                    icon     = { Icon(Icons.Default.Timeline, null) },
+                    label    = { Text("Debt Payoff Tracker") },
+                    selected = currentRoute == Screen.DebtPayoff.route,
+                    onClick  = { navController.navigate(Screen.DebtPayoff.route); scope.launch { drawerState.close() } }
+                )
+                NavigationDrawerItem(
+                    icon     = { Icon(Icons.Default.ShowChart, null) },
+                    label    = { Text("Net Worth History") },
+                    selected = currentRoute == Screen.NetWorthH.route,
+                    onClick  = { navController.navigate(Screen.NetWorthH.route); scope.launch { drawerState.close() } }
+                )
+                HorizontalDivider(Modifier.padding(vertical = 4.dp))
                 NavigationDrawerItem(
                     icon = { Icon(Icons.Default.Settings, contentDescription = null) },
                     label = { Text("App Settings") },
                     selected = currentRoute == Screen.Settings.route,
-                    onClick = { 
+                    onClick = {
                         navController.navigate(Screen.Settings.route)
-                        scope.launch { drawerState.close() } 
+                        scope.launch { drawerState.close() }
                     }
                 )
                 NavigationDrawerItem(
@@ -374,7 +419,11 @@ fun MainNavigation(viewModel: FinanceViewModel) {
                 composable(Screen.Goals.route) { GoalScreen(viewModel) }
                 composable(Screen.Profile.route) { ProfileScreen(onLogout = { isLoggedIn = false }) }
                 composable(Screen.Projects.route) { ProjectsScreen(viewModel) }
-                composable(Screen.Recurring.route) { RecurringScreen(viewModel) }
+                composable(Screen.Recurring.route)  { RecurringScreen(viewModel) }
+                composable(Screen.Monthly.route)    { MonthlySummaryScreen(viewModel) }
+                composable(Screen.ProfitLoss.route) { ProfitLossScreen(viewModel) }
+                composable(Screen.DebtPayoff.route) { DebtPayoffScreen(viewModel) }
+                composable(Screen.NetWorthH.route)  { NetWorthHistoryScreen(viewModel) }
                 composable(Screen.FlowWizard.route) {
                     SmartFlowWizardScreen(
                         viewModel = viewModel,

@@ -21,9 +21,10 @@ import com.example.cashmemo.data.model.FlowTemplate
         Goal::class,
         Project::class,
         FlowTemplate::class, // new in v2.0 Phase 4
-        RecurringTransaction::class // new in v2.4
+        RecurringTransaction::class, // new in v2.4
+        NetWorthSnapshot::class        // new in v2.5
     ],
-    version = 6,
+    version = 7,
     exportSchema = false
 )
 abstract class CashMemoDatabase : RoomDatabase() {
@@ -124,6 +125,22 @@ val MIGRATION_5_6 = object : Migration(5, 6) {
                 `projectId`  TEXT NOT NULL DEFAULT 'personal',
                 `updatedAt`  INTEGER NOT NULL DEFAULT 0,
                 PRIMARY KEY(`id`)
+            )
+        """.trimIndent())
+    }
+}
+
+
+val MIGRATION_6_7 = object : Migration(6, 7) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("""
+            CREATE TABLE IF NOT EXISTS `net_worth_snapshots` (
+                `date`             TEXT NOT NULL,
+                `netWorth`         REAL NOT NULL DEFAULT 0.0,
+                `totalAssets`      REAL NOT NULL DEFAULT 0.0,
+                `totalLiabilities` REAL NOT NULL DEFAULT 0.0,
+                `projectId`        TEXT NOT NULL DEFAULT 'personal',
+                PRIMARY KEY(`date`)
             )
         """.trimIndent())
     }

@@ -1,0 +1,109 @@
+﻿package com.example.cashmemo.ui.screens
+
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import com.example.cashmemo.FinanceViewModel
+import java.util.Locale
+
+@Composable
+fun ProfitLossScreen(viewModel: FinanceViewModel) {
+    val transactions  by viewModel.transactions.collectAsState()
+    val borrowers     by viewModel.borrowers.collectAsState()
+    val investments   by viewModel.investments.collectAsState()
+    val debts         by viewModel.debts.collectAsState()
+    val currentProject by viewModel.currentProject.collectAsState()
+    val locale        = remember { Locale.getDefault() }
+
+    val totalIncome    = transactions.filter { it.type.equals("income",  ignoreCase = true) }.sumOf { it.amount }
+    val totalExpense   = transactions.filter { it.type.equals("expense", ignoreCase = true) }.sumOf { it.amount }
+    val lendingIncome  = borrowers.sumOf { it.paid }
+    val investGrowth   = investments.sumOf { it.currentVal - it.invested }
+    val debtPayments   = debts.sumOf { it.paid }
+    val totalRevenue   = totalIncome + lendingIncome
+    val grossProfit    = totalRevenue - totalExpense
+    val netProfit      = grossProfit + investGrowth - debtPayments
+
+    fun fmt(v: Double) = "₹ ${String.format(locale, "%,.2f", v)}"
+    val green = Color(0xFF10B981)
+    val red   = Color(0xFFEF4444)
+
+    Column(
+        modifier = Modifier.fillMaxSize().statusBarsPadding()
+            .padding(horizontal = 16.dp).verticalScroll(rememberScrollState())
+    ) {
+        Text("Profit & Loss", style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold),
+            modifier = Modifier.padding(vertical = 16.dp))
+        Text("Project: ${currentProject?.name ?: "Personal"}",
+            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+
+        Spacer(Modifier.height(12.dp))
+
+        // Net P&L card
+        Card(Modifier.fillMaxWidth(), RoundedCornerShape(20.dp),
+            CardDefaults.cardColors((if (netProfit >= 0) green else red).copy(alpha = 0.1f))) {
+            Column(Modifier.padding(20.dp)) {
+                Text("Net Profit / Loss", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(fmt(netProfit),
+                    style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold),
+                    color = if (netProfit >= 0) green else red)
+                Text(if (netProfit >= 0) "You are profitable" else "Expenses exceed income",
+                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+
+        Spacer(Modifier.height(16.dp))
+
+        PLSection("Revenue", listOf(
+            "Transaction Income"   to totalIncome,
+            "Loan Repayments Received" to lendingIncome
+        ), totalRevenue, green, locale)
+
+        Spacer(Modifier.height(12.dp))
+
+        PLSection("Expenses", listOf(
+            "Total Transactions"   to totalExpense,
+            "Debt Payments Made"   to debtPayments
+        ), totalExpense + debtPayments, red, locale)
+
+        Spacer(Modifier.height(12.dp))
+
+        PLSection("Investments", listOf(
+            "Invested Amount"      to investments.sumOf { it.invested },
+            "Current Market Value" to investments.sumOf { it.currentVal },
+            "Unrealised Growth"    to investGrowth
+        ), investGrowth, if (investGrowth >= 0) green else red, locale)
+
+        Spacer(Modifier.height(100.dp))
+    }
+}
+
+@Composable
+private fun PLSection(title: String, items: List<Pair<String, Double>>, total: Double, color: Color, locale: Locale) {
+    fun fmt(v: Double) = "₹ ${String.format(locale, "%,.2f", v)}"
+    Card(Modifier.fillMaxWidth(), RoundedCornerShape(16.dp)) {
+        Column(Modifier.padding(16.dp)) {
+            Text(title, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
+            Spacer(Modifier.height(8.dp))
+            items.forEach { (label, value) ->
+                Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), Arrangement.SpaceBetween) {
+                    Text(label, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(fmt(value), style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold))
+                }
+            }
+            HorizontalDivider(Modifier.padding(vertical = 8.dp))
+            Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
+                Text("Total", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold))
+                Text(fmt(total), style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold), color = color)
+            }
+        }
+    }
+}

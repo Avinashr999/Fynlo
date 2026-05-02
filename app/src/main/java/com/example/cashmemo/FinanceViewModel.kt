@@ -397,6 +397,25 @@ class FinanceViewModel(private val repository: FinanceRepository) : ViewModel() 
         )
     }
 
+    // ─── Net Worth History ────────────────────────────────────────────────────
+
+    fun getNetWorthSnapshots() = repository.getNetWorthSnapshots(pid)
+
+    fun saveSnapshotNow() {
+        viewModelScope.launch {
+            val s = financialSummary.value
+            repository.saveNetWorthSnapshot(
+                com.example.cashmemo.data.model.NetWorthSnapshot(
+                    date             = today,
+                    netWorth         = s.netWorth,
+                    totalAssets      = s.totalAssets,
+                    totalLiabilities = s.totalDebtPrincipal + s.totalDebtInterest,
+                    projectId        = pid
+                )
+            )
+        }
+    }
+
     // ─── Recurring Transactions ──────────────────────────────────────────────
 
     val recurringTransactions: StateFlow<List<com.example.cashmemo.data.model.RecurringTransaction>> = repository.getAllRecurringTransactions()

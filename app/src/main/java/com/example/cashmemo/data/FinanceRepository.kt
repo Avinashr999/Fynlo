@@ -228,6 +228,9 @@ class FinanceRepository(
      * After normalizeLegacyProjectIds runs, push ALL collections to Firestore
      * so every device gets correct projectIds, not the legacy empty/"personal" ones.
      */
+    fun getNetWorthSnapshots(pid: String) = dao.getNetWorthSnapshots(pid)
+    suspend fun saveNetWorthSnapshot(s: com.example.cashmemo.data.model.NetWorthSnapshot) = dao.insertNetWorthSnapshot(s)
+
     fun getAllRecurringTransactions() = dao.getAllRecurringTransactions()
     suspend fun insertRecurringTransaction(r: com.example.cashmemo.data.model.RecurringTransaction) = dao.insertRecurringTransaction(r)
     suspend fun deleteRecurringTransaction(r: com.example.cashmemo.data.model.RecurringTransaction) = dao.deleteRecurringTransaction(r)
