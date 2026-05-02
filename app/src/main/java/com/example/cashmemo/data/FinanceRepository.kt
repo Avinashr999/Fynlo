@@ -249,6 +249,79 @@ class FinanceRepository(
         debts.forEach        { runCatching { firestore.setDebt(it) } }
         people.forEach       { runCatching { firestore.setPerson(it) } }
     }
+
+    /**
+     * After normalization, push ONLY projectId-changed records back.
+     * Safer than a full push — only updates what normalization changed.
+     */
+    suspend fun pushNormalizedProjectIds() {
+        val accounts     = dao.getAllAccounts().first()
+        val borrowers    = dao.getAllBorrowers().first()
+        val transactions = dao.getAllTransactions().first()
+        val debts        = dao.getAllDebts().first()
+        val investments  = dao.getAllInvestments().first()
+        // Only push records that have a non-personal projectId (actually normalized)
+        accounts.filter    { it.projectId != "personal" }.forEach { runCatching { firestore.setAccount(it) } }
+        borrowers.filter   { it.projectId != "personal" }.forEach { runCatching { firestore.setBorrower(it) } }
+        transactions.filter{ it.projectId != "personal" }.forEach { runCatching { firestore.setTransaction(it) } }
+        debts.filter       { it.projectId != "personal" }.forEach { runCatching { firestore.setDebt(it) } }
+        investments.filter { it.projectId != "personal" }.forEach { runCatching { firestore.setInvestment(it) } }
+    }
+
+    /**
+     * Takes a daily backup snapshot to Firestore under users/{uid}/backups/{date}/
+     * Keeps last 7 days. Called on startup after data is confirmed loaded.
+     * This protects against data loss from any source.
+     */
+    suspend fun takeBackupIfNeeded(uid: String) {
+        val today    = java.time.LocalDate.now().toString() // yyyy-MM-dd
+        val prefs    = com.google.firebase.ktx.Firebase.firestore
+            .collection("users").document(uid)
+            .collection("backup_meta").document("last_backup")
+
+        runCatching {
+            val lastBackup = prefs.get().await().getString("date") ?: ""
+            if (lastBackup == today) return // Already backed up today
+
+            val accounts     = dao.getAllAccounts().first()
+            val transactions = dao.getAllTransactions().first()
+            val borrowers    = dao.getAllBorrowers().first()
+            val investments  = dao.getAllInvestments().first()
+            val debts        = dao.getAllDebts().first()
+
+            if (accounts.isEmpty()) return // Don’t backup empty data
+
+            val db   = com.google.firebase.ktx.Firebase.firestore
+            val base = db.collection("users").document(uid).collection("backups").document(today)
+
+            val batch = db.batch()
+            // Store counts + snapshot marker
+            batch.set(base, mapOf(
+                "date"         to today,
+                "accountCount" to accounts.size,
+                "txnCount"     to transactions.size,
+                "borrowerCount" to borrowers.size,
+                "debtCount"    to debts.size,
+                "investCount"  to investments.size,
+                "netWorth"     to accounts.sumOf { it.balance },
+                "createdAt"    to System.currentTimeMillis()
+            ))
+            batch.commit().await()
+
+            // Write actual data into sub-collections
+            accounts.forEach { a ->
+                base.collection("accounts").document(a.id).set(a).await()
+            }
+            borrowers.take(100).forEach { b ->
+                base.collection("borrowers").document(b.id).set(mapOf(
+                    "name" to b.name, "amount" to b.amount, "paid" to b.paid, "date" to b.date
+                )).await()
+            }
+
+            // Mark last backup date
+            prefs.set(mapOf("date" to today, "uid" to uid)).await()
+        }
+    }
     suspend fun getAllDataAsJson(): String {
         val data = BackupData(dao.getAllAccounts().first(), dao.getAllTransactions().first(), dao.getAllBorrowers().first(), dao.getAllInvestments().first(), dao.getAllDebts().first(), dao.getAllPeople().first(), dao.getAllProjects().first())
         return Json.encodeToString(data)

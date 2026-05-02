@@ -68,27 +68,34 @@ class CashMemoApplication : Application() {
         repository.updateRemote(firestoreRepository, syncManager)
         syncManager.startListening()
 
+        // SAFETY: Never push to Firestore on startup.
+        // Firestore is the source of truth. The real-time listener
+        // populates Room from Firestore automatically.
+        // Pushes only happen when the user makes actual changes.
+        //
+        // We only run projectId normalization AFTER confirming
+        // Firestore data has arrived in Room (accounts are non-empty).
         CoroutineScope(Dispatchers.IO).launch {
             runCatching {
-                // Wait for Firestore to populate Room.
-                // Poll up to 15 seconds until accounts arrive from Firestore.
+                // Poll up to 20 seconds for Firestore to populate Room
                 var waited = 0
-                var localAccounts = database.dao().getAllAccounts().first()
-                while (localAccounts.isEmpty() && waited < 15000) {
+                while (database.dao().getAllAccounts().first().isEmpty() && waited < 20000) {
                     kotlinx.coroutines.delay(500)
                     waited += 500
-                    localAccounts = database.dao().getAllAccounts().first()
                 }
-
-                // Only normalize + push if we have real data (not empty after clear)
-                if (localAccounts.isNotEmpty()) {
-                    val firstProject = database.dao().getAllProjects().first().firstOrNull()
-                    if (firstProject != null && firstProject.id != "personal") {
+                // Only normalize projectIds — never push on startup
+                val firstProject = database.dao().getAllProjects().first().firstOrNull()
+                if (firstProject != null && firstProject.id != "personal") {
+                    val accounts = database.dao().getAllAccounts().first()
+                    if (accounts.isNotEmpty()) {
                         repository.normalizeLegacyProjectIds(firstProject.id)
-                        repository.pushAllCollectionsToFirestore()
+                        // After normalization, push ONLY the normalized projectId fields back
+                        // (not a full push, just the records that changed)
+                        repository.pushNormalizedProjectIds()
                     }
                 }
-                // If still empty after 15s, Firestore has no data for this user
+                // Take a daily backup snapshot to protect against data loss
+                repository.takeBackupIfNeeded(uid)
             }
         }
     }
