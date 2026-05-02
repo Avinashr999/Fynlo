@@ -47,18 +47,24 @@ class FinanceRepository(
         }
     }
 
-    /** Fetch account from Room by name and push updated balance to Firestore. */
+    /** Fetch account from Room by name and push updated balance directly to Firestore. */
     private suspend fun syncAccountByName(name: String) {
         if (name.isBlank()) return
         runCatching {
-            // Small delay to ensure Room write is visible
             kotlinx.coroutines.delay(200)
-            val account = dao.getAccountByName(name)
-            if (account != null) {
-                syncManager.setSyncing()
-                firestore.setAccount(account)
-                syncManager.setSynced()
-            }
+            val account = dao.getAccountByName(name) ?: return
+            val uid     = syncManager.userId
+            if (uid.isEmpty()) return
+
+            // Use Firebase directly with the confirmed current UID
+            // This bypasses any stale FirestoreRepository reference
+            val fs = com.google.firebase.firestore.FirebaseFirestore.getInstance()
+            fs.collection("users")
+              .document(uid)
+              .collection("accounts")
+              .document(account.id)
+              .update("balance", account.balance, "updatedAt", System.currentTimeMillis())
+              .await()
         }
     }
     suspend fun insertProject(project: Project) {
