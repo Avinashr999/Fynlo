@@ -26,6 +26,9 @@ import com.example.cashmemo.ui.screens.*
 import com.example.cashmemo.ui.components.*
 import com.example.cashmemo.ui.components.SyncStatusBadge
 import com.example.cashmemo.data.SyncStatus
+import com.example.cashmemo.data.PinManager
+import com.example.cashmemo.ui.screens.PinMode
+import com.example.cashmemo.ui.screens.PinScreen
 import kotlinx.coroutines.launch
 
 sealed class Screen(val route: String, val label: String, val icon: ImageVector) {
@@ -71,6 +74,8 @@ fun MainNavigation(viewModel: FinanceViewModel) {
     val context = LocalContext.current
     val app = context.applicationContext as com.example.cashmemo.CashMemoApplication
     var isLoggedIn by remember { mutableStateOf(app.authManager.isSignedInWithGoogle) }
+    val pinManager = remember { PinManager(context) }
+    var isPinUnlocked by remember { mutableStateOf(!pinManager.isPinSet) }
     val syncStatus by viewModel.syncStatus.collectAsState()
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()

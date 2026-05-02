@@ -18,12 +18,25 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.cashmemo.CashMemoApplication
+import com.example.cashmemo.data.PinManager
+import com.example.cashmemo.ui.screens.PinMode
 
 @Composable
 fun ProfileScreen(onLogout: () -> Unit, onSignOut: () -> Unit = {}) {
     val context = LocalContext.current
     val app     = context.applicationContext as CashMemoApplication
+    val pinManager = remember { PinManager(context) }
+    var showPinSetup by remember { mutableStateOf(false) }
     val isGoogle = app.authManager.isSignedInWithGoogle
+
+    if (showPinSetup) {
+        PinScreen(
+            mode      = if (pinManager.isPinSet) PinMode.SET else PinMode.SET,
+            onSuccess = { showPinSetup = false },
+            onSkip    = { showPinSetup = false }
+        )
+        return
+    }
     val email    = app.authManager.userEmail
     val name     = app.authManager.userName
     val uid      = app.authManager.userId
@@ -123,8 +136,7 @@ fun ProfileScreen(onLogout: () -> Unit, onSignOut: () -> Unit = {}) {
                 Spacer(Modifier.height(12.dp))
                 Text("Current security mode is PIN protected.", style = MaterialTheme.typography.bodySmall)
                 Spacer(Modifier.height(12.dp))
-                Button(
-                    onClick  = { },
+                Button(onClick = { showPinSetup = true },
                     modifier = Modifier.fillMaxWidth(),
                     shape    = RoundedCornerShape(8.dp)
                 ) { Text("Change Login PIN") }

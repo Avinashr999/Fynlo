@@ -74,6 +74,8 @@ dependencies {
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.firestore)
     implementation(libs.firebase.auth)
+    implementation(libs.work.runtime)
+    implementation(libs.biometric)
     implementation(libs.google.signin)
 
     testImplementation(libs.junit)
