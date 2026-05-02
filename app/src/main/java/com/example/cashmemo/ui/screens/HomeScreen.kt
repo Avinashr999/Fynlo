@@ -9,8 +9,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountBalanceWallet
 import androidx.compose.material3.*
-import androidx.compose.ui.Alignment
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -32,18 +32,26 @@ fun HomeScreen(viewModel: FinanceViewModel, onNavigateToScreen: (String) -> Unit
     val projects         by viewModel.projects.collectAsState()
     val currentProjectId by viewModel.currentProjectId.collectAsState()
     val currentProject   by viewModel.currentProject.collectAsState()
-    val isSyncReady        by viewModel.isSyncReady.collectAsState()
-    val haptic = LocalHapticFeedback.current
+    val isSyncReady      by viewModel.isSyncReady.collectAsState()
+    val haptic           = LocalHapticFeedback.current
+    val locale           = Locale.getDefault()
 
     // Show loading screen while waiting for Firestore first sync
     if (!isSyncReady) {
         Box(
-            modifier = Modifier.fillMaxSize().statusBarsPadding(),
-            contentAlignment = androidx.compose.ui.Alignment.Center
+            modifier         = Modifier.fillMaxSize().statusBarsPadding(),
+            contentAlignment = Alignment.Center
         ) {
-            Column(horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
                 CircularProgressIndicator()
-                Text("Syncing your data...", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(
+                    "Syncing your data...",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
         return
@@ -56,7 +64,6 @@ fun HomeScreen(viewModel: FinanceViewModel, onNavigateToScreen: (String) -> Unit
             .padding(horizontal = 16.dp)
             .verticalScroll(rememberScrollState())
     ) {
-        // Project switcher row
         Spacer(Modifier.height(8.dp))
         ProjectSwitcherChip(
             projects         = projects,
@@ -66,14 +73,12 @@ fun HomeScreen(viewModel: FinanceViewModel, onNavigateToScreen: (String) -> Unit
             modifier         = Modifier.padding(bottom = 8.dp)
         )
 
-        // Title reflects active project
         Text(
             text     = "${currentProject?.name ?: "Personal"} Snapshot",
             style    = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold),
             modifier = Modifier.padding(bottom = 16.dp)
         )
 
-        // Net Worth card
         AnimatedContent(
             targetState    = summary.netWorth,
             transitionSpec = {
@@ -104,7 +109,6 @@ fun HomeScreen(viewModel: FinanceViewModel, onNavigateToScreen: (String) -> Unit
         SpendingAnalyticsCard(data = analytics)
         Spacer(Modifier.height(16.dp))
 
-        // Assets card
         Text(
             text  = "Wealth & Assets",
             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
@@ -119,25 +123,25 @@ fun HomeScreen(viewModel: FinanceViewModel, onNavigateToScreen: (String) -> Unit
             Column(modifier = Modifier.padding(16.dp)) {
                 DataPoint(
                     "TOTAL ASSETS (Sum)",
-                    "₹ ${String.format(Locale.getDefault(), "%,.0f", summary.totalAssets)}",
+                    "₹ ${String.format(locale, "%,.0f", summary.totalAssets)}",
                     valueColor = MaterialTheme.colorScheme.primary
                 )
                 HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
                 summary.accountBreakdown.forEach { (name, balance) ->
                     Box(Modifier.clickable { onNavigateToScreen("statement/$name") }) {
-                        DataPoint(name, "₹ ${String.format(Locale.getDefault(), "%,.0f", balance)}")
+                        DataPoint(name, "₹ ${String.format(locale, "%,.0f", balance)}")
                     }
                 }
                 Box(Modifier.clickable { onNavigateToScreen("invest") }) {
                     DataPoint(
                         "Market Value of Invest.",
-                        "₹ ${String.format(Locale.getDefault(), "%,.0f", summary.totalInvestments)}"
+                        "₹ ${String.format(locale, "%,.0f", summary.totalInvestments)}"
                     )
                 }
                 Box(Modifier.clickable { onNavigateToScreen("lending") }) {
                     DataPoint(
                         "Lending Receivables",
-                        "₹ ${String.format(Locale.getDefault(), "%,.0f", summary.totalReceivables)}"
+                        "₹ ${String.format(locale, "%,.0f", summary.totalReceivables)}"
                     )
                 }
             }
@@ -145,7 +149,6 @@ fun HomeScreen(viewModel: FinanceViewModel, onNavigateToScreen: (String) -> Unit
 
         Spacer(Modifier.height(8.dp))
 
-        // Liabilities card
         Text(
             text  = "Debts & Liabilities",
             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
@@ -158,20 +161,20 @@ fun HomeScreen(viewModel: FinanceViewModel, onNavigateToScreen: (String) -> Unit
             colors = CardDefaults.cardColors(containerColor = Color(0xFFFFEBEE).copy(alpha = 0.5f))
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
-                val totalLiab = summary.totalDebtPrincipal + summary.totalDebtInterest
+                val totalLiabilities = summary.totalDebtPrincipal + summary.totalDebtInterest
                 DataPoint(
                     "TOTAL LIABILITIES",
-                    "₹ ${String.format(Locale.getDefault(), "%,.0f", totalLiab)}",
+                    "₹ ${String.format(locale, "%,.0f", totalLiabilities)}",
                     valueColor = Color(0xFFD32F2F)
                 )
                 HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
                 DataPoint(
                     "Debt Principal Amount",
-                    "₹ ${String.format(Locale.getDefault(), "%,.0f", summary.totalDebtPrincipal)}"
+                    "₹ ${String.format(locale, "%,.0f", summary.totalDebtPrincipal)}"
                 )
                 DataPoint(
                     "Debt Accrued Interest",
-                    "₹ ${String.format(Locale.getDefault(), "%,.0f", summary.totalDebtInterest)}",
+                    "₹ ${String.format(locale, "%,.0f", summary.totalDebtInterest)}",
                     valueColor = Color(0xFFD32F2F)
                 )
             }
@@ -179,20 +182,19 @@ fun HomeScreen(viewModel: FinanceViewModel, onNavigateToScreen: (String) -> Unit
 
         Spacer(Modifier.height(16.dp))
 
-        // Performance metrics
         Row(
             modifier              = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             PerformanceCard(
                 label    = "Invest. Growth",
-                value    = "₹ ${String.format(Locale.getDefault(), "%,.0f", summary.investmentGrowth)}",
+                value    = "₹ ${String.format(locale, "%,.0f", summary.investmentGrowth)}",
                 color    = Color(0xFF2E7D32),
                 modifier = Modifier.weight(1f).clickable { onNavigateToScreen("invest") }
             )
             PerformanceCard(
                 label    = "Avg. Lending Rate",
-                value    = "${String.format(Locale.getDefault(), "%.1f", summary.lendingYield)}%",
+                value    = "${String.format(locale, "%.1f", summary.lendingYield)}%",
                 color    = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.weight(1f).clickable { onNavigateToScreen("lending") }
             )
