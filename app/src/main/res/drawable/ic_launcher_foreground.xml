@@ -5,38 +5,46 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
 
-    <!-- Gold coin outer -->
-    <path android:fillColor="#FFD54F"
-        android:pathData="M54,18 m-28,0 a28,28 0 1,0 56,0 a28,28 0 1,0 -56,0"/>
-    <!-- Gold coin middle -->
-    <path android:fillColor="#FFC107"
-        android:pathData="M54,18 m-23,0 a23,23 0 1,0 46,0 a23,23 0 1,0 -46,0"/>
-    <!-- Gold coin inner -->
-    <path android:fillColor="#FFB300"
-        android:pathData="M54,18 m-19,0 a19,19 0 1,0 38,0 a19,19 0 1,0 -38,0"/>
+    <!-- Card body -->
+    <path android:fillColor="#065F46"
+        android:pathData="M18,32 Q18,26 24,26 L84,26 Q90,26 90,32 L90,62 Q90,68 84,68 L24,68 Q18,68 18,62 Z"/>
 
-    <!-- Rs text as paths - drawn as simple rect placeholder -->
-    <path android:fillColor="#1A237E"
-        android:pathData="M47,10 L47,26 L50,26 L50,20 L53,20 L55,26 L58,26 L56,19.5 C57.5,19 58.5,17.5 58.5,16 C58.5,12.5 56,10 52.5,10 Z M50,13 L52.5,13 C54,13 55.5,13.5 55.5,16 C55.5,18 54,18.5 52.5,18.5 L50,18.5 Z"/>
+    <!-- Card stripe -->
+    <path android:fillColor="#047857"
+        android:pathData="M18,43 L90,43 L90,47 L18,47 Z"/>
 
-    <!-- Bar chart bars -->
-    <path android:fillColor="#4FC3F7"
-        android:pathData="M18,90 L24,90 L24,74 L18,74 Z"/>
-    <path android:fillColor="#29B6F6"
-        android:pathData="M28,90 L34,90 L34,68 L28,68 Z"/>
-    <path android:fillColor="#03A9F4"
-        android:pathData="M38,90 L44,90 L44,62 L38,62 Z"/>
-    <path android:fillColor="#039BE5"
-        android:pathData="M48,90 L54,90 L54,56 L48,56 Z"/>
-    <path android:fillColor="#0288D1"
-        android:pathData="M58,90 L64,90 L64,50 L58,50 Z"/>
+    <!-- Card chip circle -->
+    <path android:fillColor="#064E3B"
+        android:pathData="M32,36 m-8,0 a8,8 0 1,0 16,0 a8,8 0 1,0 -16,0"/>
+    <path android:fillColor="#10B981"
+        android:pathData="M32,36 m-5,0 a5,5 0 1,0 10,0 a5,5 0 1,0 -10,0"/>
+
+    <!-- Tab on top of card -->
+    <path android:fillColor="#10B981"
+        android:pathData="M18,20 Q18,16 22,16 L52,16 Q56,16 56,20 L56,30 L18,30 Z"/>
+
+    <!-- Trend fill area -->
+    <path android:fillColor="#10B981"
+        android:fillAlpha="0.15"
+        android:pathData="M18,90 L18,78 L36,68 L54,74 L72,60 L90,52 L90,90 Z"/>
 
     <!-- Trend line -->
     <path android:fillColor="#00000000"
-        android:strokeColor="#4CAF50"
-        android:strokeWidth="2.5"
+        android:strokeColor="#A7F3D0"
+        android:strokeWidth="3"
         android:strokeLineCap="round"
         android:strokeLineJoin="round"
-        android:pathData="M18,82 L30,70 L42,76 L64,58"/>
+        android:pathData="M18,78 L36,68 L54,74 L72,60 L90,52"/>
+
+    <!-- Trend dots -->
+    <path android:fillColor="#34D399" android:pathData="M18,78 m-3,0 a3,3 0 1,0 6,0 a3,3 0 1,0 -6,0"/>
+    <path android:fillColor="#34D399" android:pathData="M36,68 m-3,0 a3,3 0 1,0 6,0 a3,3 0 1,0 -6,0"/>
+    <path android:fillColor="#34D399" android:pathData="M54,74 m-3,0 a3,3 0 1,0 6,0 a3,3 0 1,0 -6,0"/>
+    <path android:fillColor="#34D399" android:pathData="M72,60 m-3,0 a3,3 0 1,0 6,0 a3,3 0 1,0 -6,0"/>
+    <path android:fillColor="#34D399" android:pathData="M90,52 m-3,0 a3,3 0 1,0 6,0 a3,3 0 1,0 -6,0"/>
+
+    <!-- Arrow head -->
+    <path android:fillColor="#34D399"
+        android:pathData="M90,44 L97,54 L83,54 Z"/>
 
 </vector>
