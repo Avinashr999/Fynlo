@@ -128,12 +128,7 @@ fun AddDebtDialog(
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier.fillMaxWidth()
                 )
-                OutlinedTextField(
-                    value = date,
-                    onValueChange = { date = it },
-                    label = { Text("Date Taken (DD-MM-YYYY)") },
-                    modifier = Modifier.fillMaxWidth()
-                )
+                DatePickerField(value = date, onValueChange = { date = it }, label = "Date Taken")
                 OutlinedTextField(
                     value = rate,
                     onValueChange = { rate = it },
@@ -162,12 +157,7 @@ fun AddDebtDialog(
                     }
                 }
 
-                OutlinedTextField(
-                    value = due,
-                    onValueChange = { due = it },
-                    label = { Text("Due Date (DD-MM-YYYY)") },
-                    modifier = Modifier.fillMaxWidth()
-                )
+                DatePickerField(value = due, onValueChange = { due = it }, label = "Due Date", optional = true)
                 OutlinedTextField(
                     value = notes,
                     onValueChange = { notes = it },

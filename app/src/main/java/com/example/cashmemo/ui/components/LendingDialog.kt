@@ -130,12 +130,7 @@ fun AddLendingDialog(
                     }
                 }
 
-                OutlinedTextField(
-                    value = date,
-                    onValueChange = { date = it },
-                    label = { Text("Lending Date (DD-MM-YYYY)") },
-                    modifier = Modifier.fillMaxWidth()
-                )
+                DatePickerField(value = date, onValueChange = { date = it }, label = "Lending Date")
 
                 ExposedDropdownMenuBox(
                     expanded = expandedType,
@@ -163,17 +158,10 @@ fun AddLendingDialog(
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier.fillMaxWidth()
                 )
+                DatePickerField(value = due, onValueChange = { due = it }, label = "Due Date", optional = true)
                 OutlinedTextField(
-                    value = due,
-                    onValueChange = { due = it },
-                    label = { Text("Due Date (DD-MM-YYYY)") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-                OutlinedTextField(
-                    value = notes,
-                    onValueChange = { notes = it },
-                    label = { Text("Notes") },
-                    modifier = Modifier.fillMaxWidth()
+                    value = notes, onValueChange = { notes = it },
+                    label = { Text("Notes") }, modifier = Modifier.fillMaxWidth()
                 )
                 
                 Spacer(modifier = Modifier.height(24.dp))

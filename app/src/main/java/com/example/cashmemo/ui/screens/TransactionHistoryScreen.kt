@@ -28,7 +28,10 @@ fun TransactionHistoryScreen(viewModel: FinanceViewModel) {
     val transactions by viewModel.filteredTransactions.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
     
-    var selectedType by remember { mutableStateOf("All") }
+    var selectedType   by remember { mutableStateOf("All") }
+    var showDateFilter by remember { mutableStateOf(false) }
+    var fromDate       by remember { mutableStateOf("") }
+    var toDate         by remember { mutableStateOf("") }
     val types = listOf("All", "Income", "Expense")
 
     Column(
@@ -54,19 +57,57 @@ fun TransactionHistoryScreen(viewModel: FinanceViewModel) {
         
         Row(
             modifier = Modifier.padding(vertical = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
             types.forEach { type ->
-                FilterChip(
-                    selected = selectedType == type,
-                    onClick = { selectedType = type },
-                    label = { Text(type) }
-                )
+                FilterChip(selected = selectedType == type, onClick = { selectedType = type }, label = { Text(type) })
+            }
+            Spacer(Modifier.weight(1f))
+            IconButton(onClick = { showDateFilter = !showDateFilter }) {
+                Icon(Icons.Default.DateRange, null,
+                    tint = if (showDateFilter || fromDate.isNotBlank()) MaterialTheme.colorScheme.primary
+                           else MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
 
-        val filteredHistory = if (selectedType == "All") transactions 
-                             else transactions.filter { it.type.equals(selectedType, ignoreCase = true) }
+        // Date range filter
+        if (showDateFilter) {
+            Row(Modifier.fillMaxWidth().padding(bottom = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                com.example.cashmemo.ui.components.DatePickerField(
+                    value = fromDate, onValueChange = { fromDate = it },
+                    label = "From", optional = true, modifier = Modifier.weight(1f)
+                )
+                com.example.cashmemo.ui.components.DatePickerField(
+                    value = toDate, onValueChange = { toDate = it },
+                    label = "To", optional = true, modifier = Modifier.weight(1f)
+                )
+                if (fromDate.isNotBlank() || toDate.isNotBlank()) {
+                    TextButton(onClick = { fromDate = ""; toDate = "" }) { Text("Clear") }
+                }
+            }
+        }
+
+        val filteredHistory = remember(transactions, selectedType, fromDate, toDate) {
+            var list = if (selectedType == "All") transactions
+                       else transactions.filter { it.type.equals(selectedType, ignoreCase = true) }
+            // Date range filter (convert DD-MM-YYYY to YYYY-MM-DD for comparison)
+            if (fromDate.isNotBlank()) {
+                val from = runCatching {
+                    val d = java.time.LocalDate.parse(fromDate, java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy"))
+                    d.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd"))
+                }.getOrDefault("")
+                if (from.isNotBlank()) list = list.filter { it.date >= from }
+            }
+            if (toDate.isNotBlank()) {
+                val to = runCatching {
+                    val d = java.time.LocalDate.parse(toDate, java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy"))
+                    d.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd"))
+                }.getOrDefault("")
+                if (to.isNotBlank()) list = list.filter { it.date <= to }
+            }
+            list
+        }
 
         if (filteredHistory.isEmpty()) {
             EmptyTransactionState()

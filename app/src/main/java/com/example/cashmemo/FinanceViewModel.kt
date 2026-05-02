@@ -222,6 +222,12 @@ class FinanceViewModel(private val repository: FinanceRepository) : ViewModel() 
         }
     }
 
+    fun updateInvestmentValue(investment: Investment, newCurrentVal: Double) {
+        viewModelScope.launch {
+            repository.updateInvestmentValue(investment, newCurrentVal)
+        }
+    }
+
     fun deleteInvestment(investment: Investment) {
         viewModelScope.launch { repository.deleteInvestment(investment) }
     }

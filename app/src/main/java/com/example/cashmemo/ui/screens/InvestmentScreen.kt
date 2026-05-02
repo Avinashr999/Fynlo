@@ -25,16 +25,28 @@ import java.util.Locale
 @Composable
 fun InvestmentScreen(viewModel: FinanceViewModel) {
     val investments by viewModel.investments.collectAsState()
-    var editingInvest by remember { mutableStateOf<Investment?>(null) }
+    var editingInvest  by remember { mutableStateOf<Investment?>(null) }
+    var updatingInvest by remember { mutableStateOf<Investment?>(null) }
 
     if (editingInvest != null) {
         AddInvestmentDialog(
             onDismiss = { editingInvest = null },
             onConfirm = { invest, _ ->
-                viewModel.addInvestmentWithSource(invest, "Cash in Hand") // Simplified update
+                viewModel.addInvestmentWithSource(invest, "Cash in Hand")
                 editingInvest = null
             },
             initialInvestment = editingInvest
+        )
+    }
+
+    if (updatingInvest != null) {
+        UpdateInvestmentValueDialog(
+            investment = updatingInvest!!,
+            onDismiss  = { updatingInvest = null },
+            onConfirm  = { newVal ->
+                viewModel.updateInvestmentValue(updatingInvest!!, newVal)
+                updatingInvest = null
+            }
         )
     }
 
@@ -59,9 +71,10 @@ fun InvestmentScreen(viewModel: FinanceViewModel) {
             ) {
                 items(investments) { invest ->
                     InvestmentCard(
-                        invest = invest,
+                        invest   = invest,
                         onDelete = { viewModel.deleteInvestment(invest) },
-                        onEdit = { editingInvest = invest }
+                        onEdit   = { editingInvest = invest },
+                        onUpdate = { updatingInvest = invest }
                     )
                 }
             }
@@ -70,7 +83,7 @@ fun InvestmentScreen(viewModel: FinanceViewModel) {
 }
 
 @Composable
-fun InvestmentCard(invest: Investment, onDelete: () -> Unit, onEdit: () -> Unit) {
+fun InvestmentCard(invest: Investment, onDelete: () -> Unit, onEdit: () -> Unit, onUpdate: () -> Unit) {
     val growth = invest.currentVal - invest.invested
     val growthPercent = if (invest.invested > 0) (growth / invest.invested) * 100 else 0.0
 
@@ -106,6 +119,11 @@ fun InvestmentCard(invest: Investment, onDelete: () -> Unit, onEdit: () -> Unit)
                     IconButton(onClick = onDelete) {
                         Icon(Icons.Default.Delete, contentDescription = "Delete", modifier = Modifier.size(20.dp), tint = Color.Red.copy(alpha = 0.6f))
                     }
+                    FilledTonalButton(
+                        onClick = onUpdate,
+                        contentPadding = PaddingValues(horizontal = 8.dp),
+                        modifier = Modifier.height(28.dp)
+                    ) { Text("Update", style = MaterialTheme.typography.labelSmall) }
                     Badge(
                         containerColor = if (growth >= 0) Color(0xFFE8F5E9) else Color(0xFFFFEBEE),
                         contentColor = if (growth >= 0) Color(0xFF2E7D32) else Color.Red
@@ -157,4 +175,51 @@ fun EmptyInvestState() {
         Spacer(Modifier.height(16.dp))
         Text("No investments yet", style = MaterialTheme.typography.titleMedium, color = Color.Gray)
     }
+}
+
+@Composable
+fun UpdateInvestmentValueDialog(
+    investment: Investment,
+    onDismiss: () -> Unit,
+    onConfirm: (Double) -> Unit
+) {
+    var newValue by remember { mutableStateOf(investment.currentVal.toBigDecimal().stripTrailingZeros().toPlainString()) }
+    val parsed   = newValue.toDoubleOrNull()
+    val growth   = parsed?.let { it - investment.invested }
+    val locale   = java.util.Locale.getDefault()
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Update Market Value") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(investment.name, style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("Invested: ₹ ${String.format(locale, "%,.2f", investment.invested)}",
+                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                OutlinedTextField(
+                    value = newValue, onValueChange = { newValue = it },
+                    label = { Text("Current Market Value (₹)") }, singleLine = true,
+                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                        keyboardType = androidx.compose.ui.text.input.KeyboardType.Decimal
+                    ),
+                    modifier = Modifier.fillMaxWidth(), shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp)
+                )
+                if (growth != null) {
+                    val pct = if (investment.invested > 0) (growth / investment.invested) * 100 else 0.0
+                    Text(
+                        "${if (growth >= 0) "+" else ""}₹ ${String.format(locale, "%,.2f", growth)} (${String.format(locale, "%.1f", pct)}%)",
+                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.Bold),
+                        color = if (growth >= 0) Color(0xFF10B981) else Color(0xFFEF4444)
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            Button(onClick = { parsed?.let { onConfirm(it) } }, enabled = parsed != null) {
+                Text("Update")
+            }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
+    )
 }

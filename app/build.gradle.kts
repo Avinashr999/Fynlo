@@ -15,19 +15,27 @@ android {
         applicationId = "com.example.cashmemo"
         minSdk = 24
         targetSdk = 36
-        versionCode = 90
-        versionName = "2.0.0"
+        versionCode = 110
+        versionName = "2.5.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     buildTypes {
         release {
-            isMinifyEnabled = true
+            isMinifyEnabled   = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            // TODO: Add signingConfig here before Play Store upload
+            // signingConfig = signingConfigs.getByName("release")
+        }
+        debug {
+            applicationIdSuffix = ".debug"
+            versionNameSuffix   = "-debug"
+            isDebuggable        = true
         }
     }
     compileOptions {

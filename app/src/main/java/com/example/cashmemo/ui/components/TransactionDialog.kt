@@ -102,11 +102,10 @@ fun AddTransactionDialog(
                     )
                 }
                 
-                OutlinedTextField(
-                    value = date,
+                DatePickerField(
+                    value         = date,
                     onValueChange = { date = it },
-                    label = { Text("Date (DD-MM-YYYY)") },
-                    modifier = Modifier.fillMaxWidth()
+                    label         = "Date"
                 )
 
                 ExposedDropdownMenuBox(

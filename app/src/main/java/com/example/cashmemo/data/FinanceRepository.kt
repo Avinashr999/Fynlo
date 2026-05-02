@@ -98,6 +98,12 @@ class FinanceRepository(
             }
             dao.deleteTransaction(transaction)
         }
+        // Sync reversed account balances AFTER withTransaction commits
+        when (transaction.type.lowercase()) {
+            "expense"  -> syncAccountByName(transaction.fromAcct)
+            "income"   -> syncAccountByName(transaction.toAcct)
+            "transfer" -> { syncAccountByName(transaction.fromAcct); syncAccountByName(transaction.toAcct) }
+        }
         sync { deleteTransaction(transaction.id) }
     }
     suspend fun insertBorrower(borrower: Borrower) = insertBorrowerWithSource(borrower, "Cash in Hand")
@@ -155,6 +161,12 @@ class FinanceRepository(
         }
         syncAccountByName(sourceAccount)
     }
+    suspend fun updateInvestmentValue(investment: Investment, newCurrentVal: Double) {
+        val updated = investment.copy(currentVal = newCurrentVal, updatedAt = System.currentTimeMillis())
+        dao.insertInvestment(updated)
+        sync { setInvestment(updated) }
+    }
+
     suspend fun deleteInvestment(investment: Investment) {
         db.withTransaction { dao.updateAccountBalance("HDFC Bank", investment.invested); dao.deleteInvestment(investment) }
         sync { deleteInvestment(investment.id) }

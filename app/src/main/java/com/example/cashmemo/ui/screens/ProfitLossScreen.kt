@@ -4,6 +4,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.PictureAsPdf
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -21,7 +23,9 @@ fun ProfitLossScreen(viewModel: FinanceViewModel) {
     val investments   by viewModel.investments.collectAsState()
     val debts         by viewModel.debts.collectAsState()
     val currentProject by viewModel.currentProject.collectAsState()
+    val summary       by viewModel.financialSummary.collectAsState()
     val locale        = remember { Locale.getDefault() }
+    val context       = androidx.compose.ui.platform.LocalContext.current
 
     val totalIncome    = transactions.filter { it.type.equals("income",  ignoreCase = true) }.sumOf { it.amount }
     val totalExpense   = transactions.filter { it.type.equals("expense", ignoreCase = true) }.sumOf { it.amount }
@@ -42,8 +46,28 @@ fun ProfitLossScreen(viewModel: FinanceViewModel) {
     ) {
         Text("Profit & Loss", style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold),
             modifier = Modifier.padding(vertical = 16.dp))
-        Text("Project: ${currentProject?.name ?: "Personal"}",
-            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
+            Text("Project: ${currentProject?.name ?: "Personal"}",
+                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            FilledTonalButton(
+                onClick = {
+                    val file = java.io.File(context.cacheDir, "pl_report_${java.time.LocalDate.now()}.pdf")
+                    file.outputStream().use { com.example.cashmemo.logic.ExportUtility.generatePDF(it, summary, transactions, borrowers, investments) }
+                    val uri = androidx.core.content.FileProvider.getUriForFile(context, "${context.packageName}.provider", file)
+                    context.startActivity(android.content.Intent.createChooser(
+                        android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                            type = "application/pdf"; putExtra(android.content.Intent.EXTRA_STREAM, uri)
+                            addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        }, "Export P&L Report"
+                    ))
+                },
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Icon(Icons.Default.PictureAsPdf, null, Modifier.size(16.dp))
+                Spacer(Modifier.width(4.dp))
+                Text("Export PDF")
+            }
+        }
 
         Spacer(Modifier.height(12.dp))
 
