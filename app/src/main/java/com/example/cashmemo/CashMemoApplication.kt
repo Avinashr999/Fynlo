@@ -70,5 +70,10 @@ class CashMemoApplication : Application() {
         syncManager         = SyncManager(uid, database.dao())
         repository.updateRemote(firestoreRepository, syncManager)
         syncManager.startListening()
+
+        // Push all existing accounts to Firestore
+        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+            runCatching { repository.pushAllAccountsToFirestore() }
+        }
     }
 }

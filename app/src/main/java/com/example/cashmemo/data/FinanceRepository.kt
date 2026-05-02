@@ -45,6 +45,20 @@ class FinanceRepository(
             syncManager.setSynced()
         }
     }
+
+    /** Fetch account from Room by name and push updated balance to Firestore. */
+    private fun syncAccountByName(name: String) {
+        ioScope.launch {
+            runCatching {
+                val account = dao.getAccountByName(name)
+                if (account != null) {
+                    syncManager.setSyncing()
+                    firestore.setAccount(account)
+                    syncManager.setSynced()
+                }
+            }
+        }
+    }
     suspend fun insertProject(project: Project) {
         val p = project.copy(updatedAt = System.currentTimeMillis())
         dao.insertProject(p); sync { setProject(p) }
@@ -57,9 +71,9 @@ class FinanceRepository(
             val t = transaction.copy(updatedAt = System.currentTimeMillis())
             dao.insertTransaction(t)
             when (transaction.type.lowercase()) {
-                "expense"  -> dao.updateAccountBalance(transaction.fromAcct, -transaction.amount)
-                "income"   -> dao.updateAccountBalance(transaction.toAcct,    transaction.amount)
-                "transfer" -> { dao.updateAccountBalance(transaction.fromAcct, -transaction.amount); dao.updateAccountBalance(transaction.toAcct, transaction.amount) }
+                "expense"  -> { dao.updateAccountBalance(transaction.fromAcct, -transaction.amount); syncAccountByName(transaction.fromAcct) }
+                "income"   -> { dao.updateAccountBalance(transaction.toAcct, transaction.amount); syncAccountByName(transaction.toAcct) }
+                "transfer" -> { dao.updateAccountBalance(transaction.fromAcct, -transaction.amount); dao.updateAccountBalance(transaction.toAcct, transaction.amount); syncAccountByName(transaction.fromAcct); syncAccountByName(transaction.toAcct) }
             }
             sync { setTransaction(t) }
         }
@@ -81,6 +95,7 @@ class FinanceRepository(
             val b = borrower.copy(projectId = projectId, updatedAt = System.currentTimeMillis())
             dao.insertBorrower(b)
             dao.updateAccountBalance(sourceAccount, -borrower.amount)
+            syncAccountByName(sourceAccount)
             val t = Transaction(java.util.UUID.randomUUID().toString(), borrower.date, "Expense", borrower.amount, fromAcct = sourceAccount, category = "Lending", desc = "Lent to ${borrower.name}", notes = borrower.notes, projectId = projectId, updatedAt = System.currentTimeMillis())
             dao.insertTransaction(t)
             sync { setBorrower(b); setTransaction(t) }
@@ -99,6 +114,7 @@ class FinanceRepository(
             val i = investment.copy(projectId = projectId, updatedAt = System.currentTimeMillis())
             dao.insertInvestment(i)
             dao.updateAccountBalance(sourceAccount, -investment.invested)
+            syncAccountByName(sourceAccount)
             val t = Transaction(java.util.UUID.randomUUID().toString(), investment.date, "Expense", investment.invested, fromAcct = sourceAccount, category = "Investment", desc = "Invested in ${investment.name}", notes = investment.notes, projectId = projectId, updatedAt = System.currentTimeMillis())
             dao.insertTransaction(t)
             sync { setInvestment(i); setTransaction(t) }
@@ -113,6 +129,7 @@ class FinanceRepository(
             val d = debt.copy(projectId = projectId, updatedAt = System.currentTimeMillis())
             dao.insertDebt(d)
             dao.updateAccountBalance(destinationAccount, debt.amount)
+            syncAccountByName(destinationAccount)
             val t = Transaction(java.util.UUID.randomUUID().toString(), debt.date, "Income", debt.amount, toAcct = destinationAccount, category = "Debt", desc = "Loan from ${debt.name}", notes = debt.notes, projectId = projectId, updatedAt = System.currentTimeMillis())
             dao.insertTransaction(t)
             sync { setDebt(d); setTransaction(t) }
@@ -127,6 +144,7 @@ class FinanceRepository(
             val p = payment.copy(projectId = projectId, updatedAt = System.currentTimeMillis())
             dao.insertPayment(p)
             dao.updateAccountBalance(destinationAccount, payment.amount)
+            syncAccountByName(destinationAccount)
             dao.updateBorrowerPaidAmount(payment.loanId, payment.amount)
             val t = Transaction(java.util.UUID.randomUUID().toString(), payment.date, "Income", payment.amount, toAcct = destinationAccount, category = "Loan Repayment", desc = "Received from ${payment.name}", notes = payment.notes, projectId = projectId, updatedAt = System.currentTimeMillis())
             dao.insertTransaction(t)
@@ -138,6 +156,7 @@ class FinanceRepository(
             val p = payment.copy(projectId = projectId, updatedAt = System.currentTimeMillis())
             dao.insertDebtPayment(p)
             dao.updateAccountBalance(sourceAccount, -payment.amount)
+            syncAccountByName(sourceAccount)
             dao.updateDebtPaidAmount(payment.debtId, payment.amount)
             val t = Transaction(java.util.UUID.randomUUID().toString(), payment.date, "Expense", payment.amount, fromAcct = sourceAccount, category = "Debt Repayment", desc = "Paid for ${payment.name}", notes = payment.notes, projectId = projectId, updatedAt = System.currentTimeMillis())
             dao.insertTransaction(t)
@@ -151,6 +170,15 @@ class FinanceRepository(
     suspend fun insertGoal(goal: Goal) { val g = goal.copy(updatedAt = System.currentTimeMillis()); dao.insertGoal(g); sync { setGoal(g) } }
     suspend fun deleteGoal(goal: Goal) { dao.deleteGoal(goal); sync { deleteGoal(goal.id) } }
     fun getPaymentsForLoan(loanId: String) = dao.getPaymentsForLoan(loanId)
+
+    /** Push all local accounts to Firestore — fixes accounts missing from cloud. */
+    suspend fun pushAllAccountsToFirestore() {
+        val accounts = dao.getAllAccounts().first()
+        accounts.forEach { account ->
+            runCatching { firestore.setAccount(account) }
+        }
+        android.util.Log.d("CashMemoSync", "Pushed ${accounts.size} accounts to Firestore")
+    }
     suspend fun getAllDataAsJson(): String {
         val data = BackupData(dao.getAllAccounts().first(), dao.getAllTransactions().first(), dao.getAllBorrowers().first(), dao.getAllInvestments().first(), dao.getAllDebts().first(), dao.getAllPeople().first(), dao.getAllProjects().first())
         return Json.encodeToString(data)
