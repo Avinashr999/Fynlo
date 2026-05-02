@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 import androidx.room.withTransaction
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -270,18 +271,18 @@ class FinanceRepository(
 
     /**
      * Takes a daily backup snapshot to Firestore under users/{uid}/backups/{date}/
-     * Keeps last 7 days. Called on startup after data is confirmed loaded.
-     * This protects against data loss from any source.
+     * Called on startup after data is confirmed loaded.
      */
     suspend fun takeBackupIfNeeded(uid: String) {
-        val today    = java.time.LocalDate.now().toString() // yyyy-MM-dd
-        val prefs    = com.google.firebase.ktx.Firebase.firestore
-            .collection("users").document(uid)
-            .collection("backup_meta").document("last_backup")
-
+        val today = java.time.LocalDate.now().toString()
         runCatching {
-            val lastBackup = prefs.get().await().getString("date") ?: ""
-            if (lastBackup == today) return // Already backed up today
+            val firestoreDb = com.google.firebase.firestore.ktx.firestore
+            val metaRef = firestoreDb
+                .collection("users").document(uid)
+                .collection("backup_meta").document("last_backup")
+
+            val lastBackup = metaRef.get().await().getString("date") ?: ""
+            if (lastBackup == today) return
 
             val accounts     = dao.getAllAccounts().first()
             val transactions = dao.getAllTransactions().first()
@@ -289,37 +290,41 @@ class FinanceRepository(
             val investments  = dao.getAllInvestments().first()
             val debts        = dao.getAllDebts().first()
 
-            if (accounts.isEmpty()) return // Don’t backup empty data
+            if (accounts.isEmpty()) return  // Never back up empty data
 
-            val db   = com.google.firebase.ktx.Firebase.firestore
-            val base = db.collection("users").document(uid).collection("backups").document(today)
+            val backupRef = firestoreDb
+                .collection("users").document(uid)
+                .collection("backups").document(today)
 
-            val batch = db.batch()
-            // Store counts + snapshot marker
-            batch.set(base, mapOf(
-                "date"         to today,
-                "accountCount" to accounts.size,
-                "txnCount"     to transactions.size,
+            // Write summary metadata
+            backupRef.set(mapOf(
+                "date"          to today,
+                "accountCount"  to accounts.size,
+                "txnCount"      to transactions.size,
                 "borrowerCount" to borrowers.size,
-                "debtCount"    to debts.size,
-                "investCount"  to investments.size,
-                "netWorth"     to accounts.sumOf { it.balance },
-                "createdAt"    to System.currentTimeMillis()
-            ))
-            batch.commit().await()
+                "debtCount"     to debts.size,
+                "investCount"   to investments.size,
+                "netWorth"      to accounts.sumOf { it.balance },
+                "createdAt"     to System.currentTimeMillis()
+            )).await()
 
-            // Write actual data into sub-collections
+            // Write account snapshots
             accounts.forEach { a ->
-                base.collection("accounts").document(a.id).set(a).await()
+                backupRef.collection("accounts").document(a.id).set(mapOf(
+                    "name" to a.name, "balance" to a.balance, "type" to a.type
+                )).await()
             }
+
+            // Write borrower snapshots
             borrowers.take(100).forEach { b ->
-                base.collection("borrowers").document(b.id).set(mapOf(
-                    "name" to b.name, "amount" to b.amount, "paid" to b.paid, "date" to b.date
+                backupRef.collection("borrowers").document(b.id).set(mapOf(
+                    "name" to b.name, "amount" to b.amount,
+                    "paid" to b.paid, "date" to b.date
                 )).await()
             }
 
             // Mark last backup date
-            prefs.set(mapOf("date" to today, "uid" to uid)).await()
+            metaRef.set(mapOf("date" to today)).await()
         }
     }
     suspend fun getAllDataAsJson(): String {
