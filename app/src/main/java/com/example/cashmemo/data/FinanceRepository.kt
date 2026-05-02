@@ -190,12 +190,33 @@ class FinanceRepository(
         }
     }
 
-    /** Push all local accounts to Firestore — fixes accounts missing from cloud. */
+    /**
+     * Push all local accounts to Firestore — fixes accounts missing from cloud.
+     */
     suspend fun pushAllAccountsToFirestore() {
         val accounts = dao.getAllAccounts().first()
         accounts.forEach { account ->
             runCatching { firestore.setAccount(account) }
         }
+    }
+
+    /**
+     * After normalizeLegacyProjectIds runs, push ALL collections to Firestore
+     * so every device gets correct projectIds, not the legacy empty/"personal" ones.
+     */
+    suspend fun pushAllCollectionsToFirestore() {
+        val accounts      = dao.getAllAccounts().first()
+        val transactions  = dao.getAllTransactions().first()
+        val borrowers     = dao.getAllBorrowers().first()
+        val investments   = dao.getAllInvestments().first()
+        val debts         = dao.getAllDebts().first()
+        val people        = dao.getAllPeople().first()
+        accounts.forEach     { runCatching { firestore.setAccount(it) } }
+        transactions.forEach { runCatching { firestore.setTransaction(it) } }
+        borrowers.forEach    { runCatching { firestore.setBorrower(it) } }
+        investments.forEach  { runCatching { firestore.setInvestment(it) } }
+        debts.forEach        { runCatching { firestore.setDebt(it) } }
+        people.forEach       { runCatching { firestore.setPerson(it) } }
     }
     suspend fun getAllDataAsJson(): String {
         val data = BackupData(dao.getAllAccounts().first(), dao.getAllTransactions().first(), dao.getAllBorrowers().first(), dao.getAllInvestments().first(), dao.getAllDebts().first(), dao.getAllPeople().first(), dao.getAllProjects().first())

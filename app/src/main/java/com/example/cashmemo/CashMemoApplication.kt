@@ -71,8 +71,8 @@ class CashMemoApplication : Application() {
                 if (firstProject != null && firstProject.id != "personal") {
                     repository.normalizeLegacyProjectIds(firstProject.id)
                 }
-                // Push all accounts to Firestore (catches missed balance updates)
-                repository.pushAllAccountsToFirestore()
+                // Push ALL collections to Firestore with correct normalized projectIds
+                repository.pushAllCollectionsToFirestore()
             }
         }
     }
