@@ -68,7 +68,7 @@ fun CollectPaymentDialog(
                         readOnly = true,
                         label = { Text("Where to deposit?") },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedDest) },
-                        modifier = Modifier.menuAnchor().fillMaxWidth()
+                        modifier = Modifier.menuAnchor(androidx.compose.material3.ExposedDropdownMenuAnchorType.PrimaryNotEditable, true).fillMaxWidth()
                     )
                     ExposedDropdownMenu(expanded = expandedDest, onDismissRequest = { expandedDest = false }) {
                         destinations.forEach { dest ->
@@ -180,7 +180,7 @@ fun PayDebtDialog(
                         readOnly = true,
                         label = { Text("Source of Payment") },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedSrc) },
-                        modifier = Modifier.menuAnchor().fillMaxWidth()
+                        modifier = Modifier.menuAnchor(androidx.compose.material3.ExposedDropdownMenuAnchorType.PrimaryNotEditable, true).fillMaxWidth()
                     )
                     ExposedDropdownMenu(expanded = expandedSrc, onDismissRequest = { expandedSrc = false }) {
                         sources.forEach { src ->

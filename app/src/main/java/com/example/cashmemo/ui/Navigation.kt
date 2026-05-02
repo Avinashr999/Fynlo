@@ -79,6 +79,9 @@ fun MainNavigation(viewModel: FinanceViewModel) {
     var isPinUnlocked by remember { mutableStateOf(!pinManager.isPinSet) }
     val syncStatus by viewModel.syncStatus.collectAsState()
 
+    // Offline banner
+    val isOffline = syncStatus is SyncStatus.Offline
+
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
     
@@ -290,10 +293,30 @@ fun MainNavigation(viewModel: FinanceViewModel) {
             },
             floatingActionButtonPosition = FabPosition.Center
         ) { innerPadding ->
-            NavHost(
+            Column(modifier = Modifier.padding(innerPadding)) {
+                // Offline banner
+                androidx.compose.animation.AnimatedVisibility(
+                    visible = isOffline,
+                    enter   = androidx.compose.animation.expandVertically(),
+                    exit    = androidx.compose.animation.shrinkVertically()
+                ) {
+                    Surface(color = MaterialTheme.colorScheme.errorContainer) {
+                        Row(
+                            modifier              = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                            verticalAlignment     = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(Icons.Default.CloudOff, null, Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onErrorContainer)
+                            Text("No internet — changes will sync when reconnected",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onErrorContainer)
+                        }
+                    }
+                }
+                NavHost(
                 navController = navController,
                 startDestination = Screen.Home.route,
-                modifier = Modifier.padding(innerPadding),
+                modifier = Modifier.weight(1f),
                 enterTransition = { slideInHorizontally { it } + fadeIn() },
                 exitTransition = { slideOutHorizontally { -it } + fadeOut() },
                 popEnterTransition = { slideInHorizontally { -it } + fadeIn() },
@@ -372,6 +395,7 @@ fun MainNavigation(viewModel: FinanceViewModel) {
                     )
                 }
             }
+            } // close Column
         }
     }
 }

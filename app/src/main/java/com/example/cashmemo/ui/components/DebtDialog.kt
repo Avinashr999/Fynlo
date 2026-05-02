@@ -66,7 +66,7 @@ fun AddDebtDialog(
                         readOnly = true,
                         label = { Text("Lender (Pick from Contacts)") },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = personExpanded) },
-                        modifier = Modifier.menuAnchor().fillMaxWidth()
+                        modifier = Modifier.menuAnchor(androidx.compose.material3.ExposedDropdownMenuAnchorType.PrimaryNotEditable, true).fillMaxWidth()
                     )
                     ExposedDropdownMenu(expanded = personExpanded, onDismissRequest = { personExpanded = false }) {
                         people.forEach { person ->
@@ -91,7 +91,7 @@ fun AddDebtDialog(
                             readOnly = true,
                             label = { Text("Where did you receive this money?") },
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedDest) },
-                            modifier = Modifier.menuAnchor().fillMaxWidth()
+                            modifier = Modifier.menuAnchor(androidx.compose.material3.ExposedDropdownMenuAnchorType.PrimaryNotEditable, true).fillMaxWidth()
                         )
                         ExposedDropdownMenu(expanded = expandedDest, onDismissRequest = { expandedDest = false }) {
                             destinations.forEach { dest ->

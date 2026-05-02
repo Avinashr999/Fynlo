@@ -25,6 +25,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.cashmemo.FinanceViewModel
+import com.example.cashmemo.ui.theme.ThemeController
 import kotlinx.coroutines.launch
 
 @Composable
@@ -66,6 +67,22 @@ fun SettingsScreen(viewModel: FinanceViewModel, onNavigateToAbout: () -> Unit) {
             style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
             modifier = Modifier.padding(bottom = 24.dp)
         )
+
+        // ── Theme toggle ──────────────────────────────────────────────────
+        Card(
+            modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
+            shape    = RoundedCornerShape(16.dp)
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text("Appearance", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
+                Spacer(Modifier.height(12.dp))
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilterChip(selected = ThemeController.darkModeOverride == null,  onClick = { ThemeController.darkModeOverride = null  }, label = { Text("System") }, modifier = Modifier.weight(1f))
+                    FilterChip(selected = ThemeController.darkModeOverride == false, onClick = { ThemeController.darkModeOverride = false }, label = { Text("Light")  }, modifier = Modifier.weight(1f))
+                    FilterChip(selected = ThemeController.darkModeOverride == true,  onClick = { ThemeController.darkModeOverride = true  }, label = { Text("Dark")   }, modifier = Modifier.weight(1f))
+                }
+            }
+        }
 
         Card(
             modifier = Modifier.fillMaxWidth(),

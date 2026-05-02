@@ -70,7 +70,7 @@ fun AddLendingDialog(
                         readOnly = true,
                         label = { Text("Borrower (Pick from Contacts)") },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = personExpanded) },
-                        modifier = Modifier.menuAnchor().fillMaxWidth()
+                        modifier = Modifier.menuAnchor(androidx.compose.material3.ExposedDropdownMenuAnchorType.PrimaryNotEditable, true).fillMaxWidth()
                     )
                     ExposedDropdownMenu(expanded = personExpanded, onDismissRequest = { personExpanded = false }) {
                         people.forEach { person ->
@@ -103,7 +103,7 @@ fun AddLendingDialog(
                             readOnly = true,
                             label = { Text("Source of Money") },
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedSource) },
-                            modifier = Modifier.menuAnchor().fillMaxWidth()
+                            modifier = Modifier.menuAnchor(androidx.compose.material3.ExposedDropdownMenuAnchorType.PrimaryNotEditable, true).fillMaxWidth()
                         )
                         ExposedDropdownMenu(expanded = expandedSource, onDismissRequest = { expandedSource = false }) {
                             sources.forEach { src ->
@@ -147,7 +147,7 @@ fun AddLendingDialog(
                         readOnly = true,
                         label = { Text("Interest Type") },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedType) },
-                        modifier = Modifier.menuAnchor().fillMaxWidth()
+                        modifier = Modifier.menuAnchor(androidx.compose.material3.ExposedDropdownMenuAnchorType.PrimaryNotEditable, true).fillMaxWidth()
                     )
                     ExposedDropdownMenu(expanded = expandedType, onDismissRequest = { expandedType = false }) {
                         interestTypes.forEach { type ->

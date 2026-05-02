@@ -78,7 +78,7 @@ fun AddInvestmentDialog(
                         readOnly = true,
                         label = { Text("Asset Type") },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedType) },
-                        modifier = Modifier.menuAnchor().fillMaxWidth()
+                        modifier = Modifier.menuAnchor(androidx.compose.material3.ExposedDropdownMenuAnchorType.PrimaryNotEditable, true).fillMaxWidth()
                     )
                     ExposedDropdownMenu(expanded = expandedType, onDismissRequest = { expandedType = false }) {
                         investTypes.forEach { t ->
@@ -114,7 +114,7 @@ fun AddInvestmentDialog(
                             readOnly = true,
                             label = { Text("Funding Source") },
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedSource) },
-                            modifier = Modifier.menuAnchor().fillMaxWidth()
+                            modifier = Modifier.menuAnchor(androidx.compose.material3.ExposedDropdownMenuAnchorType.PrimaryNotEditable, true).fillMaxWidth()
                         )
                         ExposedDropdownMenu(expanded = expandedSource, onDismissRequest = { expandedSource = false }) {
                             sources.forEach { src ->
