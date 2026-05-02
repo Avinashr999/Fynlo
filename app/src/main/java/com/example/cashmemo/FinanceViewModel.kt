@@ -7,6 +7,7 @@ import com.example.cashmemo.data.SyncStatus
 import com.example.cashmemo.data.model.*
 import com.example.cashmemo.data.model.FlowResult
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.time.LocalDate
@@ -28,19 +29,39 @@ class FinanceViewModel(private val repository: FinanceRepository) : ViewModel() 
     val projects = repository.allProjects
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
-        // True once we have at least one project — used to show loading state
-    val isSyncReady: StateFlow<Boolean> = projects
-        .map { it.isNotEmpty() }
-        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+    // True once projects arrive OR after 10 second timeout
+    private val _isSyncReady = MutableStateFlow(false)
+    val isSyncReady: StateFlow<Boolean> = _isSyncReady.asStateFlow()
 
     init {
-        // Keep watching projects — auto-select first one whenever it arrives
-        // This handles both: projects already in Room AND projects arriving via Firestore sync
+        // Watch projects — auto-select first one when it arrives
         viewModelScope.launch {
             projects.collect { list ->
                 if (_currentProjectId.value.isEmpty() && list.isNotEmpty()) {
                     _currentProjectId.value = list.first().id
                 }
+                if (list.isNotEmpty()) {
+                    _isSyncReady.value = true
+                }
+            }
+        }
+        // 10-second safety timeout — show dashboard even if Firestore is slow
+        viewModelScope.launch {
+            delay(10_000)
+            if (!_isSyncReady.value) {
+                if (projects.value.isEmpty()) {
+                    val defaultProject = Project(
+                        id        = "personal",
+                        name      = "Personal",
+                        icon      = "person",
+                        color     = "#3b82f6",
+                        currency  = "INR",
+                        createdAt = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
+                    )
+                    repository.insertProject(defaultProject)
+                    _currentProjectId.value = "personal"
+                }
+                _isSyncReady.value = true
             }
         }
     }
