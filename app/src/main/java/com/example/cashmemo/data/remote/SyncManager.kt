@@ -3,6 +3,7 @@
 import com.example.cashmemo.data.SyncStatus
 import com.example.cashmemo.data.local.CashMemoDao
 import com.example.cashmemo.data.model.*
+import com.google.firebase.firestore.DocumentChange
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.firestore.ktx.firestore
@@ -42,6 +43,7 @@ class SyncManager(
                 snap.documentChanges.forEach { change ->
                     runCatching {
                         val doc = change.document
+                        if (change.type == DocumentChange.Type.REMOVED) { dao.deleteBorrowerById(doc.id); return@runCatching }
                         val remote = Borrower(
                             id        = doc.id,
                             name      = doc.str("name"),
@@ -73,6 +75,10 @@ class SyncManager(
                 snap.documentChanges.forEach { change ->
                     runCatching {
                         val doc = change.document
+                        if (change.type == DocumentChange.Type.REMOVED) {
+                            dao.deleteTransactionById(doc.id)
+                            return@runCatching
+                        }
                         val remote = Transaction(
                             id        = doc.id,
                             date      = doc.str("date"),

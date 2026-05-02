@@ -33,8 +33,7 @@ android {
             // signingConfig = signingConfigs.getByName("release")
         }
         debug {
-            versionNameSuffix = "-debug"
-            isDebuggable      = true
+            isDebuggable = true
         }
     }
     compileOptions {

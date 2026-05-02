@@ -35,6 +35,9 @@ interface CashMemoDao {
     @Delete
     suspend fun deleteBorrower(borrower: Borrower)
 
+    @Query("DELETE FROM borrowers WHERE id = :id")
+    suspend fun deleteBorrowerById(id: String)
+
     // ─── Payments ─────────────────────────────────────────────────────────────
 
     @Query("SELECT * FROM payments WHERE loanId = :loanId")
@@ -75,6 +78,9 @@ interface CashMemoDao {
 
     @Delete
     suspend fun deleteTransaction(transaction: Transaction)
+
+    @Query("DELETE FROM transactions WHERE id = :id")
+    suspend fun deleteTransactionById(id: String)
 
     // ─── Investments ──────────────────────────────────────────────────────────
 
