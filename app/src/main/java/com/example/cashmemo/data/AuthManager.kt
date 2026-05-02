@@ -25,13 +25,12 @@ class AuthManager {
         get() = auth.currentUser?.providerData
             ?.any { it.providerId == GoogleAuthProvider.PROVIDER_ID } == true
 
-    val isSignedIn: Boolean get() = auth.currentUser != null
+    // Primary auth check — only Google sign-in counts, anonymous is NOT accepted
+    val isSignedIn: Boolean get() = isSignedInWithGoogle
 
     suspend fun ensureSignedIn() {
-        if (auth.currentUser == null) {
-            auth.signInAnonymously().await()
-            _user.value = auth.currentUser
-        }
+        // No longer signs in anonymously — Google sign-in is required
+        // This is a no-op; kept for compatibility
     }
 
     /**

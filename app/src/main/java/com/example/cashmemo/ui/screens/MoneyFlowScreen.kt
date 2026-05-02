@@ -1,6 +1,11 @@
 package com.example.cashmemo.ui.screens
 
+import android.content.Intent
+import androidx.core.content.FileProvider
 import androidx.compose.foundation.background
+import androidx.compose.ui.platform.LocalContext
+import com.example.cashmemo.logic.ExportUtility
+import java.io.File
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -45,6 +50,8 @@ fun MoneyFlowScreen(viewModel: FinanceViewModel) {
     val debts        by viewModel.debts.collectAsState()
     val accounts     by viewModel.allAccountsUnfiltered.collectAsState()
     val locale       = remember { Locale.getDefault() }
+    val context      = LocalContext.current
+    var showExportMenu by remember { mutableStateOf(false) }
 
     // Selected filter tab
     var selectedTab by remember { mutableIntStateOf(0) }
@@ -165,9 +172,51 @@ fun MoneyFlowScreen(viewModel: FinanceViewModel) {
 
         // Header
         Column(Modifier.padding(horizontal = 16.dp).padding(top = 16.dp, bottom = 8.dp)) {
-            Text("Money Flow", style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold))
-            Text("Track every rupee movement", style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
+                Column {
+                    Text("Money Flow", style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold))
+                    Text("Track every rupee movement", style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Box {
+                    FilledTonalButton(onClick = { showExportMenu = true }, shape = RoundedCornerShape(12.dp)) {
+                        Icon(Icons.Default.Share, null, Modifier.size(16.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text("Export")
+                    }
+                    DropdownMenu(expanded = showExportMenu, onDismissRequest = { showExportMenu = false }) {
+                        DropdownMenuItem(
+                            text = { Text("Export as CSV") },
+                            leadingIcon = { Icon(Icons.Default.TableChart, null) },
+                            onClick = {
+                                showExportMenu = false
+                                val csv  = ExportUtility.generateMoneyFlowCSV(allFlows)
+                                val file = File(context.cacheDir, "money_flow_${java.time.LocalDate.now()}.csv")
+                                file.writeText(csv)
+                                val uri  = FileProvider.getUriForFile(context, "${context.packageName}.provider", file)
+                                context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply {
+                                    type = "text/csv"; putExtra(Intent.EXTRA_STREAM, uri)
+                                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                }, "Share Money Flow CSV"))
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Export as PDF") },
+                            leadingIcon = { Icon(Icons.Default.PictureAsPdf, null) },
+                            onClick = {
+                                showExportMenu = false
+                                val file = File(context.cacheDir, "money_flow_${java.time.LocalDate.now()}.pdf")
+                                file.outputStream().use { ExportUtility.generateMoneyFlowPDF(it, allFlows) }
+                                val uri  = FileProvider.getUriForFile(context, "${context.packageName}.provider", file)
+                                context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply {
+                                    type = "application/pdf"; putExtra(Intent.EXTRA_STREAM, uri)
+                                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                }, "Share Money Flow PDF"))
+                            }
+                        )
+                    }
+                }
+            }
         }
 
         LazyColumn(

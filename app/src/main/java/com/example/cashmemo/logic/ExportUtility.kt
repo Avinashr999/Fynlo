@@ -192,4 +192,80 @@ object ExportUtility {
 
         document.close()
     }
+
+    fun generateMoneyFlowCSV(flows: List<com.example.cashmemo.ui.screens.FlowEntry>): String {
+        val sb = StringBuilder()
+        sb.append("CASH MEMO - MONEY FLOW REPORT\n")
+        sb.append("Generated: ${LocalDate.now()}\n\n")
+        sb.append("Date,Type,From,To,Label,Amount\n")
+        flows.forEach { f ->
+            fun esc(v: String) = "\"${v.replace("\"", "\"\"\"")}\""
+            sb.append("${esc(f.date)},${f.flowType},${esc(f.from)},${esc(f.to)},${esc(f.label)},${f.amount}\n")
+        }
+        // Summary
+        val totalIn  = flows.filter { it.flowType == com.example.cashmemo.ui.screens.FlowType.INCOME || it.flowType == com.example.cashmemo.ui.screens.FlowType.DEBT_RECEIVED }.sumOf { it.amount }
+        val totalOut = flows.filter { it.flowType == com.example.cashmemo.ui.screens.FlowType.EXPENSE || it.flowType == com.example.cashmemo.ui.screens.FlowType.DEBT_REPAY }.sumOf { it.amount }
+        val lentOut  = flows.filter { it.flowType == com.example.cashmemo.ui.screens.FlowType.LENDING }.sumOf { it.amount }
+        sb.append("\n--- SUMMARY ---\n")
+        sb.append("Total Inflow,${fmt(totalIn)}\n")
+        sb.append("Total Outflow,${fmt(totalOut)}\n")
+        sb.append("Lent Out,${fmt(lentOut)}\n")
+        sb.append("Net Flow,${fmt(totalIn - totalOut)}\n")
+        return sb.toString()
+    }
+
+    fun generateMoneyFlowPDF(outputStream: OutputStream, flows: List<com.example.cashmemo.ui.screens.FlowEntry>) {
+        val writer   = PdfWriter(outputStream)
+        val pdf      = PdfDocument(writer)
+        val document = Document(pdf)
+
+        document.add(Paragraph("Cash Memo").setBold().setFontSize(24f).setFontColor(PRIMARY))
+        document.add(Paragraph("Money Flow Report").setFontSize(14f).setFontColor(ColorConstants.DARK_GRAY))
+        document.add(Paragraph("Generated: ${LocalDate.now()}").setFontSize(10f).setFontColor(ColorConstants.GRAY))
+        document.add(Paragraph("\n"))
+
+        // Summary
+        val totalIn  = flows.filter { it.flowType == com.example.cashmemo.ui.screens.FlowType.INCOME || it.flowType == com.example.cashmemo.ui.screens.FlowType.DEBT_RECEIVED }.sumOf { it.amount }
+        val totalOut = flows.filter { it.flowType == com.example.cashmemo.ui.screens.FlowType.EXPENSE || it.flowType == com.example.cashmemo.ui.screens.FlowType.DEBT_REPAY }.sumOf { it.amount }
+        val lentOut  = flows.filter { it.flowType == com.example.cashmemo.ui.screens.FlowType.LENDING }.sumOf { it.amount }
+        val net      = totalIn - totalOut
+
+        val summaryTable = Table(UnitValue.createPercentArray(floatArrayOf(25f, 25f, 25f, 25f))).useAllAvailableWidth()
+        fun summaryCell(label: String, value: String, color: DeviceRgb): Cell {
+            val cell = Cell().setBackgroundColor(LIGHT).setPadding(8f)
+            cell.add(Paragraph(label).setFontSize(9f).setFontColor(ColorConstants.GRAY))
+            cell.add(Paragraph(value).setBold().setFontSize(12f).setFontColor(color))
+            return cell
+        }
+        summaryTable.addCell(summaryCell("TOTAL INFLOW",  fmt(totalIn),  GREEN))
+        summaryTable.addCell(summaryCell("TOTAL OUTFLOW", fmt(totalOut), RED))
+        summaryTable.addCell(summaryCell("LENT OUT",      fmt(lentOut),  PRIMARY))
+        summaryTable.addCell(summaryCell("NET FLOW",      fmt(net),      if (net >= 0) GREEN else RED))
+        document.add(summaryTable)
+        document.add(Paragraph("\n"))
+
+        // Flow table
+        document.add(Paragraph("All Flows (${flows.size} entries)").setBold().setFontSize(13f).setFontColor(PRIMARY).setMarginBottom(6f))
+        val tbl = Table(UnitValue.createPercentArray(floatArrayOf(14f, 14f, 22f, 22f, 18f, 10f))).useAllAvailableWidth()
+        listOf("Date", "Type", "From", "To", "Label", "Amount").forEach { h ->
+            tbl.addHeaderCell(Cell().setBackgroundColor(PRIMARY).add(Paragraph(h).setBold().setFontSize(10f).setFontColor(ColorConstants.WHITE)).setPadding(5f))
+        }
+        flows.forEach { f ->
+            val color = when (f.flowType) {
+                com.example.cashmemo.ui.screens.FlowType.INCOME        -> GREEN
+                com.example.cashmemo.ui.screens.FlowType.EXPENSE       -> RED
+                com.example.cashmemo.ui.screens.FlowType.DEBT_REPAY    -> RED
+                else -> PRIMARY
+            }
+            tbl.addCell(Cell().add(Paragraph(f.date).setFontSize(9f)).setPadding(4f))
+            tbl.addCell(Cell().add(Paragraph(f.flowType.name).setFontSize(9f)).setPadding(4f))
+            tbl.addCell(Cell().add(Paragraph(f.from.take(25)).setFontSize(9f)).setPadding(4f))
+            tbl.addCell(Cell().add(Paragraph(f.to.take(25)).setFontSize(9f)).setPadding(4f))
+            tbl.addCell(Cell().add(Paragraph(f.label.take(25)).setFontSize(9f)).setPadding(4f))
+            tbl.addCell(Cell().add(Paragraph(fmt(f.amount)).setFontSize(9f).setFontColor(color)).setPadding(4f))
+        }
+        document.add(tbl)
+        document.add(Paragraph("\nGenerated by Cash Memo | ${LocalDate.now()}").setFontSize(9f).setFontColor(ColorConstants.GRAY).setTextAlignment(TextAlignment.CENTER))
+        document.close()
+    }
 }
