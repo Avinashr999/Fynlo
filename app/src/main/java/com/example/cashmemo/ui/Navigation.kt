@@ -48,10 +48,10 @@ sealed class Screen(val route: String, val label: String, val icon: ImageVector)
     object FlowWizard : Screen("flow_wizard", "Flow Wizard", Icons.Default.AutoAwesome)
     object Projects  : Screen("projects",       "Projects",         Icons.Default.Business)
     object Recurring  : Screen("recurring",      "Recurring",        Icons.Default.Repeat)
-    object Monthly    : Screen("monthly",        "Monthly Summary",  Icons.Default.BarChart)
-    object ProfitLoss : Screen("profit_loss",    "Profit & Loss",    Icons.Default.Assessment)
-    object DebtPayoff : Screen("debt_payoff",    "Debt Payoff",      Icons.Default.Timeline)
-    object NetWorthH  : Screen("net_worth_hist", "Net Worth History",Icons.Default.ShowChart)
+    object Monthly    : Screen("monthly",        "Monthly Summary",  Icons.Default.DateRange)
+    object ProfitLoss : Screen("profit_loss",    "Profit & Loss",    Icons.Default.List)
+    object DebtPayoff : Screen("debt_payoff",    "Debt Payoff",      Icons.Default.Schedule)
+    object NetWorthH  : Screen("net_worth_hist", "Net Worth History",Icons.AutoMirrored.Filled.TrendingUp)
 }
 
 val bottomNavItems = listOf(
@@ -248,25 +248,25 @@ fun MainNavigation(viewModel: FinanceViewModel) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(start = 16.dp, top = 4.dp, bottom = 2.dp))
                 NavigationDrawerItem(
-                    icon     = { Icon(Icons.Default.BarChart, null) },
+                    icon     = { Icon(Icons.Default.DateRange, null) },
                     label    = { Text("Monthly Summary") },
                     selected = currentRoute == Screen.Monthly.route,
                     onClick  = { navController.navigate(Screen.Monthly.route); scope.launch { drawerState.close() } }
                 )
                 NavigationDrawerItem(
-                    icon     = { Icon(Icons.Default.Assessment, null) },
+                    icon     = { Icon(Icons.Default.List, null) },
                     label    = { Text("Profit & Loss") },
                     selected = currentRoute == Screen.ProfitLoss.route,
                     onClick  = { navController.navigate(Screen.ProfitLoss.route); scope.launch { drawerState.close() } }
                 )
                 NavigationDrawerItem(
-                    icon     = { Icon(Icons.Default.Timeline, null) },
+                    icon     = { Icon(Icons.Default.Schedule, null) },
                     label    = { Text("Debt Payoff Tracker") },
                     selected = currentRoute == Screen.DebtPayoff.route,
                     onClick  = { navController.navigate(Screen.DebtPayoff.route); scope.launch { drawerState.close() } }
                 )
                 NavigationDrawerItem(
-                    icon     = { Icon(Icons.Default.ShowChart, null) },
+                    icon     = { Icon(Icons.AutoMirrored.Filled.TrendingUp, null) },
                     label    = { Text("Net Worth History") },
                     selected = currentRoute == Screen.NetWorthH.route,
                     onClick  = { navController.navigate(Screen.NetWorthH.route); scope.launch { drawerState.close() } }

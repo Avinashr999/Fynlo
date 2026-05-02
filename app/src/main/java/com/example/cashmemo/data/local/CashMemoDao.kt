@@ -216,7 +216,6 @@ interface CashMemoDao {
 
     @Query("UPDATE recurring_transactions SET lastRun = :date WHERE id = :id")
     suspend fun updateRecurringLastRun(id: String, date: String)
-}
 
     // ─── Net Worth Snapshots ──────────────────────────────────────────────────
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -224,3 +223,4 @@ interface CashMemoDao {
 
     @Query("SELECT * FROM net_worth_snapshots WHERE projectId = :pid ORDER BY date DESC LIMIT :limit")
     fun getNetWorthSnapshots(pid: String, limit: Int = 90): kotlinx.coroutines.flow.Flow<List<com.example.cashmemo.data.model.NetWorthSnapshot>>
+}

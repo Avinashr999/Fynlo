@@ -7,6 +7,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -31,10 +32,10 @@ private val pages = listOf(
     OnboardingPage(Icons.Default.CreditCard, Color(0xFFEF4444),
         "Track Your Debts",
         "Know exactly what you owe, interest accrued per day, and estimated payoff timeline at your current payment rate."),
-    OnboardingPage(Icons.Default.TrendingUp, Color(0xFFF59E0B),
+    OnboardingPage(Icons.AutoMirrored.Filled.TrendingUp, Color(0xFFF59E0B),
         "Monitor Investments",
         "Add your gold, stocks, FDs and track their current value and growth over time."),
-    OnboardingPage(Icons.Default.Sync, Color(0xFF8B5CF6),
+    OnboardingPage(Icons.Default.Refresh, Color(0xFF8B5CF6),
         "Real-Time Sync",
         "Sign in with Google to sync your data across phone, tablet, and any other device instantly.")
 )
