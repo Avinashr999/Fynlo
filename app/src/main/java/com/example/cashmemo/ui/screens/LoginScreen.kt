@@ -32,12 +32,14 @@ fun LoginScreen(onSignedIn: () -> Unit) {
     val context = LocalContext.current
     val app     = context.applicationContext as CashMemoApplication
     val scope   = rememberCoroutineScope()
-    var loading by remember { mutableStateOf(false) }
-    var error   by remember { mutableStateOf("") }
+    var loading   by remember { mutableStateOf(false) }
+    var error     by remember { mutableStateOf("") }
+    var hasTriedSignIn by remember { mutableStateOf(false) }
 
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
     ) { result ->
+        if (!hasTriedSignIn) return@rememberLauncherForActivityResult  // ignore stale results
         scope.launch {
             loading = true
             error   = ""
@@ -53,8 +55,12 @@ fun LoginScreen(onSignedIn: () -> Unit) {
                 } else {
                     error = signInResult.exceptionOrNull()?.message ?: "Sign-in failed"
                 }
-            }.onFailure {
-                error = it.message ?: "Sign-in failed. Please try again."
+            }.onFailure { ex ->
+                error = when {
+                    ex.message?.startsWith("10") == true -> "Sign-in setup error. Please ensure SHA-1 is added in Firebase console."
+                    ex.message?.contains("cancel", ignoreCase = true) == true -> ""
+                    else -> ex.message ?: "Sign-in failed. Please try again."
+                }
             }
             loading = false
         }
@@ -111,6 +117,7 @@ fun LoginScreen(onSignedIn: () -> Unit) {
             // Google Sign-In button
             Button(
                 onClick = {
+                    hasTriedSignIn = true
                     val client = GoogleSignInHelper.getClient(context)
                     launcher.launch(client.signInIntent)
                 },
