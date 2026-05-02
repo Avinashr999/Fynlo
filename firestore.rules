@@ -1,0 +1,184 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Helper functions ────────────────────────────────────────────────────
+
+    // Only the signed-in user can access their own document
+    function isOwner(uid) {
+      return request.auth != null && request.auth.uid == uid;
+    }
+
+    // Must be authenticated at all (any signed-in user)
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Check that required fields exist in incoming data
+    function hasFields(fields) {
+      return fields.toSet().difference(request.resource.data.keys().toSet()).size() == 0;
+    }
+
+    // ── User data: only owner can read/write ────────────────────────────────
+    match /users/{userId} {
+
+      // The user document itself
+      allow read, write: if isOwner(userId);
+
+      // ── Accounts ─────────────────────────────────────────────────────────
+      match /accounts/{accountId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId)
+          && hasFields(['name', 'balance', 'type'])
+          && request.resource.data.balance is number
+          && request.resource.data.name is string
+          && request.resource.data.name.size() > 0;
+        allow update: if isOwner(userId)
+          && request.resource.data.balance is number;
+        allow delete: if isOwner(userId);
+      }
+
+      // ── Transactions ──────────────────────────────────────────────────────
+      match /transactions/{txnId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId)
+          && hasFields(['date', 'type', 'amount', 'category'])
+          && request.resource.data.amount is number
+          && request.resource.data.amount >= 0;
+        allow update: if isOwner(userId);
+        allow delete: if isOwner(userId);
+      }
+
+      // ── Borrowers (Lending) ───────────────────────────────────────────────
+      match /borrowers/{borrowerId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId)
+          && hasFields(['name', 'amount', 'rate', 'date'])
+          && request.resource.data.amount is number
+          && request.resource.data.amount >= 0;
+        allow update: if isOwner(userId);
+        allow delete: if isOwner(userId);
+      }
+
+      // ── Payments (loan repayments received) ───────────────────────────────
+      match /payments/{paymentId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId)
+          && hasFields(['amount', 'date'])
+          && request.resource.data.amount is number
+          && request.resource.data.amount >= 0;
+        allow update: if isOwner(userId);
+        allow delete: if isOwner(userId);
+      }
+
+      // ── Debts ─────────────────────────────────────────────────────────────
+      match /debts/{debtId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId)
+          && hasFields(['name', 'amount', 'rate', 'date'])
+          && request.resource.data.amount is number
+          && request.resource.data.amount >= 0;
+        allow update: if isOwner(userId);
+        allow delete: if isOwner(userId);
+      }
+
+      // ── Debt Payments ─────────────────────────────────────────────────────
+      match /debt_payments/{paymentId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId)
+          && hasFields(['amount', 'date'])
+          && request.resource.data.amount is number;
+        allow update: if isOwner(userId);
+        allow delete: if isOwner(userId);
+      }
+
+      // ── Investments ───────────────────────────────────────────────────────
+      match /investments/{investId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId)
+          && hasFields(['name', 'type', 'invested', 'currentVal', 'date'])
+          && request.resource.data.invested is number
+          && request.resource.data.currentVal is number;
+        allow update: if isOwner(userId);
+        allow delete: if isOwner(userId);
+      }
+
+      // ── People (Contact Book) ─────────────────────────────────────────────
+      match /people/{personId} {
+        allow read: if isOwner(userId);
+        allow create, update: if isOwner(userId)
+          && hasFields(['name'])
+          && request.resource.data.name is string
+          && request.resource.data.name.size() > 0;
+        allow delete: if isOwner(userId);
+      }
+
+      // ── Budgets ───────────────────────────────────────────────────────────
+      match /budgets/{budgetId} {
+        allow read: if isOwner(userId);
+        allow create, update: if isOwner(userId)
+          && hasFields(['category', 'limitAmount'])
+          && request.resource.data.limitAmount is number
+          && request.resource.data.limitAmount >= 0;
+        allow delete: if isOwner(userId);
+      }
+
+      // ── Goals ─────────────────────────────────────────────────────────────
+      match /goals/{goalId} {
+        allow read: if isOwner(userId);
+        allow create, update: if isOwner(userId)
+          && hasFields(['name', 'targetAmount'])
+          && request.resource.data.targetAmount is number;
+        allow delete: if isOwner(userId);
+      }
+
+      // ── Projects ─────────────────────────────────────────────────────────
+      match /projects/{projectId} {
+        allow read: if isOwner(userId);
+        allow create, update: if isOwner(userId)
+          && hasFields(['name'])
+          && request.resource.data.name is string;
+        allow delete: if isOwner(userId);
+      }
+
+      // ── Backups (read-only after creation, never deletable from client) ───
+      match /backups/{date} {
+        allow read: if isOwner(userId);
+        // Only allow create (not update/delete) to protect backup integrity
+        allow create: if isOwner(userId)
+          && hasFields(['date', 'netWorth', 'createdAt']);
+        allow update: if false;  // Backups are immutable
+        allow delete: if false;  // Backups cannot be deleted from client
+
+        // Backup sub-collections (accounts, borrowers snapshots)
+        match /{collection}/{docId} {
+          allow read: if isOwner(userId);
+          allow create: if isOwner(userId);
+          allow update, delete: if false;  // Immutable
+        }
+      }
+
+      // ── Backup metadata ───────────────────────────────────────────────────
+      match /backup_meta/{metaId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      // ── Net Worth Snapshots ───────────────────────────────────────────────
+      match /net_worth_snapshots/{snapshotId} {
+        allow read: if isOwner(userId);
+        allow create, update: if isOwner(userId)
+          && hasFields(['date', 'netWorth'])
+          && request.resource.data.netWorth is number;
+        allow delete: if isOwner(userId);
+      }
+
+    } // end match /users/{userId}
+
+    // ── Block all other paths ─────────────────────────────────────────────
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+  }
+}
