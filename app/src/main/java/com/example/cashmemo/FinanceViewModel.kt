@@ -399,7 +399,7 @@ class FinanceViewModel(private val repository: FinanceRepository) : ViewModel() 
 
     // ─── Recurring Transactions ──────────────────────────────────────────────
 
-    val recurringTransactions = repository.getAllRecurringTransactions()
+    val recurringTransactions: StateFlow<List<com.example.cashmemo.data.model.RecurringTransaction>> = repository.getAllRecurringTransactions()
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     fun addRecurringTransaction(r: com.example.cashmemo.data.model.RecurringTransaction) {
