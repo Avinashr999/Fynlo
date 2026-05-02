@@ -63,7 +63,7 @@ fun ProfitLossScreen(viewModel: FinanceViewModel) {
         Spacer(Modifier.height(16.dp))
 
         PLSection("Revenue", listOf(
-            "Transaction Income"   to totalIncome,
+            "Transaction Income"       to totalIncome,
             "Loan Repayments Received" to lendingIncome
         ), totalRevenue, green, locale)
 
@@ -73,6 +73,24 @@ fun ProfitLossScreen(viewModel: FinanceViewModel) {
             "Total Transactions"   to totalExpense,
             "Debt Payments Made"   to debtPayments
         ), totalExpense + debtPayments, red, locale)
+
+        Spacer(Modifier.height(12.dp))
+
+        // Net Cash Flow card
+        val netCash = totalRevenue - totalExpense - debtPayments
+        Card(Modifier.fillMaxWidth(), RoundedCornerShape(16.dp),
+            CardDefaults.cardColors((if (netCash >= 0) green else red).copy(alpha = 0.08f))) {
+            Row(Modifier.fillMaxWidth().padding(16.dp), Arrangement.SpaceBetween, Alignment.CenterVertically) {
+                Column {
+                    Text("Net Cash Flow", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
+                    Text("Revenue minus all expenses", style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Text("Rs ${String.format(locale, "%,.2f", netCash)}",
+                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                    color = if (netCash >= 0) green else red)
+            }
+        }
 
         Spacer(Modifier.height(12.dp))
 
