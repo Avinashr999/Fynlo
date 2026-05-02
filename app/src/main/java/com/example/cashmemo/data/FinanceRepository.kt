@@ -177,7 +177,6 @@ class FinanceRepository(
         accounts.forEach { account ->
             runCatching { firestore.setAccount(account) }
         }
-        android.util.Log.d("CashMemoSync", "Pushed ${accounts.size} accounts to Firestore")
     }
     suspend fun getAllDataAsJson(): String {
         val data = BackupData(dao.getAllAccounts().first(), dao.getAllTransactions().first(), dao.getAllBorrowers().first(), dao.getAllInvestments().first(), dao.getAllDebts().first(), dao.getAllPeople().first(), dao.getAllProjects().first())
