@@ -23,9 +23,9 @@ import androidx.compose.ui.unit.sp
 data class OnboardingPage(val icon: ImageVector, val color: Color, val title: String, val desc: String)
 
 private val pages = listOf(
-    OnboardingPage(Icons.Default.AccountBalanceWallet, Color(0xFF3B82F6),
-        "Track Your Net Worth",
-        "See your total assets, liabilities and net worth at a glance. Connects across all your devices in real time."),
+    OnboardingPage(Icons.Default.AccountBalanceWallet, Color(0xFF059669),
+        "Your Finance Command Centre",
+        "Track net worth, loans, debts and investments — all synced to the cloud in real time."),
     OnboardingPage(Icons.Default.Group, Color(0xFF10B981),
         "Manage Lending",
         "Track money you lend to others with exact interest calculations — Simple, Compound, or Reducing Balance."),

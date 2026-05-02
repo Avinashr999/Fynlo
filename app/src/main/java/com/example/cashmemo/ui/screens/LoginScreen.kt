@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccountBalanceWallet
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -17,11 +16,13 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.cashmemo.CashMemoApplication
+import com.example.cashmemo.R
 import com.example.cashmemo.data.GoogleSignInHelper
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.common.api.ApiException
@@ -81,21 +82,18 @@ fun LoginScreen(onSignedIn: () -> Unit) {
             verticalArrangement   = Arrangement.spacedBy(24.dp),
             modifier              = Modifier.padding(32.dp)
         ) {
-            // App icon
-            Box(
-                modifier         = Modifier
-                    .size(90.dp)
-                    .clip(RoundedCornerShape(24.dp))
-                    .background(Color.White.copy(alpha = 0.15f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    Icons.Default.AccountBalanceWallet,
-                    contentDescription = null,
-                    tint               = Color.White,
-                    modifier           = Modifier.size(50.dp)
-                )
-            }
+                androidx.compose.foundation.layout.Box(
+                    modifier         = Modifier
+                        .size(90.dp)
+                        .clip(RoundedCornerShape(24.dp)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    androidx.compose.foundation.Image(
+                        painter            = painterResource(id = R.mipmap.ic_launcher),
+                        contentDescription = "Cash Memo",
+                        modifier           = Modifier.size(90.dp)
+                    )
+                }
 
             Text(
                 "Cash Memo",
