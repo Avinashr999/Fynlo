@@ -68,16 +68,19 @@ class FinanceRepository(
         dao.deleteProject(project); sync { deleteProject(project.id) }
     }
     suspend fun insertTransaction(transaction: Transaction) {
+        val affectedAccounts = mutableListOf<String>()
         db.withTransaction {
             val t = transaction.copy(updatedAt = System.currentTimeMillis())
             dao.insertTransaction(t)
             when (transaction.type.lowercase()) {
-                "expense"  -> { dao.updateAccountBalance(transaction.fromAcct, -transaction.amount); syncAccountByName(transaction.fromAcct) }
-                "income"   -> { dao.updateAccountBalance(transaction.toAcct, transaction.amount); syncAccountByName(transaction.toAcct) }
-                "transfer" -> { dao.updateAccountBalance(transaction.fromAcct, -transaction.amount); dao.updateAccountBalance(transaction.toAcct, transaction.amount); syncAccountByName(transaction.fromAcct); syncAccountByName(transaction.toAcct) }
+                "expense"  -> { dao.updateAccountBalance(transaction.fromAcct, -transaction.amount); affectedAccounts += transaction.fromAcct }
+                "income"   -> { dao.updateAccountBalance(transaction.toAcct, transaction.amount); affectedAccounts += transaction.toAcct }
+                "transfer" -> { dao.updateAccountBalance(transaction.fromAcct, -transaction.amount); dao.updateAccountBalance(transaction.toAcct, transaction.amount); affectedAccounts += transaction.fromAcct; affectedAccounts += transaction.toAcct }
             }
             sync { setTransaction(t) }
         }
+        // Sync AFTER withTransaction commits so we push the updated balance
+        affectedAccounts.forEach { syncAccountByName(it) }
     }
     suspend fun deleteTransaction(transaction: Transaction) {
         db.withTransaction {
@@ -96,11 +99,11 @@ class FinanceRepository(
             val b = borrower.copy(projectId = projectId, updatedAt = System.currentTimeMillis())
             dao.insertBorrower(b)
             dao.updateAccountBalance(sourceAccount, -borrower.amount)
-            syncAccountByName(sourceAccount)
             val t = Transaction(java.util.UUID.randomUUID().toString(), borrower.date, "Expense", borrower.amount, fromAcct = sourceAccount, category = "Lending", desc = "Lent to ${borrower.name}", notes = borrower.notes, projectId = projectId, updatedAt = System.currentTimeMillis())
             dao.insertTransaction(t)
             sync { setBorrower(b); setTransaction(t) }
         }
+        syncAccountByName(sourceAccount)
     }
     suspend fun deleteBorrower(borrower: Borrower) {
         db.withTransaction { dao.updateAccountBalance("Cash in Hand", borrower.amount); dao.deleteBorrower(borrower) }
@@ -139,11 +142,11 @@ class FinanceRepository(
             val i = investment.copy(projectId = projectId, updatedAt = System.currentTimeMillis())
             dao.insertInvestment(i)
             dao.updateAccountBalance(sourceAccount, -investment.invested)
-            syncAccountByName(sourceAccount)
             val t = Transaction(java.util.UUID.randomUUID().toString(), investment.date, "Expense", investment.invested, fromAcct = sourceAccount, category = "Investment", desc = "Invested in ${investment.name}", notes = investment.notes, projectId = projectId, updatedAt = System.currentTimeMillis())
             dao.insertTransaction(t)
             sync { setInvestment(i); setTransaction(t) }
         }
+        syncAccountByName(sourceAccount)
     }
     suspend fun deleteInvestment(investment: Investment) {
         db.withTransaction { dao.updateAccountBalance("HDFC Bank", investment.invested); dao.deleteInvestment(investment) }
@@ -154,11 +157,11 @@ class FinanceRepository(
             val d = debt.copy(projectId = projectId, updatedAt = System.currentTimeMillis())
             dao.insertDebt(d)
             dao.updateAccountBalance(destinationAccount, debt.amount)
-            syncAccountByName(destinationAccount)
             val t = Transaction(java.util.UUID.randomUUID().toString(), debt.date, "Income", debt.amount, toAcct = destinationAccount, category = "Debt", desc = "Loan from ${debt.name}", notes = debt.notes, projectId = projectId, updatedAt = System.currentTimeMillis())
             dao.insertTransaction(t)
             sync { setDebt(d); setTransaction(t) }
         }
+        syncAccountByName(destinationAccount)
     }
     suspend fun deleteDebt(debt: Debt) {
         db.withTransaction { dao.updateAccountBalance("HDFC Bank", -debt.amount); dao.deleteDebt(debt) }
@@ -169,24 +172,24 @@ class FinanceRepository(
             val p = payment.copy(projectId = projectId, updatedAt = System.currentTimeMillis())
             dao.insertPayment(p)
             dao.updateAccountBalance(destinationAccount, payment.amount)
-            syncAccountByName(destinationAccount)
             dao.updateBorrowerPaidAmount(payment.loanId, payment.amount)
             val t = Transaction(java.util.UUID.randomUUID().toString(), payment.date, "Income", payment.amount, toAcct = destinationAccount, category = "Loan Repayment", desc = "Received from ${payment.name}", notes = payment.notes, projectId = projectId, updatedAt = System.currentTimeMillis())
             dao.insertTransaction(t)
             sync { setPayment(p); setTransaction(t) }
         }
+        syncAccountByName(destinationAccount)
     }
     suspend fun insertDebtPaymentWithSource(payment: DebtPayment, sourceAccount: String, projectId: String = payment.projectId) {
         db.withTransaction {
             val p = payment.copy(projectId = projectId, updatedAt = System.currentTimeMillis())
             dao.insertDebtPayment(p)
             dao.updateAccountBalance(sourceAccount, -payment.amount)
-            syncAccountByName(sourceAccount)
             dao.updateDebtPaidAmount(payment.debtId, payment.amount)
             val t = Transaction(java.util.UUID.randomUUID().toString(), payment.date, "Expense", payment.amount, fromAcct = sourceAccount, category = "Debt Repayment", desc = "Paid for ${payment.name}", notes = payment.notes, projectId = projectId, updatedAt = System.currentTimeMillis())
             dao.insertTransaction(t)
             sync { setDebtPayment(p); setTransaction(t) }
         }
+        syncAccountByName(sourceAccount)
     }
     suspend fun insertPerson(person: Person) { val p = person.copy(updatedAt = System.currentTimeMillis()); dao.insertPerson(p); sync { setPerson(p) } }
     suspend fun deletePerson(person: Person) { dao.deletePerson(person); sync { deletePerson(person.id) } }
