@@ -18,8 +18,9 @@ class FinanceViewModel(private val repository: FinanceRepository) : ViewModel() 
     private val _uiState = MutableStateFlow<UiState>(UiState.Initial)
     val uiState: StateFlow<UiState> = _uiState.asStateFlow()
 
-    // Sync status forwarded from repository -> SyncManager
-    val syncStatus: StateFlow<SyncStatus> = repository.syncStatus
+    // Sync status — reads dynamically from current SyncManager via repository
+    val syncStatus: StateFlow<SyncStatus>
+        get() = repository.syncStatus
 
     // ─── Active project ───────────────────────────────────────────────────────
 
