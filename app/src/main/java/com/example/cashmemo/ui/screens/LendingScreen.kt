@@ -123,7 +123,7 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
             }
             
             if (filteredBorrowers.isEmpty()) {
-                item { EmptyLendingState(onAdd = { showDialog = true }) }
+                item { EmptyLendingState(onAdd = { editingBorrower = Borrower("", "", "", "", "", 0.0, 0.0, "", "", 0, "Simple Interest", 0.0, "Active", "", "", 0L) }) }
             } else {
                 items(filteredBorrowers) { borrower ->
                     LendingCard(
