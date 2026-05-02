@@ -41,6 +41,10 @@ fun AddDebtDialog(
     var selectedDest by remember { mutableStateOf(destinations[0]) }
     var bankDetailName by remember { mutableStateOf("") }
 
+    var expandedIntType by remember { mutableStateOf(false) }
+    val interestTypes = listOf("Simple Interest", "Reducing Balance", "Compound Interest", "Both")
+    var selectedIntType by remember { mutableStateOf(initialDebt?.intType ?: "Simple Interest") }
+
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false)
@@ -137,6 +141,27 @@ fun AddDebtDialog(
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier.fillMaxWidth()
                 )
+
+                // Interest Type dropdown
+                ExposedDropdownMenuBox(
+                    expanded = expandedIntType,
+                    onExpandedChange = { expandedIntType = !expandedIntType }
+                ) {
+                    OutlinedTextField(
+                        value = selectedIntType,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Interest Type") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedIntType) },
+                        modifier = Modifier.menuAnchor(androidx.compose.material3.ExposedDropdownMenuAnchorType.PrimaryNotEditable, true).fillMaxWidth()
+                    )
+                    ExposedDropdownMenu(expanded = expandedIntType, onDismissRequest = { expandedIntType = false }) {
+                        interestTypes.forEach { t ->
+                            DropdownMenuItem(text = { Text(t) }, onClick = { selectedIntType = t; expandedIntType = false })
+                        }
+                    }
+                }
+
                 OutlinedTextField(
                     value = due,
                     onValueChange = { due = it },
@@ -172,7 +197,7 @@ fun AddDebtDialog(
                                 notes = notes,
                                 status = initialDebt?.status ?: "Active",
                                 type = initialDebt?.type ?: "Friend / Family",
-                                intType = initialDebt?.intType ?: "Simple Interest",
+                                intType = selectedIntType,
                                 paid = initialDebt?.paid ?: 0.0
                             )
                             onConfirm(debt, finalDest)
