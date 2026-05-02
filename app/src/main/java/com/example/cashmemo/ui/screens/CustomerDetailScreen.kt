@@ -13,6 +13,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.PictureAsPdf
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -82,7 +83,7 @@ fun CustomerDetailScreen(
                             }, "Share Loan Statement"
                         ))
                     }) {
-                        Icon(androidx.compose.material.icons.Icons.Default.PictureAsPdf, contentDescription = "Export PDF")
+                        Icon(Icons.Default.PictureAsPdf, contentDescription = "Export PDF")
                     }
                     IconButton(onClick = {
                         viewModel.deleteBorrower(borrower)

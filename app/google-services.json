@@ -7,6 +7,35 @@
   "client": [
     {
       "client_info": {
+        "mobilesdk_app_id": "1:1016532477819:android:bd2dc6eba65f4386a43fde",
+        "android_client_info": {
+          "package_name": "com.cashmemo.finance"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1016532477819-i121rp15tdpsq64ifd705b7mr0ifpqr0.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBoyGWyGtqo72pZGH6BRi4ZDoN3GmSo34c"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1016532477819-i121rp15tdpsq64ifd705b7mr0ifpqr0.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
         "mobilesdk_app_id": "1:1016532477819:android:30f61137aadd0146a43fde",
         "android_client_info": {
           "package_name": "com.example.cashmemo"
