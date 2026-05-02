@@ -12,6 +12,7 @@ import com.example.cashmemo.data.remote.SyncManager
 import com.google.firebase.FirebaseApp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 class CashMemoApplication : Application() {
@@ -24,7 +25,6 @@ class CashMemoApplication : Application() {
 
     val authManager: AuthManager by lazy { AuthManager() }
 
-    // Lateinit — only created AFTER Firebase is initialized in onCreate()
     lateinit var firestoreRepository: FirestoreRepository
     lateinit var syncManager: SyncManager
     lateinit var repository: FinanceRepository
@@ -32,25 +32,19 @@ class CashMemoApplication : Application() {
     override fun onCreate() {
         super.onCreate()
 
-        // Firebase MUST be initialized first before any Firebase class is touched
         FirebaseApp.initializeApp(this)
 
-        // Now safe to create placeholder instances
         firestoreRepository = FirestoreRepository("")
         syncManager         = SyncManager("", database.dao())
         repository          = FinanceRepository(
             database.dao(), database, firestoreRepository, syncManager
         )
 
-        // Sign in then swap in real instances
         CoroutineScope(Dispatchers.IO).launch {
             runCatching {
                 authManager.ensureSignedIn()
                 val uid = authManager.userId
-                if (uid.isNotEmpty()) {
-                    println("Auth UID: $uid | isGoogle: ${authManager.isSignedInWithGoogle}")
-                    initRemote(uid)
-                }
+                if (uid.isNotEmpty()) initRemote(uid)
             }
         }
     }
@@ -70,20 +64,16 @@ class CashMemoApplication : Application() {
         repository.updateRemote(firestoreRepository, syncManager)
         syncManager.startListening()
 
-        // Normalize legacy projectIds first, then push accounts
-        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+        CoroutineScope(Dispatchers.IO).launch {
             runCatching {
-                // Get the first real project ID from DB
+                // Normalize legacy projectIds to real project UUID
                 val firstProject = database.dao().getAllProjects().first().firstOrNull()
                 if (firstProject != null && firstProject.id != "personal") {
                     repository.normalizeLegacyProjectIds(firstProject.id)
                 }
+                // Push all accounts to Firestore (catches missed balance updates)
+                repository.pushAllAccountsToFirestore()
             }
-        }
-
-        // Push all existing accounts to Firestore
-        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
-            runCatching { repository.pushAllAccountsToFirestore() }
         }
     }
 }
