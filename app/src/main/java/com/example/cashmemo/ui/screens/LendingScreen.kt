@@ -297,9 +297,10 @@ fun EmiCalculatorDialog(onDismiss: () -> Unit) {
     var principal  by remember { mutableStateOf("") }
     var rate       by remember { mutableStateOf("") }
     var tenure     by remember { mutableStateOf("") }
+    var dueDate    by remember { mutableStateOf("") }
     var useReducing  by remember { mutableStateOf(true) }
     var useSimple    by remember { mutableStateOf(false) }
-    // useCompound = !useReducing && !useSimple
+    // useCompound = !useReducing && !useSimple (overdue scenario only)
     val locale     = remember { java.util.Locale.getDefault() }
 
     // Reducing balance EMI
@@ -320,8 +321,16 @@ fun EmiCalculatorDialog(onDismiss: () -> Unit) {
         (p + totalInterest) / n
     }
 
-    // Compound interest EMI (annual compounding + equal monthly payments)
-    val emiCompound = remember(principal, rate, tenure) {
+    // Compound interest — only applies after due date (matches InterestEngine overdue rule)
+    val isOverdue = remember(dueDate) {
+        if (dueDate.isBlank()) false
+        else runCatching {
+            java.time.LocalDate.parse(dueDate, java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd"))
+                .isBefore(java.time.LocalDate.now())
+        }.getOrDefault(false)
+    }
+    val emiCompound = remember(principal, rate, tenure, isOverdue) {
+        if (!isOverdue) return@remember null  // only valid when overdue
         val p = principal.toDoubleOrNull() ?: return@remember null
         val r = rate.toDoubleOrNull() ?: return@remember null
         val n = tenure.toIntOrNull() ?: return@remember null
@@ -375,6 +384,33 @@ fun EmiCalculatorDialog(onDismiss: () -> Unit) {
                         label    = { Text("Compound", style = MaterialTheme.typography.labelSmall) },
                         modifier = Modifier.weight(1f)
                     )
+                }
+
+                // Show due date field only for Compound mode
+                if (!useReducing && !useSimple) {
+                    OutlinedTextField(
+                        value         = dueDate,
+                        onValueChange = { dueDate = it },
+                        label         = { Text("Due Date (yyyy-MM-dd)") },
+                        placeholder   = { Text("e.g. 2024-12-31") },
+                        singleLine    = true,
+                        modifier      = Modifier.fillMaxWidth(),
+                        shape         = RoundedCornerShape(12.dp)
+                    )
+                    if (dueDate.isNotBlank() && !isOverdue) {
+                        Text(
+                            "Compound interest applies only after due date is exceeded.",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    if (isOverdue) {
+                        Text(
+                            "Loan is overdue — compound interest applies.",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color(0xFFEF4444)
+                        )
+                    }
                 }
 
                 if (emi != null) {
