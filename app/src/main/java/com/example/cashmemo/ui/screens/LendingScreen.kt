@@ -143,16 +143,17 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
 @Composable
 fun LendingCard(borrower: Borrower, onDelete: () -> Unit, onEdit: () -> Unit, onCollect: () -> Unit, onClick: () -> Unit) {
     val interest = InterestEngine.calcIntAccrued(
-        amount = borrower.amount, 
-        rate = borrower.rate, 
-        loanDate = borrower.date, 
+        amount = borrower.amount,
+        rate = borrower.rate,
+        loanDate = borrower.date,
         intType = borrower.type,
         dueDate = borrower.due,
-        totalPaid = borrower.paid // PASS PAYMENTS
+        totalPaid = borrower.paid
     )
-    val outs = InterestEngine.calcOutstanding(
-        borrower.amount, interest, borrower.paid
-    )
+    val outs     = InterestEngine.calcOutstanding(borrower.amount, interest, borrower.paid)
+    val daysElapsed = InterestEngine.daysBetween(borrower.date, java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd")))
+    val perDayInterest = if (daysElapsed > 0) interest / daysElapsed else 0.0
+    val locale   = Locale.getDefault()
     
     Card(
         modifier = Modifier.fillMaxWidth().clickable { onClick() },
@@ -217,6 +218,31 @@ fun LendingCard(borrower: Borrower, onDelete: () -> Unit, onEdit: () -> Unit, on
                     Text("Interest (${borrower.rate}%)", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text("₹ ${String.format(Locale.getDefault(), "%,.0f", interest)}", style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold, color = Color(0xFF388E3C)))
                     Text(borrower.type, style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+                }
+            }
+
+            // Days elapsed + per day interest
+            Spacer(Modifier.height(8.dp))
+            Surface(
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text("Days Elapsed", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("$daysElapsed days", style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold))
+                    }
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text("Per Day Interest", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("₹ ${String.format(locale, "%,.2f", perDayInterest)}", style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold), color = Color(0xFF388E3C))
+                    }
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text("Paid So Far", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("₹ ${String.format(locale, "%,.0f", borrower.paid)}", style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold), color = MaterialTheme.colorScheme.primary)
+                    }
                 }
             }
             
