@@ -171,6 +171,25 @@ class FinanceRepository(
     suspend fun deleteGoal(goal: Goal) { dao.deleteGoal(goal); sync { deleteGoal(goal.id) } }
     fun getPaymentsForLoan(loanId: String) = dao.getPaymentsForLoan(loanId)
 
+    /**
+     * Normalizes all legacy records (empty or "personal" projectId) to the
+     * real project UUID. Called once on startup after projects are loaded.
+     */
+    suspend fun normalizeLegacyProjectIds(realProjectId: String) {
+        db.withTransaction {
+            dao.normalizeAccountProjectIds(realProjectId)
+            dao.normalizeTransactionProjectIds(realProjectId)
+            dao.normalizeBorrowerProjectIds(realProjectId)
+            dao.normalizeInvestmentProjectIds(realProjectId)
+            dao.normalizeDebtProjectIds(realProjectId)
+            dao.normalizePeopleProjectIds(realProjectId)
+            dao.normalizePaymentProjectIds(realProjectId)
+            dao.normalizeDebtPaymentProjectIds(realProjectId)
+            dao.normalizeBudgetProjectIds(realProjectId)
+            dao.normalizeGoalProjectIds(realProjectId)
+        }
+    }
+
     /** Push all local accounts to Firestore — fixes accounts missing from cloud. */
     suspend fun pushAllAccountsToFirestore() {
         val accounts = dao.getAllAccounts().first()

@@ -48,7 +48,7 @@ class CashMemoApplication : Application() {
                 authManager.ensureSignedIn()
                 val uid = authManager.userId
                 if (uid.isNotEmpty()) {
-                        "Auth UID: $uid | isGoogle: ${authManager.isSignedInWithGoogle}")
+                    println("Auth UID: $uid | isGoogle: ${authManager.isSignedInWithGoogle}")
                     initRemote(uid)
                 }
             }
@@ -69,6 +69,17 @@ class CashMemoApplication : Application() {
         syncManager         = SyncManager(uid, database.dao())
         repository.updateRemote(firestoreRepository, syncManager)
         syncManager.startListening()
+
+        // Normalize legacy projectIds first, then push accounts
+        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+            runCatching {
+                // Get the first real project ID from DB
+                val firstProject = database.dao().getAllProjects().first().firstOrNull()
+                if (firstProject != null && firstProject.id != "personal") {
+                    repository.normalizeLegacyProjectIds(firstProject.id)
+                }
+            }
+        }
 
         // Push all existing accounts to Firestore
         kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {

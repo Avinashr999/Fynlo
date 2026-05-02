@@ -1,4 +1,4 @@
-package com.example.cashmemo.data.local
+﻿package com.example.cashmemo.data.local
 
 import androidx.room.Dao
 import androidx.room.Delete
@@ -170,4 +170,37 @@ interface CashMemoDao {
 
     @Query("DELETE FROM projects")
     suspend fun deleteAllProjects()
+    // ─── Legacy projectId normalization ───────────────────────────────────────
+    // Fixes records created before v2.0 (empty projectId) or with the
+    // placeholder "personal" string — updates them to the real project UUID.
+
+    @Query("UPDATE accounts      SET projectId = :pid WHERE projectId = '' OR projectId = 'personal'")
+    suspend fun normalizeAccountProjectIds(pid: String)
+
+    @Query("UPDATE transactions  SET projectId = :pid WHERE projectId = '' OR projectId = 'personal'")
+    suspend fun normalizeTransactionProjectIds(pid: String)
+
+    @Query("UPDATE borrowers     SET projectId = :pid WHERE projectId = '' OR projectId = 'personal'")
+    suspend fun normalizeBorrowerProjectIds(pid: String)
+
+    @Query("UPDATE investments   SET projectId = :pid WHERE projectId = '' OR projectId = 'personal'")
+    suspend fun normalizeInvestmentProjectIds(pid: String)
+
+    @Query("UPDATE debts         SET projectId = :pid WHERE projectId = '' OR projectId = 'personal'")
+    suspend fun normalizeDebtProjectIds(pid: String)
+
+    @Query("UPDATE people        SET projectId = :pid WHERE projectId = '' OR projectId = 'personal'")
+    suspend fun normalizePeopleProjectIds(pid: String)
+
+    @Query("UPDATE payments      SET projectId = :pid WHERE projectId = '' OR projectId = 'personal'")
+    suspend fun normalizePaymentProjectIds(pid: String)
+
+    @Query("UPDATE debt_payments SET projectId = :pid WHERE projectId = '' OR projectId = 'personal'")
+    suspend fun normalizeDebtPaymentProjectIds(pid: String)
+
+    @Query("UPDATE budgets       SET projectId = :pid WHERE projectId = '' OR projectId = 'personal'")
+    suspend fun normalizeBudgetProjectIds(pid: String)
+
+    @Query("UPDATE goals         SET projectId = :pid WHERE projectId = '' OR projectId = 'personal'")
+    suspend fun normalizeGoalProjectIds(pid: String)
 }
