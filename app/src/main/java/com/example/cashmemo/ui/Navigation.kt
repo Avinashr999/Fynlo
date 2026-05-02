@@ -79,8 +79,25 @@ fun MainNavigation(viewModel: FinanceViewModel) {
     var isPinUnlocked by remember { mutableStateOf(!pinManager.isPinSet) }
     val syncStatus by viewModel.syncStatus.collectAsState()
 
-    // Offline banner
-    val isOffline = syncStatus is SyncStatus.Offline
+    // Offline banner — use real network state, not Firestore status
+    val isOffline = remember {
+        val cm = context.getSystemService(android.content.Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
+        val network = cm.activeNetwork
+        val caps = cm.getNetworkCapabilities(network)
+        caps == null || !caps.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET)
+    }.let { initial ->
+        var offline by remember { mutableStateOf(initial) }
+        DisposableEffect(Unit) {
+            val cm = context.getSystemService(android.content.Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
+            val callback = object : android.net.ConnectivityManager.NetworkCallback() {
+                override fun onAvailable(network: android.net.Network) { offline = false }
+                override fun onLost(network: android.net.Network) { offline = true }
+            }
+            cm.registerDefaultNetworkCallback(callback)
+            onDispose { cm.unregisterNetworkCallback(callback) }
+        }
+        offline
+    }
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
