@@ -45,14 +45,10 @@ class FinanceViewModel(private val repository: FinanceRepository) : ViewModel() 
                 }
             }
         }
-        // 10-second safety timeout — show dashboard even if Firestore is slow
-        // NOTE: do NOT create a new project here — the real project UUID will
-        // arrive from Firestore snapshot shortly after. Creating one here causes
-        // a mismatch with the phone's project UUID.
+        // 30-second safety timeout — show dashboard even if Firestore is very slow
         viewModelScope.launch {
-            delay(10_000)
+            delay(30_000)
             if (!_isSyncReady.value) {
-                // Just show the dashboard — Firestore data will fill in as it arrives
                 _isSyncReady.value = true
             }
         }
@@ -83,14 +79,12 @@ class FinanceViewModel(private val repository: FinanceRepository) : ViewModel() 
 
     val borrowers: StateFlow<List<Borrower>> =
         combine(repository.allBorrowers, _currentProjectId) { list, pid ->
-            if (pid.isEmpty()) list
-            else list.filter { it.projectId == pid || it.projectId.isEmpty() || it.projectId == "personal" }
+            list.filter { it.projectId == pid || it.projectId.isEmpty() || it.projectId == "personal" }
         }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     val transactions: StateFlow<List<Transaction>> =
         combine(repository.allTransactions, _currentProjectId) { list, pid ->
-            if (pid.isEmpty()) list
-            else list.filter { it.projectId == pid || it.projectId.isEmpty() || it.projectId == "personal" }
+            list.filter { it.projectId == pid || it.projectId.isEmpty() || it.projectId == "personal" }
         }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     // All accounts across ALL projects — used by wizard and account pickers
@@ -100,38 +94,32 @@ class FinanceViewModel(private val repository: FinanceRepository) : ViewModel() 
 
     val accounts: StateFlow<List<Account>> =
         combine(repository.allAccounts, _currentProjectId) { list, pid ->
-            if (pid.isEmpty()) list
-            else list.filter { it.projectId == pid || it.projectId.isEmpty() || it.projectId == "personal" }
+            list.filter { it.projectId == pid || it.projectId.isEmpty() || it.projectId == "personal" }
         }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     val investments: StateFlow<List<Investment>> =
         combine(repository.allInvestments, _currentProjectId) { list, pid ->
-            if (pid.isEmpty()) list
-            else list.filter { it.projectId == pid || it.projectId.isEmpty() || it.projectId == "personal" }
+            list.filter { it.projectId == pid || it.projectId.isEmpty() || it.projectId == "personal" }
         }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     val debts: StateFlow<List<Debt>> =
         combine(repository.allDebts, _currentProjectId) { list, pid ->
-            if (pid.isEmpty()) list
-            else list.filter { it.projectId == pid || it.projectId.isEmpty() || it.projectId == "personal" }
+            list.filter { it.projectId == pid || it.projectId.isEmpty() || it.projectId == "personal" }
         }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     val people: StateFlow<List<Person>> =
         combine(repository.allPeople, _currentProjectId) { list, pid ->
-            if (pid.isEmpty()) list
-            else list.filter { it.projectId == pid || it.projectId.isEmpty() || it.projectId == "personal" }
+            list.filter { it.projectId == pid || it.projectId.isEmpty() || it.projectId == "personal" }
         }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     val budgets: StateFlow<List<Budget>> =
         combine(repository.allBudgets, _currentProjectId) { list, pid ->
-            if (pid.isEmpty()) list
-            else list.filter { it.projectId == pid || it.projectId.isEmpty() || it.projectId == "personal" }
+            list.filter { it.projectId == pid || it.projectId.isEmpty() || it.projectId == "personal" }
         }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     val goals: StateFlow<List<Goal>> =
         combine(repository.allGoals, _currentProjectId) { list, pid ->
-            if (pid.isEmpty()) list
-            else list.filter { it.projectId == pid || it.projectId.isEmpty() || it.projectId == "personal" }
+            list.filter { it.projectId == pid || it.projectId.isEmpty() || it.projectId == "personal" }
         }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     // ─── Search ───────────────────────────────────────────────────────────────
