@@ -30,6 +30,7 @@ import com.example.cashmemo.ui.components.AddLendingDialog
 import com.example.cashmemo.ui.components.CollectPaymentDialog
 import java.util.Locale
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> Unit = {}) {
     val borrowers by viewModel.borrowers.collectAsState()

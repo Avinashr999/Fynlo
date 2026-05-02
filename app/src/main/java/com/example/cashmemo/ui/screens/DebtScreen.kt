@@ -27,6 +27,7 @@ import com.example.cashmemo.ui.components.AddDebtDialog
 import com.example.cashmemo.ui.components.PayDebtDialog
 import java.util.Locale
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DebtScreen(viewModel: FinanceViewModel) {
     val debts by viewModel.debts.collectAsState()
