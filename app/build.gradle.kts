@@ -11,6 +11,15 @@ android {
     namespace = "com.example.cashmemo"
     compileSdk = 36
 
+    signingConfigs {
+        create("release") {
+            storeFile     = file("cashmemo-release.jks")
+            storePassword = "CashMemo@2024"
+            keyAlias      = "cashmemo"
+            keyPassword   = "CashMemo@2024"
+        }
+    }
+
     defaultConfig {
         applicationId = "com.cashmemo.finance"
         minSdk = 24
@@ -25,12 +34,11 @@ android {
         release {
             isMinifyEnabled   = true
             isShrinkResources = true
+            signingConfig     = signingConfigs.getByName("release")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            // TODO: Add signingConfig here before Play Store upload
-            // signingConfig = signingConfigs.getByName("release")
         }
         debug {
             isDebuggable = true

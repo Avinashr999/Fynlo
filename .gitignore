@@ -22,3 +22,7 @@ gradle/wrapper/gradle-wrapper.jar
 
 # OS
 Thumbs.db
+# Signing keystore - NEVER commit this
+cashmemo-release.jks
+*.jks
+*.keystore
