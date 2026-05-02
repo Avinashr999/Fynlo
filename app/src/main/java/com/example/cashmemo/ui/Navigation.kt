@@ -1,4 +1,4 @@
-﻿package com.example.cashmemo.ui
+package com.example.cashmemo.ui
 
 import androidx.compose.animation.*
 import androidx.compose.foundation.layout.*
@@ -87,6 +87,7 @@ fun MainNavigation(viewModel: FinanceViewModel) {
     val prefs = remember { context.getSharedPreferences("cashmemo_prefs", android.content.Context.MODE_PRIVATE) }
     var showOnboarding by remember { mutableStateOf(!prefs.getBoolean("onboarding_done", false)) }
 
+
     if (showOnboarding) {
         OnboardingScreen(onComplete = {
             prefs.edit().putBoolean("onboarding_done", true).apply()
@@ -94,7 +95,6 @@ fun MainNavigation(viewModel: FinanceViewModel) {
         })
         return@MainNavigation
     }
-    val syncStatus by viewModel.syncStatus.collectAsState()
 
     // Offline banner — use real network state, not Firestore status
     val isOffline = remember {
@@ -123,6 +123,8 @@ fun MainNavigation(viewModel: FinanceViewModel) {
         Screen.Settings.route, Screen.About.route, Screen.People.route, Screen.Profile.route -> false
         else -> drawerState.isClosed
     }
+
+    val syncStatus by viewModel.syncStatus.collectAsState()
 
     if (!isLoggedIn) {
         LoginScreen(onSignedIn = { isLoggedIn = true })
