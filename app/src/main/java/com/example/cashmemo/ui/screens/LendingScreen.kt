@@ -154,6 +154,10 @@ fun LendingCard(borrower: Borrower, onDelete: () -> Unit, onEdit: () -> Unit, on
     val daysElapsed = InterestEngine.daysBetween(borrower.date, java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd")))
     val perDayInterest = if (daysElapsed > 0) interest / daysElapsed else 0.0
     val locale   = Locale.getDefault()
+    // For "Both" type — show SI and CI portions separately
+    val bothPortions = if (borrower.type == "Both") InterestEngine.calcBothPortions(
+        borrower.amount, borrower.rate, borrower.date, borrower.due, borrower.paid
+    ) else null
     
     Card(
         modifier = Modifier.fillMaxWidth().clickable { onClick() },
@@ -218,6 +222,23 @@ fun LendingCard(borrower: Borrower, onDelete: () -> Unit, onEdit: () -> Unit, on
                     Text("Interest (${borrower.rate}%)", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text("₹ ${String.format(Locale.getDefault(), "%,.0f", interest)}", style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold, color = Color(0xFF388E3C)))
                     Text(borrower.type, style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+                }
+            }
+
+            // For "Both" type show SI + CI split
+            if (bothPortions != null) {
+                Spacer(Modifier.height(6.dp))
+                Surface(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f), shape = RoundedCornerShape(8.dp)) {
+                    Column(Modifier.fillMaxWidth().padding(10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
+                            Text("➔ SI (until due date)", style = MaterialTheme.typography.labelSmall, color = Color(0xFF388E3C))
+                            Text("₹ ${String.format(locale, "%,.0f", bothPortions.first)}", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold), color = Color(0xFF388E3C))
+                        }
+                        Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
+                            Text("➔ CI (after due date)", style = MaterialTheme.typography.labelSmall, color = Color(0xFFEF4444))
+                            Text("₹ ${String.format(locale, "%,.0f", bothPortions.second)}", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold), color = Color(0xFFEF4444))
+                        }
+                    }
                 }
             }
 
