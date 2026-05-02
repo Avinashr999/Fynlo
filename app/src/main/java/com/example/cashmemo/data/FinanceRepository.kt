@@ -49,8 +49,11 @@ class FinanceRepository(
 
     /** Fetch account from Room by name and push updated balance to Firestore. */
     private fun syncAccountByName(name: String) {
+        if (name.isBlank()) return
         ioScope.launch {
             runCatching {
+                // Small delay to ensure Room transaction is fully committed
+                kotlinx.coroutines.delay(100)
                 val account = dao.getAccountByName(name)
                 if (account != null) {
                     syncManager.setSyncing()
