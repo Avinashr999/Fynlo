@@ -1,16 +1,23 @@
-package com.example.cashmemo.ui.screens
+﻿package com.example.cashmemo.ui.screens
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.example.cashmemo.FinanceViewModel
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -20,25 +27,76 @@ fun AccountStatementScreen(
     onNavigateBack: () -> Unit
 ) {
     val transactions by viewModel.transactions.collectAsState()
-    val accountTransactions = transactions.filter { 
-        it.fromAcct == accountName || it.toAcct == accountName 
+    val accounts     by viewModel.allAccountsUnfiltered.collectAsState()
+    val account      = accounts.find { it.name == accountName }
+    val locale       = remember { Locale.getDefault() }
+
+    val accountTransactions = transactions
+        .filter { it.fromAcct == accountName || it.toAcct == accountName }
+        .sortedByDescending { it.date }
+
+    var showEditDialog by remember { mutableStateOf(false) }
+
+    if (showEditDialog && account != null) {
+        QuickBalanceEditDialog(
+            accountName    = accountName,
+            currentBalance = account.balance,
+            onDismiss      = { showEditDialog = false },
+            onConfirm      = { newBalance ->
+                viewModel.quickEditBalance(accountName, newBalance, account.balance)
+                showEditDialog = false
+            }
+        )
     }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("$accountName Statement") },
+                title = { Text("$accountName") },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                actions = {
+                    IconButton(onClick = { showEditDialog = true }) {
+                        Icon(Icons.Default.Edit, contentDescription = "Edit Balance")
                     }
                 }
             )
         }
     ) { padding ->
         Column(modifier = Modifier.padding(padding).fillMaxSize().padding(16.dp)) {
+            // Balance card
+            if (account != null) {
+                Card(
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+                    shape    = RoundedCornerShape(16.dp),
+                    colors   = CardDefaults.cardColors(
+                        containerColor = if (account.balance >= 0)
+                            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+                        else Color(0xFFFFEBEE).copy(alpha = 0.5f)
+                    )
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text("Current Balance", style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(
+                            "₹ ${String.format(locale, "%,.2f", account.balance)}",
+                            style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
+                            color = if (account.balance >= 0) MaterialTheme.colorScheme.primary else Color(0xFFD32F2F)
+                        )
+                        Text("${accountTransactions.size} transactions",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+            }
+
             if (accountTransactions.isEmpty()) {
-                Text("No transactions found for this account.", style = MaterialTheme.typography.bodyMedium)
+                Text("No transactions found for this account.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
             } else {
                 LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     items(accountTransactions) { txn ->
@@ -48,4 +106,54 @@ fun AccountStatementScreen(
             }
         }
     }
+}
+
+@Composable
+private fun QuickBalanceEditDialog(
+    accountName: String,
+    currentBalance: Double,
+    onDismiss: () -> Unit,
+    onConfirm: (Double) -> Unit
+) {
+    var input by remember { mutableStateOf(currentBalance.toBigDecimal().stripTrailingZeros().toPlainString()) }
+    val newBalance = input.toDoubleOrNull()
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Edit Balance") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Set the correct balance for $accountName.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                OutlinedTextField(
+                    value         = input,
+                    onValueChange = { input = it },
+                    label         = { Text("New Balance (₹)") },
+                    singleLine    = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    modifier      = Modifier.fillMaxWidth(),
+                    shape         = RoundedCornerShape(12.dp)
+                )
+                if (newBalance != null) {
+                    val diff = newBalance - currentBalance
+                    Text(
+                        if (diff >= 0) "+ ₹${"%.2f".format(diff)} will be added"
+                        else "- ₹${"%.2f".format(-diff)} will be deducted",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (diff >= 0) Color(0xFF2E7D32) else Color(0xFFD32F2F)
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick  = { newBalance?.let { onConfirm(it) } },
+                enabled  = newBalance != null
+            ) { Text("Update") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        }
+    )
 }

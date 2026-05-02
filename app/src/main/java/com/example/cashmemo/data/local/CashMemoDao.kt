@@ -204,3 +204,16 @@ interface CashMemoDao {
     @Query("UPDATE goals         SET projectId = :pid WHERE projectId = '' OR projectId = 'personal'")
     suspend fun normalizeGoalProjectIds(pid: String)
 }
+
+    // ─── Recurring transactions ───────────────────────────────────────────────
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertRecurringTransaction(r: com.example.cashmemo.data.model.RecurringTransaction)
+
+    @Delete
+    suspend fun deleteRecurringTransaction(r: com.example.cashmemo.data.model.RecurringTransaction)
+
+    @androidx.room.Query("SELECT * FROM recurring_transactions ORDER BY name ASC")
+    fun getAllRecurringTransactions(): kotlinx.coroutines.flow.Flow<List<com.example.cashmemo.data.model.RecurringTransaction>>
+
+    @androidx.room.Query("UPDATE recurring_transactions SET lastRun = :date WHERE id = :id")
+    suspend fun updateRecurringLastRun(id: String, date: String)

@@ -284,6 +284,12 @@ class FinanceViewModel(private val repository: FinanceRepository) : ViewModel() 
         viewModelScope.launch { repository.deleteBudget(budget) }
     }
 
+    fun quickEditBalance(accountName: String, newBalance: Double, oldBalance: Double) {
+        viewModelScope.launch {
+            repository.quickEditBalance(accountName, newBalance, oldBalance)
+        }
+    }
+
     fun addGoal(goal: Goal) {
         viewModelScope.launch {
             repository.insertGoal(goal.copy(projectId = pid))
@@ -389,6 +395,19 @@ class FinanceViewModel(private val repository: FinanceRepository) : ViewModel() 
             outputStream, financialSummary.value,
             transactions.value, borrowers.value, investments.value
         )
+    }
+
+    // ─── Recurring Transactions ──────────────────────────────────────────────
+
+    val recurringTransactions = repository.getAllRecurringTransactions()
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    fun addRecurringTransaction(r: com.example.cashmemo.data.model.RecurringTransaction) {
+        viewModelScope.launch { repository.insertRecurringTransaction(r) }
+    }
+
+    fun deleteRecurringTransaction(r: com.example.cashmemo.data.model.RecurringTransaction) {
+        viewModelScope.launch { repository.deleteRecurringTransaction(r) }
     }
 
     // ─── Sample data ──────────────────────────────────────────────────────────

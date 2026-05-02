@@ -105,6 +105,30 @@ class FinanceRepository(
         db.withTransaction { dao.updateAccountBalance("Cash in Hand", borrower.amount); dao.deleteBorrower(borrower) }
         sync { deleteBorrower(borrower.id) }
     }
+    /** Directly set account balance (for corrections). Creates a balancing transaction. */
+    suspend fun quickEditBalance(accountName: String, newBalance: Double, oldBalance: Double) {
+        db.withTransaction {
+            val diff = newBalance - oldBalance
+            dao.updateAccountBalance(accountName, diff)
+            val t = Transaction(
+                id       = java.util.UUID.randomUUID().toString(),
+                date     = java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd")),
+                type     = if (diff >= 0) "Income" else "Expense",
+                amount   = Math.abs(diff),
+                category = "Balance Correction",
+                desc     = "Manual balance adjustment",
+                toAcct   = if (diff >= 0) accountName else "",
+                fromAcct = if (diff < 0) accountName else "",
+                projectId = "personal",
+                updatedAt = System.currentTimeMillis()
+            )
+            dao.insertTransaction(t)
+            sync { setTransaction(t) }
+        }
+        // Push updated account
+        syncAccountByName(accountName)
+    }
+
     suspend fun insertAccount(account: Account) {
         val a = account.copy(updatedAt = System.currentTimeMillis())
         dao.insertAccount(a); sync { setAccount(a) }
@@ -204,6 +228,10 @@ class FinanceRepository(
      * After normalizeLegacyProjectIds runs, push ALL collections to Firestore
      * so every device gets correct projectIds, not the legacy empty/"personal" ones.
      */
+    fun getAllRecurringTransactions() = dao.getAllRecurringTransactions()
+    suspend fun insertRecurringTransaction(r: com.example.cashmemo.data.model.RecurringTransaction) = dao.insertRecurringTransaction(r)
+    suspend fun deleteRecurringTransaction(r: com.example.cashmemo.data.model.RecurringTransaction) = dao.deleteRecurringTransaction(r)
+
     suspend fun pushAllCollectionsToFirestore() {
         val accounts      = dao.getAllAccounts().first()
         val transactions  = dao.getAllTransactions().first()

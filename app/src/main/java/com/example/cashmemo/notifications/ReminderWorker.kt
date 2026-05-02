@@ -64,6 +64,25 @@ class ReminderWorker(
             }
         }
 
+        // Check budget alerts (80% threshold)
+        val budgets     = dao.getAllBudgets().first()
+        val transactions = dao.getAllTransactions().first()
+        val thisMonth   = today.format(DateTimeFormatter.ofPattern("yyyy-MM"))
+        val monthlySpend = transactions
+            .filter { it.type.equals("expense", ignoreCase = true) && it.date.startsWith(thisMonth) }
+            .groupBy { it.category }
+            .mapValues { e -> e.value.sumOf { it.amount } }
+        budgets.forEach { budget ->
+            val spent = monthlySpend[budget.category] ?: 0.0
+            val pct   = if (budget.limitAmount > 0) (spent / budget.limitAmount * 100).toInt() else 0
+            when {
+                pct >= 100 -> notify(notifId++, "Budget Exceeded: ${budget.category}",
+                    "You've spent Rs${spent.toLong()} — over your Rs${budget.limitAmount.toLong()} budget")
+                pct >= 80  -> notify(notifId++, "Budget Alert: ${budget.category}",
+                    "${pct}% used — Rs${spent.toLong()} of Rs${budget.limitAmount.toLong()} this month")
+            }
+        }
+
         return Result.success()
     }
 

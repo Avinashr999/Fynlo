@@ -20,9 +20,10 @@ import com.example.cashmemo.data.model.FlowTemplate
         Budget::class,
         Goal::class,
         Project::class,
-        FlowTemplate::class // new in v2.0 Phase 4
+        FlowTemplate::class, // new in v2.0 Phase 4
+        RecurringTransaction::class // new in v2.4
     ],
-    version = 5,
+    version = 6,
     exportSchema = false
 )
 abstract class CashMemoDatabase : RoomDatabase() {
@@ -94,6 +95,34 @@ val MIGRATION_4_5 = object : Migration(4, 5) {
                 `toAccount`   TEXT NOT NULL DEFAULT '',
                 `projectId`   TEXT NOT NULL DEFAULT 'personal',
                 `updatedAt`   INTEGER NOT NULL DEFAULT 0,
+                PRIMARY KEY(`id`)
+            )
+        """.trimIndent())
+    }
+}
+
+/**
+ * Migration 5 -> 6
+ * Creates the recurring_transactions table (optional feature).
+ */
+val MIGRATION_5_6 = object : Migration(5, 6) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("""
+            CREATE TABLE IF NOT EXISTS `recurring_transactions` (
+                `id`         TEXT NOT NULL,
+                `name`       TEXT NOT NULL DEFAULT '',
+                `type`       TEXT NOT NULL DEFAULT 'Expense',
+                `amount`     REAL NOT NULL DEFAULT 0.0,
+                `category`   TEXT NOT NULL DEFAULT '',
+                `fromAcct`   TEXT NOT NULL DEFAULT '',
+                `toAcct`     TEXT NOT NULL DEFAULT '',
+                `frequency`  TEXT NOT NULL DEFAULT 'Monthly',
+                `dayOfMonth` INTEGER NOT NULL DEFAULT 1,
+                `notes`      TEXT NOT NULL DEFAULT '',
+                `isActive`   INTEGER NOT NULL DEFAULT 1,
+                `lastRun`    TEXT NOT NULL DEFAULT '',
+                `projectId`  TEXT NOT NULL DEFAULT 'personal',
+                `updatedAt`  INTEGER NOT NULL DEFAULT 0,
                 PRIMARY KEY(`id`)
             )
         """.trimIndent())

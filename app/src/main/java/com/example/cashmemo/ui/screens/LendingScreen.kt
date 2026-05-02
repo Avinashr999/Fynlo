@@ -1,4 +1,4 @@
-package com.example.cashmemo.ui.screens
+﻿package com.example.cashmemo.ui.screens
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -10,6 +10,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Event
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -17,6 +18,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.material.icons.automirrored.filled.Notes
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.example.cashmemo.FinanceViewModel
 import com.example.cashmemo.data.model.Borrower
@@ -29,9 +32,20 @@ import java.util.Locale
 @Composable
 fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> Unit = {}) {
     val borrowers by viewModel.borrowers.collectAsState()
+    var showEmiCalc by remember { mutableStateOf(false) }
+    var searchQuery by remember { mutableStateOf("") }
+    val filteredBorrowers = remember(borrowers, searchQuery) {
+        if (searchQuery.isBlank()) borrowers
+        else borrowers.filter {
+            it.name.contains(searchQuery, ignoreCase = true) ||
+            it.notes.contains(searchQuery, ignoreCase = true) ||
+            it.phone.contains(searchQuery)
+        }
+    }
     var editingBorrower by remember { mutableStateOf<Borrower?>(null) }
     var collectingForBorrower by remember { mutableStateOf<Borrower?>(null) }
 
+    if (showEmiCalc) { EmiCalculatorDialog(onDismiss = { showEmiCalc = false }) }
     if (editingBorrower != null) {
         AddLendingDialog(
             viewModel = viewModel,
@@ -65,19 +79,36 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
             contentPadding = PaddingValues(top = 16.dp, bottom = 100.dp)
         ) {
             item {
-                Text(
-                    "Lending Management", 
-                    style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
-                    modifier = Modifier.padding(bottom = 8.dp)
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("Lending Management",
+                        style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold))
+                    OutlinedButton(onClick = { showEmiCalc = true }, shape = RoundedCornerShape(12.dp)) {
+                        Text("EMI Calc")
+                    }
+                }
+            }
+            item {
+                OutlinedTextField(
+                    value         = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    label         = { Text("Search borrowers...") },
+                    leadingIcon   = { Icon(Icons.Default.Search, null) },
+                    singleLine    = true,
+                    modifier      = Modifier.fillMaxWidth(),
+                    shape         = RoundedCornerShape(12.dp)
                 )
             }
             
-            if (borrowers.isEmpty()) {
+            if (filteredBorrowers.isEmpty()) {
                 item {
                     EmptyLendingState()
                 }
             } else {
-                items(borrowers) { borrower ->
+                items(filteredBorrowers) { borrower ->
                     LendingCard(
                         borrower = borrower,
                         onDelete = { viewModel.deleteBorrower(borrower) },
@@ -240,4 +271,69 @@ fun EmptyLendingState() {
             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
         )
     }
+}
+// ── EMI Calculator Dialog ─────────────────────────────────────────────────────
+
+@Composable
+fun EmiCalculatorDialog(onDismiss: () -> Unit) {
+    var principal by remember { mutableStateOf("") }
+    var rate      by remember { mutableStateOf("") }
+    var tenure    by remember { mutableStateOf("") }
+    val locale    = remember { java.util.Locale.getDefault() }
+
+    val emi = remember(principal, rate, tenure) {
+        val p = principal.toDoubleOrNull() ?: return@remember null
+        val r = (rate.toDoubleOrNull() ?: return@remember null) / 100.0 / 12.0
+        val n = tenure.toIntOrNull() ?: return@remember null
+        if (r == 0.0) return@remember p / n
+        p * r * Math.pow(1 + r, n.toDouble()) / (Math.pow(1 + r, n.toDouble()) - 1)
+    }
+    val total    = emi?.let { it * (tenure.toIntOrNull() ?: 0) }
+    val interest = total?.let { it - (principal.toDoubleOrNull() ?: 0.0) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("EMI Calculator") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedTextField(value = principal, onValueChange = { principal = it },
+                    label = { Text("Principal Amount (₹)") }, singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp))
+                OutlinedTextField(value = rate, onValueChange = { rate = it },
+                    label = { Text("Annual Interest Rate (%)") }, singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp))
+                OutlinedTextField(value = tenure, onValueChange = { tenure = it },
+                    label = { Text("Tenure (months)") }, singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp))
+
+                if (emi != null) {
+                    HorizontalDivider()
+                    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)),
+                        shape = RoundedCornerShape(12.dp)) {
+                        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
+                                Text("Monthly EMI", style = MaterialTheme.typography.bodyMedium)
+                                Text("₹ ${String.format(locale, "%,.2f", emi)}",
+                                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                                    color = MaterialTheme.colorScheme.primary)
+                            }
+                            Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
+                                Text("Total Amount", style = MaterialTheme.typography.bodyMedium)
+                                Text("₹ ${String.format(locale, "%,.2f", total!!)}", style = MaterialTheme.typography.bodyMedium)
+                            }
+                            Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
+                                Text("Total Interest", style = MaterialTheme.typography.bodyMedium)
+                                Text("₹ ${String.format(locale, "%,.2f", interest!!)}",
+                                    style = MaterialTheme.typography.bodyMedium, color = Color(0xFFEF4444))
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("Close") } }
+    )
 }

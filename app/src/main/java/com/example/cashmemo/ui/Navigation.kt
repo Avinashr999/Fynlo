@@ -47,6 +47,7 @@ sealed class Screen(val route: String, val label: String, val icon: ImageVector)
     object Profile  : Screen("profile",  "Profile",  Icons.Default.Person)
     object FlowWizard : Screen("flow_wizard", "Flow Wizard", Icons.Default.AutoAwesome)
     object Projects : Screen("projects", "Projects", Icons.Default.Business)
+    object Recurring : Screen("recurring", "Recurring", Icons.Default.Repeat)
 }
 
 val bottomNavItems = listOf(
@@ -221,6 +222,12 @@ fun MainNavigation(viewModel: FinanceViewModel) {
                     }
                 )
                 NavigationDrawerItem(
+                    icon     = { Icon(Icons.Default.Repeat, null) },
+                    label    = { Text("Recurring Transactions") },
+                    selected = currentRoute == Screen.Recurring.route,
+                    onClick  = { navController.navigate(Screen.Recurring.route); scope.launch { drawerState.close() } }
+                )
+                NavigationDrawerItem(
                     icon = { Icon(Icons.Default.Settings, contentDescription = null) },
                     label = { Text("App Settings") },
                     selected = currentRoute == Screen.Settings.route,
@@ -367,6 +374,7 @@ fun MainNavigation(viewModel: FinanceViewModel) {
                 composable(Screen.Goals.route) { GoalScreen(viewModel) }
                 composable(Screen.Profile.route) { ProfileScreen(onLogout = { isLoggedIn = false }) }
                 composable(Screen.Projects.route) { ProjectsScreen(viewModel) }
+                composable(Screen.Recurring.route) { RecurringScreen(viewModel) }
                 composable(Screen.FlowWizard.route) {
                     SmartFlowWizardScreen(
                         viewModel = viewModel,

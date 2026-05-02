@@ -9,6 +9,7 @@ import androidx.compose.material.icons.automirrored.filled.Notes
 import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -28,6 +29,14 @@ import java.util.Locale
 @Composable
 fun DebtScreen(viewModel: FinanceViewModel) {
     val debts by viewModel.debts.collectAsState()
+    var searchQuery by remember { mutableStateOf("") }
+    val filteredDebts = remember(debts, searchQuery) {
+        if (searchQuery.isBlank()) debts
+        else debts.filter {
+            it.name.contains(searchQuery, ignoreCase = true) ||
+            it.notes.contains(searchQuery, ignoreCase = true)
+        }
+    }
     var editingDebt by remember { mutableStateOf<Debt?>(null) }
     var payingDebt by remember { mutableStateOf<Debt?>(null) }
 
@@ -66,14 +75,24 @@ fun DebtScreen(viewModel: FinanceViewModel) {
             modifier = Modifier.padding(vertical = 16.dp)
         )
 
-        if (debts.isEmpty()) {
+        OutlinedTextField(
+            value         = searchQuery,
+            onValueChange = { searchQuery = it },
+            label         = { Text("Search debts...") },
+            leadingIcon   = { Icon(Icons.Default.Search, null) },
+            singleLine    = true,
+            modifier      = Modifier.fillMaxWidth().padding(bottom = 12.dp),
+            shape         = RoundedCornerShape(12.dp)
+        )
+
+        if (filteredDebts.isEmpty()) {
             EmptyDebtState()
         } else {
             LazyColumn(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
                 contentPadding = PaddingValues(bottom = 24.dp)
             ) {
-                items(debts) { debt ->
+                items(filteredDebts) { debt ->
                     DebtCard(
                         debt = debt,
                         onEdit = { editingDebt = debt },
