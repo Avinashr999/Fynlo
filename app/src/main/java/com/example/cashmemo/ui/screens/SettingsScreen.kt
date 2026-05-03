@@ -6,7 +6,9 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Backup
 import androidx.compose.material.icons.filled.CloudDone
@@ -33,7 +35,7 @@ import com.example.cashmemo.ui.theme.ThemeController
 import kotlinx.coroutines.launch
 
 @Composable
-fun SettingsScreen(viewModel: FinanceViewModel, onNavigateToAbout: () -> Unit) {
+fun SettingsScreen(viewModel: FinanceViewModel, onNavigateToAbout: () -> Unit, onNavigateToProfile: () -> Unit = {}) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     var isExporting by remember { mutableStateOf(false) }
@@ -60,10 +62,12 @@ fun SettingsScreen(viewModel: FinanceViewModel, onNavigateToAbout: () -> Unit) {
         }
     }
 
+    val scrollState = rememberScrollState()
     Column(
         modifier = Modifier
             .fillMaxSize()
             .statusBarsPadding()
+            .verticalScroll(scrollState)
             .padding(16.dp)
     ) {
         Text(
@@ -264,7 +268,7 @@ fun SettingsScreen(viewModel: FinanceViewModel, onNavigateToAbout: () -> Unit) {
             ) {
                 Icon(Icons.Default.GridOn, contentDescription = null)
                 Spacer(Modifier.width(8.dp))
-                Text("Export Full Backup (.xlsx)")
+                Text("Export Full Backup (.csv)")
             }
 
             OutlinedButton(
@@ -303,6 +307,51 @@ fun SettingsScreen(viewModel: FinanceViewModel, onNavigateToAbout: () -> Unit) {
 
         Spacer(modifier = Modifier.height(32.dp))
 
+        HorizontalDivider()
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Text("Security", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
+        Spacer(Modifier.height(8.dp))
+        val pinManager = remember { com.example.cashmemo.data.PinManager(context) }
+        var pinSet by remember { mutableStateOf(pinManager.isPinSet) }
+        var showPinSetup by remember { mutableStateOf(false) }
+        if (showPinSetup) {
+            com.example.cashmemo.ui.screens.PinScreen(
+                mode      = com.example.cashmemo.ui.screens.PinMode.SET,
+                onSuccess = { pinSet = pinManager.isPinSet; showPinSetup = false },
+                onSkip    = { showPinSetup = false }
+            )
+        }
+        Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)) {
+            Row(
+                Modifier.padding(16.dp).fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text(if (pinSet) "PIN Lock Enabled" else "PIN Lock Disabled",
+                        style = MaterialTheme.typography.bodyLarge)
+                    Text(if (pinSet) "App locks when you switch away" else "Set a 4-digit PIN to secure the app",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (pinSet) {
+                        OutlinedButton(onClick = { pinManager.clearPin(); pinSet = false },
+                            shape = RoundedCornerShape(8.dp)) { Text("Remove") }
+                    }
+                    Button(onClick = { showPinSetup = true },
+                        shape = RoundedCornerShape(8.dp)) {
+                        Text(if (pinSet) "Change" else "Set PIN")
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+        HorizontalDivider()
+        Spacer(modifier = Modifier.height(16.dp))
+
         Text("App Information", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
         
         TextButton(
@@ -324,7 +373,7 @@ fun SettingsScreen(viewModel: FinanceViewModel, onNavigateToAbout: () -> Unit) {
             }
         }
 
-        Spacer(modifier = Modifier.weight(1f))
+        Spacer(modifier = Modifier.height(32.dp))
         
         Text(
             "Version ${com.example.cashmemo.BuildConfig.VERSION_NAME}",

@@ -85,6 +85,10 @@ dependencies {
     // PDF Generation
     implementation("com.itextpdf:itext7-core:7.2.5")
 
+    // Excel Generation
+    implementation(libs.apache.poi)
+    implementation(libs.apache.poi.ooxml)
+
     // Firebase
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.firestore)

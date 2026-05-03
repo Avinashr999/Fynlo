@@ -16,7 +16,7 @@ object ExcelExportUtility {
         debts: List<Debt>,
         investments: List<Investment>,
         payments: List<Payment>,
-        debtPayments: List<DebtPayment>
+        debtPayments: List<DebtPayment>,
     ) {
         val wb     = XSSFWorkbook()
         val locale = Locale.getDefault()
