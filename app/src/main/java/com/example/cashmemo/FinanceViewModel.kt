@@ -216,6 +216,13 @@ class FinanceViewModel(private val repository: FinanceRepository) : ViewModel() 
         }
     }
 
+    fun updateDebt(debt: Debt) {
+        val pid = currentProjectId.value
+        viewModelScope.launch {
+            repository.updateDebt(debt.copy(projectId = pid, updatedAt = System.currentTimeMillis()))
+        }
+    }
+
     fun addInvestmentWithSource(investment: Investment, source: String) {
         viewModelScope.launch {
             repository.insertInvestmentWithSource(investment.copy(projectId = pid), source, pid)

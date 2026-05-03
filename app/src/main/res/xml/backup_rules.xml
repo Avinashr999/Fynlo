@@ -4,7 +4,4 @@
     <include domain="database" path="cashmemo_database" />
     <include domain="database" path="cashmemo_database-shm" />
     <include domain="database" path="cashmemo_database-wal" />
-
-    <!-- Exclude any temporary files if needed -->
-    <exclude domain="sharedpref" path="device_info.xml"/>
 </full-backup-content>

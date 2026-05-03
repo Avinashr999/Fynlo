@@ -177,10 +177,10 @@ private fun AddProjectDialog(
     onDismiss: () -> Unit,
     onConfirm: (Project) -> Unit
 ) {
-    var name     by remember { mutableStateOf("") }
-    var currency by remember { mutableStateOf("INR") }
+    var name         by remember { mutableStateOf("") }
+    var currency      by remember { mutableStateOf("INR") }
+    var currExpanded  by remember { mutableStateOf(false) }
     val today = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
-
     val colors = listOf("#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899")
     var selectedColor by remember { mutableStateOf(colors.first()) }
 
@@ -196,13 +196,26 @@ private fun AddProjectDialog(
                     singleLine    = true,
                     modifier      = Modifier.fillMaxWidth()
                 )
-                OutlinedTextField(
-                    value         = currency,
-                    onValueChange = { currency = it },
-                    label         = { Text("Currency (e.g. INR, USD)") },
-                    singleLine    = true,
-                    modifier      = Modifier.fillMaxWidth()
-                )
+
+                // Currency dropdown
+                ExposedDropdownMenuBox(expanded = currExpanded, onExpandedChange = { currExpanded = !currExpanded }) {
+                    OutlinedTextField(
+                        value       = "${com.example.cashmemo.logic.CurrencyUtils.symbolFor(currency)} $currency",
+                        onValueChange = {},
+                        readOnly    = true,
+                        label       = { Text("Currency") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(currExpanded) },
+                        modifier    = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, true).fillMaxWidth()
+                    )
+                    ExposedDropdownMenu(expanded = currExpanded, onDismissRequest = { currExpanded = false }) {
+                        com.example.cashmemo.logic.CurrencyUtils.supported.forEach { c ->
+                            DropdownMenuItem(
+                                text    = { Text("${c.symbol}  ${c.code} — ${c.name}") },
+                                onClick = { currency = c.code; currExpanded = false }
+                            )
+                        }
+                    }
+                }
                 Text("Color", style = MaterialTheme.typography.labelMedium)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     colors.forEach { hex ->

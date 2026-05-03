@@ -132,6 +132,18 @@ class FinanceRepository(
         sync { deleteTransaction(transaction.id) }
     }
     suspend fun insertBorrower(borrower: Borrower) = insertBorrowerWithSource(borrower, "Cash in Hand")
+
+    suspend fun updateBorrower(borrower: Borrower) {
+        val b = borrower.copy(updatedAt = System.currentTimeMillis())
+        dao.insertBorrower(b)
+        sync { setBorrower(b) }
+    }
+
+    suspend fun updateDebt(debt: Debt) {
+        val d = debt.copy(updatedAt = System.currentTimeMillis())
+        dao.insertDebt(d)
+        sync { setDebt(d) }
+    }
     suspend fun insertBorrowerWithSource(borrower: Borrower, sourceAccount: String, projectId: String = borrower.projectId) {
         db.withTransaction {
             val b = borrower.copy(projectId = projectId, updatedAt = System.currentTimeMillis())

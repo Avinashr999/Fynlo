@@ -34,6 +34,7 @@ fun HomeScreen(viewModel: FinanceViewModel, onNavigateToScreen: (String) -> Unit
     val isSyncReady      by viewModel.isSyncReady.collectAsState()
     val haptic           = LocalHapticFeedback.current
     val locale = java.util.Locale.getDefault()
+    val currencySymbol = com.example.cashmemo.logic.CurrencyUtils.symbolFor(currentProject?.currency ?: "INR")
 
     // Show loading screen while waiting for Firestore first sync
     if (!isSyncReady) {
@@ -122,25 +123,25 @@ fun HomeScreen(viewModel: FinanceViewModel, onNavigateToScreen: (String) -> Unit
             Column(modifier = Modifier.padding(16.dp)) {
                 DataPoint(
                     "TOTAL ASSETS (Sum)",
-                    "₹ ${String.format(locale, "%,.0f", summary.totalAssets)}",
+                    "$currencySymbol ${String.format(locale, "%,.0f", summary.totalAssets)}",
                     valueColor = MaterialTheme.colorScheme.primary
                 )
                 HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
                 summary.accountBreakdown.forEach { (name, balance) ->
                     Box(Modifier.clickable { onNavigateToScreen("statement/$name") }) {
-                        DataPoint(name, "₹ ${String.format(locale, "%,.0f", balance)}")
+                        DataPoint(name, "$currencySymbol ${String.format(locale, "%,.0f", balance)}")
                     }
                 }
                 Box(Modifier.clickable { onNavigateToScreen("invest") }) {
                     DataPoint(
                         "Market Value of Invest.",
-                        "₹ ${String.format(locale, "%,.0f", summary.totalInvestments)}"
+                        "$currencySymbol ${String.format(locale, "%,.0f", summary.totalInvestments)}"
                     )
                 }
                 Box(Modifier.clickable { onNavigateToScreen("lending") }) {
                     DataPoint(
                         "Lending Receivables",
-                        "₹ ${String.format(locale, "%,.0f", summary.totalReceivables)}"
+                        "$currencySymbol ${String.format(locale, "%,.0f", summary.totalReceivables)}"
                     )
                 }
             }
@@ -163,17 +164,17 @@ fun HomeScreen(viewModel: FinanceViewModel, onNavigateToScreen: (String) -> Unit
                 val totalLiabilities = summary.totalDebtPrincipal + summary.totalDebtInterest
                 DataPoint(
                     "TOTAL LIABILITIES",
-                    "₹ ${String.format(locale, "%,.0f", totalLiabilities)}",
+                    "$currencySymbol ${String.format(locale, "%,.0f", totalLiabilities)}",
                     valueColor = Color(0xFFD32F2F)
                 )
                 HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
                 DataPoint(
                     "Debt Principal Amount",
-                    "₹ ${String.format(locale, "%,.0f", summary.totalDebtPrincipal)}"
+                    "$currencySymbol ${String.format(locale, "%,.0f", summary.totalDebtPrincipal)}"
                 )
                 DataPoint(
                     "Debt Accrued Interest",
-                    "₹ ${String.format(locale, "%,.0f", summary.totalDebtInterest)}",
+                    "$currencySymbol ${String.format(locale, "%,.0f", summary.totalDebtInterest)}",
                     valueColor = Color(0xFFD32F2F)
                 )
             }
@@ -187,7 +188,7 @@ fun HomeScreen(viewModel: FinanceViewModel, onNavigateToScreen: (String) -> Unit
         ) {
             PerformanceCard(
                 label    = "Invest. Growth",
-                value    = "₹ ${String.format(locale, "%,.0f", summary.investmentGrowth)}",
+                value    = "$currencySymbol ${String.format(locale, "%,.0f", summary.investmentGrowth)}",
                 color    = Color(0xFF2E7D32),
                 modifier = Modifier.weight(1f).clickable { onNavigateToScreen("invest") }
             )

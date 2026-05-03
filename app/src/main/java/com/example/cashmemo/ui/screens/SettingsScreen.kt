@@ -1,4 +1,4 @@
-package com.example.cashmemo.ui.screens
+﻿package com.example.cashmemo.ui.screens
 
 import android.content.Context
 import android.content.Intent
@@ -17,6 +17,7 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.FileUpload
 import androidx.compose.material.icons.filled.PictureAsPdf
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.TableChart
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -69,7 +70,7 @@ fun SettingsScreen(viewModel: FinanceViewModel, onNavigateToAbout: () -> Unit) {
             modifier = Modifier.padding(bottom = 24.dp)
         )
 
-        // ── Theme toggle ──────────────────────────────────────────────────
+        // â”€â”€ Theme toggle â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         Card(
             modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
             shape    = RoundedCornerShape(16.dp)
@@ -186,6 +187,29 @@ fun SettingsScreen(viewModel: FinanceViewModel, onNavigateToAbout: () -> Unit) {
             }
         }
 
+        
+        Spacer(modifier = Modifier.height(16.dp))
+        HorizontalDivider()
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Text("Notifications", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
+        Spacer(Modifier.height(8.dp))
+        OutlinedButton(
+            onClick = {
+                com.example.cashmemo.notifications.ReminderScheduler.schedule(context)
+                android.widget.Toast.makeText(context, "Reminders scheduled! Due date alerts will fire daily.", android.widget.Toast.LENGTH_LONG).show()
+            },
+            modifier = Modifier.fillMaxWidth(),
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp)
+        ) {
+            Icon(Icons.Default.Notifications, null, Modifier.size(18.dp))
+            Spacer(Modifier.width(8.dp))
+            Text("Test Notifications")
+        }
+        Text("Schedules daily reminders for loan due dates and budget alerts.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
+
         Spacer(modifier = Modifier.height(32.dp))
 
         Text("App Information", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
@@ -219,3 +243,5 @@ fun SettingsScreen(viewModel: FinanceViewModel, onNavigateToAbout: () -> Unit) {
         )
     }
 }
+
+
