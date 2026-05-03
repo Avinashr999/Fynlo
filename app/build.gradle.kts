@@ -22,7 +22,7 @@ android {
 
     defaultConfig {
         applicationId = "com.cashmemo.finance"
-        minSdk = 24
+        minSdk = 26
         targetSdk = 36
         versionCode = 110
         versionName = "2.5.1"
@@ -60,9 +60,6 @@ android {
 
 dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
-    // Excel export
-    implementation("org.apache.poi:poi:5.2.3")
-    implementation("org.apache.poi:poi-ooxml:5.2.3")
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.compose.material3)

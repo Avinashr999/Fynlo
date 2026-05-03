@@ -13,8 +13,8 @@ import com.example.cashmemo.ui.theme.CashMemoTheme
 
 class MainActivity : ComponentActivity() {
 
-    // Lock the app when it goes to background
-    private var appWentToBackground = false
+    private var backgroundTime = 0L
+    private val LOCK_DELAY_MS = 1500L // Only lock if background for >1.5 seconds
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -38,20 +38,18 @@ class MainActivity : ComponentActivity() {
 
     override fun onStop() {
         super.onStop()
-        // Mark that app went to background
-        val pinManager = com.example.cashmemo.data.PinManager(this)
-        if (pinManager.isPinSet) {
-            appWentToBackground = true
-            // Signal Navigation to re-lock
-            AppLockState.lock()
-        }
+        backgroundTime = System.currentTimeMillis()
     }
 
     override fun onStart() {
         super.onStart()
-        if (appWentToBackground) {
-            appWentToBackground = false
-            // AppLockState.isLocked is already true — Navigation will show PinScreen
+        val elapsed = System.currentTimeMillis() - backgroundTime
+        if (backgroundTime > 0 && elapsed > LOCK_DELAY_MS) {
+            val pinManager = com.example.cashmemo.data.PinManager(this)
+            if (pinManager.isPinSet) {
+                AppLockState.lock()
+            }
         }
+        backgroundTime = 0L
     }
 }

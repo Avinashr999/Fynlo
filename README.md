@@ -26,7 +26,7 @@ Current version: **2.0.0** (versionCode 90).
 - Firebase BOM 33.7.0 (Auth, Firestore), Play Services Auth 21.0.0
 - kotlinx.serialization
 - iText 7.2.5 for PDF
-- minSdk 24, targetSdk 36, compileSdk 36
+- minSdk 26, targetSdk 36, compileSdk 36
 - Java 17 / JVM target 17 (with core library desugaring)
 - Android Gradle Plugin 8.10.0 / Gradle 8.13
 
@@ -60,7 +60,7 @@ The wrapper will fetch Gradle 8.13 on first run.
 
 ### Run
 
-Open the project in Android Studio and run the `app` configuration on an emulator or device (API 24+). Default PIN on first launch is **1234**.
+Open the project in Android Studio and run the `app` configuration on an emulator or device (API 26+). Default PIN on first launch is **1234**.
 
 ## Project Layout
 
