@@ -17,6 +17,7 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.FileUpload
 import androidx.compose.material.icons.filled.PictureAsPdf
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.GridOn
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.TableChart
 import androidx.compose.material3.*
@@ -173,7 +174,39 @@ fun SettingsScreen(viewModel: FinanceViewModel, onNavigateToAbout: () -> Unit) {
             ) {
                 Icon(Icons.Default.TableChart, contentDescription = null)
                 Spacer(Modifier.width(8.dp))
-                Text("Export Excel (CSV)")
+                Text("Export Expenses (CSV)")
+            }
+
+            // Full Excel backup
+            val xlsxLauncher = rememberLauncherForActivityResult(
+                ActivityResultContracts.CreateDocument("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+            ) { uri ->
+                uri?.let {
+                    scope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                        context.contentResolver.openOutputStream(it)?.use { os ->
+                            com.example.cashmemo.logic.ExcelExportUtility.generateFullBackup(
+                                os,
+                                viewModel.accounts.value,
+                                viewModel.transactions.value,
+                                viewModel.borrowers.value,
+                                viewModel.debts.value,
+                                viewModel.investments.value,
+                                viewModel.payments.value,
+                                viewModel.debtPayments.value
+                            )
+                        }
+                    }
+                }
+            }
+            Button(
+                onClick = { xlsxLauncher.launch("CashMemo_Backup_${System.currentTimeMillis()}.xlsx") },
+                modifier = Modifier.fillMaxWidth().height(48.dp),
+                shape    = MaterialTheme.shapes.medium,
+                colors   = ButtonDefaults.buttonColors(containerColor = Color(0xFF059669))
+            ) {
+                Icon(Icons.Default.GridOn, contentDescription = null)
+                Spacer(Modifier.width(8.dp))
+                Text("Export Full Backup (.xlsx)")
             }
 
             OutlinedButton(

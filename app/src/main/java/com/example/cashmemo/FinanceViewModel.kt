@@ -108,6 +108,12 @@ class FinanceViewModel(private val repository: FinanceRepository) : ViewModel() 
             list.filter { it.projectId == pid || it.projectId.isEmpty() || it.projectId == "personal" }
         }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
+    val payments: StateFlow<List<Payment>> =
+        repository.allPayments.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    val debtPayments: StateFlow<List<DebtPayment>> =
+        repository.allDebtPayments.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
     val people: StateFlow<List<Person>> =
         combine(repository.allPeople, _currentProjectId) { list, pid ->
             list.filter { it.projectId == pid || it.projectId.isEmpty() || it.projectId == "personal" }

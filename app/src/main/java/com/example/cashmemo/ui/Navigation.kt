@@ -23,6 +23,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.example.cashmemo.AppLockState
 import com.example.cashmemo.FinanceViewModel
 import com.example.cashmemo.ui.screens.*
 import com.example.cashmemo.ui.components.*
@@ -56,6 +57,7 @@ sealed class Screen(val route: String, val label: String, val icon: ImageVector)
     object NetWorthH  : Screen("net_worth_hist", "Net Worth History",Icons.AutoMirrored.Filled.TrendingUp)
     object MoneyFlow  : Screen("money_flow",     "Money Flow",       Icons.Default.SwapHoriz)
     object LoanCalc   : Screen("loan_calc",      "Loan Calculator",  Icons.Default.Calculate)
+    object GlobalSearch: Screen("global_search",  "Search",           Icons.Default.Search)
 }
 
 val bottomNavItems = listOf(
@@ -84,8 +86,14 @@ fun MainNavigation(viewModel: FinanceViewModel) {
     val app = context.applicationContext as com.example.cashmemo.CashMemoApplication
     var isLoggedIn by remember { mutableStateOf(app.authManager.isSignedInWithGoogle) }
     val pinManager = remember { PinManager(context) }
-    // Start locked if PIN is set — user must enter PIN on every fresh app launch
+    // Start locked if PIN is set
     var isPinUnlocked by remember { mutableStateOf(!pinManager.isPinSet) }
+
+    // Re-lock when app comes back from background (AppLockState set by MainActivity.onStop)
+    if (AppLockState.isLocked && pinManager.isPinSet) {
+        isPinUnlocked = false
+        AppLockState.unlock()
+    }
 
     // Onboarding — show only on first launch
     val prefs = remember { context.getSharedPreferences("cashmemo_prefs", android.content.Context.MODE_PRIVATE) }
@@ -335,6 +343,9 @@ fun MainNavigation(viewModel: FinanceViewModel) {
                 CenterAlignedTopAppBar(
                     title = { Text("Cash Memo") },
                     actions = {
+                        IconButton(onClick = { navController.navigate(Screen.GlobalSearch.route) }) {
+                            Icon(Icons.Default.Search, contentDescription = "Search")
+                        }
                         SyncStatusBadge(status = syncStatus)
                     },
                     navigationIcon = {
@@ -449,6 +460,7 @@ fun MainNavigation(viewModel: FinanceViewModel) {
                 composable(Screen.NetWorthH.route)  { NetWorthHistoryScreen(viewModel) }
                 composable(Screen.MoneyFlow.route)   { MoneyFlowScreen(viewModel) }
                 composable(Screen.LoanCalc.route)    { LoanCalculatorScreen() }
+                composable(Screen.GlobalSearch.route) { GlobalSearchScreen(viewModel, onNavigateBack = { navController.popBackStack() }) }
                 composable(Screen.FlowWizard.route) {
                     SmartFlowWizardScreen(
                         viewModel = viewModel,

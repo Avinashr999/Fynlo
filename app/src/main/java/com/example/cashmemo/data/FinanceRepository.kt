@@ -34,6 +34,8 @@ class FinanceRepository(
     val allAccounts: Flow<List<Account>>         = dao.getAllAccounts()
     val allInvestments: Flow<List<Investment>>   = dao.getAllInvestments()
     val allDebts: Flow<List<Debt>>               = dao.getAllDebts()
+    val allPayments: Flow<List<Payment>>         = dao.getAllPayments()
+    val allDebtPayments: Flow<List<DebtPayment>> = dao.getAllDebtPayments()
     val allPeople: Flow<List<Person>>            = dao.getAllPeople()
     val allBudgets: Flow<List<Budget>>           = dao.getAllBudgets()
     val allGoals: Flow<List<Goal>>               = dao.getAllGoals()

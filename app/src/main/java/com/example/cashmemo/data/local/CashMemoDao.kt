@@ -43,6 +43,9 @@ interface CashMemoDao {
     @Query("SELECT * FROM payments WHERE loanId = :loanId")
     fun getPaymentsForLoan(loanId: String): Flow<List<Payment>>
 
+    @Query("SELECT * FROM payments ORDER BY date DESC")
+    fun getAllPayments(): Flow<List<Payment>>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertPayment(payment: Payment)
 
@@ -50,6 +53,9 @@ interface CashMemoDao {
 
     @Query("SELECT * FROM debt_payments WHERE debtId = :debtId")
     fun getDebtPayments(debtId: String): Flow<List<DebtPayment>>
+
+    @Query("SELECT * FROM debt_payments ORDER BY date DESC")
+    fun getAllDebtPayments(): Flow<List<DebtPayment>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertDebtPayment(payment: DebtPayment)

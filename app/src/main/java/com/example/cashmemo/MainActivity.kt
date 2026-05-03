@@ -12,14 +12,18 @@ import com.example.cashmemo.ui.MainNavigation
 import com.example.cashmemo.ui.theme.CashMemoTheme
 
 class MainActivity : ComponentActivity() {
+
+    // Lock the app when it goes to background
+    private var appWentToBackground = false
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         com.example.cashmemo.ui.theme.ThemeController.load(this)
         enableEdgeToEdge()
-        
+
         val app = application as CashMemoApplication
         val viewModel = FinanceViewModel(app.repository)
-        
+
         setContent {
             CashMemoTheme {
                 Surface(
@@ -29,6 +33,25 @@ class MainActivity : ComponentActivity() {
                     MainNavigation(viewModel)
                 }
             }
+        }
+    }
+
+    override fun onStop() {
+        super.onStop()
+        // Mark that app went to background
+        val pinManager = com.example.cashmemo.data.PinManager(this)
+        if (pinManager.isPinSet) {
+            appWentToBackground = true
+            // Signal Navigation to re-lock
+            AppLockState.lock()
+        }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        if (appWentToBackground) {
+            appWentToBackground = false
+            // AppLockState.isLocked is already true — Navigation will show PinScreen
         }
     }
 }
