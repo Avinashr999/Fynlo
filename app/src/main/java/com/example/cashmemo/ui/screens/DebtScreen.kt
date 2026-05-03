@@ -47,7 +47,7 @@ fun DebtScreen(viewModel: FinanceViewModel) {
     if (showAddDialog || editingDebt != null) {
         AddDebtDialog(
             viewModel = viewModel,
-            onDismiss = { editingDebt = null },
+            onDismiss = { editingDebt = null; showAddDialog = false },
             onConfirm = { debt, dest ->
                 if (editingDebt?.id?.isNotBlank() == true) {
                     viewModel.updateDebt(debt)
