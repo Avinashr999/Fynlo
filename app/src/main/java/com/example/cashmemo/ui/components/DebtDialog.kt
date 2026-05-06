@@ -177,8 +177,9 @@ fun AddDebtDialog(
                                 "Custom" -> bankDetailName
                                 else -> bankDetailName.ifEmpty { selectedDest }
                             }
+                            val rawId = initialDebt?.id ?: ""
                             val debt = Debt(
-                                id = initialDebt?.id ?: UUID.randomUUID().toString(),
+                                id = if (rawId.isBlank()) UUID.randomUUID().toString() else rawId,
                                 name = selectedPerson?.name ?: initialDebt?.name ?: "Unknown",
                                 amount = amount.toDoubleOrNull() ?: 0.0,
                                 rate = rate.toDoubleOrNull() ?: 0.0,

@@ -45,17 +45,20 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
             it.phone.contains(searchQuery)
         }
     }
+    var showAddDialog by remember { mutableStateOf(false) }
     var editingBorrower by remember { mutableStateOf<Borrower?>(null) }
     var collectingForBorrower by remember { mutableStateOf<Borrower?>(null) }
 
     if (showEmiCalc) { EmiCalculatorDialog(onDismiss = { showEmiCalc = false }) }
-    if (editingBorrower != null) {
+    if (showAddDialog || editingBorrower != null) {
         AddLendingDialog(
             viewModel = viewModel,
-            onDismiss = { editingBorrower = null },
-            onConfirm = { borrower, _ ->
-                viewModel.updateBorrower(borrower)
+            onDismiss = { editingBorrower = null; showAddDialog = false },
+            onConfirm = { borrower, source ->
+                if (editingBorrower != null) viewModel.updateBorrower(borrower)
+                else viewModel.addBorrowerWithSource(borrower, source)
                 editingBorrower = null
+                showAddDialog = false
             },
             initialBorrower = editingBorrower
         )
@@ -123,7 +126,7 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
             }
             
             if (filteredBorrowers.isEmpty()) {
-                item { EmptyLendingState(onAdd = { editingBorrower = Borrower("", "", "", "", "", 0.0, 0.0, "", "", 0, "Simple Interest", 0.0, "Active", "", "", 0L) }) }
+                item { EmptyLendingState(onAdd = { showAddDialog = true }) }
             } else {
                 items(filteredBorrowers) { borrower ->
                     LendingCard(

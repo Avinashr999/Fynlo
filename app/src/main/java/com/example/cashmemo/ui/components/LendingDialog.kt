@@ -175,8 +175,9 @@ fun AddLendingDialog(
                                 "Cash" -> "Cash in Hand"
                                 else -> sourceEntityName.ifEmpty { selectedSource }
                             }
+                            val rawId = initialBorrower?.id ?: ""
                             val borrower = Borrower(
-                                id = initialBorrower?.id ?: UUID.randomUUID().toString(),
+                                id = if (rawId.isBlank()) UUID.randomUUID().toString() else rawId,
                                 name = selectedPerson?.name ?: initialBorrower?.name ?: "Unknown",
                                 amount = amount.toDoubleOrNull() ?: 0.0,
                                 rate = rate.toDoubleOrNull() ?: 0.0,
