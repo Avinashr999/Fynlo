@@ -337,69 +337,78 @@ class FinanceRepository(
      * Never backs up if accounts are empty. Runs silently once per day.
      */
     suspend fun takeBackupIfNeeded(uid: String) {
-        if (uid.isEmpty()) return
-        runCatching {
+        if (uid.isBlank()) return
+        try {
             val accounts = dao.getAllAccounts().first()
             if (accounts.isEmpty()) return // Never back up empty data
 
-            val today = java.time.LocalDate.now().toString()
-            val fs = com.google.firebase.firestore.FirebaseFirestore.getInstance()
+            val today  = java.time.LocalDate.now().toString()
+            val fs     = com.google.firebase.firestore.FirebaseFirestore.getInstance()
             val metaRef = fs.collection("users").document(uid)
                 .collection("backup_meta").document("last_backup")
 
             // Check if already backed up today
-            val doc = try { metaRef.get().await() } catch (e: Exception) { null }
-            val lastBackup = doc?.getString("date") ?: ""
+            val lastBackup = try {
+                metaRef.get().await().getString("date") ?: ""
+            } catch (e: Exception) { "" }
             if (lastBackup == today) return
 
-            val borrowers = dao.getAllBorrowers().first()
-            val investments = dao.getAllInvestments().first()
-            val debts = dao.getAllDebts().first()
-            val transactions = dao.getAllTransactions().first()
+            val borrowers    = try { dao.getAllBorrowers().first() }    catch (e: Exception) { emptyList() }
+            val transactions = try { dao.getAllTransactions().first() }  catch (e: Exception) { emptyList() }
+            val debts        = try { dao.getAllDebts().first() }         catch (e: Exception) { emptyList() }
+            val investments  = try { dao.getAllInvestments().first() }   catch (e: Exception) { emptyList() }
 
             val backupRef = fs.collection("users").document(uid)
                 .collection("backups").document(today)
 
-            // Write summary
-            backupRef.set(
-                mapOf(
-                    "date" to today,
-                    "netWorth" to accounts.sumOf { it.balance },
-                    "accountCount" to accounts.size,
-                    "txnCount" to transactions.size,
+            // Write summary - isolated try/catch
+            try {
+                backupRef.set(mapOf(
+                    "date"          to today,
+                    "netWorth"      to accounts.sumOf { it.balance },
+                    "accountCount"  to accounts.size,
+                    "txnCount"      to transactions.size,
                     "borrowerCount" to borrowers.size,
-                    "debtCount" to debts.size,
-                    "investCount" to investments.size,
-                    "createdAt" to System.currentTimeMillis()
-                )
-            ).await()
+                    "debtCount"     to debts.size,
+                    "investCount"   to investments.size,
+                    "createdAt"     to System.currentTimeMillis()
+                )).await()
+            } catch (e: Exception) {
+                android.util.Log.e("Backup", "summary write failed: ${e.message}")
+                return
+            }
 
-            // Write accounts
-            accounts.forEach { a ->
-                if (a.id.isNotBlank()) {
+            // Write account snapshots — each one isolated
+            accounts.filter { it.id.isNotBlank() }.forEach { a ->
+                try {
                     backupRef.collection("accounts").document(a.id).set(
-                        mapOf(
-                            "name" to a.name, "balance" to a.balance, "type" to a.type
-                        )
-                    )
+                        mapOf("name" to a.name, "balance" to a.balance, "type" to a.type)
+                    ).await()
+                } catch (e: Exception) {
+                    android.util.Log.e("Backup", "account ${a.id} write failed: ${e.message}")
                 }
             }
 
-            // Write borrower summaries
-            borrowers.take(100).forEach { b ->
-                if (b.id.isNotBlank()) {
+            // Write borrower snapshots — each one isolated
+            borrowers.filter { it.id.isNotBlank() }.take(100).forEach { b ->
+                try {
                     backupRef.collection("borrowers").document(b.id).set(
-                        mapOf(
-                            "name" to b.name, "amount" to b.amount, "paid" to b.paid
-                        )
-                    )
+                        mapOf("name" to b.name, "amount" to b.amount, "paid" to b.paid)
+                    ).await()
+                } catch (e: Exception) {
+                    android.util.Log.e("Backup", "borrower ${b.id} write failed: ${e.message}")
                 }
             }
 
             // Mark today as backed up
-            metaRef.set(mapOf("date" to today)).await()
-        }.onFailure {
-            android.util.Log.e("FinanceRepository", "Backup failed: ${it.message}")
+            try {
+                metaRef.set(mapOf("date" to today)).await()
+            } catch (e: Exception) {
+                android.util.Log.e("Backup", "meta write failed: ${e.message}")
+            }
+
+        } catch (e: Exception) {
+            android.util.Log.e("Backup", "takeBackupIfNeeded failed: ${e.message}", e)
         }
     }
     suspend fun getAllDataAsJson(): String {
