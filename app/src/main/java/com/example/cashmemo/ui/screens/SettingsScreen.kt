@@ -22,6 +22,7 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.GridOn
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Science
+import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.TableChart
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -362,6 +363,17 @@ fun SettingsScreen(viewModel: FinanceViewModel, onNavigateToAbout: () -> Unit, o
         Text("Developer", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
         Spacer(Modifier.height(8.dp))
         var showSeedConfirm by remember { mutableStateOf(false) }
+        var showCleanupConfirm by remember { mutableStateOf(false) }
+
+        if (showCleanupConfirm) {
+            AlertDialog(
+                onDismissRequest = { showCleanupConfirm = false },
+                title = { Text("Cleanup Seeder Data?") },
+                text  = { Text("This will remove all QA test data (seeder investments, borrowers, debts, transactions and accounts) from both the app and Firestore. Your real data will remain.") },
+                confirmButton = { Button(onClick = { viewModel.cleanupSeeederData(); showCleanupConfirm = false }) { Text("Cleanup") } },
+                dismissButton = { TextButton(onClick = { showCleanupConfirm = false }) { Text("Cancel") } }
+            )
+        }
         if (showSeedConfirm) {
             AlertDialog(
                 onDismissRequest = { showSeedConfirm = false },
@@ -379,6 +391,16 @@ fun SettingsScreen(viewModel: FinanceViewModel, onNavigateToAbout: () -> Unit, o
             Icon(Icons.Default.Science, null, Modifier.size(18.dp))
             Spacer(Modifier.width(8.dp))
             Text("Load Test Data (QA)")
+        }
+        Spacer(Modifier.height(8.dp))
+        OutlinedButton(
+            onClick  = { showCleanupConfirm = true },
+            modifier = Modifier.fillMaxWidth(),
+            shape    = RoundedCornerShape(12.dp)
+        ) {
+            Icon(Icons.Default.DeleteSweep, null, Modifier.size(18.dp))
+            Spacer(Modifier.width(8.dp))
+            Text("Cleanup Seeder Data")
         }
         
         TextButton(

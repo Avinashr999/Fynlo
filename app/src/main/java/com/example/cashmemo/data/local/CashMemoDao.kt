@@ -62,6 +62,9 @@ interface CashMemoDao {
 
     // ─── Accounts ─────────────────────────────────────────────────────────────
 
+    @Query("DELETE FROM accounts WHERE id = :id")
+    suspend fun deleteAccountById(id: String)
+
     @Query("SELECT * FROM accounts")
     fun getAllAccounts(): Flow<List<Account>>
 

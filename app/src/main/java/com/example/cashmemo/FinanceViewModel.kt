@@ -258,6 +258,66 @@ class FinanceViewModel(private val repository: FinanceRepository) : ViewModel() 
         }
     }
 
+    /** One-time cleanup: removes seeder transactions and investments from Firestore + Room */
+    fun cleanupSeeederData() {
+        viewModelScope.launch {
+            val uid = repository.syncManager.userId
+            if (uid.isBlank()) return@launch
+            val fs = com.google.firebase.firestore.FirebaseFirestore.getInstance()
+
+            // Delete all seeder investments from Firestore
+            try {
+                val invDocs = fs.collection("users").document(uid).collection("investments").get().await()
+                invDocs.documents.forEach { it.reference.delete().await() }
+                repository.dao.deleteAllInvestments()
+            } catch (e: Exception) { android.util.Log.e("Cleanup", "inv: ${e.message}") }
+
+            // Delete all borrowers from Firestore
+            try {
+                val bDocs = fs.collection("users").document(uid).collection("borrowers").get().await()
+                bDocs.documents.forEach { it.reference.delete().await() }
+                repository.dao.deleteAllBorrowers()
+            } catch (e: Exception) { android.util.Log.e("Cleanup", "borrowers: ${e.message}") }
+
+            // Delete seeder transactions (those with seeder descriptions)
+            try {
+                val txDocs = fs.collection("users").document(uid).collection("transactions").get().await()
+                val seederDescs = setOf("Monthly Salary", "Grocery & Dining", "Petrol & Diesel",
+                    "ATM Withdrawal", "Online Shopping", "Web Design Project",
+                    "Miscellaneous", "Auto fuel", "Part time work",
+                    "Lent to Ravi Kumar", "Lent to Suresh Babu", "Lent to Lakshmi Devi", "Lent to Mohan Rao",
+                    "Loan from Home Loan EMI", "Loan from Personal Loan", "Loan from Gold Loan",
+                    "Invested in Gold ETF", "Invested in LIC Policy", "Invested in FD - HDFC", "Invested in Mutual Fund SIP")
+                txDocs.documents.forEach { doc ->
+                    val desc = doc.getString("desc") ?: ""
+                    if (desc in seederDescs) {
+                        doc.reference.delete().await()
+                        repository.dao.deleteTransactionById(doc.id)
+                    }
+                }
+            } catch (e: Exception) { android.util.Log.e("Cleanup", "txn: ${e.message}") }
+
+            // Delete seeder debts
+            try {
+                val debtDocs = fs.collection("users").document(uid).collection("debts").get().await()
+                debtDocs.documents.forEach { it.reference.delete().await() }
+                repository.dao.deleteAllDebts()
+            } catch (e: Exception) { android.util.Log.e("Cleanup", "debts: ${e.message}") }
+
+            // Delete seeder accounts (acc-cash, acc-hdfc, acc-sbi, acc-petty)
+            try {
+                val seederAccIds = setOf("acc-cash", "acc-hdfc", "acc-sbi", "acc-petty")
+                seederAccIds.forEach { id ->
+                    fs.collection("users").document(uid).collection("accounts").document(id).delete().await()
+                }
+                // Remove from Room by id
+                seederAccIds.forEach { id ->
+                    repository.dao.deleteAccountById(id)
+                }
+            } catch (e: Exception) { android.util.Log.e("Cleanup", "accounts: ${e.message}") }
+        }
+    }
+
     fun loadDummyData() {
         viewModelScope.launch {
             val seeder = com.example.cashmemo.logic.DummyDataSeeder
