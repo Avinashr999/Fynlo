@@ -23,6 +23,7 @@ import androidx.compose.material.icons.filled.GridOn
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Science
 import androidx.compose.material.icons.filled.CleaningServices
+import androidx.compose.material.icons.filled.Restore
 import androidx.compose.material.icons.filled.TableChart
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -401,6 +402,27 @@ fun SettingsScreen(viewModel: FinanceViewModel, onNavigateToAbout: () -> Unit, o
             Icon(Icons.Default.CleaningServices, null, Modifier.size(18.dp))
             Spacer(Modifier.width(8.dp))
             Text("Cleanup Seeder Data")
+        }
+        Spacer(Modifier.height(8.dp))
+        var showRestoreConfirm by remember { mutableStateOf(false) }
+        if (showRestoreConfirm) {
+            AlertDialog(
+                onDismissRequest = { showRestoreConfirm = false },
+                title = { Text("Restore Real Data?") },
+                text  = { Text("This will clear all transactions and restore your real account balances: Cash in Hand ₹3,962 and HDFC Bank ₹1,22,500.") },
+                confirmButton = { Button(onClick = { viewModel.restoreRealData(); showRestoreConfirm = false }) { Text("Restore") } },
+                dismissButton = { TextButton(onClick = { showRestoreConfirm = false }) { Text("Cancel") } }
+            )
+        }
+        Button(
+            onClick  = { showRestoreConfirm = true },
+            modifier = Modifier.fillMaxWidth(),
+            shape    = RoundedCornerShape(12.dp),
+            colors   = ButtonDefaults.buttonColors(containerColor = Color(0xFF1565C0))
+        ) {
+            Icon(Icons.Default.Restore, null, Modifier.size(18.dp))
+            Spacer(Modifier.width(8.dp))
+            Text("Restore Real Data")
         }
         
         TextButton(

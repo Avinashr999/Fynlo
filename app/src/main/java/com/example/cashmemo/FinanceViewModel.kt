@@ -259,6 +259,38 @@ class FinanceViewModel(private val repository: FinanceRepository) : ViewModel() 
     }
 
     /** One-time cleanup: removes seeder transactions and investments from Firestore + Room */
+    /** Restore real account balances and clean all seeder transactions */
+    fun restoreRealData() {
+        viewModelScope.launch {
+            val uid = repository.syncManager.userId
+            if (uid.isBlank()) return@launch
+            val fs = com.google.firebase.firestore.FirebaseFirestore.getInstance()
+
+            // 1. Clear ALL transactions from Firestore and Room
+            try {
+                val txDocs = fs.collection("users").document(uid).collection("transactions").get().await()
+                txDocs.documents.forEach { it.reference.delete().await() }
+                repository.dao.deleteAllTransactions()
+            } catch (e: Exception) { android.util.Log.e("Restore", "txn: ${e.message}") }
+
+            // 2. Set real account balances
+            val cashAccount = com.example.cashmemo.data.model.Account(
+                id = "1", name = "Cash in Hand", balance = 3962.0, type = "Cash"
+            )
+            val hdfcAccount = com.example.cashmemo.data.model.Account(
+                id = "2", name = "HDFC Bank", balance = 122500.0, type = "Bank"
+            )
+            try {
+                repository.dao.insertAccount(cashAccount)
+                repository.dao.insertAccount(hdfcAccount)
+                fs.collection("users").document(uid).collection("accounts")
+                    .document("1").set(mapOf("id" to "1", "name" to "Cash in Hand", "balance" to 3962.0, "type" to "Cash", "projectId" to "personal", "updatedAt" to System.currentTimeMillis())).await()
+                fs.collection("users").document(uid).collection("accounts")
+                    .document("2").set(mapOf("id" to "2", "name" to "HDFC Bank", "balance" to 122500.0, "type" to "Bank", "projectId" to "personal", "updatedAt" to System.currentTimeMillis())).await()
+            } catch (e: Exception) { android.util.Log.e("Restore", "accounts: ${e.message}") }
+        }
+    }
+
     fun cleanupSeeederData() {
         viewModelScope.launch {
             val uid = repository.syncManager.userId
