@@ -3,6 +3,7 @@
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -85,11 +86,12 @@ fun LoginScreen(onSignedIn: () -> Unit) {
                 androidx.compose.foundation.layout.Box(
                     modifier         = Modifier
                         .size(90.dp)
-                        .clip(RoundedCornerShape(24.dp)),
+                        .clip(RoundedCornerShape(24.dp))
+                        .background(Color(0xFF059669)),
                     contentAlignment = Alignment.Center
                 ) {
-                    androidx.compose.foundation.Image(
-                        painter            = painterResource(id = R.mipmap.ic_launcher),
+                    Image(
+                        painter            = painterResource(id = R.drawable.ic_launcher_foreground),
                         contentDescription = "Cash Memo",
                         modifier           = Modifier.size(90.dp)
                     )
