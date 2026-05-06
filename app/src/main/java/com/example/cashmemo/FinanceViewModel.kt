@@ -10,6 +10,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
@@ -261,41 +262,46 @@ class FinanceViewModel(private val repository: FinanceRepository) : ViewModel() 
         viewModelScope.launch {
             val seeder = com.example.cashmemo.logic.DummyDataSeeder
 
-            // Clear ALL existing data first so we start fresh
+            // 1. Clear Room
             repository.dao.deleteAllTransactions()
             repository.dao.deleteAllBorrowers()
             repository.dao.deleteAllDebts()
             repository.dao.deleteAllInvestments()
             repository.dao.deleteAllAccounts()
 
-            // Insert fresh accounts
-            seeder.accounts().forEach { repository.upsertAccount(it) }
+            // 2. Clear Firestore collections
+            val collections = listOf("transactions","borrowers","debts","investments","accounts","payments","debt_payments")
+            val uid = repository.syncManager.userId
+            if (uid.isNotBlank()) {
+                val fs = com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                collections.forEach { col ->
+                    try {
+                        val docs = fs.collection("users").document(uid).collection(col).get().await()
+                        docs.documents.forEach { it.reference.delete() }
+                    } catch (e: Exception) {
+                        android.util.Log.e("Seeder", "Clear $col failed: ${e.message}")
+                    }
+                }
+            }
 
-            // Insert borrowers directly (no account deduction for test data)
+            // 3. Insert fresh seeder data
+            seeder.accounts().forEach { repository.upsertAccount(it) }
             seeder.borrowers().forEach { b ->
                 repository.dao.insertBorrower(b)
                 repository.sync { setBorrower(b) }
             }
-
-            // Insert debts
             seeder.debts().forEach { d ->
                 repository.dao.insertDebt(d)
                 repository.sync { setDebt(d) }
             }
-
-            // Insert investments
             seeder.investments().forEach { i ->
                 repository.dao.insertInvestment(i)
                 repository.sync { setInvestment(i) }
             }
-
-            // Insert transactions
             seeder.transactions().forEach { t ->
                 repository.dao.insertTransaction(t)
                 repository.sync { setTransaction(t) }
             }
-
-            // Insert budgets
             seeder.budgets().forEach { b ->
                 repository.dao.insertBudget(b)
             }

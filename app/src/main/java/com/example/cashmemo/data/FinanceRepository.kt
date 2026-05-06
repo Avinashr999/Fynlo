@@ -20,7 +20,7 @@ class FinanceRepository(
     val dao: CashMemoDao,
     private val db: CashMemoDatabase,
     private var firestore: FirestoreRepository,
-    private var syncManager: SyncManager
+    var syncManager: SyncManager
 ) {
     val syncStatus: StateFlow<SyncStatus> get() = syncManager.status
 
