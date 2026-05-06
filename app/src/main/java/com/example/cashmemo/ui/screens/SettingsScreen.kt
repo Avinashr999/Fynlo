@@ -22,7 +22,7 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.GridOn
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Science
-import androidx.compose.material.icons.filled.DeleteSweep
+import androidx.compose.material.icons.filled.CleaningServices
 import androidx.compose.material.icons.filled.TableChart
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -398,7 +398,7 @@ fun SettingsScreen(viewModel: FinanceViewModel, onNavigateToAbout: () -> Unit, o
             modifier = Modifier.fillMaxWidth(),
             shape    = RoundedCornerShape(12.dp)
         ) {
-            Icon(Icons.Default.DeleteSweep, null, Modifier.size(18.dp))
+            Icon(Icons.Default.CleaningServices, null, Modifier.size(18.dp))
             Spacer(Modifier.width(8.dp))
             Text("Cleanup Seeder Data")
         }
