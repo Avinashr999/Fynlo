@@ -21,6 +21,7 @@ import androidx.compose.material.icons.filled.PictureAsPdf
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.GridOn
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Science
 import androidx.compose.material.icons.filled.TableChart
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -353,6 +354,32 @@ fun SettingsScreen(viewModel: FinanceViewModel, onNavigateToAbout: () -> Unit, o
         Spacer(modifier = Modifier.height(16.dp))
 
         Text("App Information", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
+
+        // ── Developer / Test ──────────────────────────────────────────────
+        Spacer(Modifier.height(16.dp))
+        HorizontalDivider()
+        Spacer(Modifier.height(16.dp))
+        Text("Developer", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
+        Spacer(Modifier.height(8.dp))
+        var showSeedConfirm by remember { mutableStateOf(false) }
+        if (showSeedConfirm) {
+            AlertDialog(
+                onDismissRequest = { showSeedConfirm = false },
+                title = { Text("Load Test Data?") },
+                text  = { Text("This will add dummy accounts, loans, debts, investments and transactions for testing. Existing data will not be deleted.") },
+                confirmButton = { Button(onClick = { viewModel.loadDummyData(); showSeedConfirm = false }) { Text("Load") } },
+                dismissButton = { TextButton(onClick = { showSeedConfirm = false }) { Text("Cancel") } }
+            )
+        }
+        OutlinedButton(
+            onClick  = { showSeedConfirm = true },
+            modifier = Modifier.fillMaxWidth(),
+            shape    = RoundedCornerShape(12.dp)
+        ) {
+            Icon(Icons.Default.Science, null, Modifier.size(18.dp))
+            Spacer(Modifier.width(8.dp))
+            Text("Load Test Data (QA)")
+        }
         
         TextButton(
             onClick = onNavigateToAbout,

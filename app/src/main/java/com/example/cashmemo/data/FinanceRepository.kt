@@ -17,7 +17,7 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
 class FinanceRepository(
-    private val dao: CashMemoDao,
+    val dao: CashMemoDao,
     private val db: CashMemoDatabase,
     private var firestore: FirestoreRepository,
     private var syncManager: SyncManager
@@ -41,7 +41,7 @@ class FinanceRepository(
     val allGoals: Flow<List<Goal>>               = dao.getAllGoals()
     val allProjects: Flow<List<Project>>         = dao.getAllProjects()
     private val ioScope = CoroutineScope(Dispatchers.IO)
-    private fun sync(block: suspend FirestoreRepository.() -> Unit) {
+    fun sync(block: suspend FirestoreRepository.() -> Unit) {
         ioScope.launch {
             syncManager.setSyncing()
             runCatching { firestore.block() }
@@ -202,6 +202,11 @@ class FinanceRepository(
         }
         syncAccountByName(sourceAccount)
     }
+    suspend fun upsertAccount(account: Account) {
+        dao.insertAccount(account)
+        sync { setAccount(account) }
+    }
+
     suspend fun updateInvestmentValue(investment: Investment, newCurrentVal: Double) {
         val updated = investment.copy(currentVal = newCurrentVal, updatedAt = System.currentTimeMillis())
         dao.insertInvestment(updated)
