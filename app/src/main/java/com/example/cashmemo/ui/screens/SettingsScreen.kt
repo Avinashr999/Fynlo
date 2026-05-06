@@ -366,7 +366,7 @@ fun SettingsScreen(viewModel: FinanceViewModel, onNavigateToAbout: () -> Unit, o
             AlertDialog(
                 onDismissRequest = { showSeedConfirm = false },
                 title = { Text("Load Test Data?") },
-                text  = { Text("This will add dummy accounts, loans, debts, investments and transactions for testing. Existing data will not be deleted.") },
+                text  = { Text("⚠️ This will DELETE all existing data and replace with test data. Use only for QA testing.") },
                 confirmButton = { Button(onClick = { viewModel.loadDummyData(); showSeedConfirm = false }) { Text("Load") } },
                 dismissButton = { TextButton(onClick = { showSeedConfirm = false }) { Text("Cancel") } }
             )

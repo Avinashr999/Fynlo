@@ -260,28 +260,41 @@ class FinanceViewModel(private val repository: FinanceRepository) : ViewModel() 
     fun loadDummyData() {
         viewModelScope.launch {
             val seeder = com.example.cashmemo.logic.DummyDataSeeder
-            // Insert accounts
+
+            // Clear ALL existing data first so we start fresh
+            repository.dao.deleteAllTransactions()
+            repository.dao.deleteAllBorrowers()
+            repository.dao.deleteAllDebts()
+            repository.dao.deleteAllInvestments()
+            repository.dao.deleteAllAccounts()
+
+            // Insert fresh accounts
             seeder.accounts().forEach { repository.upsertAccount(it) }
-            // Insert borrowers (direct, no account deduction for test data)
+
+            // Insert borrowers directly (no account deduction for test data)
             seeder.borrowers().forEach { b ->
                 repository.dao.insertBorrower(b)
                 repository.sync { setBorrower(b) }
             }
+
             // Insert debts
             seeder.debts().forEach { d ->
                 repository.dao.insertDebt(d)
                 repository.sync { setDebt(d) }
             }
+
             // Insert investments
             seeder.investments().forEach { i ->
                 repository.dao.insertInvestment(i)
                 repository.sync { setInvestment(i) }
             }
+
             // Insert transactions
             seeder.transactions().forEach { t ->
                 repository.dao.insertTransaction(t)
                 repository.sync { setTransaction(t) }
             }
+
             // Insert budgets
             seeder.budgets().forEach { b ->
                 repository.dao.insertBudget(b)
