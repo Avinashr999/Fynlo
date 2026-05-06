@@ -124,9 +124,9 @@ object DummyDataSeeder {
     )
 
     fun budgets() = listOf(
-        Budget(id = id(), category = "Food",     limitAmount = 8000.0,  period = "Monthly", projectId = "personal"),
-        Budget(id = id(), category = "Fuel",     limitAmount = 5000.0,  period = "Monthly", projectId = "personal"),
-        Budget(id = id(), category = "Shopping", limitAmount = 10000.0, period = "Monthly", projectId = "personal"),
-        Budget(id = id(), category = "Expense",  limitAmount = 3000.0,  period = "Monthly", projectId = "personal"),
+        Budget(category = "Food",     limitAmount = 8000.0,  period = "Monthly", projectId = "personal"),
+        Budget(category = "Fuel",     limitAmount = 5000.0,  period = "Monthly", projectId = "personal"),
+        Budget(category = "Shopping", limitAmount = 10000.0, period = "Monthly", projectId = "personal"),
+        Budget(category = "Expense",  limitAmount = 3000.0,  period = "Monthly", projectId = "personal"),
     )
 }
