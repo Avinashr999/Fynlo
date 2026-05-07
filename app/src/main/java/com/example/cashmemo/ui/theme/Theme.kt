@@ -28,18 +28,27 @@ private val DarkColorScheme = darkColorScheme(
 )
 
 private val LightColorScheme = lightColorScheme(
-    primary        = LightPrimary,
-    onPrimary      = Color.White,
-    secondary      = PrimaryLight,
-    background     = LightBackground,
-    surface        = LightSurface,
-    surfaceVariant = Color(0xFFF1F3F4),
-    surfaceContainer = Color(0xFFF1F3F4),
-    surfaceContainerHigh = Color(0xFFECECEC),
-    surfaceContainerHighest = Color(0xFFE5E5E5),
-    surfaceContainerLow = Color(0xFFF5F5F5),
-    surfaceContainerLowest = Color(0xFFFFFFFF),
-    error          = ErrorRed
+    primary                  = LightPrimary,
+    onPrimary                = Color.White,
+    primaryContainer         = Color(0xFFB2DFDB),   // light teal - not purple
+    onPrimaryContainer       = Color(0xFF00352E),
+    secondary                = PrimaryLight,
+    onSecondary              = Color.White,
+    secondaryContainer       = Color(0xFFB2DFDB),   // light teal for FilterChip selected
+    onSecondaryContainer     = Color(0xFF003731),
+    tertiary                 = Color(0xFF059669),
+    background               = LightBackground,
+    surface                  = LightSurface,
+    surfaceVariant           = Color(0xFFF1F3F4),
+    onSurfaceVariant         = Color(0xFF555555),
+    surfaceContainer         = Color(0xFFF1F3F4),
+    surfaceContainerHigh     = Color(0xFFECECEC),
+    surfaceContainerHighest  = Color(0xFFE5E5E5),
+    surfaceContainerLow      = Color(0xFFF5F5F5),
+    surfaceContainerLowest   = Color(0xFFFFFFFF),
+    outline                  = Color(0xFFBDBDBD),
+    outlineVariant           = Color(0xFFE0E0E0),
+    error                    = ErrorRed
 )
 
 /** App-wide theme override: null = follow system, true = force dark, false = force light */
