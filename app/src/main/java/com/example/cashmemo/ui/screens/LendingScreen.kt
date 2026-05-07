@@ -10,10 +10,13 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Sort
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Event
+import androidx.compose.material.icons.filled.Message
+import androidx.compose.material.icons.filled.Sms
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Clear
@@ -285,6 +288,41 @@ fun LendingCard(borrower: Borrower, isOverdue: Boolean = false, onDelete: () -> 
                     }
                 }
                 Row {
+                    val context = LocalContext.current
+                    // WhatsApp reminder
+                    if (borrower.phone.isNotBlank()) {
+                        IconButton(onClick = {
+                            val outstanding = InterestEngine.calcOutstanding(borrower.amount, interest, borrower.paid)
+                            val msg = "Hi ${borrower.name}, a friendly reminder that your loan of ₹${String.format(locale, "%,.0f", borrower.amount)} has an outstanding balance of ₹${String.format(locale, "%,.0f", outstanding)}${if (borrower.due.isNotBlank()) " due on ${borrower.due}" else ""}. Please arrange repayment. - Cash Memo"
+                            val phone = borrower.phone.replace(" ", "").replace("-", "")
+                            val whatsappUri = android.net.Uri.parse("https://wa.me/$phone?text=${android.net.Uri.encode(msg)}")
+                            try {
+                                context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, whatsappUri))
+                            } catch (e: Exception) {
+                                // WhatsApp not installed — open share
+                                context.startActivity(android.content.Intent.createChooser(
+                                    android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                                        type = "text/plain"; putExtra(android.content.Intent.EXTRA_TEXT, msg)
+                                    }, "Send Reminder"
+                                ))
+                            }
+                        }) {
+                            Icon(Icons.Default.Message, contentDescription = "WhatsApp",
+                                modifier = Modifier.size(20.dp), tint = Color(0xFF25D366))
+                        }
+                        // SMS reminder
+                        IconButton(onClick = {
+                            val outstanding = InterestEngine.calcOutstanding(borrower.amount, interest, borrower.paid)
+                            val msg = "Hi ${borrower.name}, outstanding loan balance: ₹${String.format(locale, "%,.0f", outstanding)}${if (borrower.due.isNotBlank()) " (due ${borrower.due})" else ""}. Please repay. -Cash Memo"
+                            val smsUri = android.net.Uri.parse("smsto:${borrower.phone}")
+                            context.startActivity(android.content.Intent(android.content.Intent.ACTION_SENDTO, smsUri).apply {
+                                putExtra("sms_body", msg)
+                            })
+                        }) {
+                            Icon(Icons.Default.Sms, contentDescription = "SMS",
+                                modifier = Modifier.size(20.dp), tint = Color(0xFF3B82F6))
+                        }
+                    }
                     IconButton(onClick = onEdit) {
                         Icon(Icons.Default.Edit, contentDescription = "Edit", modifier = Modifier.size(20.dp), tint = Color.Gray)
                     }

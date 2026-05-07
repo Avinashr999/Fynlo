@@ -187,75 +187,22 @@ fun SettingsScreen(viewModel: FinanceViewModel, onNavigateToAbout: () -> Unit, o
 
             // Full Excel backup
             val xlsxLauncher = rememberLauncherForActivityResult(
-                ActivityResultContracts.CreateDocument("text/comma-separated-values")
+                ActivityResultContracts.CreateDocument("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
             ) { uri ->
                 uri?.let {
                     scope.launch(kotlinx.coroutines.Dispatchers.IO) {
                         runCatching {
                             context.contentResolver.openOutputStream(it)?.use { os ->
-                                val accounts     = viewModel.accounts.value
-                                val transactions = viewModel.transactions.value
-                                val borrowers    = viewModel.borrowers.value
-                                val debts        = viewModel.debts.value
-                                val investments  = viewModel.investments.value
-                                val payments     = viewModel.payments.value
-                                val debtPayments = viewModel.debtPayments.value
-
-                                val sb = StringBuilder()
-                                // Accounts
-                                sb.appendLine("=== ACCOUNTS ===")
-                                sb.appendLine("Name,Balance,Type")
-                                accounts.forEach { a -> sb.appendLine("\"${a.name}\",${a.balance},\"${a.type}\"") }
-                                sb.appendLine()
-
-                                // Transactions
-                                sb.appendLine("=== TRANSACTIONS ===")
-                                sb.appendLine("Date,Type,Amount,From,To,Category,Description,Notes")
-                                transactions.sortedByDescending { it.date }.forEach { t ->
-                                    sb.appendLine("\"${t.date}\",\"${t.type}\",${t.amount},\"${t.fromAcct}\",\"${t.toAcct}\",\"${t.category}\",\"${t.desc}\",\"${t.notes}\"")
-                                }
-                                sb.appendLine()
-
-                                // Borrowers
-                                sb.appendLine("=== LENDING ===")
-                                sb.appendLine("Name,Phone,Principal,Rate,Interest Type,Loan Date,Due Date,Paid,Status")
-                                borrowers.forEach { b ->
-                                    sb.appendLine("\"${b.name}\",\"${b.phone}\",${b.amount},${b.rate},\"${b.type}\",\"${b.date}\",\"${b.due}\",${b.paid},\"${b.status}\"")
-                                }
-                                sb.appendLine()
-
-                                // Debts
-                                sb.appendLine("=== DEBTS ===")
-                                sb.appendLine("Name,Principal,Rate,Interest Type,Date,Due Date,Paid,Notes")
-                                debts.forEach { d ->
-                                    sb.appendLine("\"${d.name}\",${d.amount},${d.rate},\"${d.intType}\",\"${d.date}\",\"${d.due}\",${d.paid},\"${d.notes}\"")
-                                }
-                                sb.appendLine()
-
-                                // Investments
-                                sb.appendLine("=== INVESTMENTS ===")
-                                sb.appendLine("Name,Type,Invested,Current Value,Growth,Date")
-                                investments.forEach { i ->
-                                    sb.appendLine("\"${i.name}\",\"${i.type}\",${i.invested},${i.currentVal},${i.currentVal - i.invested},\"${i.date}\"")
-                                }
-                                sb.appendLine()
-
-                                // Payments
-                                sb.appendLine("=== LOAN REPAYMENTS ===")
-                                sb.appendLine("Borrower,Amount,Date,Notes")
-                                payments.forEach { p ->
-                                    sb.appendLine("\"${p.name}\",${p.amount},\"${p.date}\",\"${p.notes}\"")
-                                }
-                                sb.appendLine()
-
-                                // Debt Payments
-                                sb.appendLine("=== DEBT REPAYMENTS ===")
-                                sb.appendLine("Creditor,Amount,Date,Notes")
-                                debtPayments.forEach { p ->
-                                    sb.appendLine("\"${p.name}\",${p.amount},\"${p.date}\",\"${p.notes}\"")
-                                }
-
-                                os.write(sb.toString().toByteArray(Charsets.UTF_8))
+                                com.example.cashmemo.logic.ExcelExportUtility.generateFullBackup(
+                                    os,
+                                    viewModel.accounts.value,
+                                    viewModel.transactions.value,
+                                    viewModel.borrowers.value,
+                                    viewModel.debts.value,
+                                    viewModel.investments.value,
+                                    viewModel.payments.value,
+                                    viewModel.debtPayments.value
+                                )
                             }
                         }.onFailure { e ->
                             android.util.Log.e("ExcelExport", "Export failed", e)
@@ -263,15 +210,16 @@ fun SettingsScreen(viewModel: FinanceViewModel, onNavigateToAbout: () -> Unit, o
                     }
                 }
             }
+                                
             Button(
-                onClick = { xlsxLauncher.launch("CashMemo_FullBackup_${System.currentTimeMillis()}.csv") },
+                onClick = { xlsxLauncher.launch("CashMemo_Backup_${System.currentTimeMillis()}.xlsx") },
                 modifier = Modifier.fillMaxWidth().height(48.dp),
                 shape    = MaterialTheme.shapes.medium,
                 colors   = ButtonDefaults.buttonColors(containerColor = Color(0xFF059669))
             ) {
                 Icon(Icons.Default.GridOn, contentDescription = null)
                 Spacer(Modifier.width(8.dp))
-                Text("Export Full Backup (.csv)")
+                Text("Export Full Backup (.xlsx)")
             }
 
             OutlinedButton(
@@ -457,6 +405,7 @@ fun SettingsScreen(viewModel: FinanceViewModel, onNavigateToAbout: () -> Unit, o
         )
     }
 }
+
 
 
 
