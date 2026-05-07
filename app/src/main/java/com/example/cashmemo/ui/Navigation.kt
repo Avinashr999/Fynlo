@@ -1,3 +1,4 @@
+﻿@file:Suppress("ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE", "UNUSED_VARIABLE")
 package com.example.cashmemo.ui
 
 import androidx.compose.animation.*
@@ -23,7 +24,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -32,7 +32,6 @@ import com.example.cashmemo.AppLockState
 import com.example.cashmemo.FinanceViewModel
 import com.example.cashmemo.ui.screens.*
 import com.example.cashmemo.ui.components.*
-import com.example.cashmemo.ui.components.SyncStatusBadge
 import com.example.cashmemo.data.SyncStatus
 import com.example.cashmemo.data.PinManager
 import com.example.cashmemo.ui.screens.PinMode
@@ -57,7 +56,7 @@ sealed class Screen(val route: String, val label: String, val icon: ImageVector)
     object Projects  : Screen("projects",       "Projects",         Icons.Default.Business)
     object Recurring  : Screen("recurring",      "Recurring",        Icons.Default.Repeat)
     object Monthly    : Screen("monthly",        "Monthly Summary",  Icons.Default.DateRange)
-    object ProfitLoss : Screen("profit_loss",    "Profit & Loss",    Icons.Default.List)
+    object ProfitLoss : Screen("profit_loss",    "Profit & Loss",    Icons.AutoMirrored.Filled.List)
     object DebtPayoff : Screen("debt_payoff",    "Debt Payoff",      Icons.Default.Schedule)
     object NetWorthH  : Screen("net_worth_hist", "Net Worth History",Icons.AutoMirrored.Filled.TrendingUp)
     object MoneyFlow  : Screen("money_flow",     "Money Flow",       Icons.Default.SwapHoriz)
@@ -83,7 +82,7 @@ fun MainNavigation(viewModel: FinanceViewModel) {
     val sheetState = rememberModalBottomSheetState()
     
     var showSheet by remember { mutableStateOf(false) }
-    var showExpenseDialog by remember { mutableStateOf(false) }
+    @Suppress("ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE")     var showExpenseDialog by remember { mutableStateOf(false) }
     var showLendingDialog by remember { mutableStateOf(false) }
     var showDebtDialog by remember { mutableStateOf(false) }
     var showInvestmentDialog by remember { mutableStateOf(false) }
@@ -100,20 +99,20 @@ fun MainNavigation(viewModel: FinanceViewModel) {
         AppLockState.unlock()
     }
 
-    // Onboarding — show only on first launch
+    // Onboarding â€” show only on first launch
     val prefs = remember { context.getSharedPreferences("cashmemo_prefs", android.content.Context.MODE_PRIVATE) }
     var showOnboarding by remember { mutableStateOf(!prefs.getBoolean("onboarding_done", false)) }
 
 
     if (showOnboarding) {
         OnboardingScreen(onComplete = {
-            prefs.edit().putBoolean("onboarding_done", true).apply()
+            prefs.edit { putBoolean("onboarding_done", true) }
             showOnboarding = false
         })
         return@MainNavigation
     }
 
-    // Offline banner — use real network state, not Firestore status
+    // Offline banner â€” use real network state, not Firestore status
     val isOffline = remember {
         val cm = context.getSystemService(android.content.Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
         val network = cm.activeNetwork
@@ -213,7 +212,7 @@ fun MainNavigation(viewModel: FinanceViewModel) {
                     modifier = Modifier.fillMaxHeight().verticalScroll(rememberScrollState())
                 ) {
 
-                    // ── Brand Header ─────────────────────────────────────────
+                    // â”€â”€ Brand Header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                     Box(
                         modifier = Modifier.fillMaxWidth()
                             .background(
@@ -255,7 +254,7 @@ fun MainNavigation(viewModel: FinanceViewModel) {
 
                     Spacer(Modifier.height(8.dp))
 
-                    // ── Account ──────────────────────────────────────────────
+                    // â”€â”€ Account â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                     DrawerSectionLabel("Account")
                     DrawerItem(Icons.Default.Person, "Profile & Security",
                         currentRoute == Screen.Profile.route) {
@@ -275,7 +274,7 @@ fun MainNavigation(viewModel: FinanceViewModel) {
 
                     DrawerDivider()
 
-                    // ── Finance Tools ─────────────────────────────────────────
+                    // â”€â”€ Finance Tools â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                     DrawerSectionLabel("Finance Tools")
                     DrawerItem(Icons.Default.PieChart, "Budgeting",
                         currentRoute == Screen.Budgets.route) {
@@ -305,14 +304,14 @@ fun MainNavigation(viewModel: FinanceViewModel) {
 
                     DrawerDivider()
 
-                    // ── Reports ───────────────────────────────────────────────
+                    // â”€â”€ Reports â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                     DrawerSectionLabel("Reports")
                     DrawerItem(Icons.Default.DateRange, "Monthly Summary",
                         currentRoute == Screen.Monthly.route) {
                         navController.navigate(Screen.Monthly.route)
                         scope.launch { drawerState.close() }
                     }
-                    DrawerItem(Icons.Default.List, "Profit & Loss",
+                    DrawerItem(Icons.AutoMirrored.Filled.List, "Profit & Loss",
                         currentRoute == Screen.ProfitLoss.route) {
                         navController.navigate(Screen.ProfitLoss.route)
                         scope.launch { drawerState.close() }
@@ -335,7 +334,7 @@ fun MainNavigation(viewModel: FinanceViewModel) {
 
                     DrawerDivider()
 
-                    // ── App ───────────────────────────────────────────────────
+                    // â”€â”€ App â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                     DrawerSectionLabel("App")
                     DrawerItem(Icons.Default.Settings, "Settings",
                         currentRoute == Screen.Settings.route) {
@@ -350,9 +349,9 @@ fun MainNavigation(viewModel: FinanceViewModel) {
 
                     DrawerDivider()
 
-                    // ── Logout ────────────────────────────────────────────────
+                    // â”€â”€ Logout â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                     NavigationDrawerItem(
-                        icon     = { Icon(Icons.Default.Logout, null,
+                        icon     = { Icon(Icons.AutoMirrored.Filled.Logout, null,
                             tint = Color(0xFFEF4444)) },
                         label    = { Text("Logout & Lock",
                             color = Color(0xFFEF4444),
@@ -443,7 +442,7 @@ fun MainNavigation(viewModel: FinanceViewModel) {
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             Icon(Icons.Default.CloudOff, null, Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onErrorContainer)
-                            Text("No internet — changes will sync when reconnected",
+                            Text("No internet â€” changes will sync when reconnected",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onErrorContainer)
                         }
@@ -613,7 +612,7 @@ fun ActionItem(icon: ImageVector, label: String, onClick: () -> Unit) {
     }
 }
 
-// ── Drawer helper composables ────────────────────────────────────────
+// â”€â”€ Drawer helper composables â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 @Composable
 fun DrawerSectionLabel(title: String) {
@@ -674,3 +673,5 @@ fun DrawerDivider() {
         color     = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
     )
 }
+
+
