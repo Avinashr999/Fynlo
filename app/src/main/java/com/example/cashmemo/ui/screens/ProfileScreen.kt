@@ -51,7 +51,7 @@ fun ProfileScreen(onLogout: () -> Unit, onSignOut: () -> Unit = {}) {
     ) {
         Text(
             "Profile & Security",
-            style    = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
+            style    = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold),
             modifier = Modifier.padding(vertical = 16.dp).align(Alignment.Start)
         )
 
@@ -171,6 +171,8 @@ fun ProfileScreen(onLogout: () -> Unit, onSignOut: () -> Unit = {}) {
         }
     }
 }
+
+
 
 
 

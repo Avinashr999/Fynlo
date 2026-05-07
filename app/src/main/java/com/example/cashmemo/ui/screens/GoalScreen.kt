@@ -46,7 +46,7 @@ fun GoalScreen(viewModel: FinanceViewModel) {
             item {
                 Text(
                     "Savings Goals", 
-                    style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
+                    style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold),
                     modifier = Modifier.padding(bottom = 8.dp)
                 )
                 Text(
@@ -58,7 +58,20 @@ fun GoalScreen(viewModel: FinanceViewModel) {
 
             if (goals.isEmpty()) {
                 item {
-                    Text("No goals set yet.", style = MaterialTheme.typography.bodySmall, color = Color.Gray, modifier = Modifier.padding(top = 32.dp))
+                    Box(Modifier.fillMaxWidth().padding(vertical = 48.dp), Alignment.Center) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            Icon(Icons.Default.Star, null, Modifier.size(64.dp),
+                                tint = MaterialTheme.colorScheme.outlineVariant)
+                            Text("No savings goals yet",
+                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text("Set targets for big purchases or milestones",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.outlineVariant)
+                            Button(onClick = { showAddDialog = true }) { Text("Add First Goal") }
+                        }
+                    }
                 }
             } else {
                 items(goals) { goal ->
@@ -79,48 +92,57 @@ fun GoalScreen(viewModel: FinanceViewModel) {
 
 @Composable
 fun GoalCard(goal: Goal, onDelete: () -> Unit) {
-    val progress = (goal.savedAmount / goal.targetAmount).toFloat().coerceIn(0f, 1f)
+    val progress    = (goal.savedAmount / goal.targetAmount).toFloat().coerceIn(0f, 1f)
+    val pct         = (progress * 100).toInt()
+    val isComplete  = pct >= 100
+    val accentColor = if (isComplete) Color(0xFF059669) else MaterialTheme.colorScheme.primary
 
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+        shape    = RoundedCornerShape(16.dp),
+        colors   = CardDefaults.cardColors(
+            containerColor = accentColor.copy(alpha = 0.06f)
+        )
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Star, contentDescription = null, tint = Color(0xFFFFC107))
-                    Spacer(Modifier.width(8.dp))
+            Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
+                Row(verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Icon(Icons.Default.Star, null, Modifier.size(20.dp), tint = Color(0xFFF59E0B))
                     Text(goal.name, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
+                    if (isComplete) {
+                        Surface(color = Color(0xFF059669).copy(alpha = 0.12f), shape = RoundedCornerShape(6.dp)) {
+                            Text("COMPLETE", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                color = Color(0xFF059669),
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+                        }
+                    }
                 }
-                IconButton(onClick = onDelete) {
-                    Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.Red.copy(alpha = 0.6f), modifier = Modifier.size(20.dp))
+                IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
+                    Icon(Icons.Default.Delete, null, Modifier.size(18.dp), tint = Color(0xFFEF4444).copy(alpha = 0.6f))
                 }
             }
-            
-            Spacer(Modifier.height(8.dp))
-            
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("Saved: ₹${goal.savedAmount.toInt()}", style = MaterialTheme.typography.bodySmall)
-                Text("Target: ₹${goal.targetAmount.toInt()}", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
-            }
-            
-            Spacer(Modifier.height(8.dp))
-            
+
+            Spacer(Modifier.height(12.dp))
+
             LinearProgressIndicator(
-                progress = { progress },
-                modifier = Modifier.fillMaxWidth().height(12.dp),
-                color = Color(0xFF66BB6A),
-                trackColor = Color(0xFF66BB6A).copy(alpha = 0.1f),
-                strokeCap = androidx.compose.ui.graphics.StrokeCap.Round
+                progress     = { progress },
+                modifier     = Modifier.fillMaxWidth().height(8.dp),
+                color        = if (isComplete) Color(0xFF059669) else MaterialTheme.colorScheme.primary,
+                trackColor   = accentColor.copy(alpha = 0.15f),
+                strokeCap    = androidx.compose.ui.graphics.StrokeCap.Round
             )
-            
-            Text(
-                "${(progress * 100).toInt()}% complete", 
-                style = MaterialTheme.typography.labelSmall,
-                modifier = Modifier.padding(top = 4.dp),
-                color = Color(0xFF059669)
-            )
+
+            Spacer(Modifier.height(8.dp))
+
+            Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
+                Text("₹${String.format(java.util.Locale.getDefault(), "%,.0f", goal.savedAmount)} saved",
+                    style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
+                    color = Color(0xFF059669))
+                Text("₹${String.format(java.util.Locale.getDefault(), "%,.0f", goal.targetAmount)} target • $pct%",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
         }
     }
 }
@@ -154,6 +176,9 @@ fun AddGoalDialog(onDismiss: () -> Unit, onConfirm: (Goal) -> Unit) {
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
     )
 }
+
+
+
 
 
 

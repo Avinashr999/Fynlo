@@ -47,7 +47,7 @@ fun DebtPayoffScreen(viewModel: FinanceViewModel) {
                 Column(Modifier.padding(16.dp)) {
                     Text("Total Remaining", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text("₹ ${String.format(locale, "%,.2f", totalOwed)}",
-                        style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
+                        style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold),
                         color = Color(0xFFEF4444))
                     Text("Across ${activeDebts.size} active debt(s)", style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -131,6 +131,8 @@ private fun InfoPill(label: String, value: String, modifier: Modifier) {
         }
     }
 }
+
+
 
 
 

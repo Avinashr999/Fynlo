@@ -77,7 +77,7 @@ fun RecurringScreen(viewModel: FinanceViewModel) {
 private fun RecurringCard(r: RecurringTransaction, onDelete: () -> Unit) {
     Card(Modifier.fillMaxWidth(), RoundedCornerShape(16.dp),
         CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(2.dp)) {
+        ) {
         Row(Modifier.padding(16.dp).fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Surface(Modifier.size(44.dp), RoundedCornerShape(12.dp),
@@ -180,6 +180,8 @@ private fun AddRecurringDialog(onDismiss: () -> Unit, onConfirm: (RecurringTrans
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
     )
 }
+
+
 
 
 

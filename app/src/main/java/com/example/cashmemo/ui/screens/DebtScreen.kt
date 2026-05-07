@@ -79,7 +79,7 @@ fun DebtScreen(viewModel: FinanceViewModel) {
             .padding(horizontal = 16.dp)
     ) {
         Text("My Debts",
-            style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
+            style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold),
             modifier = Modifier.padding(vertical = 16.dp))
 
         // ── Total debt summary card ─────────────────────────────────────────
@@ -316,6 +316,8 @@ fun EmptyDebtState(onAdd: () -> Unit = {}) {
         }
     }
 }
+
+
 
 
 

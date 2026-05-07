@@ -83,7 +83,7 @@ fun AccountStatementScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Text(
                             "₹ ${String.format(locale, "%,.2f", account.balance)}",
-                            style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
+                            style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold),
                             color = if (account.balance >= 0) MaterialTheme.colorScheme.primary else Color(0xFFEF4444)
                         )
                         Text("${accountTransactions.size} transactions",
@@ -157,6 +157,8 @@ private fun QuickBalanceEditDialog(
         }
     )
 }
+
+
 
 
 

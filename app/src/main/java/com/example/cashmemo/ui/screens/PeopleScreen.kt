@@ -50,7 +50,7 @@ fun PeopleScreen(viewModel: FinanceViewModel) {
         ) {
             item {
                 Text("Contact Book",
-                    style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
+                    style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold),
                     modifier = Modifier.padding(bottom = 4.dp))
                 Text("Contacts are used to link loans and debts to people.",
                     style = MaterialTheme.typography.bodySmall,
@@ -267,6 +267,8 @@ fun EmptyPeopleState(onAdd: () -> Unit = {}) {
         Button(onClick = onAdd) { Text("Add First Contact") }
     }
 }
+
+
 
 
 

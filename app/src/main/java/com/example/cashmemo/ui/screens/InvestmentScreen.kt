@@ -58,7 +58,7 @@ fun InvestmentScreen(viewModel: FinanceViewModel) {
     ) {
         Text(
             "My Investments", 
-            style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
+            style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold),
             modifier = Modifier.padding(vertical = 16.dp)
         )
 
@@ -222,6 +222,8 @@ fun UpdateInvestmentValueDialog(
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
     )
 }
+
+
 
 
 

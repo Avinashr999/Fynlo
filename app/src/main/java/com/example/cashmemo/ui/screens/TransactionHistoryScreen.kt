@@ -68,7 +68,7 @@ fun TransactionHistoryScreen(viewModel: FinanceViewModel) {
     ) {
         Text(
             text = if (selectionMode) "${selectedIds.size} selected" else "Master History",
-            style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
+            style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold),
             modifier = Modifier.padding(vertical = 16.dp)
         )
 
@@ -450,3 +450,5 @@ fun getCategoryIcon(category: String): ImageVector {
         else -> Icons.Default.AccountBalanceWallet
     }
 }
+
+

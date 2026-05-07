@@ -53,7 +53,7 @@ fun BudgetScreen(viewModel: FinanceViewModel) {
             item {
                 Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
                     Column {
-                        Text("Budgeting", style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold))
+                        Text("Budgeting", style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold))
                         Text("$daysRemaining days remaining in ${today.month.name.lowercase().replaceFirstChar { it.uppercase() }}",
                             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
@@ -174,7 +174,7 @@ fun BudgetCard(
     }
 
     Card(Modifier.fillMaxWidth(), RoundedCornerShape(16.dp),
-        elevation = CardDefaults.cardElevation(2.dp)) {
+        ) {
         Column(Modifier.padding(16.dp)) {
 
             // Header row
@@ -304,6 +304,8 @@ fun AddBudgetDialog(onDismiss: () -> Unit, onConfirm: (Budget) -> Unit) {
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
     )
 }
+
+
 
 
 
