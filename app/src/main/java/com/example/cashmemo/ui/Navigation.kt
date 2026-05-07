@@ -131,7 +131,8 @@ fun MainNavigation(viewModel: FinanceViewModel) {
     val currentRoute = navBackStackEntry?.destination?.route
     
     val showFab = when (currentRoute) {
-        Screen.Settings.route, Screen.About.route, Screen.People.route, Screen.Profile.route -> false
+        Screen.Settings.route, Screen.About.route, Screen.People.route,
+        Screen.Profile.route, Screen.Lending.route, Screen.Debts.route -> false
         else -> drawerState.isClosed
     }
 

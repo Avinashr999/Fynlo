@@ -64,17 +64,15 @@ fun HomeScreen(viewModel: FinanceViewModel, onNavigateToScreen: (String) -> Unit
         modifier = Modifier.fillMaxSize().statusBarsPadding()
             .padding(horizontal = 16.dp).verticalScroll(rememberScrollState())
     ) {
-        Spacer(Modifier.height(8.dp))
-
-        // Project switcher + greeting
-        Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
-            ProjectSwitcherChip(
-                projects = projects, currentProjectId = currentProjectId,
-                onSwitch = { viewModel.switchProject(it) },
-                onManageClick = { onNavigateToScreen("projects") }
-            )
-        }
         Spacer(Modifier.height(12.dp))
+
+        // Project switcher
+        ProjectSwitcherChip(
+            projects = projects, currentProjectId = currentProjectId,
+            onSwitch = { viewModel.switchProject(it) },
+            onManageClick = { onNavigateToScreen("projects") }
+        )
+        Spacer(Modifier.height(16.dp))
 
         // ── Net Worth Card ──────────────────────────────────────────────────
         val isPositive = summary.netWorth >= 0
