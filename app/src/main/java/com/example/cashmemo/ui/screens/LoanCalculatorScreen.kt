@@ -126,7 +126,10 @@ fun LoanCalculatorScreen() {
         Spacer(Modifier.height(16.dp))
 
         // Inputs
-        Card(Modifier.fillMaxWidth(), RoundedCornerShape(16.dp)) {
+        Card(
+            Modifier.fillMaxWidth(), RoundedCornerShape(16.dp),
+            CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+        ) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
 
                 OutlinedTextField(
