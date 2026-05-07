@@ -95,6 +95,7 @@ dependencies {
     implementation(libs.firebase.auth)
     implementation(libs.work.runtime)
     implementation(libs.biometric)
+    implementation("androidx.fragment:fragment-ktx:1.8.3")
     implementation(libs.google.signin)
 
     testImplementation(libs.junit)

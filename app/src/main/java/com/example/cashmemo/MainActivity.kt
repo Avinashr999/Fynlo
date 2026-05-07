@@ -1,8 +1,8 @@
-package com.example.cashmemo
+﻿package com.example.cashmemo
 
 import android.os.Bundle
 import android.os.Build
-import androidx.activity.ComponentActivity
+import androidx.fragment.app.FragmentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
@@ -13,14 +13,14 @@ import androidx.compose.ui.Modifier
 import com.example.cashmemo.ui.MainNavigation
 import com.example.cashmemo.ui.theme.CashMemoTheme
 
-class MainActivity : ComponentActivity() {
+class MainActivity : FragmentActivity() {
 
     private var backgroundTime = 0L
     private val LOCK_DELAY_MS = 1500L
 
     private val notifPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
-    ) { /* permission result — notifications will work if granted */ }
+    ) { /* permission result â€” notifications will work if granted */ }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
