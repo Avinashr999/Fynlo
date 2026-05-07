@@ -100,7 +100,7 @@ fun HomeScreen(viewModel: FinanceViewModel, onNavigateToScreen: (String) -> Unit
                     )
                 }
                 Spacer(Modifier.height(4.dp))
-                Text("Assets ${currencySymbol}${String.format(locale, "%,.0f", summary.totalAssets)}  â€¢  Liabilities ${currencySymbol}${String.format(locale, "%,.0f", summary.totalDebtPrincipal + summary.totalDebtInterest)}",
+                Text("Assets ${currencySymbol}${String.format(locale, "%,.0f", summary.totalAssets)}  ·  Liabilities ${currencySymbol}${String.format(locale, "%,.0f", summary.totalDebtPrincipal + summary.totalDebtInterest)}",
                     style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = 0.75f))
             }
         }
@@ -112,7 +112,7 @@ fun HomeScreen(viewModel: FinanceViewModel, onNavigateToScreen: (String) -> Unit
             QuickAction("Add Expense",   Icons.Default.Remove,        Color(0xFFEF4444), Modifier.weight(1f)) { showAddTxn = true }
             QuickAction("Add Income",    Icons.Default.Add,            Color(0xFF059669), Modifier.weight(1f)) { showAddTxn = true }
             QuickAction("Lend Money",    Icons.Default.Person,         Color(0xFF3B82F6), Modifier.weight(1f)) { onNavigateToScreen("lending") }
-            QuickAction("History",       Icons.Default.History,        Color(0xFF8B5CF6), Modifier.weight(1f)) { onNavigateToScreen("history") }
+            QuickAction("History",       Icons.Default.History,        Color(0xFF6B7280), Modifier.weight(1f)) { onNavigateToScreen("history") }
         }
 
         Spacer(Modifier.height(20.dp))
@@ -247,6 +247,7 @@ fun PerformanceCard(label: String, value: String, color: Color, modifier: Modifi
         }
     }
 }
+
 
 
 

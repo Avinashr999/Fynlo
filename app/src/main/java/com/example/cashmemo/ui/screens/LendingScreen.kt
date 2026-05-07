@@ -382,9 +382,9 @@ fun LendingCard(borrower: Borrower, people: List<com.example.cashmemo.data.model
                     IconButton(onClick = onDelete) {
                         Icon(Icons.Default.Delete, "Delete", Modifier.size(20.dp), tint = Color.Red.copy(alpha = 0.6f))
                     }
-                    Button(onClick = onCollect, contentPadding = PaddingValues(horizontal = 8.dp),
+                    Button(onClick = onCollect, contentPadding = PaddingValues(horizontal = 12.dp),
                         modifier = Modifier.height(28.dp)) {
-                        Text("Collect Pay", style = MaterialTheme.typography.labelSmall)
+                        Text("Collect", style = MaterialTheme.typography.labelSmall, maxLines = 1)
                     }
                 }
             }
