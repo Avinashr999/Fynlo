@@ -16,6 +16,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -215,7 +217,7 @@ fun MainNavigation(viewModel: FinanceViewModel) {
                     Box(
                         modifier = Modifier.fillMaxWidth()
                             .background(
-                                androidx.compose.ui.graphics.Brush.verticalGradient(
+                                Brush.verticalGradient(
                                     listOf(Color(0xFF059669), Color(0xFF047857))
                                 )
                             )
@@ -429,10 +431,10 @@ fun MainNavigation(viewModel: FinanceViewModel) {
         ) { innerPadding ->
             Column(modifier = Modifier.padding(innerPadding)) {
                 // Offline banner
-                androidx.compose.animation.AnimatedVisibility(
+                AnimatedVisibility(
                     visible = isOffline,
-                    enter   = androidx.compose.animation.expandVertically(),
-                    exit    = androidx.compose.animation.shrinkVertically()
+                    enter   = expandVertically(),
+                    exit    = shrinkVertically()
                 ) {
                     Surface(color = MaterialTheme.colorScheme.errorContainer) {
                         Row(
@@ -658,7 +660,7 @@ fun DrawerItem(
         onClick  = onClick,
         colors   = NavigationDrawerItemDefaults.colors(
             selectedContainerColor   = Color(0xFF059669).copy(alpha = 0.1f),
-            unselectedContainerColor = androidx.compose.ui.graphics.Color.Transparent
+            unselectedContainerColor = Color.Transparent
         ),
         modifier = Modifier.padding(horizontal = 12.dp, vertical = 1.dp)
     )
