@@ -436,6 +436,12 @@ class FinanceViewModel(private val repository: FinanceRepository) : ViewModel() 
         }
     }
 
+    fun updatePerson(person: Person) {
+        viewModelScope.launch {
+            repository.insertPerson(person.copy(projectId = pid, updatedAt = System.currentTimeMillis()))
+        }
+    }
+
     fun deletePerson(person: Person) {
         viewModelScope.launch { repository.deletePerson(person) }
     }
