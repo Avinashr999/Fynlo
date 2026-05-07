@@ -134,31 +134,37 @@ fun ReportsHubScreen(
             }
         }
 
-        // ── Date range chips ──────────────────────────────────────────────
-        LazyRow(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            contentPadding = PaddingValues(bottom = 16.dp)
+        // ── Date range selector bar ────────────────────────────────────
+        Card(
+            Modifier.fillMaxWidth().padding(bottom = 12.dp),
+            RoundedCornerShape(16.dp),
+            CardDefaults.cardColors(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
         ) {
-            items(ranges) { r ->
-                FilterChip(
-                    selected = selectedRange == r,
-                    onClick  = { selectedRange = r },
-                    label    = { Text(r, style = MaterialTheme.typography.labelMedium) },
-                    colors   = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = green.copy(alpha = 0.15f),
-                        selectedLabelColor     = green
-                    )
+            Column(Modifier.padding(12.dp)) {
+                Text("Date Range", style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(bottom = 8.dp))
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    items(ranges) { r ->
+                        FilterChip(
+                            selected = selectedRange == r,
+                            onClick  = { selectedRange = r },
+                            label    = { Text(r, style = MaterialTheme.typography.labelSmall) },
+                            colors   = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = green.copy(alpha = 0.2f),
+                                selectedLabelColor     = green
+                            )
+                        )
+                    }
+                }
+                Text(
+                    "${fromDate.format(DateTimeFormatter.ofPattern("dd MMM yyyy"))} → ${toDate.format(DateTimeFormatter.ofPattern("dd MMM yyyy"))}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 6.dp)
                 )
             }
         }
-
-        // ── Period label ──────────────────────────────────────────────────
-        Text(
-            "${fromDate.format(DateTimeFormatter.ofPattern("dd MMM yyyy"))} → ${toDate.format(DateTimeFormatter.ofPattern("dd MMM yyyy"))}",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(bottom = 12.dp)
-        )
 
         // ── Summary cards ─────────────────────────────────────────────────
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -280,7 +286,16 @@ fun ReportsHubScreen(
 
         // ── Expense breakdown ─────────────────────────────────────────────
         if (expByCat.isNotEmpty()) {
-            Text("Expense Breakdown", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
+            Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
+                Text("🔴  Where Money Went",
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
+                Surface(color = red.copy(alpha = 0.1f), shape = RoundedCornerShape(8.dp)) {
+                    Text(fmt(expense),
+                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                        color = red,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
+                }
+            }
             Spacer(Modifier.height(8.dp))
             val expColors = listOf(Color(0xFFEF4444), Color(0xFFF59E0B), Color(0xFF8B5CF6),
                 Color(0xFFEC4899), Color(0xFF06B6D4), Color(0xFF84CC16))
@@ -316,7 +331,16 @@ fun ReportsHubScreen(
 
         // ── Income breakdown ──────────────────────────────────────────────
         if (incByCat.isNotEmpty()) {
-            Text("Income Sources", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
+            Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
+                Text("🟢  Where Money Came From",
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
+                Surface(color = green.copy(alpha = 0.1f), shape = RoundedCornerShape(8.dp)) {
+                    Text(fmt(income),
+                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                        color = green,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
+                }
+            }
             Spacer(Modifier.height(8.dp))
             val incColors = listOf(green, Color(0xFF3B82F6), Color(0xFF10B981), Color(0xFF059669))
             Card(Modifier.fillMaxWidth(), RoundedCornerShape(16.dp),

@@ -422,10 +422,25 @@ fun MainNavigation(viewModel: FinanceViewModel) {
                 navController = navController,
                 startDestination = Screen.Home.route,
                 modifier = Modifier.weight(1f),
-                enterTransition = { slideInHorizontally { it } + fadeIn() },
-                exitTransition = { slideOutHorizontally { -it } + fadeOut() },
-                popEnterTransition = { slideInHorizontally { -it } + fadeIn() },
-                popExitTransition = { slideOutHorizontally { it } + fadeOut() }
+                enterTransition = {
+                    // Fade for bottom nav tabs, slide for drill-down
+                    val isBottomNav = bottomNavItems.any {
+                        initialState.destination.route == it.route ||
+                        targetState.destination.route == it.route
+                    }
+                    if (isBottomNav) fadeIn(animationSpec = androidx.compose.animation.core.tween(200))
+                    else slideInHorizontally(animationSpec = androidx.compose.animation.core.tween(280)) { it / 3 } + fadeIn(androidx.compose.animation.core.tween(280))
+                },
+                exitTransition = {
+                    val isBottomNav = bottomNavItems.any {
+                        initialState.destination.route == it.route ||
+                        targetState.destination.route == it.route
+                    }
+                    if (isBottomNav) fadeOut(animationSpec = androidx.compose.animation.core.tween(150))
+                    else slideOutHorizontally(animationSpec = androidx.compose.animation.core.tween(280)) { -it / 3 } + fadeOut(androidx.compose.animation.core.tween(280))
+                },
+                popEnterTransition = { slideInHorizontally(animationSpec = androidx.compose.animation.core.tween(280)) { -it / 3 } + fadeIn(androidx.compose.animation.core.tween(280)) },
+                popExitTransition = { slideOutHorizontally(animationSpec = androidx.compose.animation.core.tween(280)) { it / 3 } + fadeOut(androidx.compose.animation.core.tween(280)) }
             ) {
                 composable(Screen.Home.route) { 
                     HomeScreen(

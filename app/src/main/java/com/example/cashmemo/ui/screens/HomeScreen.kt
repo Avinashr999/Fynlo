@@ -83,7 +83,7 @@ fun HomeScreen(viewModel: FinanceViewModel, onNavigateToScreen: (String) -> Unit
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(24.dp))
                 .background(cardBg)
-                .clickable { onNavigateToScreen("history") }
+                .clickable { onNavigateToScreen("net_worth_hist") }
                 .padding(24.dp)
         ) {
             Column {
