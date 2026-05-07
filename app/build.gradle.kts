@@ -24,8 +24,8 @@ android {
         applicationId = "com.cashmemo.finance"
         minSdk = 26
         targetSdk = 36
-        versionCode = 110
-        versionName = "2.5.1"
+        versionCode = 120
+        versionName = "2.9.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
