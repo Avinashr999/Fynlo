@@ -34,6 +34,11 @@ private val LightColorScheme = lightColorScheme(
     background     = LightBackground,
     surface        = LightSurface,
     surfaceVariant = Color(0xFFF1F3F4),
+    surfaceContainer = Color(0xFFF1F3F4),
+    surfaceContainerHigh = Color(0xFFECECEC),
+    surfaceContainerHighest = Color(0xFFE5E5E5),
+    surfaceContainerLow = Color(0xFFF5F5F5),
+    surfaceContainerLowest = Color(0xFFFFFFFF),
     error          = ErrorRed
 )
 
