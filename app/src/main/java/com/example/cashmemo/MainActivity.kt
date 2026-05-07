@@ -1,9 +1,11 @@
 package com.example.cashmemo
 
 import android.os.Bundle
+import android.os.Build
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -14,12 +16,24 @@ import com.example.cashmemo.ui.theme.CashMemoTheme
 class MainActivity : ComponentActivity() {
 
     private var backgroundTime = 0L
-    private val LOCK_DELAY_MS = 1500L // Only lock if background for >1.5 seconds
+    private val LOCK_DELAY_MS = 1500L
+
+    private val notifPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { /* permission result — notifications will work if granted */ }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         com.example.cashmemo.ui.theme.ThemeController.load(this)
         enableEdgeToEdge()
+
+        // Request notification permission on Android 13+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) !=
+                android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                notifPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }
 
         val app = application as CashMemoApplication
         val viewModel = FinanceViewModel(app.repository)

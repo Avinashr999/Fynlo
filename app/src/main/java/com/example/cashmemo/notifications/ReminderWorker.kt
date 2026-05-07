@@ -98,12 +98,13 @@ class ReminderWorker(
     private fun notify(id: Int, title: String, message: String) {
         val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         val notif = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setContentTitle(title)
             .setContentText(message)
             .setStyle(NotificationCompat.BigTextStyle().bigText(message))
-            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)
+            .setColor(android.graphics.Color.parseColor("#059669"))
             .build()
         nm.notify(id, notif)
     }
