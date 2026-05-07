@@ -1,4 +1,9 @@
-﻿@file:Suppress("ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE", "UNUSED_VARIABLE")
+﻿@file:Suppress(
+    "ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE",
+    "UNUSED_VARIABLE",
+    "LocalVariableName",
+    "NAME_SHADOWING"
+)
 package com.example.cashmemo.ui
 
 import androidx.compose.animation.*
@@ -23,6 +28,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.core.content.edit
 import androidx.navigation.NavController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -34,8 +40,6 @@ import com.example.cashmemo.ui.screens.*
 import com.example.cashmemo.ui.components.*
 import com.example.cashmemo.data.SyncStatus
 import com.example.cashmemo.data.PinManager
-import com.example.cashmemo.ui.screens.PinMode
-import com.example.cashmemo.ui.screens.PinScreen
 import kotlinx.coroutines.launch
 
 sealed class Screen(val route: String, val label: String, val icon: ImageVector) {
@@ -50,7 +54,6 @@ sealed class Screen(val route: String, val label: String, val icon: ImageVector)
     object People : Screen("people", "Contact Book", Icons.Default.Group)
     object Budgets : Screen("budgets", "Budgeting", Icons.Default.AccountBalanceWallet)
     object Goals : Screen("goals", "Savings Goals", Icons.Default.Star)
-    object Login : Screen("login", "Login", Icons.Default.Lock)
     object Profile  : Screen("profile",  "Profile",  Icons.Default.Person)
     object FlowWizard : Screen("flow_wizard", "Flow Wizard", Icons.Default.AutoAwesome)
     object Projects  : Screen("projects",       "Projects",         Icons.Default.Business)
@@ -109,7 +112,7 @@ fun MainNavigation(viewModel: FinanceViewModel) {
             prefs.edit { putBoolean("onboarding_done", true) }
             showOnboarding = false
         })
-        return@MainNavigation
+        return
     }
 
     // Offline banner â€” use real network state, not Firestore status
@@ -146,7 +149,7 @@ fun MainNavigation(viewModel: FinanceViewModel) {
 
     if (!isLoggedIn) {
         LoginScreen(onSignedIn = { isLoggedIn = true })
-        return@MainNavigation
+        return
     }
 
     if (!isPinUnlocked) {
@@ -155,7 +158,7 @@ fun MainNavigation(viewModel: FinanceViewModel) {
             onSuccess = { isPinUnlocked = true },
             onSkip    = null
         )
-        return@MainNavigation
+        return
     }
 
     // Dialog Triggering
@@ -673,5 +676,6 @@ fun DrawerDivider() {
         color     = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
     )
 }
+
 
 
