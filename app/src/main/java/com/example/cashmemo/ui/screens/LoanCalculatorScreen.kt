@@ -217,7 +217,7 @@ fun LoanCalculatorScreen() {
             // EMI card
             Card(
                 Modifier.fillMaxWidth(), RoundedCornerShape(20.dp),
-                CardDefaults.cardColors(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f))
+                CardDefaults.cardColors(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
             ) {
                 Column(Modifier.padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     Text("Monthly EMI", style = MaterialTheme.typography.labelLarge,
@@ -380,6 +380,7 @@ private fun ResultCard(label: String, value: String, color: Color, modifier: Mod
         }
     }
 }
+
 
 
 

@@ -235,19 +235,17 @@ fun SettingsScreen(
             )
         }
         Card(Modifier.fillMaxWidth(), RoundedCornerShape(16.dp)) {
-            Row(
-                Modifier.padding(16.dp).fillMaxWidth(),
-                Arrangement.SpaceBetween, Alignment.CenterVertically
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+            Column(Modifier.padding(16.dp)) {
+                // Status row
+                Row(Modifier.fillMaxWidth(), Arrangement.spacedBy(14.dp),
+                    Alignment.CenterVertically) {
                     Box(Modifier.size(40.dp).clip(CircleShape)
                         .background(if (pinSet) Green.copy(0.12f) else MaterialTheme.colorScheme.surfaceVariant),
                         Alignment.Center) {
                         Icon(Icons.Default.Lock, null, Modifier.size(20.dp),
                             tint = if (pinSet) Green else MaterialTheme.colorScheme.onSurfaceVariant)
                     }
-                    Column {
+                    Column(Modifier.weight(1f)) {
                         Text(if (pinSet) "PIN Lock Enabled" else "PIN Lock Disabled",
                             style = MaterialTheme.typography.bodyLarge.copy(
                                 fontWeight = FontWeight.SemiBold,
@@ -261,15 +259,22 @@ fun SettingsScreen(
                         )
                     }
                 }
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                // Buttons row below
+                Spacer(Modifier.height(12.dp))
+                Row(Modifier.fillMaxWidth(), Arrangement.spacedBy(8.dp)) {
                     if (pinSet) {
-                        TextButton(onClick = { pinManager.clearPin(); pinSet = false },
-                            colors = ButtonDefaults.textButtonColors(contentColor = Red)
-                        ) { Text("Remove") }
+                        OutlinedButton(
+                            onClick = { pinManager.clearPin(); pinSet = false },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(10.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Red)
+                        ) { Text("Remove PIN") }
                     }
-                    Button(onClick = { showPinSetup = true }, shape = RoundedCornerShape(10.dp)) {
-                        Text(if (pinSet) "Change" else "Set PIN")
-                    }
+                    Button(
+                        onClick = { showPinSetup = true },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(10.dp)
+                    ) { Text(if (pinSet) "Change PIN" else "Set PIN") }
                 }
             }
         }
