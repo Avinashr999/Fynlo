@@ -39,6 +39,27 @@ fun TransactionHistoryScreen(viewModel: FinanceViewModel) {
     var showBulkDeleteConfirm by remember { mutableStateOf(false) }
     val types = listOf("All", "Income", "Expense")
 
+    val filteredHistory = remember(transactions, selectedType, fromDate, toDate) {
+        var list = if (selectedType == "All") transactions
+                   else transactions.filter { it.type.equals(selectedType, ignoreCase = true) }
+        // Date range filter (convert DD-MM-YYYY to YYYY-MM-DD for comparison)
+        if (fromDate.isNotBlank()) {
+            val from = runCatching {
+                val d = java.time.LocalDate.parse(fromDate, java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy"))
+                d.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd"))
+            }.getOrDefault("")
+            if (from.isNotBlank()) list = list.filter { it.date >= from }
+        }
+        if (toDate.isNotBlank()) {
+            val to = runCatching {
+                val d = java.time.LocalDate.parse(toDate, java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy"))
+                d.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd"))
+            }.getOrDefault("")
+            if (to.isNotBlank()) list = list.filter { it.date <= to }
+        }
+        list
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -122,7 +143,7 @@ fun TransactionHistoryScreen(viewModel: FinanceViewModel) {
         if (showDateFilter) {
             val today = java.time.LocalDate.now()
             val displayFmt = java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy")
-            Card(Modifier.fillMaxWidth().padding(bottom = 8.dp), shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp)) {
+            Card(Modifier.fillMaxWidth().padding(bottom = 8.dp), shape = RoundedCornerShape(12.dp)) {
                 Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     // Quick preset chips
                     Text("Quick Select", style = MaterialTheme.typography.labelSmall,
@@ -166,27 +187,6 @@ fun TransactionHistoryScreen(viewModel: FinanceViewModel) {
                     }
                 }
             }
-        }
-
-        val filteredHistory = remember(transactions, selectedType, fromDate, toDate) {
-            var list = if (selectedType == "All") transactions
-                       else transactions.filter { it.type.equals(selectedType, ignoreCase = true) }
-            // Date range filter (convert DD-MM-YYYY to YYYY-MM-DD for comparison)
-            if (fromDate.isNotBlank()) {
-                val from = runCatching {
-                    val d = java.time.LocalDate.parse(fromDate, java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy"))
-                    d.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd"))
-                }.getOrDefault("")
-                if (from.isNotBlank()) list = list.filter { it.date >= from }
-            }
-            if (toDate.isNotBlank()) {
-                val to = runCatching {
-                    val d = java.time.LocalDate.parse(toDate, java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy"))
-                    d.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd"))
-                }.getOrDefault("")
-                if (to.isNotBlank()) list = list.filter { it.date <= to }
-            }
-            list
         }
 
         if (filteredHistory.isEmpty()) {
@@ -307,11 +307,6 @@ fun TransactionItem(
             onConfirm   = { updated -> onEdit(updated); showEditDialog = false }
         )
     }
-    val amountColor = when {
-        isExpense -> Color(0xFFEF4444)
-        isIncome -> Color(0xFF059669)
-        else -> MaterialTheme.colorScheme.primary
-    }
 
     Card(
         modifier = Modifier.fillMaxWidth()
@@ -336,93 +331,93 @@ fun TransactionItem(
             Box(Modifier.width(4.dp).fillMaxHeight().background(rowColor,
                 RoundedCornerShape(topStart = 12.dp, bottomStart = 12.dp)))
             Column(modifier = Modifier.padding(12.dp).weight(1f)) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(40.dp)
-                        .background(rowColor.copy(alpha = 0.15f), CircleShape),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector        = getCategoryIcon(txn.category),
-                        contentDescription = null,
-                        tint               = rowColor,
-                        modifier           = Modifier.size(20.dp)
-                    )
-                }
-
-                Spacer(modifier = Modifier.width(12.dp))
-
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(txn.category,
-                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold))
-                    Text(txn.desc.ifBlank { if (isExpense) txn.fromAcct else txn.toAcct },
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-
-                Column(horizontalAlignment = Alignment.End) {
-                    Text(
-                        text  = "${amountPrefix}₹ ${String.format(locale, "%,.0f", txn.amount)}",
-                        style = MaterialTheme.typography.bodyLarge.copy(
-                            fontWeight = FontWeight.ExtraBold, color = rowColor)
-                    )
-                    Text(txn.date, style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-
-                IconButton(onClick = { showEditDialog = true }, modifier = Modifier.size(32.dp)) {
-                    Icon(Icons.Default.Edit, null, Modifier.size(16.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                IconButton(onClick = { showDeleteConfirm = true }, modifier = Modifier.size(32.dp)) {
-                    Icon(Icons.Default.Delete, null, Modifier.size(16.dp),
-                        tint = Color(0xFFEF4444).copy(alpha = 0.7f))
-                }
-            }
-
-            if (txn.notes.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(12.dp))
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(
-                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
-                            RoundedCornerShape(8.dp)
-                        )
-                        .padding(8.dp),
-                    verticalAlignment = Alignment.Top
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.Notes,
-                        contentDescription = null,
-                        modifier = Modifier.size(14.dp).padding(top = 2.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = txn.notes,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .background(rowColor.copy(alpha = 0.15f), CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector        = getCategoryIcon(txn.category),
+                            contentDescription = null,
+                            tint               = rowColor,
+                            modifier           = Modifier.size(20.dp)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(12.dp))
+
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(txn.category,
+                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold))
+                        Text(txn.desc.ifBlank { if (isExpense) txn.fromAcct else txn.toAcct },
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text(
+                            text  = "${amountPrefix}₹ ${String.format(locale, "%,.0f", txn.amount)}",
+                            style = MaterialTheme.typography.bodyLarge.copy(
+                                fontWeight = FontWeight.ExtraBold, color = rowColor)
+                        )
+                        Text(txn.date, style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+
+                    IconButton(onClick = { showEditDialog = true }, modifier = Modifier.size(32.dp)) {
+                        Icon(Icons.Default.Edit, null, Modifier.size(16.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    IconButton(onClick = { showDeleteConfirm = true }, modifier = Modifier.size(32.dp)) {
+                        Icon(Icons.Default.Delete, null, Modifier.size(16.dp),
+                            tint = Color(0xFFEF4444).copy(alpha = 0.7f))
+                    }
                 }
-            }
-            
-            Row(modifier = Modifier.padding(top = 8.dp)) {
-                if (txn.fromAcct.isNotEmpty()) {
-                    Text("From: ${txn.fromAcct}", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+
+                if (txn.notes.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(
+                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                                RoundedCornerShape(8.dp)
+                            )
+                            .padding(8.dp),
+                        verticalAlignment = Alignment.Top
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.Notes,
+                            contentDescription = null,
+                            modifier = Modifier.size(14.dp).padding(top = 2.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = txn.notes,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
-                if (txn.fromAcct.isNotEmpty() && txn.toAcct.isNotEmpty()) Spacer(Modifier.width(8.dp))
-                if (txn.toAcct.isNotEmpty()) {
-                    Text("To: ${txn.toAcct}", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+                
+                Row(modifier = Modifier.padding(top = 8.dp)) {
+                    if (txn.fromAcct.isNotEmpty()) {
+                        Text("From: ${txn.fromAcct}", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+                    }
+                    if (txn.fromAcct.isNotEmpty() && txn.toAcct.isNotEmpty()) Spacer(Modifier.width(8.dp))
+                    if (txn.toAcct.isNotEmpty()) {
+                        Text("To: ${txn.toAcct}", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+                    }
                 }
             }
         }
     }
-}
 }
 
 @Composable
@@ -455,10 +450,3 @@ fun getCategoryIcon(category: String): ImageVector {
         else -> Icons.Default.AccountBalanceWallet
     }
 }
-
-
-
-
-
-
-
