@@ -43,6 +43,7 @@ import java.util.Locale
 @Composable
 fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> Unit = {}) {
     val borrowers by viewModel.borrowers.collectAsState()
+    val people    by viewModel.people.collectAsState()  // for phone lookup
     var showEmiCalc by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
     var sortBy      by remember { mutableStateOf("Overdue") } // Overdue, Amount, Name, Date
@@ -184,6 +185,7 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
                     items(activeLoans) { borrower ->
                         LendingCard(
                             borrower  = borrower,
+                            people    = people,
                             isOverdue = borrower.due.isNotBlank() && borrower.due < today,
                             onDelete  = { viewModel.deleteBorrower(borrower) },
                             onEdit    = { editingBorrower = borrower },
@@ -210,6 +212,7 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
                                 settledLoans.forEach { borrower ->
                                     LendingCard(
                                         borrower  = borrower,
+                                        people    = people,
                                         isOverdue = false,
                                         onDelete  = { viewModel.deleteBorrower(borrower) },
                                         onEdit    = { editingBorrower = borrower },
@@ -234,13 +237,17 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
     }
 }
 @Composable
-fun LendingCard(borrower: Borrower, isOverdue: Boolean = false, onDelete: () -> Unit, onEdit: () -> Unit, onCollect: () -> Unit, onClick: () -> Unit) {
+fun LendingCard(borrower: Borrower, people: List<com.example.cashmemo.data.model.Person> = emptyList(), isOverdue: Boolean = false, onDelete: () -> Unit, onEdit: () -> Unit, onCollect: () -> Unit, onClick: () -> Unit) {
     // Pulsing animation for overdue
     val infiniteTransition = rememberInfiniteTransition(label = "pulse")
     val pulseAlpha by infiniteTransition.animateFloat(
         initialValue = 1f, targetValue = 0.3f, label = "pulseAlpha",
         animationSpec = infiniteRepeatable(tween(800), RepeatMode.Reverse)
     )
+    // Phone: use borrower.phone first, fall back to matching person in contact book
+    val phone = borrower.phone.ifBlank {
+        people.find { it.name.equals(borrower.name, ignoreCase = true) }?.phone ?: ""
+    }
     val interest = InterestEngine.calcIntAccrued(
         amount = borrower.amount,
         rate = borrower.rate,
@@ -290,16 +297,15 @@ fun LendingCard(borrower: Borrower, isOverdue: Boolean = false, onDelete: () -> 
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     val context = LocalContext.current
-                    if (borrower.phone.isNotBlank()) {
+                    if (phone.isNotBlank()) {
                         // WhatsApp reminder
                         val outstanding = InterestEngine.calcOutstanding(borrower.amount, interest, borrower.paid)
-                        val phone = borrower.phone.trim().replace(" ","").replace("-","")
-                        // Add country code if not present
+                        val cleanPhone = phone.trim().replace(" ","").replace("-","")
                         val intlPhone = when {
-                            phone.startsWith("+") -> phone
-                            phone.startsWith("91") && phone.length == 12 -> "+$phone"
-                            phone.length == 10 -> "+91$phone"
-                            else -> phone
+                            cleanPhone.startsWith("+") -> cleanPhone
+                            cleanPhone.startsWith("91") && cleanPhone.length == 12 -> "+$cleanPhone"
+                            cleanPhone.length == 10 -> "+91$cleanPhone"
+                            else -> cleanPhone
                         }
                         val dueStr = if (borrower.due.isNotBlank()) " due on ${borrower.due}" else ""
                         val waMsg  = "Hi ${borrower.name}, this is a friendly reminder that your outstanding loan balance is ₹${String.format(locale, "%,.0f", outstanding)}$dueStr. Kindly arrange repayment at your earliest convenience. Thank you! - Cash Memo"

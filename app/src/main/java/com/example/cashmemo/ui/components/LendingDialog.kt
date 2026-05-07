@@ -177,16 +177,17 @@ fun AddLendingDialog(
                             }
                             val rawId = initialBorrower?.id ?: ""
                             val borrower = Borrower(
-                                id = if (rawId.isBlank()) UUID.randomUUID().toString() else rawId,
-                                name = selectedPerson?.name ?: initialBorrower?.name ?: "Unknown",
+                                id     = if (rawId.isBlank()) UUID.randomUUID().toString() else rawId,
+                                name   = selectedPerson?.name ?: initialBorrower?.name ?: "Unknown",
+                                phone  = selectedPerson?.phone ?: initialBorrower?.phone ?: "",
                                 amount = amount.toDoubleOrNull() ?: 0.0,
-                                rate = rate.toDoubleOrNull() ?: 0.0,
-                                date = DateUtils.parseInput(date),
-                                due = if (due.isNotEmpty()) DateUtils.parseInput(due) else "",
-                                type = selectedType,
+                                rate   = rate.toDoubleOrNull() ?: 0.0,
+                                date   = DateUtils.parseInput(date),
+                                due    = if (due.isNotEmpty()) DateUtils.parseInput(due) else "",
+                                type   = selectedType,
                                 status = initialBorrower?.status ?: "Active",
-                                notes = notes,
-                                paid = initialBorrower?.paid ?: 0.0
+                                notes  = notes,
+                                paid   = initialBorrower?.paid ?: 0.0
                             )
                             onConfirm(borrower, finalSource)
                         },
