@@ -4,6 +4,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
@@ -133,7 +136,28 @@ fun AddPersonDialog(initial: Person? = null, onDismiss: () -> Unit, onConfirm: (
     val isEdit = initial != null
     var name  by remember { mutableStateOf(initial?.name  ?: "") }
     var id    by remember { mutableStateOf(initial?.id    ?: "P-${(100..999).random()}") }
-    var phone by remember { mutableStateOf(initial?.phone ?: "") }
+
+    // Country codes list
+    val countryCodes = remember { listOf(
+        "+91 🇮🇳 India", "+1 🇺🇸 USA/Canada", "+44 🇬🇧 UK",
+        "+61 🇦🇺 Australia", "+971 🇦🇪 UAE", "+65 🇸🇬 Singapore",
+        "+60 🇲🇾 Malaysia", "+966 🇸🇦 Saudi Arabia", "+974 🇶🇦 Qatar",
+        "+968 🇴🇲 Oman", "+973 🇧🇭 Bahrain", "+49 🇩🇪 Germany",
+        "+33 🇫🇷 France", "+81 🇯🇵 Japan", "+86 🇨🇳 China"
+    )}
+    // Parse existing phone into prefix + number
+    val existingPhone = initial?.phone ?: ""
+    val initialPrefix = remember {
+        countryCodes.find { existingPhone.startsWith(it.substringBefore(" ")) }
+            ?: "+91 🇮🇳 India"
+    }
+    val initialNumber = remember {
+        val code = initialPrefix.substringBefore(" ")
+        if (existingPhone.startsWith(code)) existingPhone.removePrefix(code).trim() else existingPhone
+    }
+    var selectedCode  by remember { mutableStateOf(initialPrefix) }
+    var phoneNumber   by remember { mutableStateOf(initialNumber) }
+    var codeExpanded  by remember { mutableStateOf(false) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -146,13 +170,62 @@ fun AddPersonDialog(initial: Person? = null, onDismiss: () -> Unit, onConfirm: (
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
-                OutlinedTextField(
-                    value = phone, onValueChange = { phone = it },
-                    label = { Text("Phone Number (for WhatsApp/SMS)") },
-                    singleLine = true,
-                    placeholder = { Text("e.g. 9876543210") },
-                    modifier = Modifier.fillMaxWidth()
-                )
+
+                // Country code + phone number row
+                Text("Phone Number (for WhatsApp/SMS)",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Country code dropdown
+                    ExposedDropdownMenuBox(
+                        expanded = codeExpanded,
+                        onExpandedChange = { codeExpanded = !codeExpanded },
+                        modifier = Modifier.width(130.dp)
+                    ) {
+                        OutlinedTextField(
+                            value = selectedCode.substringBefore(" ") + " " +
+                                    selectedCode.substringAfter(" ").substringBefore(" "),
+                            onValueChange = {},
+                            readOnly = true,
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = codeExpanded) },
+                            modifier = Modifier
+                                .menuAnchor(androidx.compose.material3.ExposedDropdownMenuAnchorType.PrimaryNotEditable, true)
+                                .width(130.dp),
+                            singleLine = true
+                        )
+                        ExposedDropdownMenu(
+                            expanded = codeExpanded,
+                            onDismissRequest = { codeExpanded = false }
+                        ) {
+                            countryCodes.forEach { code ->
+                                DropdownMenuItem(
+                                    text = { Text(code, style = MaterialTheme.typography.bodySmall) },
+                                    onClick = { selectedCode = code; codeExpanded = false }
+                                )
+                            }
+                        }
+                    }
+                    // Phone number input
+                    OutlinedTextField(
+                        value = phoneNumber,
+                        onValueChange = { phoneNumber = it.filter { c -> c.isDigit() } },
+                        placeholder = { Text("9876543210") },
+                        singleLine = true,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+                // Preview full number
+                if (phoneNumber.isNotBlank()) {
+                    val fullNumber = selectedCode.substringBefore(" ") + phoneNumber
+                    Text("Full number: $fullNumber",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+
                 if (!isEdit) {
                     OutlinedTextField(
                         value = id, onValueChange = { id = it },
@@ -164,8 +237,12 @@ fun AddPersonDialog(initial: Person? = null, onDismiss: () -> Unit, onConfirm: (
             }
         },
         confirmButton = {
+            val fullPhone = if (phoneNumber.isNotBlank())
+                selectedCode.substringBefore(" ") + phoneNumber else ""
             Button(
-                onClick = { if (name.isNotBlank()) onConfirm(Person(id.ifBlank { initial?.id ?: "P-${System.currentTimeMillis()}" }, name.trim(), phone.trim())) },
+                onClick = { if (name.isNotBlank()) onConfirm(
+                    Person(id.ifBlank { initial?.id ?: "P-${System.currentTimeMillis()}" },
+                        name.trim(), fullPhone.trim())) },
                 enabled = name.isNotBlank()
             ) { Text(if (isEdit) "Update" else "Save") }
         },

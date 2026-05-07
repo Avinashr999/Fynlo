@@ -248,6 +248,16 @@ fun LendingCard(borrower: Borrower, people: List<com.example.cashmemo.data.model
     val phone = borrower.phone.ifBlank {
         people.find { it.name.equals(borrower.name, ignoreCase = true) }?.phone ?: ""
     }
+    // Normalize to international format
+    val intlPhone = remember(phone) {
+        val p = phone.trim().replace(" ", "").replace("-", "")
+        when {
+            p.startsWith("+") -> p          // already has country code
+            p.startsWith("91") && p.length == 12 -> "+$p"
+            p.length == 10 -> "+91$p"       // default to India if 10 digits
+            else -> p
+        }
+    }
     val interest = InterestEngine.calcIntAccrued(
         amount = borrower.amount,
         rate = borrower.rate,
@@ -298,15 +308,7 @@ fun LendingCard(borrower: Borrower, people: List<com.example.cashmemo.data.model
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     val context = LocalContext.current
                     if (phone.isNotBlank()) {
-                        // WhatsApp reminder
                         val outstanding = InterestEngine.calcOutstanding(borrower.amount, interest, borrower.paid)
-                        val cleanPhone = phone.trim().replace(" ","").replace("-","")
-                        val intlPhone = when {
-                            cleanPhone.startsWith("+") -> cleanPhone
-                            cleanPhone.startsWith("91") && cleanPhone.length == 12 -> "+$cleanPhone"
-                            cleanPhone.length == 10 -> "+91$cleanPhone"
-                            else -> cleanPhone
-                        }
                         val dueStr = if (borrower.due.isNotBlank()) " due on ${borrower.due}" else ""
                         val waMsg  = "Hi ${borrower.name}, this is a friendly reminder that your outstanding loan balance is ₹${String.format(locale, "%,.0f", outstanding)}$dueStr. Kindly arrange repayment at your earliest convenience. Thank you! - Cash Memo"
                         val smsMsg = "Hi ${borrower.name}, outstanding: ₹${String.format(locale, "%,.0f", outstanding)}$dueStr. Please repay. -Cash Memo"
