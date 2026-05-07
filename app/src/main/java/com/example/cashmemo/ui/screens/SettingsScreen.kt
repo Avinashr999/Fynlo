@@ -1,426 +1,428 @@
-﻿package com.example.cashmemo.ui.screens
+package com.example.cashmemo.ui.screens
 
-import android.content.Context
-import android.content.Intent
-import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Backup
-import androidx.compose.material.icons.filled.CloudDone
 import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
-import androidx.compose.material.icons.filled.ArrowForwardIos
-import androidx.compose.material.icons.filled.FileDownload
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.FileUpload
-import androidx.compose.material.icons.filled.PictureAsPdf
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.GridOn
-import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.Science
-import androidx.compose.material.icons.filled.CleaningServices
-import androidx.compose.material.icons.filled.Restore
-import androidx.compose.material.icons.filled.TableChart
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.cashmemo.FinanceViewModel
 import com.example.cashmemo.ui.theme.ThemeController
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
-@Composable
-fun SettingsScreen(viewModel: FinanceViewModel, onNavigateToAbout: () -> Unit, onNavigateToProfile: () -> Unit = {}) {
-    val scope = rememberCoroutineScope()
-    val context = LocalContext.current
-    var isExporting by remember { mutableStateOf(false) }
+private val Green = Color(0xFF059669)
+private val Blue  = Color(0xFF3B82F6)
+private val Red   = Color(0xFFEF4444)
+private val Amber = Color(0xFFF59E0B)
 
-    val createDocumentLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.CreateDocument("application/json")
-    ) { uri ->
-        uri?.let {
-            scope.launch {
-                isExporting = true
-                try {
-                    val jsonData = viewModel.exportAllData()
-                    context.contentResolver.openOutputStream(it)?.use { outputStream ->
-                        outputStream.write(jsonData.toByteArray())
-                    }
-                    // Show success snackbar if we had a scaffold state, 
-                    // for now we'll just stop the loading state
-                } catch (e: Exception) {
-                    // Handle error
-                } finally {
-                    isExporting = false
-                }
+@Composable
+fun SettingsScreen(
+    viewModel: FinanceViewModel,
+    onNavigateToAbout: () -> Unit,
+    onNavigateToProfile: () -> Unit = {}
+) {
+    val scope   = rememberCoroutineScope()
+    val context = LocalContext.current
+
+    // ── Export launchers ────────────────────────────────────────────────────
+    val jsonLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/json")
+    ) { uri -> uri?.let { scope.launch {
+        val json = viewModel.exportAllData()
+        context.contentResolver.openOutputStream(it)?.use { os -> os.write(json.toByteArray()) }
+    }}}
+
+    val importLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.GetContent()
+    ) { uri -> uri?.let { scope.launch {
+        context.contentResolver.openInputStream(it)?.use { ins ->
+            viewModel.restoreData(ins.bufferedReader().readText())
+        }
+    }}}
+
+    val csvLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("text/csv")
+    ) { uri -> uri?.let {
+        context.contentResolver.openOutputStream(it)?.use { os ->
+            os.write(viewModel.exportToCSV().toByteArray())
+        }
+    }}
+
+    val pdfLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/pdf")
+    ) { uri -> uri?.let {
+        context.contentResolver.openOutputStream(it)?.use { os -> viewModel.exportToPDF(os) }
+    }}
+
+    val xlsxLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument(
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+    ) { uri -> uri?.let { scope.launch(Dispatchers.IO) {
+        runCatching {
+            context.contentResolver.openOutputStream(it)?.use { os ->
+                com.example.cashmemo.logic.ExcelExportUtility.generateFullBackup(
+                    os,
+                    viewModel.accounts.value, viewModel.transactions.value,
+                    viewModel.borrowers.value, viewModel.debts.value,
+                    viewModel.investments.value, viewModel.payments.value,
+                    viewModel.debtPayments.value
+                )
             }
         }
-    }
+    }}}
 
-    val scrollState = rememberScrollState()
     Column(
         modifier = Modifier
             .fillMaxSize()
             .statusBarsPadding()
-            .verticalScroll(scrollState)
-            .padding(16.dp)
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 16.dp)
     ) {
+        // ── Header ──────────────────────────────────────────────────────────
         Text(
-            text = "Settings & Data",
-            style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold),
-            modifier = Modifier.padding(bottom = 100.dp)
+            "Settings",
+            style    = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold),
+            modifier = Modifier.padding(top = 16.dp, bottom = 20.dp)
         )
 
-        // â”€â”€ Theme toggle â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // ── Appearance ───────────────────────────────────────────────────────
+        SettingsSectionLabel("Appearance")
+        SettingsCard {
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                listOf(
+                    null  to "System",
+                    false to "Light",
+                    true  to "Dark"
+                ).forEach { (value, label) ->
+                    FilterChip(
+                        selected = ThemeController.darkModeOverride == value,
+                        onClick  = { ThemeController.darkModeOverride = value; ThemeController.save(context) },
+                        label    = { Text(label) },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
+        }
+
+        Spacer(Modifier.height(16.dp))
+
+        // ── Cloud Backup ─────────────────────────────────────────────────────
+        SettingsSectionLabel("Cloud Backup")
         Card(
-            modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
-            shape    = RoundedCornerShape(16.dp)
+            Modifier.fillMaxWidth(),
+            RoundedCornerShape(16.dp),
+            CardDefaults.cardColors(containerColor = Green.copy(alpha = 0.08f))
         ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text("Appearance", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
-                Spacer(Modifier.height(12.dp))
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FilterChip(selected = ThemeController.darkModeOverride == null,  onClick = { ThemeController.darkModeOverride = null;  ThemeController.save(context) }, label = { Text("System") }, modifier = Modifier.weight(1f))
-                    FilterChip(selected = ThemeController.darkModeOverride == false, onClick = { ThemeController.darkModeOverride = false; ThemeController.save(context) }, label = { Text("Light")  }, modifier = Modifier.weight(1f))
-                    FilterChip(selected = ThemeController.darkModeOverride == true,  onClick = { ThemeController.darkModeOverride = true;  ThemeController.save(context) }, label = { Text("Dark")   }, modifier = Modifier.weight(1f))
+            Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                Box(Modifier.size(40.dp).clip(CircleShape).background(Green.copy(0.15f)),
+                    Alignment.Center) {
+                    Icon(Icons.Default.CloudDone, null, Modifier.size(20.dp), tint = Green)
+                }
+                Column {
+                    Text("Auto-Backup Active",
+                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
+                        color = Green)
+                    Text("Data synced to Google Firestore in real-time",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }
 
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.CloudDone, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                    Spacer(Modifier.width(12.dp))
-                    Column {
-                        Text("Auto-Backup is Active", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
-                        Text("Your data is automatically synced to Google Drive.", style = MaterialTheme.typography.bodySmall)
-                    }
-                }
+        Spacer(Modifier.height(16.dp))
+
+        // ── Export & Backup ──────────────────────────────────────────────────
+        SettingsSectionLabel("Export & Backup")
+        SettingsCard {
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                SettingsActionRow(
+                    icon  = Icons.Default.GridOn,
+                    color = Green,
+                    title = "Export Full Backup (.xlsx)",
+                    subtitle = "All data in 7 sheets — opens in Excel/Sheets"
+                ) { xlsxLauncher.launch("CashMemo_Backup_${System.currentTimeMillis()}.xlsx") }
+
+                SettingsDivider()
+
+                SettingsActionRow(
+                    icon  = Icons.Default.FileDownload,
+                    color = Blue,
+                    title = "Export JSON Backup",
+                    subtitle = "Full backup for restore"
+                ) { jsonLauncher.launch("CashMemo_Backup_${System.currentTimeMillis()}.json") }
+
+                SettingsDivider()
+
+                SettingsActionRow(
+                    icon  = Icons.Default.TableChart,
+                    color = Blue,
+                    title = "Export Expenses (.csv)",
+                    subtitle = "Transactions in spreadsheet format"
+                ) { csvLauncher.launch("CashMemo_Expenses_${System.currentTimeMillis()}.csv") }
+
+                SettingsDivider()
+
+                SettingsActionRow(
+                    icon  = Icons.Default.PictureAsPdf,
+                    color = Red,
+                    title = "Export PDF Report",
+                    subtitle = "Financial summary report"
+                ) { pdfLauncher.launch("CashMemo_Report_${System.currentTimeMillis()}.pdf") }
+
+                SettingsDivider()
+
+                SettingsActionRow(
+                    icon  = Icons.Default.FileUpload,
+                    color = Amber,
+                    title = "Restore from JSON",
+                    subtitle = "Import a previously exported backup"
+                ) { importLauncher.launch("application/json") }
             }
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(Modifier.height(16.dp))
 
-        Text("Manual Backup & Exports", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
-        Text(
-            "Export your data in different formats for taxes or record keeping.",
-            style = MaterialTheme.typography.bodySmall,
-            modifier = Modifier.padding(bottom = 12.dp)
-        )
-
-        val createCSVLauncher = rememberLauncherForActivityResult(
-            contract = ActivityResultContracts.CreateDocument("text/csv")
-        ) { uri ->
-            uri?.let {
-                context.contentResolver.openOutputStream(it)?.use { os ->
-                    os.write(viewModel.exportToCSV().toByteArray())
-                }
-            }
-        }
-
-        val createPDFLauncher = rememberLauncherForActivityResult(
-            contract = ActivityResultContracts.CreateDocument("application/pdf")
-        ) { uri ->
-            uri?.let {
-                context.contentResolver.openOutputStream(it)?.use { os ->
-                    viewModel.exportToPDF(os)
-                }
-            }
-        }
-
-        val importLauncher = rememberLauncherForActivityResult(
-            contract = ActivityResultContracts.GetContent()
-        ) { uri ->
-            uri?.let {
-                scope.launch {
-                    context.contentResolver.openInputStream(it)?.use { inputStream ->
-                        val json = inputStream.bufferedReader().use { it.readText() }
-                        viewModel.restoreData(json)
-                    }
-                }
-            }
-        }
-
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(
-                onClick = { createDocumentLauncher.launch("CashMemo_Backup_${System.currentTimeMillis()}.json") },
-                modifier = Modifier.fillMaxWidth().height(48.dp),
-                shape = MaterialTheme.shapes.medium
+        // ── Notifications ────────────────────────────────────────────────────
+        SettingsSectionLabel("Notifications")
+        SettingsCard {
+            SettingsActionRow(
+                icon     = Icons.Default.Notifications,
+                color    = Amber,
+                title    = "Test Notifications",
+                subtitle = "Schedule daily loan due date & budget alerts"
             ) {
-                Icon(Icons.Default.FileDownload, contentDescription = null)
-                Spacer(Modifier.width(8.dp))
-                Text("Export JSON (System Backup)")
-            }
-
-            Button(
-                onClick = { importLauncher.launch("application/json") },
-                modifier = Modifier.fillMaxWidth().height(48.dp),
-                shape = MaterialTheme.shapes.medium,
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
-            ) {
-                Icon(Icons.Default.FileUpload, contentDescription = null)
-                Spacer(Modifier.width(8.dp))
-                Text("Restore Data (Import JSON)")
-            }
-
-            OutlinedButton(
-                onClick = { createCSVLauncher.launch("CashMemo_Expenses_${System.currentTimeMillis()}.csv") },
-                modifier = Modifier.fillMaxWidth().height(48.dp),
-                shape = MaterialTheme.shapes.medium
-            ) {
-                Icon(Icons.Default.TableChart, contentDescription = null)
-                Spacer(Modifier.width(8.dp))
-                Text("Export Expenses (CSV)")
-            }
-
-            // Full Excel backup
-            val xlsxLauncher = rememberLauncherForActivityResult(
-                ActivityResultContracts.CreateDocument("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-            ) { uri ->
-                uri?.let {
-                    scope.launch(kotlinx.coroutines.Dispatchers.IO) {
-                        runCatching {
-                            context.contentResolver.openOutputStream(it)?.use { os ->
-                                com.example.cashmemo.logic.ExcelExportUtility.generateFullBackup(
-                                    os,
-                                    viewModel.accounts.value,
-                                    viewModel.transactions.value,
-                                    viewModel.borrowers.value,
-                                    viewModel.debts.value,
-                                    viewModel.investments.value,
-                                    viewModel.payments.value,
-                                    viewModel.debtPayments.value
-                                )
-                            }
-                        }.onFailure { e ->
-                            android.util.Log.e("ExcelExport", "Export failed", e)
-                        }
-                    }
-                }
-            }
-                                
-            Button(
-                onClick = { xlsxLauncher.launch("CashMemo_Backup_${System.currentTimeMillis()}.xlsx") },
-                modifier = Modifier.fillMaxWidth().height(48.dp),
-                shape    = MaterialTheme.shapes.medium,
-                colors   = ButtonDefaults.buttonColors(containerColor = Color(0xFF059669))
-            ) {
-                Icon(Icons.Default.GridOn, contentDescription = null)
-                Spacer(Modifier.width(8.dp))
-                Text("Export Full Backup (.xlsx)")
-            }
-
-            OutlinedButton(
-                onClick = { createPDFLauncher.launch("CashMemo_Report_${System.currentTimeMillis()}.pdf") },
-                modifier = Modifier.fillMaxWidth().height(48.dp),
-                shape = MaterialTheme.shapes.medium
-            ) {
-                Icon(Icons.Default.PictureAsPdf, contentDescription = null)
-                Spacer(Modifier.width(8.dp))
-                Text("Export PDF Report")
-            }
-        }
-
-        
-        Spacer(modifier = Modifier.height(16.dp))
-        HorizontalDivider()
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Text("Notifications", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
-        Spacer(Modifier.height(8.dp))
-        OutlinedButton(
-            onClick = {
                 com.example.cashmemo.notifications.ReminderScheduler.schedule(context)
-                android.widget.Toast.makeText(context, "Reminders scheduled! Due date alerts will fire daily.", android.widget.Toast.LENGTH_LONG).show()
-            },
-            modifier = Modifier.fillMaxWidth(),
-            shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp)
-        ) {
-            Icon(Icons.Default.Notifications, null, Modifier.size(18.dp))
-            Spacer(Modifier.width(8.dp))
-            Text("Test Notifications")
+                android.widget.Toast.makeText(
+                    context, "Daily reminders scheduled!", android.widget.Toast.LENGTH_SHORT
+                ).show()
+            }
         }
-        Text("Schedules daily reminders for loan due dates and budget alerts.",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant)
 
-        Spacer(modifier = Modifier.height(32.dp))
+        Spacer(Modifier.height(16.dp))
 
-        HorizontalDivider()
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Text("Security", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
-        Spacer(Modifier.height(8.dp))
+        // ── Security ─────────────────────────────────────────────────────────
+        SettingsSectionLabel("Security")
         val pinManager = remember { com.example.cashmemo.data.PinManager(context) }
-        var pinSet by remember { mutableStateOf(pinManager.isPinSet) }
+        var pinSet      by remember { mutableStateOf(pinManager.isPinSet) }
         var showPinSetup by remember { mutableStateOf(false) }
         if (showPinSetup) {
-            com.example.cashmemo.ui.screens.PinScreen(
-                mode      = com.example.cashmemo.ui.screens.PinMode.SET,
+            PinScreen(
+                mode      = PinMode.SET,
                 onSuccess = { pinSet = pinManager.isPinSet; showPinSetup = false },
                 onSkip    = { showPinSetup = false }
             )
         }
-        Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)) {
+        Card(Modifier.fillMaxWidth(), RoundedCornerShape(16.dp)) {
             Row(
                 Modifier.padding(16.dp).fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                Arrangement.SpaceBetween, Alignment.CenterVertically
             ) {
-                Column(Modifier.weight(1f).padding(end = 12.dp)) {
-                    Text(if (pinSet) "PIN Lock Enabled" else "PIN Lock Disabled",
-                        style = MaterialTheme.typography.bodyLarge)
-                    Text(if (pinSet) "App locks when you switch away" else "Set a 4-digit PIN to secure the app",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Row(verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                    Box(Modifier.size(40.dp).clip(CircleShape)
+                        .background(if (pinSet) Green.copy(0.12f) else MaterialTheme.colorScheme.surfaceVariant),
+                        Alignment.Center) {
+                        Icon(Icons.Default.Lock, null, Modifier.size(20.dp),
+                            tint = if (pinSet) Green else MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    Column {
+                        Text(if (pinSet) "PIN Lock Enabled" else "PIN Lock Disabled",
+                            style = MaterialTheme.typography.bodyLarge.copy(
+                                fontWeight = FontWeight.SemiBold,
+                                color = if (pinSet) Green else MaterialTheme.colorScheme.onSurface
+                            ))
+                        Text(
+                            if (pinSet) "App locks when you switch away"
+                            else "Tap Set PIN to secure the app",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     if (pinSet) {
-                        OutlinedButton(
-                            onClick = { pinManager.clearPin(); pinSet = false },
-                            shape = RoundedCornerShape(8.dp)
+                        TextButton(onClick = { pinManager.clearPin(); pinSet = false },
+                            colors = ButtonDefaults.textButtonColors(contentColor = Red)
                         ) { Text("Remove") }
                     }
-                    Button(
-                        onClick = { showPinSetup = true },
-                        shape = RoundedCornerShape(8.dp)
-                    ) {
+                    Button(onClick = { showPinSetup = true }, shape = RoundedCornerShape(10.dp)) {
                         Text(if (pinSet) "Change" else "Set PIN")
                     }
                 }
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
-        HorizontalDivider()
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Text("App Information", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
-
-        // Developer section - DEBUG only
-        if (com.example.cashmemo.BuildConfig.DEBUG) {
-        // ── Developer / Test ──────────────────────────────────────────────
         Spacer(Modifier.height(16.dp))
-        HorizontalDivider()
-        Spacer(Modifier.height(16.dp))
-        Text("Developer", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
-        Spacer(Modifier.height(8.dp))
-        var showSeedConfirm by remember { mutableStateOf(false) }
-        var showCleanupConfirm by remember { mutableStateOf(false) }
 
-        if (showCleanupConfirm) {
-            AlertDialog(
-                onDismissRequest = { showCleanupConfirm = false },
-                title = { Text("Cleanup Seeder Data?") },
-                text  = { Text("This will remove all QA test data (seeder investments, borrowers, debts, transactions and accounts) from both the app and Firestore. Your real data will remain.") },
-                confirmButton = { Button(onClick = { viewModel.cleanupSeeederData(); showCleanupConfirm = false }) { Text("Cleanup") } },
-                dismissButton = { TextButton(onClick = { showCleanupConfirm = false }) { Text("Cancel") } }
-            )
-        }
-        if (showSeedConfirm) {
-            AlertDialog(
-                onDismissRequest = { showSeedConfirm = false },
-                title = { Text("Load Test Data?") },
-                text  = { Text("⚠️ This will DELETE all existing data and replace with test data. Use only for QA testing.") },
-                confirmButton = { Button(onClick = { viewModel.loadDummyData(); showSeedConfirm = false }) { Text("Load") } },
-                dismissButton = { TextButton(onClick = { showSeedConfirm = false }) { Text("Cancel") } }
-            )
-        }
-        OutlinedButton(
-            onClick  = { showSeedConfirm = true },
-            modifier = Modifier.fillMaxWidth(),
-            shape    = RoundedCornerShape(12.dp)
-        ) {
-            Icon(Icons.Default.Science, null, Modifier.size(18.dp))
-            Spacer(Modifier.width(8.dp))
-            Text("Load Test Data (QA)")
-        }
-        Spacer(Modifier.height(8.dp))
-        OutlinedButton(
-            onClick  = { showCleanupConfirm = true },
-            modifier = Modifier.fillMaxWidth(),
-            shape    = RoundedCornerShape(12.dp)
-        ) {
-            Icon(Icons.Default.CleaningServices, null, Modifier.size(18.dp))
-            Spacer(Modifier.width(8.dp))
-            Text("Cleanup Seeder Data")
-        }
-        Spacer(Modifier.height(8.dp))
-        var showRestoreConfirm by remember { mutableStateOf(false) }
-        if (showRestoreConfirm) {
-            AlertDialog(
-                onDismissRequest = { showRestoreConfirm = false },
-                title = { Text("Restore Real Data?") },
-                text  = { Text("This will clear all transactions and restore your real account balances: Cash in Hand ₹3,962 and HDFC Bank ₹1,22,500.") },
-                confirmButton = { Button(onClick = { viewModel.restoreRealData(); showRestoreConfirm = false }) { Text("Restore") } },
-                dismissButton = { TextButton(onClick = { showRestoreConfirm = false }) { Text("Cancel") } }
-            )
-        }
-        Button(
-            onClick  = { showRestoreConfirm = true },
-            modifier = Modifier.fillMaxWidth(),
-            shape    = RoundedCornerShape(12.dp),
-            colors   = ButtonDefaults.buttonColors(containerColor = Color(0xFF3B82F6))
-        ) {
-            Icon(Icons.Default.Restore, null, Modifier.size(18.dp))
-            Spacer(Modifier.width(8.dp))
-            Text("Restore Real Data")
-        }
-        } // end BuildConfig.DEBUG
-        
-        TextButton(
-            onClick = onNavigateToAbout,
-            modifier = Modifier.fillMaxWidth(),
-            contentPadding = PaddingValues(0.dp)
-        ) {
+        // ── App Info ─────────────────────────────────────────────────────────
+        SettingsSectionLabel("App Info")
+        SettingsCard {
             Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
+                Modifier.fillMaxWidth().clickable { onNavigateToAbout() }.padding(vertical = 6.dp),
+                Arrangement.SpaceBetween, Alignment.CenterVertically
             ) {
-                Icon(Icons.Default.Info, contentDescription = null)
-                Spacer(Modifier.width(12.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text("About & Disclaimer", style = MaterialTheme.typography.bodyLarge)
-                    Text("Legal information and app details", style = MaterialTheme.typography.bodySmall)
+                Row(verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                    Box(Modifier.size(40.dp).clip(CircleShape)
+                        .background(Blue.copy(0.12f)), Alignment.Center) {
+                        Icon(Icons.Default.Info, null, Modifier.size(20.dp), tint = Blue)
+                    }
+                    Column {
+                        Text("About & Disclaimer",
+                            style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium))
+                        Text("Legal info, privacy policy, app details",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
                 }
-                Icon(Icons.AutoMirrored.Filled.ArrowForwardIos, contentDescription = null, modifier = Modifier.size(16.dp))
+                Icon(Icons.AutoMirrored.Filled.ArrowForwardIos, null,
+                    Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
 
-        Spacer(modifier = Modifier.height(32.dp))
-        
+        // ── Developer (debug only) ───────────────────────────────────────────
+        if (com.example.cashmemo.BuildConfig.DEBUG) {
+            Spacer(Modifier.height(16.dp))
+            SettingsSectionLabel("Developer")
+            SettingsCard {
+                var showSeedConfirm    by remember { mutableStateOf(false) }
+                var showCleanupConfirm by remember { mutableStateOf(false) }
+                var showRestoreConfirm by remember { mutableStateOf(false) }
+
+                if (showSeedConfirm) AlertDialog(
+                    onDismissRequest = { showSeedConfirm = false },
+                    title = { Text("Load Test Data?") },
+                    text  = { Text("⚠️ This will DELETE all existing data and replace with QA test data.") },
+                    confirmButton = { Button(onClick = { viewModel.loadDummyData(); showSeedConfirm = false },
+                        colors = ButtonDefaults.buttonColors(containerColor = Red)
+                    ) { Text("Load") } },
+                    dismissButton = { TextButton(onClick = { showSeedConfirm = false }) { Text("Cancel") } }
+                )
+                if (showCleanupConfirm) AlertDialog(
+                    onDismissRequest = { showCleanupConfirm = false },
+                    title = { Text("Cleanup Seeder Data?") },
+                    text  = { Text("Removes all QA test data from the app and Firestore.") },
+                    confirmButton = { Button(onClick = { viewModel.cleanupSeeederData(); showCleanupConfirm = false }) { Text("Cleanup") } },
+                    dismissButton = { TextButton(onClick = { showCleanupConfirm = false }) { Text("Cancel") } }
+                )
+                if (showRestoreConfirm) AlertDialog(
+                    onDismissRequest = { showRestoreConfirm = false },
+                    title = { Text("Restore Real Data?") },
+                    text  = { Text("Clears all transactions and restores Cash in Hand ₹3,962 + HDFC Bank ₹1,22,500.") },
+                    confirmButton = { Button(onClick = { viewModel.restoreRealData(); showRestoreConfirm = false }) { Text("Restore") } },
+                    dismissButton = { TextButton(onClick = { showRestoreConfirm = false }) { Text("Cancel") } }
+                )
+
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    SettingsActionRow(Icons.Default.Science, Amber, "Load Test Data (QA)",
+                        "Seeds fake data for testing") { showSeedConfirm = true }
+                    SettingsDivider()
+                    SettingsActionRow(Icons.Default.CleaningServices, Red, "Cleanup Seeder Data",
+                        "Remove QA data from app + Firestore") { showCleanupConfirm = true }
+                    SettingsDivider()
+                    SettingsActionRow(Icons.Default.Restore, Blue, "Restore Real Data",
+                        "Reset to real account balances") { showRestoreConfirm = true }
+                }
+            }
+        }
+
+        // ── Version ──────────────────────────────────────────────────────────
+        Spacer(Modifier.height(24.dp))
         Text(
-            "Version ${com.example.cashmemo.BuildConfig.VERSION_NAME}",
+            "Version ${com.example.cashmemo.BuildConfig.VERSION_NAME} (${com.example.cashmemo.BuildConfig.VERSION_CODE})",
             modifier = Modifier.align(Alignment.CenterHorizontally),
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            style    = MaterialTheme.typography.labelSmall,
+            color    = MaterialTheme.colorScheme.outlineVariant
         )
+        Spacer(Modifier.height(100.dp))
     }
 }
 
+// ── Shared composables ──────────────────────────────────────────────────────
 
+@Composable
+private fun SettingsSectionLabel(title: String) {
+    Text(
+        title.uppercase(),
+        style    = MaterialTheme.typography.labelSmall.copy(
+            fontWeight    = FontWeight.Bold,
+            letterSpacing = androidx.compose.ui.unit.TextUnit(1.2f,
+                androidx.compose.ui.unit.TextUnitType.Sp)
+        ),
+        color    = Green,
+        modifier = Modifier.padding(start = 4.dp, bottom = 6.dp)
+    )
+}
 
+@Composable
+private fun SettingsCard(content: @Composable ColumnScope.() -> Unit) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape    = RoundedCornerShape(16.dp),
+        colors   = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+    ) {
+        Column(Modifier.padding(16.dp), content = content)
+    }
+}
 
+@Composable
+private fun SettingsDivider() {
+    HorizontalDivider(
+        modifier  = Modifier.padding(vertical = 8.dp),
+        thickness = 0.5.dp,
+        color     = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+    )
+}
 
-
-
-
-
-
-
-
-
-
-
+@Composable
+private fun SettingsActionRow(
+    icon: ImageVector,
+    color: Color,
+    title: String,
+    subtitle: String,
+    onClick: () -> Unit
+) {
+    Row(
+        Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 4.dp),
+        Arrangement.spacedBy(14.dp),
+        Alignment.CenterVertically
+    ) {
+        Box(
+            Modifier.size(36.dp).clip(RoundedCornerShape(10.dp)).background(color.copy(0.12f)),
+            Alignment.Center
+        ) {
+            Icon(icon, null, Modifier.size(18.dp), tint = color)
+        }
+        Column(Modifier.weight(1f)) {
+            Text(title,
+                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium))
+            Text(subtitle,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        Icon(Icons.AutoMirrored.Filled.ArrowForwardIos, null,
+            Modifier.size(14.dp), tint = MaterialTheme.colorScheme.outlineVariant)
+    }
+}
