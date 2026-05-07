@@ -57,6 +57,7 @@ sealed class Screen(val route: String, val label: String, val icon: ImageVector)
     object NetWorthH  : Screen("net_worth_hist", "Net Worth History",Icons.AutoMirrored.Filled.TrendingUp)
     object MoneyFlow  : Screen("money_flow",     "Money Flow",       Icons.Default.SwapHoriz)
     object LoanCalc   : Screen("loan_calc",      "Loan Calculator",  Icons.Default.Calculate)
+    object Reports     : Screen("reports_hub",   "Reports",          Icons.Default.Assessment)
     object GlobalSearch: Screen("global_search",  "Search",           Icons.Default.Search)
 }
 
@@ -64,7 +65,7 @@ val bottomNavItems = listOf(
     Screen.Home,
     Screen.Lending,
     Screen.Debts,
-    Screen.Invest,
+    Screen.Reports,
     Screen.Spend
 )
 
@@ -132,7 +133,8 @@ fun MainNavigation(viewModel: FinanceViewModel) {
     
     val showFab = when (currentRoute) {
         Screen.Settings.route, Screen.About.route, Screen.People.route,
-        Screen.Profile.route, Screen.Lending.route, Screen.Debts.route -> false
+        Screen.Profile.route, Screen.Lending.route, Screen.Debts.route,
+        Screen.Reports.route -> false
         else -> drawerState.isClosed
     }
 
@@ -461,6 +463,14 @@ fun MainNavigation(viewModel: FinanceViewModel) {
                 composable(Screen.MoneyFlow.route)   { MoneyFlowScreen(viewModel) }
                 composable(Screen.LoanCalc.route)    { LoanCalculatorScreen() }
                 composable(Screen.GlobalSearch.route) { GlobalSearchScreen(viewModel, onNavigateBack = { navController.popBackStack() }) }
+                composable(Screen.Reports.route) {
+                    ReportsHubScreen(
+                        viewModel           = viewModel,
+                        onNavigateToPL      = { navController.navigate(Screen.ProfitLoss.route) },
+                        onNavigateToNetWorth = { navController.navigate(Screen.NetWorthH.route) },
+                        onNavigateToMoneyFlow = { navController.navigate(Screen.MoneyFlow.route) }
+                    )
+                }
                 composable(Screen.FlowWizard.route) {
                     SmartFlowWizardScreen(
                         viewModel = viewModel,
