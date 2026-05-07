@@ -145,29 +145,59 @@ fun TransactionHistoryScreen(viewModel: FinanceViewModel) {
         if (filteredHistory.isEmpty()) {
             EmptyTransactionState()
         } else {
-            // Group by Date for better readability
             val grouped = filteredHistory.groupBy { it.date }
+            val locale  = Locale.getDefault()
             
             LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                contentPadding = PaddingValues(bottom = 100.dp)
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+                contentPadding      = PaddingValues(bottom = 100.dp)
             ) {
-                grouped.keys.sortedByDescending { it }.forEach { date ->
+                // Group by month, show monthly total
+                val byMonth = filteredHistory.groupBy { it.date.substring(0, 7) } // yyyy-MM
+                byMonth.keys.sortedByDescending { it }.forEach { month ->
+                    val monthTransactions = byMonth[month] ?: emptyList()
+                    val monthIncome  = monthTransactions.filter { it.type.equals("income", true) }.sumOf { it.amount }
+                    val monthExpense = monthTransactions.filter { it.type.equals("expense", true) }.sumOf { it.amount }
+                    val monthLabel   = runCatching {
+                        val ym = java.time.YearMonth.parse(month)
+                        ym.format(java.time.format.DateTimeFormatter.ofPattern("MMMM yyyy"))
+                    }.getOrDefault(month)
+
                     item {
-                        Text(
-                            text = DateUtils.formatToDisplay(date),
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.padding(vertical = 8.dp)
-                        )
+                        Card(Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                            RoundedCornerShape(12.dp),
+                            CardDefaults.cardColors(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))) {
+                            Row(Modifier.padding(12.dp).fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
+                                Text(monthLabel, style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold))
+                                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                    Text("+₹${String.format(locale, "%,.0f", monthIncome)}",
+                                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                                        color = Color(0xFF059669))
+                                    Text("-₹${String.format(locale, "%,.0f", monthExpense)}",
+                                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                                        color = Color(0xFFEF4444))
+                                }
+                            }
+                        }
                     }
-                        items(grouped[date] ?: emptyList()) { transaction ->
+
+                    // Group by date within month
+                    val byDate = monthTransactions.groupBy { it.date }
+                    byDate.keys.sortedByDescending { it }.forEach { date ->
+                        item {
+                            Text(DateUtils.formatToDisplay(date),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(start = 4.dp, top = 4.dp, bottom = 2.dp))
+                        }
+                        items(byDate[date] ?: emptyList()) { transaction ->
                             TransactionItem(
                                 txn      = transaction,
                                 onDelete = { viewModel.deleteTransaction(transaction) },
                                 onEdit   = { viewModel.editTransaction(transaction, it) }
                             )
                         }
+                    }
                 }
             }
         }
@@ -176,8 +206,20 @@ fun TransactionHistoryScreen(viewModel: FinanceViewModel) {
 
 @Composable
 fun TransactionItem(txn: Transaction, onDelete: () -> Unit = {}, onEdit: (Transaction) -> Unit = {}) {
-    val isExpense = txn.type.lowercase() == "expense"
-    val isIncome  = txn.type.lowercase() == "income"
+    val isExpense  = txn.type.lowercase() == "expense"
+    val isIncome   = txn.type.lowercase() == "income"
+    val isTransfer = txn.type.lowercase() == "transfer"
+    val rowColor   = when {
+        isIncome   -> Color(0xFF059669)
+        isExpense  -> Color(0xFFEF4444)
+        else       -> Color(0xFF3B82F6)
+    }
+    val amountPrefix = when {
+        isIncome   -> "+"
+        isExpense  -> "-"
+        else       -> "↔"
+    }
+    val locale = java.util.Locale.getDefault()
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var showEditDialog    by remember { mutableStateOf(false) }
 
@@ -209,11 +251,16 @@ fun TransactionItem(txn: Transaction, onDelete: () -> Unit = {}, onEdit: (Transa
 
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        shape    = RoundedCornerShape(12.dp),
+        colors   = CardDefaults.cardColors(
+            containerColor = rowColor.copy(alpha = 0.05f)
+        )
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Row(Modifier.fillMaxWidth()) {
+            // Colored left accent bar
+            Box(Modifier.width(4.dp).fillMaxHeight().background(rowColor,
+                RoundedCornerShape(topStart = 12.dp, bottomStart = 12.dp)))
+            Column(modifier = Modifier.padding(12.dp).weight(1f)) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.fillMaxWidth()
@@ -221,48 +268,49 @@ fun TransactionItem(txn: Transaction, onDelete: () -> Unit = {}, onEdit: (Transa
                 Box(
                     modifier = Modifier
                         .size(40.dp)
-                        .background(amountColor.copy(alpha = 0.1f), CircleShape),
+                        .background(rowColor.copy(alpha = 0.15f), CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = getCategoryIcon(txn.category),
+                        imageVector        = getCategoryIcon(txn.category),
                         contentDescription = null,
-                        tint = amountColor,
-                        modifier = Modifier.size(20.dp)
+                        tint               = rowColor,
+                        modifier           = Modifier.size(20.dp)
                     )
                 }
 
                 Spacer(modifier = Modifier.width(12.dp))
 
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = txn.category,
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
-                    )
-                    Text(
-                        text = txn.desc,
+                    Text(txn.category,
+                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold))
+                    Text(txn.desc.ifBlank { if (isExpense) txn.fromAcct else txn.toAcct },
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
 
-                Text(
-                    text = "${if (isExpense) "-" else if (isIncome) "+" else ""}₹ ${String.format(Locale.getDefault(), "%,.0f", txn.amount)}",
-                    style = MaterialTheme.typography.titleMedium.copy(
-                        fontWeight = FontWeight.ExtraBold,
-                        color = amountColor
+                Column(horizontalAlignment = Alignment.End) {
+                    Text(
+                        text  = "$amountPrefix₹ ${String.format(locale, "%,.0f", txn.amount)}",
+                        style = MaterialTheme.typography.bodyLarge.copy(
+                            fontWeight = FontWeight.ExtraBold, color = rowColor)
                     )
-                )
-
-                IconButton(onClick = { showEditDialog = true }) {
-                    Icon(Icons.Default.Edit, contentDescription = "Edit",
-                        modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f))
+                    Text(txn.date, style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                IconButton(onClick = { showDeleteConfirm = true }) {
-                    Icon(Icons.Default.Delete, contentDescription = "Delete",
-                        modifier = Modifier.size(20.dp), tint = Color(0xFFEF4444).copy(alpha = 0.7f))
+
+                IconButton(onClick = { showEditDialog = true }, modifier = Modifier.size(32.dp)) {
+                    Icon(Icons.Default.Edit, null, Modifier.size(16.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                IconButton(onClick = { showDeleteConfirm = true }, modifier = Modifier.size(32.dp)) {
+                    Icon(Icons.Default.Delete, null, Modifier.size(16.dp),
+                        tint = Color(0xFFEF4444).copy(alpha = 0.7f))
                 }
             }
+            }
+        }
+    }
 
             if (txn.notes.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(12.dp))

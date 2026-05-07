@@ -1,28 +1,33 @@
-﻿package com.example.cashmemo.ui.screens
+package com.example.cashmemo.ui.screens
 
 import androidx.compose.animation.*
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccountBalanceWallet
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.example.cashmemo.FinanceViewModel
+import com.example.cashmemo.ui.components.AddTransactionDialog
 import com.example.cashmemo.ui.components.DataPoint
-import com.example.cashmemo.ui.components.PolishedSummaryCard
 import com.example.cashmemo.ui.components.ProjectSwitcherChip
-import com.example.cashmemo.ui.components.SpendingAnalyticsCard
-import com.example.cashmemo.ui.components.WealthDistributionBar
 
 @Composable
 fun HomeScreen(viewModel: FinanceViewModel, onNavigateToScreen: (String) -> Unit = {}) {
@@ -33,205 +38,214 @@ fun HomeScreen(viewModel: FinanceViewModel, onNavigateToScreen: (String) -> Unit
     val currentProject   by viewModel.currentProject.collectAsState()
     val isSyncReady      by viewModel.isSyncReady.collectAsState()
     val haptic           = LocalHapticFeedback.current
-    val locale = java.util.Locale.getDefault()
-    val currencySymbol = com.example.cashmemo.logic.CurrencyUtils.symbolFor(currentProject?.currency ?: "INR")
+    val locale           = java.util.Locale.getDefault()
+    val currencySymbol   = com.example.cashmemo.logic.CurrencyUtils.symbolFor(currentProject?.currency ?: "INR")
+    var showAddTxn       by remember { mutableStateOf(false) }
 
-    // Show loading screen while waiting for Firestore first sync
+    if (showAddTxn) {
+        AddTransactionDialog(
+            onDismiss = { showAddTxn = false },
+            onConfirm = { txn -> viewModel.addTransaction(txn); showAddTxn = false }
+        )
+    }
+
     if (!isSyncReady) {
-        Box(
-            modifier         = Modifier.fillMaxSize().statusBarsPadding(),
-            contentAlignment = Alignment.Center
-        ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                CircularProgressIndicator()
-                Text(
-                    "Syncing your data...",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+        Box(Modifier.fillMaxSize().statusBarsPadding(), Alignment.Center) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                CircularProgressIndicator(color = Color(0xFF059669))
+                Text("Syncing your data...", style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
         return
     }
 
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .statusBarsPadding()
-            .padding(horizontal = 16.dp)
-            .verticalScroll(rememberScrollState())
+        modifier = Modifier.fillMaxSize().statusBarsPadding()
+            .padding(horizontal = 16.dp).verticalScroll(rememberScrollState())
     ) {
         Spacer(Modifier.height(8.dp))
-        ProjectSwitcherChip(
-            projects         = projects,
-            currentProjectId = currentProjectId,
-            onSwitch         = { viewModel.switchProject(it) },
-            onManageClick    = { onNavigateToScreen("projects") },
-            modifier         = Modifier.padding(bottom = 8.dp)
-        )
 
-        Text(
-            text     = "${currentProject?.name ?: "Personal"} Snapshot",
-            style    = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold),
-            modifier = Modifier.padding(bottom = 16.dp)
-        )
+        // Project switcher + greeting
+        Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
+            ProjectSwitcherChip(
+                projects = projects, currentProjectId = currentProjectId,
+                onSwitch = { viewModel.switchProject(it) },
+                onManageClick = { onNavigateToScreen("projects") }
+            )
+        }
+        Spacer(Modifier.height(12.dp))
 
-        AnimatedContent(
-            targetState    = summary.netWorth,
-            transitionSpec = {
-                slideInVertically { it } + fadeIn() togetherWith slideOutVertically { -it } + fadeOut()
-            },
-            label = "NetWorthAnimation"
-        ) { targetNetWorth ->
-            Box(modifier = Modifier.clickable { onNavigateToScreen("history") }) {
-                PolishedSummaryCard(
-                    title          = "Total Net Worth",
-                    amount         = targetNetWorth,
-                    subtitle       = "Total Assets - Total Liabilities",
-                    icon           = Icons.Default.AccountBalanceWallet,
-                    gradientColors = if (targetNetWorth >= 0)
-                        listOf(Color(0xFF1E88E5), Color(0xFF1565C0))
-                    else
-                        listOf(Color(0xFFE53935), Color(0xFFC62828))
-                )
+        // ── Net Worth Card ──────────────────────────────────────────────────
+        val isPositive = summary.netWorth >= 0
+        val cardBg = if (isPositive) Color(0xFF059669) else Color(0xFFDC2626)
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(24.dp))
+                .background(cardBg)
+                .clickable { onNavigateToScreen("history") }
+                .padding(24.dp)
+        ) {
+            Column {
+                Text("Total Net Worth", style = MaterialTheme.typography.bodyMedium,
+                    color = Color.White.copy(alpha = 0.8f))
+                Spacer(Modifier.height(8.dp))
+                AnimatedContent(targetState = summary.netWorth, label = "nw",
+                    transitionSpec = { fadeIn(tween(400)) togetherWith fadeOut(tween(200)) }
+                ) { nw ->
+                    Text(
+                        text  = "$currencySymbol ${String.format(locale, "%,.0f", nw)}",
+                        style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.ExtraBold),
+                        color = Color.White
+                    )
+                }
+                Spacer(Modifier.height(4.dp))
+                Text("Assets ${currencySymbol}${String.format(locale, "%,.0f", summary.totalAssets)}  •  Liabilities ${currencySymbol}${String.format(locale, "%,.0f", summary.totalDebtPrincipal + summary.totalDebtInterest)}",
+                    style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = 0.75f))
             }
         }
 
-        WealthDistributionBar(
-            cash        = summary.totalCash,
-            investments = summary.totalInvestments,
-            receivables = summary.totalReceivables
-        )
-
-        SpendingAnalyticsCard(data = analytics)
         Spacer(Modifier.height(16.dp))
 
-        Text(
-            text  = "Wealth & Assets",
-            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
-        )
-        Card(
-            modifier = Modifier.padding(vertical = 8.dp),
-            shape    = RoundedCornerShape(16.dp),
-            colors   = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f)
-            )
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                DataPoint(
-                    "TOTAL ASSETS (Sum)",
-                    "$currencySymbol ${String.format(locale, "%,.0f", summary.totalAssets)}",
-                    valueColor = MaterialTheme.colorScheme.primary
-                )
-                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+        // ── Quick Actions ───────────────────────────────────────────────────
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            QuickAction("Add Expense",   Icons.Default.Remove,        Color(0xFFEF4444), Modifier.weight(1f)) { showAddTxn = true }
+            QuickAction("Add Income",    Icons.Default.Add,            Color(0xFF059669), Modifier.weight(1f)) { showAddTxn = true }
+            QuickAction("Lend Money",    Icons.Default.Person,         Color(0xFF3B82F6), Modifier.weight(1f)) { onNavigateToScreen("lending") }
+            QuickAction("History",       Icons.Default.History,        Color(0xFF8B5CF6), Modifier.weight(1f)) { onNavigateToScreen("history") }
+        }
+
+        Spacer(Modifier.height(20.dp))
+
+        // ── Wealth Breakdown ────────────────────────────────────────────────
+        Text("Wealth & Assets", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
+        Spacer(Modifier.height(10.dp))
+
+        // Summary metric cards
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            MetricCard("Cash & Bank", "$currencySymbol${String.format(locale, "%,.0f", summary.totalCash)}",
+                Color(0xFF059669), Modifier.weight(1f)) { onNavigateToScreen("history") }
+            MetricCard("Investments", "$currencySymbol${String.format(locale, "%,.0f", summary.totalInvestments)}",
+                Color(0xFFF59E0B), Modifier.weight(1f)) { onNavigateToScreen("invest") }
+        }
+        Spacer(Modifier.height(8.dp))
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            MetricCard("Lending", "$currencySymbol${String.format(locale, "%,.0f", summary.totalReceivables)}",
+                Color(0xFF3B82F6), Modifier.weight(1f)) { onNavigateToScreen("lending") }
+            MetricCard("Debt Owed", "$currencySymbol${String.format(locale, "%,.0f", summary.totalDebtPrincipal + summary.totalDebtInterest)}",
+                Color(0xFFEF4444), Modifier.weight(1f)) { onNavigateToScreen("debts") }
+        }
+
+        Spacer(Modifier.height(20.dp))
+
+        // ── Account Breakdown ───────────────────────────────────────────────
+        Text("Accounts", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
+        Spacer(Modifier.height(10.dp))
+        Card(Modifier.fillMaxWidth(), RoundedCornerShape(16.dp),
+            CardDefaults.cardColors(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 summary.accountBreakdown.forEach { (name, balance) ->
-                    Box(Modifier.clickable { onNavigateToScreen("statement/$name") }) {
-                        DataPoint(name, "$currencySymbol ${String.format(locale, "%,.0f", balance)}")
+                    Row(Modifier.fillMaxWidth().clickable { onNavigateToScreen("statement/$name") }
+                        .padding(vertical = 8.dp), Arrangement.SpaceBetween, Alignment.CenterVertically) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Box(Modifier.size(36.dp).clip(CircleShape).background(Color(0xFF059669).copy(alpha = 0.15f)),
+                                Alignment.Center) {
+                                Icon(Icons.Default.AccountBalance, null, Modifier.size(18.dp), tint = Color(0xFF059669))
+                            }
+                            Text(name, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium))
+                        }
+                        Text("$currencySymbol ${String.format(locale, "%,.0f", balance)}",
+                            style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
+                            color = if (balance >= 0) MaterialTheme.colorScheme.onSurface else Color(0xFFEF4444))
+                    }
+                    if (name != summary.accountBreakdown.keys.last()) {
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
                     }
                 }
-                Box(Modifier.clickable { onNavigateToScreen("invest") }) {
-                    DataPoint(
-                        "Market Value of Invest.",
-                        "$currencySymbol ${String.format(locale, "%,.0f", summary.totalInvestments)}"
-                    )
-                }
-                Box(Modifier.clickable { onNavigateToScreen("lending") }) {
-                    DataPoint(
-                        "Lending Receivables",
-                        "$currencySymbol ${String.format(locale, "%,.0f", summary.totalReceivables)}"
-                    )
+            }
+        }
+
+        Spacer(Modifier.height(20.dp))
+
+        // ── Performance ─────────────────────────────────────────────────────
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            PerformanceCard("Invest. Growth",
+                "${if (summary.investmentGrowth >= 0) "+" else ""}$currencySymbol${String.format(locale, "%,.0f", summary.investmentGrowth)}",
+                if (summary.investmentGrowth >= 0) Color(0xFF059669) else Color(0xFFEF4444),
+                Modifier.weight(1f)) { onNavigateToScreen("invest") }
+            PerformanceCard("Avg. Lending Rate",
+                "${String.format(locale, "%.1f", summary.lendingYield)}% p.a.",
+                Color(0xFF3B82F6), Modifier.weight(1f)) { onNavigateToScreen("lending") }
+        }
+
+        Spacer(Modifier.height(20.dp))
+
+        // ── Spending Breakdown ──────────────────────────────────────────────
+        if (analytics.isNotEmpty()) {
+            Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
+                Text("This Month's Spending", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
+                TextButton(onClick = { onNavigateToScreen("spend") }) { Text("See All") }
+            }
+            Spacer(Modifier.height(8.dp))
+            Card(Modifier.fillMaxWidth(), RoundedCornerShape(16.dp),
+                CardDefaults.cardColors(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))) {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    val catColors = listOf(Color(0xFF3B82F6),Color(0xFF10B981),Color(0xFFF59E0B),Color(0xFFEF4444),Color(0xFF8B5CF6))
+                    analytics.take(5).forEachIndexed { i, item ->
+                        Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Box(Modifier.size(8.dp).clip(CircleShape).background(catColors[i % catColors.size]))
+                                Text(item.category, style = MaterialTheme.typography.bodySmall)
+                            }
+                            Text("$currencySymbol${String.format(locale, "%,.0f", item.amount)}",
+                                style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
+                                color = catColors[i % catColors.size])
+                        }
+                    }
                 }
             }
         }
 
-        Spacer(Modifier.height(8.dp))
-
-        Text(
-            text  = "Debts & Liabilities",
-            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
-        )
-        Card(
-            modifier = Modifier
-                .padding(vertical = 8.dp)
-                .clickable { onNavigateToScreen("debts") },
-            shape  = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = Color(0xFFFFEBEE).copy(alpha = 0.5f))
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                val totalLiabilities = summary.totalDebtPrincipal + summary.totalDebtInterest
-                DataPoint(
-                    "TOTAL LIABILITIES",
-                    "$currencySymbol ${String.format(locale, "%,.0f", totalLiabilities)}",
-                    valueColor = Color(0xFFD32F2F)
-                )
-                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-                DataPoint(
-                    "Debt Principal Amount",
-                    "$currencySymbol ${String.format(locale, "%,.0f", summary.totalDebtPrincipal)}"
-                )
-                DataPoint(
-                    "Debt Accrued Interest",
-                    "$currencySymbol ${String.format(locale, "%,.0f", summary.totalDebtInterest)}",
-                    valueColor = Color(0xFFD32F2F)
-                )
-            }
-        }
-
-        Spacer(Modifier.height(16.dp))
-
-        Row(
-            modifier              = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            PerformanceCard(
-                label    = "Invest. Growth",
-                value    = "$currencySymbol ${String.format(locale, "%,.0f", summary.investmentGrowth)}",
-                color    = Color(0xFF2E7D32),
-                modifier = Modifier.weight(1f).clickable { onNavigateToScreen("invest") }
-            )
-            PerformanceCard(
-                label    = "Avg. Lending Rate",
-                value    = "${String.format(locale, "%.1f", summary.lendingYield)}%",
-                color    = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.weight(1f).clickable { onNavigateToScreen("lending") }
-            )
-        }
-
-        Spacer(Modifier.height(32.dp))
-
-        Button(
-            onClick  = {
-                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                viewModel.populateDummyData()
-            },
-            modifier = Modifier.fillMaxWidth().height(56.dp),
-            shape    = RoundedCornerShape(16.dp),
-            colors   = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-        ) {
-            Text("Reset & Load Sample Data", fontWeight = FontWeight.Bold)
-        }
-
-        Spacer(Modifier.height(140.dp))
+        Spacer(Modifier.height(120.dp))
     }
 }
 
 @Composable
-fun PerformanceCard(label: String, value: String, color: Color, modifier: Modifier) {
-    Card(
-        modifier = modifier,
-        shape    = RoundedCornerShape(16.dp),
-        colors   = CardDefaults.cardColors(containerColor = color.copy(alpha = 0.1f))
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+private fun QuickAction(label: String, icon: ImageVector, color: Color, modifier: Modifier, onClick: () -> Unit) {
+    Column(modifier.clickable(onClick = onClick), horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Box(Modifier.size(52.dp).clip(RoundedCornerShape(16.dp)).background(color.copy(alpha = 0.12f)),
+            Alignment.Center) {
+            Icon(icon, null, Modifier.size(24.dp), tint = color)
+        }
+        Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1)
+    }
+}
+
+@Composable
+private fun MetricCard(label: String, value: String, color: Color, modifier: Modifier, onClick: () -> Unit) {
+    Card(modifier.clickable(onClick = onClick), RoundedCornerShape(16.dp),
+        CardDefaults.cardColors(color.copy(alpha = 0.08f))) {
+        Column(Modifier.padding(14.dp)) {
             Text(label, style = MaterialTheme.typography.labelSmall, color = color)
-            Text(
-                value,
-                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-                color = color
-            )
+            Spacer(Modifier.height(4.dp))
+            Text(value, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                color = MaterialTheme.colorScheme.onSurface, maxLines = 1,
+                softWrap = false)
+        }
+    }
+}
+
+@Composable
+fun PerformanceCard(label: String, value: String, color: Color, modifier: Modifier, onClick: () -> Unit = {}) {
+    Card(modifier.clickable(onClick = onClick), RoundedCornerShape(16.dp),
+        CardDefaults.cardColors(color.copy(alpha = 0.08f))) {
+        Column(Modifier.padding(14.dp)) {
+            Text(label, style = MaterialTheme.typography.labelSmall, color = color)
+            Text(value, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold), color = color)
         }
     }
 }

@@ -1,11 +1,15 @@
 ﻿package com.example.cashmemo.ui.screens
 
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.Sort
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Add
@@ -37,17 +41,31 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
     val borrowers by viewModel.borrowers.collectAsState()
     var showEmiCalc by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
-    val filteredBorrowers = remember(borrowers, searchQuery) {
-        if (searchQuery.isBlank()) borrowers
-        else borrowers.filter {
-            it.name.contains(searchQuery, ignoreCase = true) ||
-            it.notes.contains(searchQuery, ignoreCase = true) ||
-            it.phone.contains(searchQuery)
-        }
-    }
+    var sortBy      by remember { mutableStateOf("Overdue") } // Overdue, Amount, Name, Date
+    var showSortMenu by remember { mutableStateOf(false) }
     var showAddDialog by remember { mutableStateOf(false) }
     var editingBorrower by remember { mutableStateOf<Borrower?>(null) }
     var collectingForBorrower by remember { mutableStateOf<Borrower?>(null) }
+    val today = java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd"))
+
+    val processed = remember(borrowers, searchQuery, sortBy) {
+        var list = if (searchQuery.isBlank()) borrowers
+                   else borrowers.filter {
+                       it.name.contains(searchQuery, ignoreCase = true) ||
+                       it.phone.contains(searchQuery)
+                   }
+        list = when (sortBy) {
+            "Amount"  -> list.sortedByDescending { it.amount }
+            "Name"    -> list.sortedBy { it.name }
+            "Date"    -> list.sortedBy { it.date }
+            else      -> list.sortedWith(compareByDescending<Borrower> {
+                it.due.isNotBlank() && it.due < today && it.paid < it.amount
+            }.thenByDescending { it.amount })
+        }
+        list
+    }
+    val activeLoans  = processed.filter { it.status != "Settled" && it.paid < it.amount }
+    val settledLoans = processed.filter { it.status == "Settled" || it.paid >= it.amount }
 
     if (showEmiCalc) { EmiCalculatorDialog(onDismiss = { showEmiCalc = false }) }
     if (showAddDialog || editingBorrower != null) {
@@ -57,16 +75,14 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
             onConfirm = { borrower, source ->
                 if (editingBorrower != null) viewModel.updateBorrower(borrower)
                 else viewModel.addBorrowerWithSource(borrower, source)
-                editingBorrower = null
-                showAddDialog = false
+                editingBorrower = null; showAddDialog = false
             },
             initialBorrower = editingBorrower
         )
     }
-
     if (collectingForBorrower != null) {
         CollectPaymentDialog(
-            borrower = collectingForBorrower!!,
+            borrower  = collectingForBorrower!!,
             onDismiss = { collectingForBorrower = null },
             onConfirm = { payment, dest ->
                 viewModel.collectLoanPayment(payment, dest)
@@ -74,76 +90,153 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
             }
         )
     }
-    
+
     Box(modifier = Modifier.fillMaxSize()) {
         LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .statusBarsPadding()
-                .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.fillMaxSize().statusBarsPadding().padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
             contentPadding = PaddingValues(top = 16.dp, bottom = 100.dp)
         ) {
+            // Header
             item {
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text("Lending Management",
-                        style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold))
-                    OutlinedButton(onClick = { showEmiCalc = true }, shape = RoundedCornerShape(12.dp)) {
-                        Text("EMI Calc")
+                Row(Modifier.fillMaxWidth().padding(bottom = 4.dp), Arrangement.SpaceBetween, Alignment.CenterVertically) {
+                    Column {
+                        Text("Lending", style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold))
+                        Text("${activeLoans.size} active • ${settledLoans.size} settled",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
-                }
-            }
-            item {
-                val suggestions = remember(searchQuery, borrowers) {
-                    if (searchQuery.length < 1) emptyList()
-                    else borrowers.filter { it.name.contains(searchQuery, ignoreCase = true) }.map { it.name }.distinct().take(5)
-                }
-                var expanded by remember { mutableStateOf(false) }
-                ExposedDropdownMenuBox(expanded = expanded && suggestions.isNotEmpty(), onExpandedChange = {}) {
-                    OutlinedTextField(
-                        value         = searchQuery,
-                        onValueChange = { searchQuery = it; expanded = true },
-                        label         = { Text("Search borrowers...") },
-                        leadingIcon   = { Icon(Icons.Default.Search, null) },
-                        trailingIcon  = { if (searchQuery.isNotBlank()) IconButton(onClick = { searchQuery = ""; expanded = false }) { Icon(Icons.Default.Clear, null, Modifier.size(18.dp)) } },
-                        singleLine    = true,
-                        modifier      = Modifier.fillMaxWidth().menuAnchor(androidx.compose.material3.ExposedDropdownMenuAnchorType.PrimaryNotEditable, true),
-                        shape         = RoundedCornerShape(12.dp)
-                    )
-                    ExposedDropdownMenu(expanded = expanded && suggestions.isNotEmpty(), onDismissRequest = { expanded = false }) {
-                        suggestions.forEach { name ->
-                            DropdownMenuItem(
-                                text    = { Text(name) },
-                                onClick = { searchQuery = name; expanded = false }
-                            )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Box {
+                            OutlinedButton(onClick = { showSortMenu = true }, shape = RoundedCornerShape(12.dp)) {
+                                Icon(Icons.Default.Sort, null, Modifier.size(16.dp))
+                                Spacer(Modifier.width(4.dp))
+                                Text(sortBy)
+                            }
+                            DropdownMenu(expanded = showSortMenu, onDismissRequest = { showSortMenu = false }) {
+                                listOf("Overdue", "Amount", "Name", "Date").forEach { opt ->
+                                    DropdownMenuItem(text = { Text(opt) }, onClick = { sortBy = opt; showSortMenu = false })
+                                }
+                            }
+                        }
+                        OutlinedButton(onClick = { showEmiCalc = true }, shape = RoundedCornerShape(12.dp)) {
+                            Text("EMI")
                         }
                     }
                 }
             }
-            
-            if (filteredBorrowers.isEmpty()) {
+
+            // Search
+            item {
+                OutlinedTextField(
+                    value = searchQuery, onValueChange = { searchQuery = it },
+                    placeholder = { Text("Search borrowers...") },
+                    leadingIcon = { Icon(Icons.Default.Search, null) },
+                    trailingIcon = { if (searchQuery.isNotBlank()) IconButton(onClick = { searchQuery = "" }) { Icon(Icons.Default.Clear, null, Modifier.size(18.dp)) } },
+                    singleLine = true, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)
+                )
+            }
+
+            // Summary card
+            if (activeLoans.isNotEmpty()) {
+                item {
+                    val totalOut = activeLoans.sumOf {
+                        val interest = InterestEngine.calcIntAccrued(it.amount, it.rate, it.date, it.type, it.due, it.paid)
+                        InterestEngine.calcOutstanding(it.amount, interest, it.paid)
+                    }
+                    val overdueCount = activeLoans.count { it.due.isNotBlank() && it.due < today }
+                    Card(Modifier.fillMaxWidth(), RoundedCornerShape(16.dp),
+                        CardDefaults.cardColors(Color(0xFF3B82F6).copy(alpha = 0.1f))) {
+                        Row(Modifier.padding(16.dp).fillMaxWidth(), Arrangement.SpaceBetween) {
+                            Column {
+                                Text("Total Outstanding", style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text("₹${String.format(java.util.Locale.getDefault(), "%,.0f", totalOut)}",
+                                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                                    color = Color(0xFF3B82F6))
+                            }
+                            if (overdueCount > 0) {
+                                Surface(color = Color(0xFFEF4444).copy(alpha = 0.15f), shape = RoundedCornerShape(8.dp)) {
+                                    Text("$overdueCount OVERDUE",
+                                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                                        color = Color(0xFFEF4444),
+                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp))
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Active loans
+            if (activeLoans.isEmpty() && settledLoans.isEmpty()) {
                 item { EmptyLendingState(onAdd = { showAddDialog = true }) }
             } else {
-                items(filteredBorrowers) { borrower ->
-                    LendingCard(
-                        borrower = borrower,
-                        onDelete = { viewModel.deleteBorrower(borrower) },
-                        onEdit = { editingBorrower = borrower },
-                        onCollect = { collectingForBorrower = borrower },
-                        onClick = { onNavigateToDetail(borrower.id) }
-                    )
+                if (activeLoans.isNotEmpty()) {
+                    item {
+                        Text("Active Loans", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                            modifier = Modifier.padding(top = 4.dp))
+                    }
+                    items(activeLoans) { borrower ->
+                        LendingCard(
+                            borrower  = borrower,
+                            isOverdue = borrower.due.isNotBlank() && borrower.due < today,
+                            onDelete  = { viewModel.deleteBorrower(borrower) },
+                            onEdit    = { editingBorrower = borrower },
+                            onCollect = { collectingForBorrower = borrower },
+                            onClick   = { onNavigateToDetail(borrower.id) }
+                        )
+                    }
+                }
+
+                // Settled section
+                if (settledLoans.isNotEmpty()) {
+                    item {
+                        var showSettled by remember { mutableStateOf(false) }
+                        Column {
+                            Row(Modifier.fillMaxWidth().clickable { showSettled = !showSettled }
+                                .padding(vertical = 8.dp), Arrangement.SpaceBetween, Alignment.CenterVertically) {
+                                Text("Settled (${settledLoans.size})",
+                                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Icon(if (showSettled) Icons.Default.ExpandLess else Icons.Default.ExpandMore, null,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            if (showSettled) {
+                                settledLoans.forEach { borrower ->
+                                    LendingCard(
+                                        borrower  = borrower,
+                                        isOverdue = false,
+                                        onDelete  = { viewModel.deleteBorrower(borrower) },
+                                        onEdit    = { editingBorrower = borrower },
+                                        onCollect = { collectingForBorrower = borrower },
+                                        onClick   = { onNavigateToDetail(borrower.id) }
+                                    )
+                                    Spacer(Modifier.height(8.dp))
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
+
+        // FAB
+        androidx.compose.material3.FloatingActionButton(
+            onClick = { showAddDialog = true },
+            modifier = Modifier.align(Alignment.BottomEnd).padding(24.dp),
+            containerColor = MaterialTheme.colorScheme.primary
+        ) { Icon(Icons.Default.Add, null) }
     }
 }
-
 @Composable
-fun LendingCard(borrower: Borrower, onDelete: () -> Unit, onEdit: () -> Unit, onCollect: () -> Unit, onClick: () -> Unit) {
+fun LendingCard(borrower: Borrower, isOverdue: Boolean = false, onDelete: () -> Unit, onEdit: () -> Unit, onCollect: () -> Unit, onClick: () -> Unit) {
+    // Pulsing animation for overdue
+    val infiniteTransition = rememberInfiniteTransition(label = "pulse")
+    val pulseAlpha by infiniteTransition.animateFloat(
+        initialValue = 1f, targetValue = 0.3f, label = "pulseAlpha",
+        animationSpec = infiniteRepeatable(tween(800), RepeatMode.Reverse)
+    )
     val interest = InterestEngine.calcIntAccrued(
         amount = borrower.amount,
         rate = borrower.rate,
@@ -173,18 +266,23 @@ fun LendingCard(borrower: Borrower, onDelete: () -> Unit, onEdit: () -> Unit, on
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        Icons.Default.Person, 
-                        contentDescription = null, 
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        borrower.name, 
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
-                    )
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Icon(Icons.Default.Person, null,
+                        tint = if (isOverdue) Color(0xFFEF4444) else MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(20.dp))
+                    Text(borrower.name,
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
+                    if (isOverdue) {
+                        Surface(
+                            color = Color(0xFFEF4444).copy(alpha = pulseAlpha * 0.25f),
+                            shape = RoundedCornerShape(4.dp)
+                        ) {
+                            Text("OVERDUE",
+                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                color = Color(0xFFEF4444),
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+                        }
+                    }
                 }
                 Row {
                     IconButton(onClick = onEdit) {

@@ -357,6 +357,8 @@ fun SettingsScreen(viewModel: FinanceViewModel, onNavigateToAbout: () -> Unit, o
 
         Text("App Information", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
 
+        // Developer section - DEBUG only
+        if (com.example.cashmemo.BuildConfig.DEBUG) {
         // ── Developer / Test ──────────────────────────────────────────────
         Spacer(Modifier.height(16.dp))
         HorizontalDivider()
@@ -424,6 +426,7 @@ fun SettingsScreen(viewModel: FinanceViewModel, onNavigateToAbout: () -> Unit, o
             Spacer(Modifier.width(8.dp))
             Text("Restore Real Data")
         }
+        } // end BuildConfig.DEBUG
         
         TextButton(
             onClick = onNavigateToAbout,
@@ -454,5 +457,6 @@ fun SettingsScreen(viewModel: FinanceViewModel, onNavigateToAbout: () -> Unit, o
         )
     }
 }
+
 
 

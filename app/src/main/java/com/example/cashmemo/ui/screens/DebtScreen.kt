@@ -78,11 +78,39 @@ fun DebtScreen(viewModel: FinanceViewModel) {
             .statusBarsPadding()
             .padding(horizontal = 16.dp)
     ) {
-        Text(
-            "My Debts & Loans", 
+        Text("My Debts",
             style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
-            modifier = Modifier.padding(vertical = 16.dp)
-        )
+            modifier = Modifier.padding(vertical = 16.dp))
+
+        // ── Total debt summary card ─────────────────────────────────────────
+        if (debts.isNotEmpty()) {
+            val today = java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd"))
+            val totalPrincipal = debts.sumOf { maxOf(0.0, it.amount - it.paid) }
+            val overdueCount   = debts.count { it.due.isNotBlank() && it.due < today && it.paid < it.amount }
+            Card(Modifier.fillMaxWidth().padding(bottom = 12.dp), RoundedCornerShape(16.dp),
+                CardDefaults.cardColors(Color(0xFFEF4444).copy(alpha = 0.08f))) {
+                Row(Modifier.padding(16.dp).fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
+                    Column {
+                        Text("Total Outstanding", style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("₹${String.format(java.util.Locale.getDefault(), "%,.0f", totalPrincipal)}",
+                            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                            color = Color(0xFFEF4444))
+                        Text("${debts.size} debt${if (debts.size != 1) "s" else ""}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    if (overdueCount > 0) {
+                        Surface(color = Color(0xFFEF4444).copy(alpha = 0.15f), shape = RoundedCornerShape(8.dp)) {
+                            Text("$overdueCount OVERDUE",
+                                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                                color = Color(0xFFEF4444),
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp))
+                        }
+                    }
+                }
+            }
+        }
 
         val suggestions = remember(searchQuery, debts) {
             if (searchQuery.length < 1) emptyList()
