@@ -367,18 +367,19 @@ fun MainNavigation(viewModel: FinanceViewModel) {
                 NavigationBar {
                     bottomNavItems.forEach { screen ->
                         NavigationBarItem(
-                            icon = { Icon(screen.icon, contentDescription = screen.label) },
-                            label = { Text(screen.label) },
+                            icon     = { Icon(screen.icon, contentDescription = screen.label) },
+                            label    = { Text(screen.label) },
                             selected = currentRoute == screen.route,
-                            onClick = {
-                                if (currentRoute != screen.route) {
-                                    navController.navigate(screen.route) {
-                                        popUpTo(navController.graph.findStartDestination().id) {
-                                            saveState = true
-                                        }
-                                        launchSingleTop = true
-                                        restoreState = true
+                            onClick  = {
+                                navController.navigate(screen.route) {
+                                    // Pop everything up to the start destination (Home)
+                                    // This clears Settings, About, Profile etc. from back stack
+                                    popUpTo(Screen.Home.route) {
+                                        saveState    = true
+                                        inclusive    = false
                                     }
+                                    launchSingleTop = true
+                                    restoreState    = true
                                 }
                             }
                         )
