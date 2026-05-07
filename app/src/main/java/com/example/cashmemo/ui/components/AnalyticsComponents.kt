@@ -46,7 +46,7 @@ fun SpendingAnalyticsCard(data: Map<String, Double>) {
                             Spacer(Modifier.width(8.dp))
                             Text(category, style = MaterialTheme.typography.bodyMedium)
                         }
-                        Text("â‚¹${amount.toInt()} ($percent%)", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold))
+                        Text("₹${amount.toInt()} ($percent%)", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold))
                     }
                     Spacer(Modifier.height(4.dp))
                     LinearProgressIndicator(

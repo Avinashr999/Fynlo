@@ -137,12 +137,12 @@ fun InvestmentCard(invest: Investment, onDelete: () -> Unit, onEdit: () -> Unit,
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Column {
                     Text("Invested Principal", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text("â‚¹ ${String.format(Locale.getDefault(), "%,.0f", invest.invested)}", style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold))
+                    Text("₹ ${String.format(Locale.getDefault(), "%,.0f", invest.invested)}", style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold))
                     Text("Date: ${DateUtils.formatToDisplay(invest.date)}", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
                 }
                 Column(horizontalAlignment = Alignment.End) {
                     Text("Current Value", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text("â‚¹ ${String.format(Locale.getDefault(), "%,.0f", invest.currentVal)}", style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold, color = Color(0xFF059669)))
+                    Text("₹ ${String.format(Locale.getDefault(), "%,.0f", invest.currentVal)}", style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold, color = Color(0xFF059669)))
                     Text("Type: ${invest.type}", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
                 }
             }
@@ -194,11 +194,11 @@ fun UpdateInvestmentValueDialog(
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(investment.name, style = MaterialTheme.typography.titleSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text("Invested: â‚¹ ${String.format(locale, "%,.2f", investment.invested)}",
+                Text("Invested: ₹ ${String.format(locale, "%,.2f", investment.invested)}",
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 OutlinedTextField(
                     value = newValue, onValueChange = { newValue = it },
-                    label = { Text("Current Market Value (â‚¹)") }, singleLine = true,
+                    label = { Text("Current Market Value (₹)") }, singleLine = true,
                     keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
                         keyboardType = androidx.compose.ui.text.input.KeyboardType.Decimal
                     ),
@@ -207,7 +207,7 @@ fun UpdateInvestmentValueDialog(
                 if (growth != null) {
                     val pct = if (investment.invested > 0) (growth / investment.invested) * 100 else 0.0
                     Text(
-                        "${if (growth >= 0) "+" else ""}â‚¹ ${String.format(locale, "%,.2f", growth)} (${String.format(locale, "%.1f", pct)}%)",
+                        "${if (growth >= 0) "+" else ""}₹ ${String.format(locale, "%,.2f", growth)} (${String.format(locale, "%.1f", pct)}%)",
                         style = MaterialTheme.typography.bodyMedium.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.Bold),
                         color = if (growth >= 0) Color(0xFF059669) else Color(0xFFEF4444)
                     )

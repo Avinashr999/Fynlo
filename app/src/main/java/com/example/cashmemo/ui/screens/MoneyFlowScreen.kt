@@ -29,7 +29,7 @@ import com.example.cashmemo.data.model.Debt
 import com.example.cashmemo.data.model.Transaction
 import java.util.Locale
 
-// â”€â”€ Data model for a single flow entry â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Data model for a single flow entry ───────────────────────────────────
 data class FlowEntry(
     val from: String,
     val to: String,
@@ -245,12 +245,12 @@ fun MoneyFlowScreen(viewModel: FinanceViewModel) {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text("Flow Summary", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold))
                         HorizontalDivider()
-                        FlowSummaryRow("Total Inflow",   "â‚¹${String.format(locale, "%,.0f", totalIn)}",  Color(0xFF059669))
-                        FlowSummaryRow("Total Outflow",  "â‚¹${String.format(locale, "%,.0f", totalOut)}", Color(0xFFEF4444))
-                        FlowSummaryRow("Lent Out",       "â‚¹${String.format(locale, "%,.0f", lentOut)}",  Color(0xFFF59E0B))
+                        FlowSummaryRow("Total Inflow",   "₹${String.format(locale, "%,.0f", totalIn)}",  Color(0xFF059669))
+                        FlowSummaryRow("Total Outflow",  "₹${String.format(locale, "%,.0f", totalOut)}", Color(0xFFEF4444))
+                        FlowSummaryRow("Lent Out",       "₹${String.format(locale, "%,.0f", lentOut)}",  Color(0xFFF59E0B))
                         HorizontalDivider()
                         FlowSummaryRow("Net Flow",
-                            "â‚¹${String.format(locale, "%,.0f", totalIn - totalOut)}",
+                            "₹${String.format(locale, "%,.0f", totalIn - totalOut)}",
                             if (totalIn >= totalOut) Color(0xFF059669) else Color(0xFFEF4444),
                             bold = true)
                     }
@@ -300,14 +300,14 @@ private fun AccountFlowCard(name: String, inflow: Double, outflow: Double, local
             Column(Modifier.weight(1f)) {
                 Text(name, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
                     maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text("Net: â‚¹${String.format(locale, "%,.0f", net)}",
+                Text("Net: ₹${String.format(locale, "%,.0f", net)}",
                     style = MaterialTheme.typography.labelSmall,
                     color = if (net >= 0) Color(0xFF059669) else Color(0xFFEF4444))
             }
             Spacer(Modifier.width(8.dp))
             Column(horizontalAlignment = Alignment.End) {
-                Text("â–² â‚¹${String.format(locale, "%,.0f", inflow)}", fontSize = 11.sp, color = Color(0xFF059669))
-                Text("â–¼ â‚¹${String.format(locale, "%,.0f", outflow)}", fontSize = 11.sp, color = Color(0xFFEF4444))
+                Text("▲ ₹${String.format(locale, "%,.0f", inflow)}", fontSize = 11.sp, color = Color(0xFF059669))
+                Text("▼ ₹${String.format(locale, "%,.0f", outflow)}", fontSize = 11.sp, color = Color(0xFFEF4444))
             }
         }
     }
@@ -336,7 +336,7 @@ private fun FlowEntryCard(flow: FlowEntry, locale: Locale) {
             }
             Spacer(Modifier.width(10.dp))
 
-            // From â†’ To
+            // From → To
             Column(Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -358,7 +358,7 @@ private fun FlowEntryCard(flow: FlowEntry, locale: Locale) {
             Spacer(Modifier.width(8.dp))
 
             // Amount
-            Text("â‚¹${String.format(locale, "%,.0f", flow.amount)}",
+            Text("₹${String.format(locale, "%,.0f", flow.amount)}",
                 style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                 color = arrowColor)
         }

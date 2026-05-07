@@ -121,7 +121,7 @@ fun SpendScreen(viewModel: FinanceViewModel) {
                     Column(Modifier.padding(20.dp)) {
                         Text(selectedMonth.format(monthFmt), style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text("â‚¹ ${String.format(locale, "%,.0f", total)}",
+                        Text("₹ ${String.format(locale, "%,.0f", total)}",
                             style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold),
                             color = Color(0xFFEF4444))
                         Text("${expenses.size} transactions", style = MaterialTheme.typography.bodySmall,
@@ -155,7 +155,7 @@ fun SpendScreen(viewModel: FinanceViewModel) {
                                             Text(cat, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold))
                                         }
                                         Column(horizontalAlignment = Alignment.End) {
-                                            Text("â‚¹ ${String.format(locale, "%,.0f", amt)}",
+                                            Text("₹ ${String.format(locale, "%,.0f", amt)}",
                                                 style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                                                 color = color)
                                             if (budgetPct != null) {
@@ -166,7 +166,7 @@ fun SpendScreen(viewModel: FinanceViewModel) {
                                                 }
                                                 Surface(color = pctColor.copy(alpha = 0.12f),
                                                     shape = RoundedCornerShape(4.dp)) {
-                                                    Text("$budgetPct% of â‚¹${String.format(locale, "%,.0f", budget!!.limitAmount)}",
+                                                    Text("$budgetPct% of ₹${String.format(locale, "%,.0f", budget!!.limitAmount)}",
                                                         style = MaterialTheme.typography.labelSmall, color = pctColor,
                                                         modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
                                                 }
@@ -182,7 +182,7 @@ fun SpendScreen(viewModel: FinanceViewModel) {
                                     }
                                     // Budget limit line label
                                     if (budget != null) {
-                                        Text("Budget: â‚¹${String.format(locale, "%,.0f", budget.limitAmount)}",
+                                        Text("Budget: ₹${String.format(locale, "%,.0f", budget.limitAmount)}",
                                             style = MaterialTheme.typography.labelSmall,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f))
                                     }
@@ -221,7 +221,7 @@ fun SpendScreen(viewModel: FinanceViewModel) {
                 Spacer(Modifier.height(100.dp))
             }
         } else {
-            // All Transactions tab â€” reuse TransactionHistoryScreen logic inline
+            // All Transactions tab — reuse TransactionHistoryScreen logic inline
             TransactionHistoryScreen(viewModel = viewModel)
         }
     }
@@ -244,7 +244,7 @@ private fun ExpenseRow(txn: Transaction, locale: Locale) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         Column(horizontalAlignment = Alignment.End) {
-            Text("-â‚¹ ${String.format(locale, "%,.0f", txn.amount)}",
+            Text("-₹ ${String.format(locale, "%,.0f", txn.amount)}",
                 style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                 color = Color(0xFFEF4444))
             Text(txn.date, style = MaterialTheme.typography.labelSmall,

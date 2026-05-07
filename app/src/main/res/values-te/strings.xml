@@ -1,0 +1,31 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">క్యాష్ మెమో</string>
+    <string name="dashboard">డాష్‌బోర్డ్</string>
+    <string name="lending">అప్పు ఇవ్వడం</string>
+    <string name="debts">అప్పులు</string>
+    <string name="reports">నివేదికలు</string>
+    <string name="expenses">ఖర్చులు</string>
+    <string name="net_worth">నికర విలువ</string>
+    <string name="add_expense">ఖర్చు జోడించు</string>
+    <string name="add_income">ఆదాయం జోడించు</string>
+    <string name="total_outstanding">మొత్తం బకాయి</string>
+    <string name="settings">సెట్టింగులు</string>
+    <string name="contact_book">పరిచయాల పుస్తకం</string>
+    <string name="no_transactions">ఇంకా లావాదేవీలు లేవు</string>
+    <string name="collect_pay">చెల్లింపు తీసుకో</string>
+    <string name="overdue">గడువు మించింది</string>
+    <string name="active_loans">సక్రియ రుణాలు</string>
+    <string name="settled">పరిష్కరించబడింది</string>
+    <string name="export_backup">బ్యాకప్ ఎగుమతి చేయి</string>
+    <string name="save">సేవ్ చేయి</string>
+    <string name="cancel">రద్దు చేయి</string>
+    <string name="delete">తొలగించు</string>
+    <string name="edit">సవరించు</string>
+    <string name="search">వెతుకు</string>
+    <string name="this_month">ఈ నెల</string>
+    <string name="income">ఆదాయం</string>
+    <string name="expense">ఖర్చు</string>
+    <string name="transfer">బదిలీ</string>
+    <string name="unlock_app">యాప్ అన్‌లాక్ చేయి</string>
+</resources>

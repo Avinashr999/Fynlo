@@ -1,0 +1,31 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">कैश मेमो</string>
+    <string name="dashboard">डैशबोर्ड</string>
+    <string name="lending">उधार</string>
+    <string name="debts">कर्ज</string>
+    <string name="reports">रिपोर्ट</string>
+    <string name="expenses">खर्च</string>
+    <string name="net_worth">कुल संपत्ति</string>
+    <string name="add_expense">खर्च जोड़ें</string>
+    <string name="add_income">आय जोड़ें</string>
+    <string name="total_outstanding">कुल बकाया</string>
+    <string name="settings">सेटिंग्स</string>
+    <string name="contact_book">संपर्क पुस्तक</string>
+    <string name="no_transactions">अभी तक कोई लेनदेन नहीं</string>
+    <string name="collect_pay">भुगतान लें</string>
+    <string name="overdue">अतिदेय</string>
+    <string name="active_loans">सक्रिय ऋण</string>
+    <string name="settled">निपटाया गया</string>
+    <string name="export_backup">बैकअप निर्यात करें</string>
+    <string name="save">सहेजें</string>
+    <string name="cancel">रद्द करें</string>
+    <string name="delete">हटाएं</string>
+    <string name="edit">संपादित करें</string>
+    <string name="search">खोजें</string>
+    <string name="this_month">इस महीने</string>
+    <string name="income">आय</string>
+    <string name="expense">व्यय</string>
+    <string name="transfer">स्थानांतरण</string>
+    <string name="unlock_app">ऐप अनलॉक करें</string>
+</resources>

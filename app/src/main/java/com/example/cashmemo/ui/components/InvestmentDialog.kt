@@ -90,7 +90,7 @@ fun AddInvestmentDialog(
                 OutlinedTextField(
                     value = amount,
                     onValueChange = { amount = it },
-                    label = { Text("Invested Amount (â‚¹)") },
+                    label = { Text("Invested Amount (₹)") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -98,7 +98,7 @@ fun AddInvestmentDialog(
                 OutlinedTextField(
                     value = currentVal,
                     onValueChange = { currentVal = it },
-                    label = { Text("Current Market Value (â‚¹)") },
+                    label = { Text("Current Market Value (₹)") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier.fillMaxWidth()
                 )

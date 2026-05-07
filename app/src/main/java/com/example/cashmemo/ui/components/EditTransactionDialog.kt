@@ -49,7 +49,7 @@ fun EditTransactionDialog(
 
                 OutlinedTextField(
                     value = amount, onValueChange = { amount = it },
-                    label = { Text("Amount (â‚¹)") },
+                    label = { Text("Amount (₹)") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     modifier = Modifier.fillMaxWidth()
                 )

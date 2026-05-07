@@ -2,6 +2,8 @@
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -32,6 +34,9 @@ fun TransactionHistoryScreen(viewModel: FinanceViewModel) {
     var showDateFilter by remember { mutableStateOf(false) }
     var fromDate       by remember { mutableStateOf("") }
     var toDate         by remember { mutableStateOf("") }
+    var selectionMode  by remember { mutableStateOf(false) }
+    var selectedIds    by remember { mutableStateOf(setOf<String>()) }
+    var showBulkDeleteConfirm by remember { mutableStateOf(false) }
     val types = listOf("All", "Income", "Expense")
 
     Column(
@@ -41,10 +46,52 @@ fun TransactionHistoryScreen(viewModel: FinanceViewModel) {
             .padding(horizontal = 16.dp)
     ) {
         Text(
-            text = "Master History",
+            text = if (selectionMode) "${selectedIds.size} selected" else "Master History",
             style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
             modifier = Modifier.padding(vertical = 16.dp)
         )
+
+        // Bulk delete confirmation
+        if (showBulkDeleteConfirm) {
+            AlertDialog(
+                onDismissRequest = { showBulkDeleteConfirm = false },
+                title = { Text("Delete ${selectedIds.size} transactions?") },
+                text  = { Text("This will permanently delete the selected transactions and reverse their account balances.") },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            val toDelete = filteredHistory.filter { it.id in selectedIds }
+                            viewModel.deleteTransactions(toDelete)
+                            selectedIds = emptySet()
+                            selectionMode = false
+                            showBulkDeleteConfirm = false
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF4444))
+                    ) { Text("Delete All") }
+                },
+                dismissButton = { TextButton(onClick = { showBulkDeleteConfirm = false }) { Text("Cancel") } }
+            )
+        }
+
+        // Selection mode toolbar
+        if (selectionMode) {
+            Row(Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                Arrangement.SpaceBetween, Alignment.CenterVertically) {
+                TextButton(onClick = {
+                    selectionMode = false; selectedIds = emptySet()
+                }) { Text("Cancel") }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedButton(onClick = {
+                        selectedIds = filteredHistory.map { it.id }.toSet()
+                    }) { Text("Select All") }
+                    Button(
+                        onClick = { if (selectedIds.isNotEmpty()) showBulkDeleteConfirm = true },
+                        enabled = selectedIds.isNotEmpty(),
+                        colors  = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF4444))
+                    ) { Text("Delete (${selectedIds.size})") }
+                }
+            }
+        }
 
         OutlinedTextField(
             value = searchQuery,
@@ -170,10 +217,10 @@ fun TransactionHistoryScreen(viewModel: FinanceViewModel) {
                             Row(Modifier.padding(12.dp).fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
                                 Text(monthLabel, style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold))
                                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                    Text("+â‚¹${String.format(locale, "%,.0f", monthIncome)}",
+                                    Text("+₹${String.format(locale, "%,.0f", monthIncome)}",
                                         style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
                                         color = Color(0xFF059669))
-                                    Text("-â‚¹${String.format(locale, "%,.0f", monthExpense)}",
+                                    Text("-₹${String.format(locale, "%,.0f", monthExpense)}",
                                         style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
                                         color = Color(0xFFEF4444))
                                 }
@@ -192,7 +239,15 @@ fun TransactionHistoryScreen(viewModel: FinanceViewModel) {
                         }
                         items(byDate[date] ?: emptyList()) { transaction ->
                             TransactionItem(
-                                txn      = transaction,
+                                txn         = transaction,
+                                isSelected  = transaction.id in selectedIds,
+                                selectionMode = selectionMode,
+                                onLongPress = { selectionMode = true; selectedIds = selectedIds + transaction.id },
+                                onSelect    = {
+                                    selectedIds = if (transaction.id in selectedIds)
+                                        selectedIds - transaction.id
+                                    else selectedIds + transaction.id
+                                },
                                 onDelete = { viewModel.deleteTransaction(transaction) },
                                 onEdit   = { viewModel.editTransaction(transaction, it) }
                             )
@@ -204,8 +259,17 @@ fun TransactionHistoryScreen(viewModel: FinanceViewModel) {
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun TransactionItem(txn: Transaction, onDelete: () -> Unit = {}, onEdit: (Transaction) -> Unit = {}) {
+fun TransactionItem(
+    txn: Transaction,
+    onDelete: () -> Unit = {},
+    onEdit: (Transaction) -> Unit = {},
+    isSelected: Boolean = false,
+    selectionMode: Boolean = false,
+    onLongPress: () -> Unit = {},
+    onSelect: () -> Unit = {}
+) {
     val isExpense  = txn.type.lowercase() == "expense"
     val isIncome   = txn.type.lowercase() == "income"
     val isTransfer = txn.type.lowercase() == "transfer"
@@ -217,7 +281,7 @@ fun TransactionItem(txn: Transaction, onDelete: () -> Unit = {}, onEdit: (Transa
     val amountPrefix = when {
         isIncome   -> "+"
         isExpense  -> "-"
-        else       -> "â†”"
+        else       -> "↔"
     }
     val locale = java.util.Locale.getDefault()
     var showDeleteConfirm by remember { mutableStateOf(false) }
@@ -227,7 +291,7 @@ fun TransactionItem(txn: Transaction, onDelete: () -> Unit = {}, onEdit: (Transa
         AlertDialog(
             onDismissRequest = { showDeleteConfirm = false },
             title = { Text("Delete Transaction?") },
-            text  = { Text("Delete â‚¹${String.format(java.util.Locale.getDefault(), "%,.0f", txn.amount)} ${txn.category}? This will reverse the account balance.") },
+            text  = { Text("Delete ₹${String.format(java.util.Locale.getDefault(), "%,.0f", txn.amount)} ${txn.category}? This will reverse the account balance.") },
             confirmButton = {
                 Button(onClick = { onDelete(); showDeleteConfirm = false },
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF4444))) { Text("Delete") }
@@ -250,13 +314,24 @@ fun TransactionItem(txn: Transaction, onDelete: () -> Unit = {}, onEdit: (Transa
     }
 
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth()
+            .combinedClickable(
+                onClick  = { if (selectionMode) onSelect() },
+                onLongClick = { onLongPress() }
+            ),
         shape    = RoundedCornerShape(12.dp),
         colors   = CardDefaults.cardColors(
-            containerColor = rowColor.copy(alpha = 0.05f)
+            containerColor = if (isSelected) rowColor.copy(alpha = 0.15f) else rowColor.copy(alpha = 0.05f)
         )
     ) {
         Row(Modifier.fillMaxWidth()) {
+            if (selectionMode) {
+                Checkbox(
+                    checked  = isSelected,
+                    onCheckedChange = { onSelect() },
+                    modifier = Modifier.padding(start = 8.dp).align(Alignment.CenterVertically)
+                )
+            }
             // Colored left accent bar
             Box(Modifier.width(4.dp).fillMaxHeight().background(rowColor,
                 RoundedCornerShape(topStart = 12.dp, bottomStart = 12.dp)))
@@ -291,7 +366,7 @@ fun TransactionItem(txn: Transaction, onDelete: () -> Unit = {}, onEdit: (Transa
 
                 Column(horizontalAlignment = Alignment.End) {
                     Text(
-                        text  = "$amountPrefixâ‚¹ ${String.format(locale, "%,.0f", txn.amount)}",
+                        text  = "${amountPrefix}₹ ${String.format(locale, "%,.0f", txn.amount)}",
                         style = MaterialTheme.typography.bodyLarge.copy(
                             fontWeight = FontWeight.ExtraBold, color = rowColor)
                     )

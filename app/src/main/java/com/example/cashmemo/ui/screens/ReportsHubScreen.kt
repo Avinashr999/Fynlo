@@ -52,7 +52,7 @@ fun ReportsHubScreen(
     val snapshots     by viewModel.getNetWorthSnapshots().collectAsState(initial = emptyList())
     val locale        = remember { Locale.getDefault() }
 
-    // â”€â”€ Date range state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Date range state ──────────────────────────────────────────────────
     var selectedRange by remember { mutableStateOf("This Month") }
     val ranges = listOf("This Month", "Last Month", "Last 3M", "Last 6M", "This Year", "All Time")
 
@@ -71,7 +71,7 @@ fun ReportsHubScreen(
     val fromStr = fromDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
     val toStr   = toDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
 
-    // â”€â”€ Filtered data â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Filtered data ─────────────────────────────────────────────────────
     val filtered = remember(transactions, fromStr, toStr) {
         transactions.filter { it.date in fromStr..toStr }
     }
@@ -98,7 +98,7 @@ fun ReportsHubScreen(
     val red   = Color(0xFFEF4444)
     val blue  = Color(0xFF3B82F6)
 
-    fun fmt(v: Double) = "â‚¹${String.format(locale, "%,.0f", v)}"
+    fun fmt(v: Double) = "₹${String.format(locale, "%,.0f", v)}"
 
     Column(
         modifier = Modifier.fillMaxSize().statusBarsPadding()
@@ -134,7 +134,7 @@ fun ReportsHubScreen(
             }
         }
 
-        // â”€â”€ Date range selector bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // ── Date range selector bar ──────────────────────────────────────────
         Card(
             Modifier.fillMaxWidth().padding(bottom = 12.dp),
             RoundedCornerShape(16.dp),
@@ -158,7 +158,7 @@ fun ReportsHubScreen(
                     }
                 }
                 Text(
-                    "${fromDate.format(DateTimeFormatter.ofPattern("dd MMM yyyy"))} â†’ ${toDate.format(DateTimeFormatter.ofPattern("dd MMM yyyy"))}",
+                    "${fromDate.format(DateTimeFormatter.ofPattern("dd MMM yyyy"))} → ${toDate.format(DateTimeFormatter.ofPattern("dd MMM yyyy"))}",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 6.dp)
@@ -166,7 +166,7 @@ fun ReportsHubScreen(
             }
         }
 
-        // â”€â”€ Summary cards â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // ── Summary cards ────────────────────────────────────────────────────
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             // Income
             Card(Modifier.weight(1f), RoundedCornerShape(16.dp),
@@ -231,7 +231,7 @@ fun ReportsHubScreen(
 
         Spacer(Modifier.height(20.dp))
 
-        // â”€â”€ Net Worth trend chart â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // ── Net Worth trend chart ───────────────────────────────────────────
         Text("Net Worth Trend", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
         Spacer(Modifier.height(8.dp))
         Card(Modifier.fillMaxWidth(), RoundedCornerShape(16.dp),
@@ -267,7 +267,7 @@ fun ReportsHubScreen(
                     Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
                         Text(sortedSnaps.first().date, style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text("â‚¹${String.format(locale, "%,.0f", summary.netWorth)}",
+                        Text("₹${String.format(locale, "%,.0f", summary.netWorth)}",
                             style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
                             color = green)
                         Text(sortedSnaps.last().date, style = MaterialTheme.typography.labelSmall,
@@ -284,10 +284,10 @@ fun ReportsHubScreen(
 
         Spacer(Modifier.height(20.dp))
 
-        // â”€â”€ Expense breakdown â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // ── Expense breakdown ───────────────────────────────────────────────
         if (expByCat.isNotEmpty()) {
             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
-                Text("ðŸ”´  Where Money Went",
+                Text("🔴  Where Money Went",
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
                 Surface(color = red.copy(alpha = 0.1f), shape = RoundedCornerShape(8.dp)) {
                     Text(fmt(expense),
@@ -329,10 +329,10 @@ fun ReportsHubScreen(
             Spacer(Modifier.height(20.dp))
         }
 
-        // â”€â”€ Income breakdown â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // ── Income breakdown ─────────────────────────────────────────────────
         if (incByCat.isNotEmpty()) {
             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
-                Text("ðŸŸ¢  Where Money Came From",
+                Text("🟢  Where Money Came From",
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
                 Surface(color = green.copy(alpha = 0.1f), shape = RoundedCornerShape(8.dp)) {
                     Text(fmt(income),
@@ -363,7 +363,7 @@ fun ReportsHubScreen(
             Spacer(Modifier.height(20.dp))
         }
 
-        // â”€â”€ Quick links to detail reports â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // ── Quick links to detail reports ────────────────────────────────────
         Text("Detailed Reports", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
         Spacer(Modifier.height(8.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {

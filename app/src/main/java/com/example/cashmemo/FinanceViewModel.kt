@@ -408,6 +408,12 @@ class FinanceViewModel(private val repository: FinanceRepository) : ViewModel() 
         viewModelScope.launch { repository.deleteTransaction(transaction) }
     }
 
+    fun deleteTransactions(transactions: List<Transaction>) {
+        viewModelScope.launch {
+            transactions.forEach { repository.deleteTransaction(it) }
+        }
+    }
+
     fun addDebtWithDestination(debt: Debt, destination: String) {
         viewModelScope.launch {
             repository.insertDebtWithDestination(debt.copy(projectId = pid), destination, pid)

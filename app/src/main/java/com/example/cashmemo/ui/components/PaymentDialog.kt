@@ -53,7 +53,7 @@ fun CollectPaymentDialog(
                 OutlinedTextField(
                     value = amount,
                     onValueChange = { amount = it },
-                    label = { Text("Amount Received (â‚¹)") },
+                    label = { Text("Amount Received (₹)") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -165,7 +165,7 @@ fun PayDebtDialog(
                 OutlinedTextField(
                     value = amount,
                     onValueChange = { amount = it },
-                    label = { Text("Amount Paid (â‚¹)") },
+                    label = { Text("Amount Paid (₹)") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier.fillMaxWidth()
                 )

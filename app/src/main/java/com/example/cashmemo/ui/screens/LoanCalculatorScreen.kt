@@ -131,7 +131,7 @@ fun LoanCalculatorScreen() {
 
                 OutlinedTextField(
                     value = principal, onValueChange = { principal = it },
-                    label = { Text("Principal Amount (â‚¹)") },
+                    label = { Text("Principal Amount (₹)") },
                     leadingIcon = { Icon(Icons.Default.CurrencyRupee, null) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp), singleLine = true
@@ -192,7 +192,7 @@ fun LoanCalculatorScreen() {
                 )
                 OutlinedTextField(
                     value = dueDate, onValueChange = { dueDate = it },
-                    label = { Text("Due Date (DD-MM-YYYY) â€” optional") },
+                    label = { Text("Due Date (DD-MM-YYYY) — optional") },
                     leadingIcon = { Icon(Icons.Default.Event, null) },
                     modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp), singleLine = true
                 )
@@ -222,7 +222,7 @@ fun LoanCalculatorScreen() {
                 Column(Modifier.padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     Text("Monthly EMI", style = MaterialTheme.typography.labelLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text("â‚¹ ${String.format(locale, "%,.2f", result.emi)}",
+                    Text("₹ ${String.format(locale, "%,.2f", result.emi)}",
                         style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.ExtraBold),
                         color = MaterialTheme.colorScheme.primary)
                 }
@@ -232,11 +232,11 @@ fun LoanCalculatorScreen() {
 
             // Breakdown
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                ResultCard("Principal", "â‚¹${String.format(locale, "%,.0f", principal.toDoubleOrNull() ?: 0.0)}",
+                ResultCard("Principal", "₹${String.format(locale, "%,.0f", principal.toDoubleOrNull() ?: 0.0)}",
                     MaterialTheme.colorScheme.primary, Modifier.weight(1f))
-                ResultCard("Total Interest", "â‚¹${String.format(locale, "%,.0f", result.totalInterest)}",
+                ResultCard("Total Interest", "₹${String.format(locale, "%,.0f", result.totalInterest)}",
                     Color(0xFFEF4444), Modifier.weight(1f))
-                ResultCard("Total Payment", "â‚¹${String.format(locale, "%,.0f", result.totalPayment)}",
+                ResultCard("Total Payment", "₹${String.format(locale, "%,.0f", result.totalPayment)}",
                     Color(0xFF059669), Modifier.weight(1f))
             }
 
@@ -293,14 +293,14 @@ fun LoanCalculatorScreen() {
                         Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
                             Text("Interest Accrued", style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Text("â‚¹ ${String.format(locale, "%,.2f", accrued)}",
+                            Text("₹ ${String.format(locale, "%,.2f", accrued)}",
                                 style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
                                 color = Color(0xFFEF4444))
                         }
                         Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
                             Text("Per Day Interest", style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Text("â‚¹ ${String.format(locale, "%,.2f", perDay)}",
+                            Text("₹ ${String.format(locale, "%,.2f", perDay)}",
                                 style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold))
                         }
                         if (isOverdue) {
@@ -314,7 +314,7 @@ fun LoanCalculatorScreen() {
                         HorizontalDivider()
                         Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
                             Text("Total Outstanding", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold))
-                            Text("â‚¹ ${String.format(locale, "%,.2f", outstanding)}",
+                            Text("₹ ${String.format(locale, "%,.2f", outstanding)}",
                                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.ExtraBold),
                                 color = Color(0xFFEF4444))
                         }
@@ -342,13 +342,13 @@ fun LoanCalculatorScreen() {
                             Row(Modifier.fillMaxWidth().padding(vertical = 3.dp), Arrangement.SpaceBetween) {
                                 Text("$month", style = MaterialTheme.typography.bodySmall,
                                     modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
-                                Text("â‚¹${String.format(locale, "%,.0f", prin)}",
+                                Text("₹${String.format(locale, "%,.0f", prin)}",
                                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary,
                                     modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
-                                Text("â‚¹${String.format(locale, "%,.0f", interest)}",
+                                Text("₹${String.format(locale, "%,.0f", interest)}",
                                     style = MaterialTheme.typography.bodySmall, color = Color(0xFFEF4444),
                                     modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
-                                Text("â‚¹${String.format(locale, "%,.0f", prin + interest)}",
+                                Text("₹${String.format(locale, "%,.0f", prin + interest)}",
                                     style = MaterialTheme.typography.bodySmall,
                                     modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
                             }

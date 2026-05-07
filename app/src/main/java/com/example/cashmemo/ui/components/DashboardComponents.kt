@@ -56,7 +56,7 @@ fun PolishedSummaryCard(
                     )
                 }
                 Text(
-                    text = "â‚¹ ${String.format(Locale.getDefault(), "%,.0f", amount)}",
+                    text = "₹ ${String.format(Locale.getDefault(), "%,.0f", amount)}",
                     style = MaterialTheme.typography.headlineLarge.copy(
                         fontWeight = FontWeight.ExtraBold,
                         color = Color.White,

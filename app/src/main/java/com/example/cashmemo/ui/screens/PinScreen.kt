@@ -8,6 +8,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Backspace
+import androidx.compose.material.icons.filled.Fingerprint
 import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -21,6 +22,10 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.biometric.BiometricManager
+import androidx.biometric.BiometricPrompt
+import androidx.core.content.ContextCompat
+import androidx.fragment.app.FragmentActivity
 import com.example.cashmemo.data.PinManager
 
 enum class PinMode { ENTER, SET, CONFIRM }
@@ -40,6 +45,34 @@ fun PinScreen(
     var error      by remember { mutableStateOf("") }
     var attempts   by remember { mutableIntStateOf(0) }
     var currentMode by remember { mutableStateOf(mode) }
+
+    // Biometric auth — auto-trigger on ENTER mode
+    val canUseBiometric = remember {
+        mode == PinMode.ENTER &&
+        BiometricManager.from(context).canAuthenticate(
+            BiometricManager.Authenticators.BIOMETRIC_WEAK
+        ) == BiometricManager.BIOMETRIC_SUCCESS
+    }
+    fun triggerBiometric() {
+        val activity = context as? FragmentActivity ?: return
+        val executor = ContextCompat.getMainExecutor(context)
+        val callback = object : BiometricPrompt.AuthenticationCallback() {
+            override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
+                onSuccess()
+            }
+            override fun onAuthenticationError(code: Int, msg: CharSequence) {
+                // user cancelled or no biometric — fall back to PIN
+            }
+        }
+        BiometricPrompt(activity, executor, callback).authenticate(
+            BiometricPrompt.PromptInfo.Builder()
+                .setTitle("Unlock Cash Memo")
+                .setSubtitle("Use fingerprint or face to unlock")
+                .setNegativeButtonText("Use PIN")
+                .build()
+        )
+    }
+    LaunchedEffect(Unit) { if (canUseBiometric) triggerBiometric() }
 
     // Shake animation on wrong PIN
     val shakeOffset = remember { Animatable(0f) }
@@ -150,7 +183,13 @@ fun PinScreen(
                     Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                         row.forEach { key ->
                             when (key) {
-                                "" -> Box(Modifier.size(72.dp))
+                                "" -> if (canUseBiometric) {
+                                    FilledTonalIconButton(
+                                        onClick = { triggerBiometric() },
+                                        modifier = Modifier.size(72.dp),
+                                        shape = RoundedCornerShape(16.dp)
+                                    ) { Icon(Icons.Default.Fingerprint, null, Modifier.size(32.dp), tint = Color(0xFF059669)) }
+                                } else Box(Modifier.size(72.dp))
                                 "<" -> FilledTonalIconButton(
                                     onClick = {
                                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)

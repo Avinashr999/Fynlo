@@ -113,14 +113,14 @@ fun CustomerDetailScreen(
                     Column(modifier = Modifier.padding(24.dp)) {
                         Text("Current Balance", style = MaterialTheme.typography.labelMedium)
                         Text(
-                            "â‚¹ ${String.format(Locale.getDefault(), "%,.0f", totalOutstanding)}",
+                            "₹ ${String.format(Locale.getDefault(), "%,.0f", totalOutstanding)}",
                             style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.error)
                         )
                         Spacer(Modifier.height(16.dp))
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            DetailItem("Principal", "â‚¹${borrower.amount.toInt()}")
-                            DetailItem("Interest", "â‚¹${interest.toInt()}")
-                            DetailItem("Paid", "â‚¹${borrower.paid.toInt()}")
+                            DetailItem("Principal", "₹${borrower.amount.toInt()}")
+                            DetailItem("Interest", "₹${interest.toInt()}")
+                            DetailItem("Paid", "₹${borrower.paid.toInt()}")
                         }
                     }
                 }
@@ -169,7 +169,7 @@ fun RepaymentItem(txn: com.example.cashmemo.data.model.Transaction) {
                 Text(DateUtils.formatToDisplay(txn.date), style = MaterialTheme.typography.labelSmall, color = Color.Gray)
             }
             Text(
-                "â‚¹ ${String.format(Locale.getDefault(), "%,.0f", txn.amount)}",
+                "₹ ${String.format(Locale.getDefault(), "%,.0f", txn.amount)}",
                 style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold, color = Color(0xFF059669))
             )
         }

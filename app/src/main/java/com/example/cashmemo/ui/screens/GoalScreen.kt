@@ -101,8 +101,8 @@ fun GoalCard(goal: Goal, onDelete: () -> Unit) {
             Spacer(Modifier.height(8.dp))
             
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("Saved: â‚¹${goal.savedAmount.toInt()}", style = MaterialTheme.typography.bodySmall)
-                Text("Target: â‚¹${goal.targetAmount.toInt()}", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
+                Text("Saved: ₹${goal.savedAmount.toInt()}", style = MaterialTheme.typography.bodySmall)
+                Text("Target: ₹${goal.targetAmount.toInt()}", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
             }
             
             Spacer(Modifier.height(8.dp))
@@ -137,8 +137,8 @@ fun AddGoalDialog(onDismiss: () -> Unit, onConfirm: (Goal) -> Unit) {
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Goal Name (e.g., New Car)") })
-                OutlinedTextField(value = target, onValueChange = { target = it }, label = { Text("Target Amount (â‚¹)") })
-                OutlinedTextField(value = saved, onValueChange = { saved = it }, label = { Text("Already Saved (â‚¹)") })
+                OutlinedTextField(value = target, onValueChange = { target = it }, label = { Text("Target Amount (₹)") })
+                OutlinedTextField(value = saved, onValueChange = { saved = it }, label = { Text("Already Saved (₹)") })
             }
         },
         confirmButton = {
