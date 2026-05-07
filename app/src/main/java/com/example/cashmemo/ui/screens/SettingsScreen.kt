@@ -76,7 +76,7 @@ fun SettingsScreen(viewModel: FinanceViewModel, onNavigateToAbout: () -> Unit, o
         Text(
             text = "Settings & Data",
             style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
-            modifier = Modifier.padding(bottom = 24.dp)
+            modifier = Modifier.padding(bottom = 100.dp)
         )
 
         // â”€â”€ Theme toggle â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -368,7 +368,7 @@ fun SettingsScreen(viewModel: FinanceViewModel, onNavigateToAbout: () -> Unit, o
             onClick  = { showRestoreConfirm = true },
             modifier = Modifier.fillMaxWidth(),
             shape    = RoundedCornerShape(12.dp),
-            colors   = ButtonDefaults.buttonColors(containerColor = Color(0xFF1565C0))
+            colors   = ButtonDefaults.buttonColors(containerColor = Color(0xFF3B82F6))
         ) {
             Icon(Icons.Default.Restore, null, Modifier.size(18.dp))
             Spacer(Modifier.width(8.dp))
@@ -405,6 +405,15 @@ fun SettingsScreen(viewModel: FinanceViewModel, onNavigateToAbout: () -> Unit, o
         )
     }
 }
+
+
+
+
+
+
+
+
+
 
 
 

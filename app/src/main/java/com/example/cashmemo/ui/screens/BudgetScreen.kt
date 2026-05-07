@@ -1,4 +1,4 @@
-package com.example.cashmemo.ui.screens
+﻿package com.example.cashmemo.ui.screens
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -77,11 +77,11 @@ fun BudgetScreen(viewModel: FinanceViewModel) {
                         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Text("This Month's Overview", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold))
                             Row(Modifier.fillMaxWidth(), Arrangement.spacedBy(8.dp)) {
-                                OverviewChip("Total Budget", "₹${String.format(locale, "%,.0f", totalLimit)}",
+                                OverviewChip("Total Budget", "â‚¹${String.format(locale, "%,.0f", totalLimit)}",
                                     MaterialTheme.colorScheme.primary, Modifier.weight(1f))
-                                OverviewChip("Spent", "₹${String.format(locale, "%,.0f", totalSpent)}",
-                                    if (totalSpent > totalLimit) Color(0xFFEF4444) else Color(0xFF10B981), Modifier.weight(1f))
-                                OverviewChip("Remaining", "₹${String.format(locale, "%,.0f", totalRemain)}",
+                                OverviewChip("Spent", "â‚¹${String.format(locale, "%,.0f", totalSpent)}",
+                                    if (totalSpent > totalLimit) Color(0xFFEF4444) else Color(0xFF059669), Modifier.weight(1f))
+                                OverviewChip("Remaining", "â‚¹${String.format(locale, "%,.0f", totalRemain)}",
                                     if (totalRemain < 0) Color(0xFFEF4444) else MaterialTheme.colorScheme.primary, Modifier.weight(1f))
                             }
                             if (overBudget > 0 || nearLimit > 0) {
@@ -89,7 +89,7 @@ fun BudgetScreen(viewModel: FinanceViewModel) {
                                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                     if (overBudget > 0) {
                                         Surface(shape = RoundedCornerShape(8.dp), color = Color(0xFFEF4444).copy(alpha = 0.1f)) {
-                                            Text("⚠ $overBudget exceeded",
+                                            Text("âš  $overBudget exceeded",
                                                 style = MaterialTheme.typography.labelSmall,
                                                 color = Color(0xFFEF4444),
                                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
@@ -97,7 +97,7 @@ fun BudgetScreen(viewModel: FinanceViewModel) {
                                     }
                                     if (nearLimit > 0) {
                                         Surface(shape = RoundedCornerShape(8.dp), color = Color(0xFFF59E0B).copy(alpha = 0.1f)) {
-                                            Text("⚡ $nearLimit near limit",
+                                            Text("âš¡ $nearLimit near limit",
                                                 style = MaterialTheme.typography.labelSmall,
                                                 color = Color(0xFFF59E0B),
                                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
@@ -169,7 +169,7 @@ fun BudgetCard(
     val barColor = when {
         isExceeded  -> Color(0xFFEF4444)
         isNearLimit -> Color(0xFFF59E0B)
-        pct >= 50   -> Color(0xFF10B981)
+        pct >= 50   -> Color(0xFF059669)
         else        -> MaterialTheme.colorScheme.primary
     }
 
@@ -182,13 +182,13 @@ fun BudgetCard(
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     // Alert badge
                     if (isExceeded) {
-                        Surface(shape = RoundedCornerShape(6.dp), color = Color(0xFFEF4444).copy(alpha = 0.15f)) {
+                        Surface(shape = RoundedCornerShape(8.dp), color = Color(0xFFEF4444).copy(alpha = 0.15f)) {
                             Text("EXCEEDED", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
                                 color = Color(0xFFEF4444), modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
                         }
                     } else if (isNearLimit) {
-                        Surface(shape = RoundedCornerShape(6.dp), color = Color(0xFFF59E0B).copy(alpha = 0.15f)) {
-                            Text("⚡ NEAR LIMIT", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                        Surface(shape = RoundedCornerShape(8.dp), color = Color(0xFFF59E0B).copy(alpha = 0.15f)) {
+                            Text("âš¡ NEAR LIMIT", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
                                 color = Color(0xFFF59E0B), modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
                         }
                     }
@@ -213,9 +213,9 @@ fun BudgetCard(
 
             // Spent / Limit
             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
-                Text("₹${String.format(locale, "%,.0f", actualSpent)} spent",
+                Text("â‚¹${String.format(locale, "%,.0f", actualSpent)} spent",
                     style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold))
-                Text("$pct% of ₹${String.format(locale, "%,.0f", budget.limitAmount)}",
+                Text("$pct% of â‚¹${String.format(locale, "%,.0f", budget.limitAmount)}",
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
 
@@ -224,22 +224,22 @@ fun BudgetCard(
             // Info strip
             Surface(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f), shape = RoundedCornerShape(8.dp)) {
                 Row(Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 6.dp), Arrangement.SpaceBetween) {
-                    InfoItem("Remaining", if (isExceeded) "-₹${String.format(locale, "%,.0f", -remaining)}"
-                        else "₹${String.format(locale, "%,.0f", remaining)}",
-                        if (isExceeded) Color(0xFFEF4444) else Color(0xFF10B981))
-                    InfoItem("Daily Budget", "₹${String.format(locale, "%,.0f", dailyBudget)}",
+                    InfoItem("Remaining", if (isExceeded) "-â‚¹${String.format(locale, "%,.0f", -remaining)}"
+                        else "â‚¹${String.format(locale, "%,.0f", remaining)}",
+                        if (isExceeded) Color(0xFFEF4444) else Color(0xFF059669))
+                    InfoItem("Daily Budget", "â‚¹${String.format(locale, "%,.0f", dailyBudget)}",
                         MaterialTheme.colorScheme.onSurfaceVariant)
-                    InfoItem("Daily Spent", "₹${String.format(locale, "%,.0f", dailySpent)}",
+                    InfoItem("Daily Spent", "â‚¹${String.format(locale, "%,.0f", dailySpent)}",
                         if (dailySpent > dailyBudget) Color(0xFFEF4444) else MaterialTheme.colorScheme.onSurfaceVariant)
-                    InfoItem("Projected", "₹${String.format(locale, "%,.0f", projectedEnd)}",
-                        if (projectedEnd > budget.limitAmount) Color(0xFFEF4444) else Color(0xFF10B981))
+                    InfoItem("Projected", "â‚¹${String.format(locale, "%,.0f", projectedEnd)}",
+                        if (projectedEnd > budget.limitAmount) Color(0xFFEF4444) else Color(0xFF059669))
                 }
             }
 
             // Projected overspend warning
             if (projectedEnd > budget.limitAmount && !isExceeded) {
                 Spacer(Modifier.height(4.dp))
-                Text("⚠ At this rate you'll exceed by ₹${String.format(locale, "%,.0f", projectedEnd - budget.limitAmount)} this month",
+                Text("âš  At this rate you'll exceed by â‚¹${String.format(locale, "%,.0f", projectedEnd - budget.limitAmount)} this month",
                     style = MaterialTheme.typography.labelSmall, color = Color(0xFFF59E0B))
             }
         }
@@ -256,7 +256,7 @@ private fun InfoItem(label: String, value: String, color: Color) {
 
 @Composable
 private fun OverviewChip(label: String, value: String, color: Color, modifier: Modifier) {
-    Surface(modifier, RoundedCornerShape(10.dp), color = color.copy(alpha = 0.1f)) {
+    Surface(modifier, RoundedCornerShape(8.dp), color = color.copy(alpha = 0.1f)) {
         Column(Modifier.padding(8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Text(value, style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold), color = color)
@@ -289,7 +289,7 @@ fun AddBudgetDialog(onDismiss: () -> Unit, onConfirm: (Budget) -> Unit) {
                     modifier = androidx.compose.ui.Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp))
                 OutlinedTextField(value = limit, onValueChange = { limit = it },
-                    label = { Text("Monthly Limit (₹)") }, singleLine = true,
+                    label = { Text("Monthly Limit (â‚¹)") }, singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     modifier = androidx.compose.ui.Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp))
@@ -304,3 +304,10 @@ fun AddBudgetDialog(onDismiss: () -> Unit, onConfirm: (Budget) -> Unit) {
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
     )
 }
+
+
+
+
+
+
+

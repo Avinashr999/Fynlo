@@ -1,4 +1,4 @@
-package com.example.cashmemo.ui.components
+﻿package com.example.cashmemo.ui.components
 
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
@@ -56,3 +56,5 @@ fun ProjectSwitcherChip(
         )
     }
 }
+
+

@@ -1,4 +1,4 @@
-package com.example.cashmemo.ui.screens
+﻿package com.example.cashmemo.ui.screens
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -67,7 +67,7 @@ fun InvestmentScreen(viewModel: FinanceViewModel) {
         } else {
             LazyColumn(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
-                contentPadding = PaddingValues(bottom = 24.dp)
+                contentPadding = PaddingValues(bottom = 100.dp)
             ) {
                 items(investments) { invest ->
                     InvestmentCard(
@@ -90,8 +90,7 @@ fun InvestmentCard(invest: Investment, onDelete: () -> Unit, onEdit: () -> Unit,
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(
@@ -103,7 +102,7 @@ fun InvestmentCard(invest: Investment, onDelete: () -> Unit, onEdit: () -> Unit,
                     Icon(
                         Icons.Default.TrendingUp,
                         contentDescription = null, 
-                        tint = Color(0xFF2E7D32),
+                        tint = Color(0xFF059669),
                         modifier = Modifier.size(20.dp)
                     )
                     Spacer(Modifier.width(8.dp))
@@ -126,24 +125,24 @@ fun InvestmentCard(invest: Investment, onDelete: () -> Unit, onEdit: () -> Unit,
                     ) { Text("Update", style = MaterialTheme.typography.labelSmall) }
                     Badge(
                         containerColor = if (growth >= 0) Color(0xFFE8F5E9) else Color(0xFFFFEBEE),
-                        contentColor = if (growth >= 0) Color(0xFF2E7D32) else Color.Red
+                        contentColor = if (growth >= 0) Color(0xFF059669) else Color.Red
                     ) {
                         Text("${String.format(Locale.getDefault(), "%.1f", growthPercent)}%", style = MaterialTheme.typography.labelSmall)
                     }
                 }
             }
             
-            HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
+            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
             
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Column {
                     Text("Invested Principal", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text("₹ ${String.format(Locale.getDefault(), "%,.0f", invest.invested)}", style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold))
+                    Text("â‚¹ ${String.format(Locale.getDefault(), "%,.0f", invest.invested)}", style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold))
                     Text("Date: ${DateUtils.formatToDisplay(invest.date)}", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
                 }
                 Column(horizontalAlignment = Alignment.End) {
                     Text("Current Value", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text("₹ ${String.format(Locale.getDefault(), "%,.0f", invest.currentVal)}", style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold, color = Color(0xFF2E7D32)))
+                    Text("â‚¹ ${String.format(Locale.getDefault(), "%,.0f", invest.currentVal)}", style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold, color = Color(0xFF059669)))
                     Text("Type: ${invest.type}", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
                 }
             }
@@ -195,11 +194,11 @@ fun UpdateInvestmentValueDialog(
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(investment.name, style = MaterialTheme.typography.titleSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text("Invested: ₹ ${String.format(locale, "%,.2f", investment.invested)}",
+                Text("Invested: â‚¹ ${String.format(locale, "%,.2f", investment.invested)}",
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 OutlinedTextField(
                     value = newValue, onValueChange = { newValue = it },
-                    label = { Text("Current Market Value (₹)") }, singleLine = true,
+                    label = { Text("Current Market Value (â‚¹)") }, singleLine = true,
                     keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
                         keyboardType = androidx.compose.ui.text.input.KeyboardType.Decimal
                     ),
@@ -208,9 +207,9 @@ fun UpdateInvestmentValueDialog(
                 if (growth != null) {
                     val pct = if (investment.invested > 0) (growth / investment.invested) * 100 else 0.0
                     Text(
-                        "${if (growth >= 0) "+" else ""}₹ ${String.format(locale, "%,.2f", growth)} (${String.format(locale, "%.1f", pct)}%)",
+                        "${if (growth >= 0) "+" else ""}â‚¹ ${String.format(locale, "%,.2f", growth)} (${String.format(locale, "%.1f", pct)}%)",
                         style = MaterialTheme.typography.bodyMedium.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.Bold),
-                        color = if (growth >= 0) Color(0xFF10B981) else Color(0xFFEF4444)
+                        color = if (growth >= 0) Color(0xFF059669) else Color(0xFFEF4444)
                     )
                 }
             }
@@ -223,3 +222,9 @@ fun UpdateInvestmentValueDialog(
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
     )
 }
+
+
+
+
+
+

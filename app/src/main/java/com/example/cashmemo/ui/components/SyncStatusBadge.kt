@@ -23,7 +23,7 @@ fun SyncStatusBadge(status: SyncStatus, modifier: Modifier = Modifier) {
         is SyncStatus.Synced -> Icon(
             imageVector        = Icons.Default.CloudDone,
             contentDescription = "Synced",
-            tint               = Color(0xFF4CAF50),
+            tint               = Color(0xFF059669),
             modifier           = modifier.size(22.dp)
         )
         is SyncStatus.Syncing -> {
@@ -55,3 +55,4 @@ fun SyncStatusBadge(status: SyncStatus, modifier: Modifier = Modifier) {
         )
     }
 }
+

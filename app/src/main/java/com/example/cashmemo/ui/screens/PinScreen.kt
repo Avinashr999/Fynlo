@@ -157,12 +157,12 @@ fun PinScreen(
                                         if (pin.isNotEmpty()) pin = pin.dropLast(1)
                                     },
                                     modifier = Modifier.size(72.dp),
-                                    shape = RoundedCornerShape(18.dp)
+                                    shape = RoundedCornerShape(16.dp)
                                 ) { Icon(Icons.AutoMirrored.Filled.Backspace, null) }
                                 else -> Button(
                                     onClick = { onKey(key) },
                                     modifier = Modifier.size(72.dp),
-                                    shape = RoundedCornerShape(18.dp),
+                                    shape = RoundedCornerShape(16.dp),
                                     contentPadding = PaddingValues(0.dp),
                                     colors = ButtonDefaults.buttonColors(
                                         containerColor = MaterialTheme.colorScheme.surfaceVariant,
@@ -183,3 +183,9 @@ fun PinScreen(
         }
     }
 }
+
+
+
+
+
+

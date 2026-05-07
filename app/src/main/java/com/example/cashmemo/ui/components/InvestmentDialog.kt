@@ -1,4 +1,4 @@
-package com.example.cashmemo.ui.components
+﻿package com.example.cashmemo.ui.components
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -90,7 +90,7 @@ fun AddInvestmentDialog(
                 OutlinedTextField(
                     value = amount,
                     onValueChange = { amount = it },
-                    label = { Text("Invested Amount (₹)") },
+                    label = { Text("Invested Amount (â‚¹)") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -98,7 +98,7 @@ fun AddInvestmentDialog(
                 OutlinedTextField(
                     value = currentVal,
                     onValueChange = { currentVal = it },
-                    label = { Text("Current Market Value (₹)") },
+                    label = { Text("Current Market Value (â‚¹)") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -188,3 +188,4 @@ fun AddInvestmentDialog(
         }
     }
 }
+

@@ -32,7 +32,7 @@ fun DebtPayoffScreen(viewModel: FinanceViewModel) {
         if (activeDebts.isEmpty()) {
             Box(Modifier.fillMaxSize(), Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("No active debts!", style = MaterialTheme.typography.titleLarge, color = Color(0xFF10B981))
+                    Text("No active debts!", style = MaterialTheme.typography.titleLarge, color = Color(0xFF059669))
                     Text("You are debt-free.", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
@@ -48,14 +48,14 @@ fun DebtPayoffScreen(viewModel: FinanceViewModel) {
                     Text("Total Remaining", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text("₹ ${String.format(locale, "%,.2f", totalOwed)}",
                         style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
-                        color = Color(0xFFD32F2F))
+                        color = Color(0xFFEF4444))
                     Text("Across ${activeDebts.size} active debt(s)", style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
 
             LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp),
-                contentPadding = PaddingValues(bottom = 120.dp)) {
+                contentPadding = PaddingValues(bottom = 100.dp)) {
                 items(activeDebts) { debt ->
                     DebtPayoffCard(debt, locale)
                 }
@@ -96,16 +96,16 @@ private fun DebtPayoffCard(debt: Debt, locale: Locale) {
                 Surface(color = Color(0xFFFFEBEE), shape = RoundedCornerShape(8.dp)) {
                     Text("₹ ${String.format(locale, "%,.0f", outstanding)}",
                         style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
-                        color = Color(0xFFD32F2F), modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
+                        color = Color(0xFFEF4444), modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
                 }
             }
             Spacer(Modifier.height(8.dp))
             LinearProgressIndicator(progress = { progress }, modifier = Modifier.fillMaxWidth().height(6.dp),
                 trackColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
-                color = Color(0xFF10B981))
+                color = Color(0xFF059669))
             Spacer(Modifier.height(4.dp))
             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
-                Text("${(progress * 100).toInt()}% paid", style = MaterialTheme.typography.labelSmall, color = Color(0xFF10B981))
+                Text("${(progress * 100).toInt()}% paid", style = MaterialTheme.typography.labelSmall, color = Color(0xFF059669))
                 Text("₹ ${String.format(locale, "%,.0f", debt.paid)} paid", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Spacer(Modifier.height(8.dp))
@@ -131,3 +131,9 @@ private fun InfoPill(label: String, value: String, modifier: Modifier) {
         }
     }
 }
+
+
+
+
+
+

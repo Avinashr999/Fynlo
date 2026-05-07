@@ -1,4 +1,4 @@
-package com.example.cashmemo.ui.screens
+﻿package com.example.cashmemo.ui.screens
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -33,7 +33,7 @@ fun AboutScreen() {
         
         Text(
             "Cash Memo", 
-            style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.ExtraBold),
+            style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold),
             modifier = Modifier.padding(top = 16.dp)
         )
         Text("Version ${com.example.cashmemo.BuildConfig.VERSION_NAME}", style = MaterialTheme.typography.labelMedium)
@@ -82,9 +82,15 @@ fun AboutScreen() {
         Spacer(Modifier.height(48.dp))
         
         Text(
-            "Developed with ❤️ for Personal Finance Management",
+            "Developed with â¤ï¸ for Personal Finance Management",
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 }
+
+
+
+
+
+

@@ -1,4 +1,4 @@
-package com.example.cashmemo.ui.screens
+﻿package com.example.cashmemo.ui.screens
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -107,12 +107,12 @@ private fun ProjectCard(
 
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape    = RoundedCornerShape(14.dp),
+        shape    = RoundedCornerShape(12.dp),
         colors   = CardDefaults.cardColors(
             containerColor = if (isActive)
                 MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
             else
-                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
         ),
         onClick = onSelect
     ) {
@@ -213,7 +213,7 @@ private fun AddProjectDialog(
                     ExposedDropdownMenu(expanded = currExpanded, onDismissRequest = { currExpanded = false }) {
                         com.example.cashmemo.logic.CurrencyUtils.supported.forEach { c ->
                             DropdownMenuItem(
-                                text    = { Text("${c.symbol}  ${c.code} — ${c.name}") },
+                                text    = { Text("${c.symbol}  ${c.code} â€” ${c.name}") },
                                 onClick = { currency = c.code; currExpanded = false }
                             )
                         }
@@ -269,3 +269,10 @@ private fun AddProjectDialog(
         }
     )
 }
+
+
+
+
+
+
+

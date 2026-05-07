@@ -48,13 +48,13 @@ fun NetWorthHistoryScreen(viewModel: FinanceViewModel) {
 
         // Current net worth card
         Card(Modifier.fillMaxWidth(), RoundedCornerShape(20.dp),
-            CardDefaults.cardColors(Color(0xFF1E88E5).copy(alpha = 0.1f))) {
+            CardDefaults.cardColors(Color(0xFF3B82F6).copy(alpha = 0.1f))) {
             Column(Modifier.padding(20.dp)) {
                 Text("Current Net Worth", style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text("₹ ${String.format(locale, "%,.2f", summary.netWorth)}",
-                    style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold),
-                    color = if (summary.netWorth >= 0) Color(0xFF10B981) else Color(0xFFEF4444))
+                    style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold),
+                    color = if (summary.netWorth >= 0) Color(0xFF059669) else Color(0xFFEF4444))
                 Text("${sorted.size} snapshots recorded", style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
@@ -77,7 +77,7 @@ fun NetWorthHistoryScreen(viewModel: FinanceViewModel) {
             Spacer(Modifier.height(8.dp))
 
             Card(Modifier.fillMaxWidth(), RoundedCornerShape(16.dp),
-                CardDefaults.cardColors(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))) {
+                CardDefaults.cardColors(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))) {
                 Column(Modifier.padding(16.dp)) {
                     Canvas(modifier = Modifier.fillMaxWidth().height(180.dp)) {
                         val pts = sorted.mapIndexed { i, snap ->
@@ -121,10 +121,10 @@ fun NetWorthHistoryScreen(viewModel: FinanceViewModel) {
             val changePct = if (first != 0.0) (change / Math.abs(first)) * 100 else 0.0
 
             Row(Modifier.fillMaxWidth(), Arrangement.spacedBy(10.dp)) {
-                StatCard("Highest", "₹${String.format(locale, "%,.0f", sorted.maxOf { it.netWorth })}", Color(0xFF10B981), Modifier.weight(1f))
+                StatCard("Highest", "₹${String.format(locale, "%,.0f", sorted.maxOf { it.netWorth })}", Color(0xFF059669), Modifier.weight(1f))
                 StatCard("Lowest",  "₹${String.format(locale, "%,.0f", sorted.minOf { it.netWorth })}", Color(0xFFEF4444), Modifier.weight(1f))
                 StatCard("Change",  "${if (change >= 0) "+" else ""}${String.format(locale, "%.1f", changePct)}%",
-                    if (change >= 0) Color(0xFF10B981) else Color(0xFFEF4444), Modifier.weight(1f))
+                    if (change >= 0) Color(0xFF059669) else Color(0xFFEF4444), Modifier.weight(1f))
             }
 
             Spacer(Modifier.height(16.dp))
@@ -141,7 +141,7 @@ fun NetWorthHistoryScreen(viewModel: FinanceViewModel) {
                         if (prev != null) {
                             Text("${if (diff >= 0) "+" else ""}₹${String.format(locale, "%,.0f", diff)}",
                                 style = MaterialTheme.typography.labelSmall,
-                                color = if (diff >= 0) Color(0xFF10B981) else Color(0xFFEF4444))
+                                color = if (diff >= 0) Color(0xFF059669) else Color(0xFFEF4444))
                         }
                         Text("₹${String.format(locale, "%,.0f", snap.netWorth)}",
                             style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold))
@@ -163,3 +163,9 @@ private fun StatCard(label: String, value: String, color: Color, modifier: Modif
         }
     }
 }
+
+
+
+
+
+

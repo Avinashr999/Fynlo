@@ -1,4 +1,4 @@
-package com.example.cashmemo.ui.components
+﻿package com.example.cashmemo.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -17,8 +17,8 @@ fun SpendingAnalyticsCard(data: Map<String, Double>) {
 
     val total = data.values.sum()
     val colors = listOf(
-        Color(0xFF1E88E5), Color(0xFF43A047), Color(0xFFFFB300), 
-        Color(0xFFE53935), Color(0xFF8E24AA), Color(0xFF00ACC1)
+        Color(0xFF3B82F6), Color(0xFF43A047), Color(0xFFFFB300), 
+        Color(0xFFEF4444), Color(0xFF8E24AA), Color(0xFF00ACC1)
     )
 
     Card(
@@ -46,7 +46,7 @@ fun SpendingAnalyticsCard(data: Map<String, Double>) {
                             Spacer(Modifier.width(8.dp))
                             Text(category, style = MaterialTheme.typography.bodyMedium)
                         }
-                        Text("₹${amount.toInt()} ($percent%)", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold))
+                        Text("â‚¹${amount.toInt()} ($percent%)", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold))
                     }
                     Spacer(Modifier.height(4.dp))
                     LinearProgressIndicator(
@@ -61,3 +61,4 @@ fun SpendingAnalyticsCard(data: Map<String, Double>) {
         }
     }
 }
+

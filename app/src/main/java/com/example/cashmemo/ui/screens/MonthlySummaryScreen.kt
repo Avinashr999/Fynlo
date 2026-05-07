@@ -40,7 +40,7 @@ fun MonthlySummaryScreen(viewModel: FinanceViewModel) {
     }
 
     val maxVal = remember(months) { months.flatMap { listOf(it.second, it.third) }.maxOrNull()?.takeIf { it > 0 } ?: 1.0 }
-    val incomeColor  = Color(0xFF10B981)
+    val incomeColor  = Color(0xFF059669)
     val expenseColor = Color(0xFFEF4444)
 
     Column(
@@ -69,7 +69,7 @@ fun MonthlySummaryScreen(viewModel: FinanceViewModel) {
 
         // Bar Chart
         Card(Modifier.fillMaxWidth(), RoundedCornerShape(16.dp),
-            CardDefaults.cardColors(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))) {
+            CardDefaults.cardColors(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))) {
             Column(Modifier.padding(16.dp)) {
                 Row(Modifier.fillMaxWidth(), Arrangement.spacedBy(4.dp)) {
                     listOf("Income" to incomeColor, "Expense" to expenseColor).forEach { (label, color) ->
@@ -143,3 +143,9 @@ private fun SummaryChip(label: String, value: String, color: Color, modifier: Mo
         }
     }
 }
+
+
+
+
+
+

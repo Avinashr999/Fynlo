@@ -1,4 +1,4 @@
-package com.example.cashmemo.ui.components
+﻿package com.example.cashmemo.ui.components
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -76,3 +76,5 @@ fun DatePickerField(
         placeholder   = { Text("DD-MM-YYYY") }
     )
 }
+
+

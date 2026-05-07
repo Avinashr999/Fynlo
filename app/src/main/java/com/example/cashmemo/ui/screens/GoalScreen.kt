@@ -1,4 +1,4 @@
-package com.example.cashmemo.ui.screens
+﻿package com.example.cashmemo.ui.screens
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -84,8 +84,7 @@ fun GoalCard(goal: Goal, onDelete: () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -102,8 +101,8 @@ fun GoalCard(goal: Goal, onDelete: () -> Unit) {
             Spacer(Modifier.height(8.dp))
             
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("Saved: ₹${goal.savedAmount.toInt()}", style = MaterialTheme.typography.bodySmall)
-                Text("Target: ₹${goal.targetAmount.toInt()}", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
+                Text("Saved: â‚¹${goal.savedAmount.toInt()}", style = MaterialTheme.typography.bodySmall)
+                Text("Target: â‚¹${goal.targetAmount.toInt()}", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
             }
             
             Spacer(Modifier.height(8.dp))
@@ -120,7 +119,7 @@ fun GoalCard(goal: Goal, onDelete: () -> Unit) {
                 "${(progress * 100).toInt()}% complete", 
                 style = MaterialTheme.typography.labelSmall,
                 modifier = Modifier.padding(top = 4.dp),
-                color = Color(0xFF388E3C)
+                color = Color(0xFF059669)
             )
         }
     }
@@ -138,8 +137,8 @@ fun AddGoalDialog(onDismiss: () -> Unit, onConfirm: (Goal) -> Unit) {
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Goal Name (e.g., New Car)") })
-                OutlinedTextField(value = target, onValueChange = { target = it }, label = { Text("Target Amount (₹)") })
-                OutlinedTextField(value = saved, onValueChange = { saved = it }, label = { Text("Already Saved (₹)") })
+                OutlinedTextField(value = target, onValueChange = { target = it }, label = { Text("Target Amount (â‚¹)") })
+                OutlinedTextField(value = saved, onValueChange = { saved = it }, label = { Text("Already Saved (â‚¹)") })
             }
         },
         confirmButton = {
@@ -155,3 +154,9 @@ fun AddGoalDialog(onDismiss: () -> Unit, onConfirm: (Goal) -> Unit) {
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
     )
 }
+
+
+
+
+
+

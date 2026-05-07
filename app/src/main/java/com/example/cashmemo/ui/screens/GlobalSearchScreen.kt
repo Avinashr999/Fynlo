@@ -1,4 +1,4 @@
-package com.example.cashmemo.ui.screens
+﻿package com.example.cashmemo.ui.screens
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -49,13 +49,13 @@ fun GlobalSearchScreen(
             borrowers.filter {
                 it.name.lowercase().contains(q) || it.notes.lowercase().contains(q) || it.phone.contains(q)
             }.forEach {
-                add(SearchResult(it.name, "Loan • ${it.date} • ${if (it.paid >= it.amount) "Settled" else "Active"}",
+                add(SearchResult(it.name, "Loan â€¢ ${it.date} â€¢ ${if (it.paid >= it.amount) "Settled" else "Active"}",
                     it.amount, "Loan", Icons.Default.Person, Color(0xFF3B82F6)))
             }
             debts.filter {
                 it.name.lowercase().contains(q) || it.notes.lowercase().contains(q)
             }.forEach {
-                add(SearchResult(it.name, "Debt • ${it.date} • ${if (it.paid >= it.amount) "Settled" else "Active"}",
+                add(SearchResult(it.name, "Debt â€¢ ${it.date} â€¢ ${if (it.paid >= it.amount) "Settled" else "Active"}",
                     it.amount, "Debt", Icons.Default.CreditCard, Color(0xFFEF4444)))
             }
             transactions.filter {
@@ -65,16 +65,16 @@ fun GlobalSearchScreen(
             }.take(30).forEach {
                 add(SearchResult(
                     it.desc.ifBlank { it.category },
-                    "${it.type} • ${it.date} • ${it.category}",
+                    "${it.type} â€¢ ${it.date} â€¢ ${it.category}",
                     it.amount, "Transaction",
                     if (it.type.lowercase() == "income") Icons.Default.ArrowDownward else Icons.Default.ArrowUpward,
-                    if (it.type.lowercase() == "income") Color(0xFF10B981) else Color(0xFFEF4444)
+                    if (it.type.lowercase() == "income") Color(0xFF059669) else Color(0xFFEF4444)
                 ))
             }
             investments.filter {
                 it.name.lowercase().contains(q) || it.type.lowercase().contains(q)
             }.forEach {
-                add(SearchResult(it.name, "Investment • ${it.type} • ${it.date}",
+                add(SearchResult(it.name, "Investment â€¢ ${it.type} â€¢ ${it.date}",
                     it.currentVal, "Investment", Icons.Default.TrendingUp, Color(0xFFF59E0B)))
             }
         }
@@ -159,7 +159,7 @@ fun GlobalSearchScreen(
                             horizontalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             Surface(
-                                shape = RoundedCornerShape(10.dp),
+                                shape = RoundedCornerShape(8.dp),
                                 color = result.color.copy(alpha = 0.12f),
                                 modifier = Modifier.size(42.dp)
                             ) {
@@ -176,7 +176,7 @@ fun GlobalSearchScreen(
                                     color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                             Column(horizontalAlignment = Alignment.End) {
-                                Text("₹ ${String.format(locale, "%,.0f", result.amount)}",
+                                Text("â‚¹ ${String.format(locale, "%,.0f", result.amount)}",
                                     style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                                     color = result.color)
                                 Surface(
@@ -196,3 +196,10 @@ fun GlobalSearchScreen(
         }
     }
 }
+
+
+
+
+
+
+

@@ -147,7 +147,7 @@ fun DebtScreen(viewModel: FinanceViewModel) {
         } else {
             LazyColumn(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
-                contentPadding = PaddingValues(bottom = 24.dp)
+                contentPadding = PaddingValues(bottom = 100.dp)
             ) {
                 items(filteredDebts) { debt ->
                     DebtCard(
@@ -182,8 +182,7 @@ fun DebtCard(debt: Debt, onEdit: () -> Unit, onDelete: () -> Unit, onPay: () -> 
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(
@@ -195,7 +194,7 @@ fun DebtCard(debt: Debt, onEdit: () -> Unit, onDelete: () -> Unit, onPay: () -> 
                     Icon(
                         Icons.Default.CreditCard, 
                         contentDescription = null, 
-                        tint = Color(0xFFD32F2F),
+                        tint = Color(0xFFEF4444),
                         modifier = Modifier.size(20.dp)
                     )
                     Spacer(Modifier.width(8.dp))
@@ -215,17 +214,17 @@ fun DebtCard(debt: Debt, onEdit: () -> Unit, onDelete: () -> Unit, onPay: () -> 
                         onClick = onPay,
                         contentPadding = PaddingValues(horizontal = 8.dp),
                         modifier = Modifier.height(28.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD32F2F))
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF4444))
                     ) {
                         Text("Pay", style = MaterialTheme.typography.labelSmall)
                     }
-                    Badge(containerColor = Color(0xFFFFEBEE), contentColor = Color(0xFFD32F2F)) {
+                    Badge(containerColor = Color(0xFFFFEBEE), contentColor = Color(0xFFEF4444)) {
                         Text(debt.status, style = MaterialTheme.typography.labelSmall)
                     }
                 }
             }
             
-            HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
+            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
             
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Column {
@@ -235,7 +234,7 @@ fun DebtCard(debt: Debt, onEdit: () -> Unit, onDelete: () -> Unit, onPay: () -> 
                 }
                 Column(horizontalAlignment = Alignment.End) {
                     Text("Interest (${debt.rate}%)", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text("₹ ${String.format(locale, "%,.0f", interestAccrued)}", style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold, color = Color(0xFFD32F2F)))
+                    Text("₹ ${String.format(locale, "%,.0f", interestAccrued)}", style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold, color = Color(0xFFEF4444)))
                     Text("Type: ${debt.intType}", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
                 }
             }
@@ -250,8 +249,8 @@ fun DebtCard(debt: Debt, onEdit: () -> Unit, onDelete: () -> Unit, onPay: () -> 
                             Text("₹ ${String.format(locale, "%,.0f", bothPortions.first)}", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold))
                         }
                         Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
-                            Text("➔ CI (after due date)", style = MaterialTheme.typography.labelSmall, color = Color(0xFFD32F2F))
-                            Text("₹ ${String.format(locale, "%,.0f", bothPortions.second)}", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold), color = Color(0xFFD32F2F))
+                            Text("➔ CI (after due date)", style = MaterialTheme.typography.labelSmall, color = Color(0xFFEF4444))
+                            Text("₹ ${String.format(locale, "%,.0f", bothPortions.second)}", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold), color = Color(0xFFEF4444))
                         }
                     }
                 }
@@ -273,7 +272,7 @@ fun DebtCard(debt: Debt, onEdit: () -> Unit, onDelete: () -> Unit, onPay: () -> 
                     }
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text("Per Day Interest", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text("₹ ${String.format(locale, "%,.2f", perDayInterest)}", style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold), color = Color(0xFFD32F2F))
+                        Text("₹ ${String.format(locale, "%,.2f", perDayInterest)}", style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold), color = Color(0xFFEF4444))
                     }
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text("Paid So Far", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -317,3 +316,9 @@ fun EmptyDebtState(onAdd: () -> Unit = {}) {
         }
     }
 }
+
+
+
+
+
+

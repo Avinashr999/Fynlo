@@ -1,4 +1,4 @@
-package com.example.cashmemo.ui.screens
+﻿package com.example.cashmemo.ui.screens
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
@@ -52,7 +52,7 @@ fun ReportsHubScreen(
     val snapshots     by viewModel.getNetWorthSnapshots().collectAsState(initial = emptyList())
     val locale        = remember { Locale.getDefault() }
 
-    // ── Date range state ──────────────────────────────────────────────────
+    // â”€â”€ Date range state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     var selectedRange by remember { mutableStateOf("This Month") }
     val ranges = listOf("This Month", "Last Month", "Last 3M", "Last 6M", "This Year", "All Time")
 
@@ -71,7 +71,7 @@ fun ReportsHubScreen(
     val fromStr = fromDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
     val toStr   = toDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
 
-    // ── Filtered data ─────────────────────────────────────────────────────
+    // â”€â”€ Filtered data â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     val filtered = remember(transactions, fromStr, toStr) {
         transactions.filter { it.date in fromStr..toStr }
     }
@@ -98,7 +98,7 @@ fun ReportsHubScreen(
     val red   = Color(0xFFEF4444)
     val blue  = Color(0xFF3B82F6)
 
-    fun fmt(v: Double) = "₹${String.format(locale, "%,.0f", v)}"
+    fun fmt(v: Double) = "â‚¹${String.format(locale, "%,.0f", v)}"
 
     Column(
         modifier = Modifier.fillMaxSize().statusBarsPadding()
@@ -134,11 +134,11 @@ fun ReportsHubScreen(
             }
         }
 
-        // ── Date range selector bar ────────────────────────────────────
+        // â”€â”€ Date range selector bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         Card(
             Modifier.fillMaxWidth().padding(bottom = 12.dp),
             RoundedCornerShape(16.dp),
-            CardDefaults.cardColors(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+            CardDefaults.cardColors(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
         ) {
             Column(Modifier.padding(12.dp)) {
                 Text("Date Range", style = MaterialTheme.typography.labelSmall,
@@ -158,7 +158,7 @@ fun ReportsHubScreen(
                     }
                 }
                 Text(
-                    "${fromDate.format(DateTimeFormatter.ofPattern("dd MMM yyyy"))} → ${toDate.format(DateTimeFormatter.ofPattern("dd MMM yyyy"))}",
+                    "${fromDate.format(DateTimeFormatter.ofPattern("dd MMM yyyy"))} â†’ ${toDate.format(DateTimeFormatter.ofPattern("dd MMM yyyy"))}",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 6.dp)
@@ -166,7 +166,7 @@ fun ReportsHubScreen(
             }
         }
 
-        // ── Summary cards ─────────────────────────────────────────────────
+        // â”€â”€ Summary cards â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             // Income
             Card(Modifier.weight(1f), RoundedCornerShape(16.dp),
@@ -231,11 +231,11 @@ fun ReportsHubScreen(
 
         Spacer(Modifier.height(20.dp))
 
-        // ── Net Worth trend chart ─────────────────────────────────────────
+        // â”€â”€ Net Worth trend chart â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         Text("Net Worth Trend", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
         Spacer(Modifier.height(8.dp))
         Card(Modifier.fillMaxWidth(), RoundedCornerShape(16.dp),
-            CardDefaults.cardColors(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))) {
+            CardDefaults.cardColors(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))) {
             Column(Modifier.padding(16.dp)) {
                 if (sortedSnaps.size >= 2) {
                     val minV = sortedSnaps.minOf { it.netWorth }
@@ -267,7 +267,7 @@ fun ReportsHubScreen(
                     Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
                         Text(sortedSnaps.first().date, style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text("₹${String.format(locale, "%,.0f", summary.netWorth)}",
+                        Text("â‚¹${String.format(locale, "%,.0f", summary.netWorth)}",
                             style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
                             color = green)
                         Text(sortedSnaps.last().date, style = MaterialTheme.typography.labelSmall,
@@ -284,10 +284,10 @@ fun ReportsHubScreen(
 
         Spacer(Modifier.height(20.dp))
 
-        // ── Expense breakdown ─────────────────────────────────────────────
+        // â”€â”€ Expense breakdown â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         if (expByCat.isNotEmpty()) {
             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
-                Text("🔴  Where Money Went",
+                Text("ðŸ”´  Where Money Went",
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
                 Surface(color = red.copy(alpha = 0.1f), shape = RoundedCornerShape(8.dp)) {
                     Text(fmt(expense),
@@ -301,7 +301,7 @@ fun ReportsHubScreen(
                 Color(0xFFEC4899), Color(0xFF06B6D4), Color(0xFF84CC16))
             val maxExp = expByCat.firstOrNull()?.value ?: 1.0
             Card(Modifier.fillMaxWidth(), RoundedCornerShape(16.dp),
-                CardDefaults.cardColors(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))) {
+                CardDefaults.cardColors(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     expByCat.take(6).forEachIndexed { i, (cat, amt) ->
                         val frac = (amt / maxExp).toFloat().coerceIn(0f, 1f)
@@ -329,10 +329,10 @@ fun ReportsHubScreen(
             Spacer(Modifier.height(20.dp))
         }
 
-        // ── Income breakdown ──────────────────────────────────────────────
+        // â”€â”€ Income breakdown â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         if (incByCat.isNotEmpty()) {
             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
-                Text("🟢  Where Money Came From",
+                Text("ðŸŸ¢  Where Money Came From",
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
                 Surface(color = green.copy(alpha = 0.1f), shape = RoundedCornerShape(8.dp)) {
                     Text(fmt(income),
@@ -342,9 +342,9 @@ fun ReportsHubScreen(
                 }
             }
             Spacer(Modifier.height(8.dp))
-            val incColors = listOf(green, Color(0xFF3B82F6), Color(0xFF10B981), Color(0xFF059669))
+            val incColors = listOf(green, Color(0xFF3B82F6), Color(0xFF059669), Color(0xFF059669))
             Card(Modifier.fillMaxWidth(), RoundedCornerShape(16.dp),
-                CardDefaults.cardColors(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))) {
+                CardDefaults.cardColors(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     incByCat.take(5).forEachIndexed { i, (cat, amt) ->
                         Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
@@ -363,7 +363,7 @@ fun ReportsHubScreen(
             Spacer(Modifier.height(20.dp))
         }
 
-        // ── Quick links to detail reports ─────────────────────────────────
+        // â”€â”€ Quick links to detail reports â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         Text("Detailed Reports", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
         Spacer(Modifier.height(8.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -372,14 +372,14 @@ fun ReportsHubScreen(
             ReportLinkCard("Money Flow", Icons.Default.SwapHoriz, Color(0xFF8B5CF6), Modifier.weight(1f), onNavigateToMoneyFlow)
         }
 
-        Spacer(Modifier.height(120.dp))
+        Spacer(Modifier.height(100.dp))
     }
 }
 
 @Composable
 private fun ReportLinkCard(label: String, icon: androidx.compose.ui.graphics.vector.ImageVector,
     color: Color, modifier: Modifier, onClick: () -> Unit) {
-    Card(modifier.clickable(onClick = onClick), RoundedCornerShape(14.dp),
+    Card(modifier.clickable(onClick = onClick), RoundedCornerShape(12.dp),
         CardDefaults.cardColors(color.copy(alpha = 0.08f))) {
         Column(Modifier.padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -392,3 +392,10 @@ private fun ReportLinkCard(label: String, icon: androidx.compose.ui.graphics.vec
         }
     }
 }
+
+
+
+
+
+
+

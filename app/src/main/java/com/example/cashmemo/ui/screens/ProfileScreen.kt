@@ -61,9 +61,9 @@ fun ProfileScreen(onLogout: () -> Unit, onSignOut: () -> Unit = {}) {
             shape    = RoundedCornerShape(16.dp),
             colors   = CardDefaults.cardColors(
                 containerColor = if (isGoogle)
-                    Color(0xFF1565C0).copy(alpha = 0.1f)
+                    Color(0xFF3B82F6).copy(alpha = 0.1f)
                 else
-                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
             )
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
@@ -71,7 +71,7 @@ fun ProfileScreen(onLogout: () -> Unit, onSignOut: () -> Unit = {}) {
                     Icon(
                         if (isGoogle) Icons.Default.AccountCircle else Icons.Default.Person,
                         contentDescription = null,
-                        tint     = if (isGoogle) Color(0xFF1565C0) else MaterialTheme.colorScheme.primary,
+                        tint     = if (isGoogle) Color(0xFF3B82F6) else MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(28.dp)
                     )
                     Spacer(Modifier.width(12.dp))
@@ -171,3 +171,9 @@ fun ProfileScreen(onLogout: () -> Unit, onSignOut: () -> Unit = {}) {
         }
     }
 }
+
+
+
+
+
+

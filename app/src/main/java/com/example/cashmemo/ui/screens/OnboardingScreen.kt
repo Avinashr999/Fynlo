@@ -1,4 +1,4 @@
-package com.example.cashmemo.ui.screens
+﻿package com.example.cashmemo.ui.screens
 
 import androidx.compose.animation.*
 import androidx.compose.foundation.Canvas
@@ -76,10 +76,10 @@ fun IllustrationLending() {
         val blue = Color(0xFF3B82F6); val light = Color(0xFFEFF6FF)
         // Two person circles
         listOf(Offset(w*0.3f, h*0.3f), Offset(w*0.7f, h*0.3f)).forEachIndexed { i, c ->
-            drawCircle(if(i==0) blue else Color(0xFF10B981), w*0.13f, c)
+            drawCircle(if(i==0) blue else Color(0xFF059669), w*0.13f, c)
             drawCircle(Color.White, w*0.07f, c.copy(y = c.y - w*0.02f))
             // body arc
-            drawArc(if(i==0) blue else Color(0xFF10B981),
+            drawArc(if(i==0) blue else Color(0xFF059669),
                 0f, 180f, false,
                 topLeft = Offset(c.x - w*0.13f, c.y),
                 size = Size(w*0.26f, w*0.2f))
@@ -143,14 +143,14 @@ fun IllustrationInvestment() {
             lineTo(w*0.55f, h*0.62f)
             lineTo(w*0.78f, h*0.35f)
         }
-        drawPath(path, Color(0xFF10B981), style = Stroke(5f, cap = StrokeCap.Round, join = StrokeJoin.Round))
+        drawPath(path, Color(0xFF059669), style = Stroke(5f, cap = StrokeCap.Round, join = StrokeJoin.Round))
         // Arrowhead
         drawPath(Path().apply {
             moveTo(w*0.78f, h*0.35f)
             lineTo(w*0.68f, h*0.34f)
             lineTo(w*0.78f, h*0.44f)
             close()
-        }, Color(0xFF10B981))
+        }, Color(0xFF059669))
         // Stars/sparkles
         listOf(Offset(w*0.7f, h*0.2f), Offset(w*0.2f, h*0.3f), Offset(w*0.85f, h*0.5f)).forEach {
             drawCircle(amber.copy(0.6f), 5f, it)
@@ -190,12 +190,12 @@ fun IllustrationSync() {
 private val pages = listOf(
     OnboardingPage(
         "Your Finance Command Centre",
-        "Track net worth, loans, debts and investments — all synced to the cloud in real time.",
+        "Track net worth, loans, debts and investments â€” all synced to the cloud in real time.",
         Color(0xFF059669), { IllustrationNetWorth() }
     ),
     OnboardingPage(
         "Manage Lending",
-        "Track money you lend to others with exact interest — Simple, Compound, or Reducing Balance.",
+        "Track money you lend to others with exact interest â€” Simple, Compound, or Reducing Balance.",
         Color(0xFF3B82F6), { IllustrationLending() }
     ),
     OnboardingPage(
@@ -228,7 +228,7 @@ fun OnboardingScreen(onComplete: () -> Unit) {
         ) {
             // Illustration
             Surface(
-                modifier = Modifier.size(200.dp).clip(RoundedCornerShape(32.dp)),
+                modifier = Modifier.size(200.dp).clip(RoundedCornerShape(20.dp)),
                 color    = current.color.copy(alpha = 0.10f)
             ) {
                 Box(contentAlignment = Alignment.Center) {
@@ -277,11 +277,11 @@ fun OnboardingScreen(onComplete: () -> Unit) {
                 }
                 Button(
                     onClick = { if (page < pages.size - 1) page++ else onComplete() },
-                    shape   = RoundedCornerShape(14.dp),
+                    shape   = RoundedCornerShape(12.dp),
                     modifier = Modifier.height(48.dp),
                     colors  = ButtonDefaults.buttonColors(containerColor = current.color)
                 ) {
-                    Text(if (page == pages.lastIndex) "Get Started" else "Next →",
+                    Text(if (page == pages.lastIndex) "Get Started" else "Next â†’",
                         fontWeight = FontWeight.Bold, fontSize = 16.sp)
                 }
             }
@@ -293,3 +293,10 @@ fun OnboardingScreen(onComplete: () -> Unit) {
         }
     }
 }
+
+
+
+
+
+
+

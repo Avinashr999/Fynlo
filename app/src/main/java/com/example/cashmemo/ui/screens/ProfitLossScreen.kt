@@ -37,7 +37,7 @@ fun ProfitLossScreen(viewModel: FinanceViewModel) {
     val netProfit      = grossProfit + investGrowth - debtPayments
 
     fun fmt(v: Double) = "₹ ${String.format(locale, "%,.2f", v)}"
-    val green = Color(0xFF10B981)
+    val green = Color(0xFF059669)
     val red   = Color(0xFFEF4444)
 
     Column(
@@ -77,7 +77,7 @@ fun ProfitLossScreen(viewModel: FinanceViewModel) {
             Column(Modifier.padding(20.dp)) {
                 Text("Net Profit / Loss", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text(fmt(netProfit),
-                    style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold),
+                    style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold),
                     color = if (netProfit >= 0) green else red)
                 Text(if (netProfit >= 0) "You are profitable" else "Expenses exceed income",
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -149,3 +149,9 @@ private fun PLSection(title: String, items: List<Pair<String, Double>>, total: D
         }
     }
 }
+
+
+
+
+
+

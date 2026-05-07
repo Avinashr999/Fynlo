@@ -1,4 +1,4 @@
-package com.example.cashmemo.ui.screens
+﻿package com.example.cashmemo.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -170,10 +170,10 @@ fun TransactionHistoryScreen(viewModel: FinanceViewModel) {
                             Row(Modifier.padding(12.dp).fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
                                 Text(monthLabel, style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold))
                                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                    Text("+₹${String.format(locale, "%,.0f", monthIncome)}",
+                                    Text("+â‚¹${String.format(locale, "%,.0f", monthIncome)}",
                                         style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
                                         color = Color(0xFF059669))
-                                    Text("-₹${String.format(locale, "%,.0f", monthExpense)}",
+                                    Text("-â‚¹${String.format(locale, "%,.0f", monthExpense)}",
                                         style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
                                         color = Color(0xFFEF4444))
                                 }
@@ -217,7 +217,7 @@ fun TransactionItem(txn: Transaction, onDelete: () -> Unit = {}, onEdit: (Transa
     val amountPrefix = when {
         isIncome   -> "+"
         isExpense  -> "-"
-        else       -> "↔"
+        else       -> "â†”"
     }
     val locale = java.util.Locale.getDefault()
     var showDeleteConfirm by remember { mutableStateOf(false) }
@@ -227,7 +227,7 @@ fun TransactionItem(txn: Transaction, onDelete: () -> Unit = {}, onEdit: (Transa
         AlertDialog(
             onDismissRequest = { showDeleteConfirm = false },
             title = { Text("Delete Transaction?") },
-            text  = { Text("Delete ₹${String.format(java.util.Locale.getDefault(), "%,.0f", txn.amount)} ${txn.category}? This will reverse the account balance.") },
+            text  = { Text("Delete â‚¹${String.format(java.util.Locale.getDefault(), "%,.0f", txn.amount)} ${txn.category}? This will reverse the account balance.") },
             confirmButton = {
                 Button(onClick = { onDelete(); showDeleteConfirm = false },
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF4444))) { Text("Delete") }
@@ -244,8 +244,8 @@ fun TransactionItem(txn: Transaction, onDelete: () -> Unit = {}, onEdit: (Transa
         )
     }
     val amountColor = when {
-        isExpense -> Color(0xFFD32F2F)
-        isIncome -> Color(0xFF388E3C)
+        isExpense -> Color(0xFFEF4444)
+        isIncome -> Color(0xFF059669)
         else -> MaterialTheme.colorScheme.primary
     }
 
@@ -291,7 +291,7 @@ fun TransactionItem(txn: Transaction, onDelete: () -> Unit = {}, onEdit: (Transa
 
                 Column(horizontalAlignment = Alignment.End) {
                     Text(
-                        text  = "$amountPrefix₹ ${String.format(locale, "%,.0f", txn.amount)}",
+                        text  = "$amountPrefixâ‚¹ ${String.format(locale, "%,.0f", txn.amount)}",
                         style = MaterialTheme.typography.bodyLarge.copy(
                             fontWeight = FontWeight.ExtraBold, color = rowColor)
                     )
@@ -315,7 +315,7 @@ fun TransactionItem(txn: Transaction, onDelete: () -> Unit = {}, onEdit: (Transa
                     modifier = Modifier
                         .fillMaxWidth()
                         .background(
-                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
                             RoundedCornerShape(8.dp)
                         )
                         .padding(8.dp),
@@ -380,3 +380,10 @@ fun getCategoryIcon(category: String): ImageVector {
         else -> Icons.Default.AccountBalanceWallet
     }
 }
+
+
+
+
+
+
+

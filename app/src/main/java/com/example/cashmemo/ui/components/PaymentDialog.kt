@@ -1,4 +1,4 @@
-package com.example.cashmemo.ui.components
+﻿package com.example.cashmemo.ui.components
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -53,7 +53,7 @@ fun CollectPaymentDialog(
                 OutlinedTextField(
                     value = amount,
                     onValueChange = { amount = it },
-                    label = { Text("Amount Received (₹)") },
+                    label = { Text("Amount Received (â‚¹)") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -165,7 +165,7 @@ fun PayDebtDialog(
                 OutlinedTextField(
                     value = amount,
                     onValueChange = { amount = it },
-                    label = { Text("Amount Paid (₹)") },
+                    label = { Text("Amount Paid (â‚¹)") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -242,3 +242,4 @@ fun PayDebtDialog(
         }
     }
 }
+

@@ -73,7 +73,7 @@ fun LoginScreen(onSignedIn: () -> Unit) {
             .fillMaxSize()
             .background(
                 Brush.verticalGradient(
-                    colors = listOf(Color(0xFF1565C0), Color(0xFF0D47A1), Color(0xFF01579B))
+                    colors = listOf(Color(0xFF3B82F6), Color(0xFF0D47A1), Color(0xFF01579B))
                 )
             ),
         contentAlignment = Alignment.Center
@@ -86,7 +86,7 @@ fun LoginScreen(onSignedIn: () -> Unit) {
                 androidx.compose.foundation.layout.Box(
                     modifier         = Modifier
                         .size(90.dp)
-                        .clip(RoundedCornerShape(24.dp))
+                        .clip(RoundedCornerShape(20.dp))
                         .background(Color(0xFF059669)),
                     contentAlignment = Alignment.Center
                 ) {
@@ -134,7 +134,7 @@ fun LoginScreen(onSignedIn: () -> Unit) {
                 if (loading) {
                     CircularProgressIndicator(
                         modifier  = Modifier.size(22.dp),
-                        color     = Color(0xFF1565C0),
+                        color     = Color(0xFF3B82F6),
                         strokeWidth = 2.5.dp
                     )
                 } else {
@@ -184,3 +184,9 @@ fun LoginScreen(onSignedIn: () -> Unit) {
         }
     }
 }
+
+
+
+
+
+

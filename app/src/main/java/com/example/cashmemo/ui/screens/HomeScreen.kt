@@ -1,4 +1,4 @@
-package com.example.cashmemo.ui.screens
+﻿package com.example.cashmemo.ui.screens
 
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
@@ -74,14 +74,14 @@ fun HomeScreen(viewModel: FinanceViewModel, onNavigateToScreen: (String) -> Unit
         )
         Spacer(Modifier.height(16.dp))
 
-        // ── Net Worth Card ──────────────────────────────────────────────────
+        // â”€â”€ Net Worth Card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         val isPositive = summary.netWorth >= 0
-        val cardBg = if (isPositive) Color(0xFF059669) else Color(0xFFDC2626)
+        val cardBg = if (isPositive) Color(0xFF059669) else Color(0xFFEF4444)
 
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(24.dp))
+                .clip(RoundedCornerShape(20.dp))
                 .background(cardBg)
                 .clickable { onNavigateToScreen("net_worth_hist") }
                 .padding(24.dp)
@@ -100,14 +100,14 @@ fun HomeScreen(viewModel: FinanceViewModel, onNavigateToScreen: (String) -> Unit
                     )
                 }
                 Spacer(Modifier.height(4.dp))
-                Text("Assets ${currencySymbol}${String.format(locale, "%,.0f", summary.totalAssets)}  •  Liabilities ${currencySymbol}${String.format(locale, "%,.0f", summary.totalDebtPrincipal + summary.totalDebtInterest)}",
+                Text("Assets ${currencySymbol}${String.format(locale, "%,.0f", summary.totalAssets)}  â€¢  Liabilities ${currencySymbol}${String.format(locale, "%,.0f", summary.totalDebtPrincipal + summary.totalDebtInterest)}",
                     style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = 0.75f))
             }
         }
 
         Spacer(Modifier.height(16.dp))
 
-        // ── Quick Actions ───────────────────────────────────────────────────
+        // â”€â”€ Quick Actions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             QuickAction("Add Expense",   Icons.Default.Remove,        Color(0xFFEF4444), Modifier.weight(1f)) { showAddTxn = true }
             QuickAction("Add Income",    Icons.Default.Add,            Color(0xFF059669), Modifier.weight(1f)) { showAddTxn = true }
@@ -117,7 +117,7 @@ fun HomeScreen(viewModel: FinanceViewModel, onNavigateToScreen: (String) -> Unit
 
         Spacer(Modifier.height(20.dp))
 
-        // ── Wealth Breakdown ────────────────────────────────────────────────
+        // â”€â”€ Wealth Breakdown â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         Text("Wealth & Assets", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
         Spacer(Modifier.height(10.dp))
 
@@ -138,11 +138,11 @@ fun HomeScreen(viewModel: FinanceViewModel, onNavigateToScreen: (String) -> Unit
 
         Spacer(Modifier.height(20.dp))
 
-        // ── Account Breakdown ───────────────────────────────────────────────
+        // â”€â”€ Account Breakdown â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         Text("Accounts", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
         Spacer(Modifier.height(10.dp))
         Card(Modifier.fillMaxWidth(), RoundedCornerShape(16.dp),
-            CardDefaults.cardColors(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))) {
+            CardDefaults.cardColors(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 summary.accountBreakdown.forEach { (name, balance) ->
                     Row(Modifier.fillMaxWidth().clickable { onNavigateToScreen("statement/$name") }
@@ -167,7 +167,7 @@ fun HomeScreen(viewModel: FinanceViewModel, onNavigateToScreen: (String) -> Unit
 
         Spacer(Modifier.height(20.dp))
 
-        // ── Performance ─────────────────────────────────────────────────────
+        // â”€â”€ Performance â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             PerformanceCard("Invest. Growth",
                 "${if (summary.investmentGrowth >= 0) "+" else ""}$currencySymbol${String.format(locale, "%,.0f", summary.investmentGrowth)}",
@@ -180,7 +180,7 @@ fun HomeScreen(viewModel: FinanceViewModel, onNavigateToScreen: (String) -> Unit
 
         Spacer(Modifier.height(20.dp))
 
-        // ── Spending Breakdown ──────────────────────────────────────────────
+        // â”€â”€ Spending Breakdown â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         if (analytics.isNotEmpty()) {
             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
                 Text("This Month's Spending", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
@@ -188,9 +188,9 @@ fun HomeScreen(viewModel: FinanceViewModel, onNavigateToScreen: (String) -> Unit
             }
             Spacer(Modifier.height(8.dp))
             Card(Modifier.fillMaxWidth(), RoundedCornerShape(16.dp),
-                CardDefaults.cardColors(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))) {
+                CardDefaults.cardColors(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    val catColors = listOf(Color(0xFF3B82F6),Color(0xFF10B981),Color(0xFFF59E0B),Color(0xFFEF4444),Color(0xFF8B5CF6))
+                    val catColors = listOf(Color(0xFF3B82F6),Color(0xFF059669),Color(0xFFF59E0B),Color(0xFFEF4444),Color(0xFF8B5CF6))
                     analytics.entries.sortedByDescending { it.value }.take(5).forEachIndexed { i, item ->
                         Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
                             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -206,7 +206,7 @@ fun HomeScreen(viewModel: FinanceViewModel, onNavigateToScreen: (String) -> Unit
             }
         }
 
-        Spacer(Modifier.height(120.dp))
+        Spacer(Modifier.height(100.dp))
     }
 }
 
@@ -247,3 +247,10 @@ fun PerformanceCard(label: String, value: String, color: Color, modifier: Modifi
         }
     }
 }
+
+
+
+
+
+
+

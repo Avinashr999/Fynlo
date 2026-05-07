@@ -1,4 +1,4 @@
-package com.example.cashmemo.ui.screens
+﻿package com.example.cashmemo.ui.screens
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -31,7 +31,7 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 private val CAT_COLORS = listOf(
-    Color(0xFF3B82F6), Color(0xFF10B981), Color(0xFFF59E0B),
+    Color(0xFF3B82F6), Color(0xFF059669), Color(0xFFF59E0B),
     Color(0xFFEF4444), Color(0xFF8B5CF6), Color(0xFFEC4899),
     Color(0xFF06B6D4), Color(0xFF84CC16)
 )
@@ -78,7 +78,7 @@ fun SpendScreen(viewModel: FinanceViewModel) {
         // Header
         Row(Modifier.fillMaxWidth().padding(vertical = 16.dp), Arrangement.SpaceBetween, Alignment.CenterVertically) {
             Text("Expenses", style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold))
-            FilledTonalButton(onClick = { showDialog = true }, shape = RoundedCornerShape(14.dp)) {
+            FilledTonalButton(onClick = { showDialog = true }, shape = RoundedCornerShape(12.dp)) {
                 Icon(Icons.Default.Add, null, Modifier.size(18.dp))
                 Spacer(Modifier.width(6.dp))
                 Text("Add")
@@ -121,8 +121,8 @@ fun SpendScreen(viewModel: FinanceViewModel) {
                     Column(Modifier.padding(20.dp)) {
                         Text(selectedMonth.format(monthFmt), style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text("₹ ${String.format(locale, "%,.0f", total)}",
-                            style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold),
+                        Text("â‚¹ ${String.format(locale, "%,.0f", total)}",
+                            style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold),
                             color = Color(0xFFEF4444))
                         Text("${expenses.size} transactions", style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -136,7 +136,7 @@ fun SpendScreen(viewModel: FinanceViewModel) {
                     Text("Category Breakdown", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
                     Spacer(Modifier.height(8.dp))
                     Card(Modifier.fillMaxWidth(), RoundedCornerShape(16.dp),
-                        CardDefaults.cardColors(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))) {
+                        CardDefaults.cardColors(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))) {
                         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                             byCat.forEachIndexed { i, (cat, amt) ->
                                 val budget     = budgets.find { it.category.equals(cat, ignoreCase = true) }
@@ -155,7 +155,7 @@ fun SpendScreen(viewModel: FinanceViewModel) {
                                             Text(cat, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold))
                                         }
                                         Column(horizontalAlignment = Alignment.End) {
-                                            Text("₹ ${String.format(locale, "%,.0f", amt)}",
+                                            Text("â‚¹ ${String.format(locale, "%,.0f", amt)}",
                                                 style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                                                 color = color)
                                             if (budgetPct != null) {
@@ -166,7 +166,7 @@ fun SpendScreen(viewModel: FinanceViewModel) {
                                                 }
                                                 Surface(color = pctColor.copy(alpha = 0.12f),
                                                     shape = RoundedCornerShape(4.dp)) {
-                                                    Text("$budgetPct% of ₹${String.format(locale, "%,.0f", budget!!.limitAmount)}",
+                                                    Text("$budgetPct% of â‚¹${String.format(locale, "%,.0f", budget!!.limitAmount)}",
                                                         style = MaterialTheme.typography.labelSmall, color = pctColor,
                                                         modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
                                                 }
@@ -182,7 +182,7 @@ fun SpendScreen(viewModel: FinanceViewModel) {
                                     }
                                     // Budget limit line label
                                     if (budget != null) {
-                                        Text("Budget: ₹${String.format(locale, "%,.0f", budget.limitAmount)}",
+                                        Text("Budget: â‚¹${String.format(locale, "%,.0f", budget.limitAmount)}",
                                             style = MaterialTheme.typography.labelSmall,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f))
                                     }
@@ -218,10 +218,10 @@ fun SpendScreen(viewModel: FinanceViewModel) {
                         }
                     }
                 }
-                Spacer(Modifier.height(120.dp))
+                Spacer(Modifier.height(100.dp))
             }
         } else {
-            // All Transactions tab — reuse TransactionHistoryScreen logic inline
+            // All Transactions tab â€” reuse TransactionHistoryScreen logic inline
             TransactionHistoryScreen(viewModel = viewModel)
         }
     }
@@ -244,7 +244,7 @@ private fun ExpenseRow(txn: Transaction, locale: Locale) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         Column(horizontalAlignment = Alignment.End) {
-            Text("-₹ ${String.format(locale, "%,.0f", txn.amount)}",
+            Text("-â‚¹ ${String.format(locale, "%,.0f", txn.amount)}",
                 style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                 color = Color(0xFFEF4444))
             Text(txn.date, style = MaterialTheme.typography.labelSmall,
@@ -252,3 +252,10 @@ private fun ExpenseRow(txn: Transaction, locale: Locale) {
         }
     }
 }
+
+
+
+
+
+
+

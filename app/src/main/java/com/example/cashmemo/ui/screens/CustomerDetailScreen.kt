@@ -1,4 +1,4 @@
-package com.example.cashmemo.ui.screens
+﻿package com.example.cashmemo.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -108,19 +108,19 @@ fun CustomerDetailScreen(
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)),
-                    shape = RoundedCornerShape(24.dp)
+                    shape = RoundedCornerShape(20.dp)
                 ) {
                     Column(modifier = Modifier.padding(24.dp)) {
                         Text("Current Balance", style = MaterialTheme.typography.labelMedium)
                         Text(
-                            "₹ ${String.format(Locale.getDefault(), "%,.0f", totalOutstanding)}",
+                            "â‚¹ ${String.format(Locale.getDefault(), "%,.0f", totalOutstanding)}",
                             style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.error)
                         )
                         Spacer(Modifier.height(16.dp))
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            DetailItem("Principal", "₹${borrower.amount.toInt()}")
-                            DetailItem("Interest", "₹${interest.toInt()}")
-                            DetailItem("Paid", "₹${borrower.paid.toInt()}")
+                            DetailItem("Principal", "â‚¹${borrower.amount.toInt()}")
+                            DetailItem("Interest", "â‚¹${interest.toInt()}")
+                            DetailItem("Paid", "â‚¹${borrower.paid.toInt()}")
                         }
                     }
                 }
@@ -160,7 +160,7 @@ fun RepaymentItem(txn: com.example.cashmemo.data.model.Transaction) {
                 modifier = Modifier.size(40.dp)
             ) {
                 Box(contentAlignment = Alignment.Center) {
-                    Icon(Icons.Default.Payments, contentDescription = null, tint = Color(0xFF388E3C), modifier = Modifier.size(20.dp))
+                    Icon(Icons.Default.Payments, contentDescription = null, tint = Color(0xFF059669), modifier = Modifier.size(20.dp))
                 }
             }
             Spacer(Modifier.width(16.dp))
@@ -169,8 +169,8 @@ fun RepaymentItem(txn: com.example.cashmemo.data.model.Transaction) {
                 Text(DateUtils.formatToDisplay(txn.date), style = MaterialTheme.typography.labelSmall, color = Color.Gray)
             }
             Text(
-                "₹ ${String.format(Locale.getDefault(), "%,.0f", txn.amount)}",
-                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold, color = Color(0xFF388E3C))
+                "â‚¹ ${String.format(Locale.getDefault(), "%,.0f", txn.amount)}",
+                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold, color = Color(0xFF059669))
             )
         }
     }
@@ -183,3 +183,9 @@ fun DetailItem(label: String, value: String) {
         Text(value, style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold))
     }
 }
+
+
+
+
+
+

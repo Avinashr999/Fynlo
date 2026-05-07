@@ -46,7 +46,7 @@ fun RecurringScreen(viewModel: FinanceViewModel) {
                 Text("Auto-log on schedule", style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            FilledTonalButton(onClick = { showAddDialog = true }, shape = RoundedCornerShape(14.dp)) {
+            FilledTonalButton(onClick = { showAddDialog = true }, shape = RoundedCornerShape(12.dp)) {
                 Icon(Icons.Default.Add, null, Modifier.size(18.dp))
                 Spacer(Modifier.width(6.dp))
                 Text("Add")
@@ -64,7 +64,7 @@ fun RecurringScreen(viewModel: FinanceViewModel) {
             }
         } else {
             LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp),
-                contentPadding = PaddingValues(bottom = 120.dp)) {
+                contentPadding = PaddingValues(bottom = 100.dp)) {
                 items(recurringList) { r ->
                     RecurringCard(r, onDelete = { viewModel.deleteRecurringTransaction(r) })
                 }
@@ -81,10 +81,10 @@ private fun RecurringCard(r: RecurringTransaction, onDelete: () -> Unit) {
         Row(Modifier.padding(16.dp).fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Surface(Modifier.size(44.dp), RoundedCornerShape(12.dp),
-                    color = if (r.type == "Income") Color(0xFF10B981).copy(0.1f) else Color(0xFFEF4444).copy(0.1f)) {
+                    color = if (r.type == "Income") Color(0xFF059669).copy(0.1f) else Color(0xFFEF4444).copy(0.1f)) {
                     Box(contentAlignment = Alignment.Center) {
                         Icon(if (r.type == "Income") Icons.Default.ArrowDownward else Icons.Default.ArrowUpward,
-                            null, tint = if (r.type == "Income") Color(0xFF10B981) else Color(0xFFEF4444),
+                            null, tint = if (r.type == "Income") Color(0xFF059669) else Color(0xFFEF4444),
                             modifier = Modifier.size(22.dp))
                     }
                 }
@@ -180,3 +180,9 @@ private fun AddRecurringDialog(onDismiss: () -> Unit, onConfirm: (RecurringTrans
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
     )
 }
+
+
+
+
+
+

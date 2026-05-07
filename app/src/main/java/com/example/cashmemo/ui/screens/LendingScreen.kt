@@ -278,8 +278,7 @@ fun LendingCard(borrower: Borrower, people: List<com.example.cashmemo.data.model
     Card(
         modifier = Modifier.fillMaxWidth().clickable { onClick() },
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(
@@ -362,7 +361,7 @@ fun LendingCard(borrower: Borrower, people: List<com.example.cashmemo.data.model
                 }
             }
             
-            HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
+            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
             
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Column {
@@ -381,7 +380,7 @@ fun LendingCard(borrower: Borrower, people: List<com.example.cashmemo.data.model
                 }
                 Column(horizontalAlignment = Alignment.End) {
                     Text("Interest (${borrower.rate}%)", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text("₹ ${String.format(Locale.getDefault(), "%,.0f", interest)}", style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold, color = Color(0xFF388E3C)))
+                    Text("₹ ${String.format(Locale.getDefault(), "%,.0f", interest)}", style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold, color = Color(0xFF059669)))
                     Text(borrower.type, style = MaterialTheme.typography.labelSmall, color = Color.Gray)
                 }
             }
@@ -392,8 +391,8 @@ fun LendingCard(borrower: Borrower, people: List<com.example.cashmemo.data.model
                 Surface(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f), shape = RoundedCornerShape(8.dp)) {
                     Column(Modifier.fillMaxWidth().padding(10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
-                            Text("➔ SI (until due date)", style = MaterialTheme.typography.labelSmall, color = Color(0xFF388E3C))
-                            Text("₹ ${String.format(locale, "%,.0f", bothPortions.first)}", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold), color = Color(0xFF388E3C))
+                            Text("➔ SI (until due date)", style = MaterialTheme.typography.labelSmall, color = Color(0xFF059669))
+                            Text("₹ ${String.format(locale, "%,.0f", bothPortions.first)}", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold), color = Color(0xFF059669))
                         }
                         Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
                             Text("➔ CI (after due date)", style = MaterialTheme.typography.labelSmall, color = Color(0xFFEF4444))
@@ -419,7 +418,7 @@ fun LendingCard(borrower: Borrower, people: List<com.example.cashmemo.data.model
                     }
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text("Per Day Interest", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text("₹ ${String.format(locale, "%,.2f", perDayInterest)}", style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold), color = Color(0xFF388E3C))
+                        Text("₹ ${String.format(locale, "%,.2f", perDayInterest)}", style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold), color = Color(0xFF059669))
                     }
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text("Paid So Far", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -447,7 +446,7 @@ fun LendingCard(borrower: Borrower, people: List<com.example.cashmemo.data.model
             if (borrower.notes.isNotEmpty()) {
                 Spacer(Modifier.height(12.dp))
                 Card(
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)),
                     shape = RoundedCornerShape(8.dp)
                 ) {
                     Row(
@@ -647,3 +646,10 @@ fun EmiCalculatorDialog(onDismiss: () -> Unit) {
         confirmButton = { TextButton(onClick = onDismiss) { Text("Close") } }
     )
 }
+
+
+
+
+
+
+

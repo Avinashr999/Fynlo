@@ -84,7 +84,7 @@ fun AccountStatementScreen(
                         Text(
                             "₹ ${String.format(locale, "%,.2f", account.balance)}",
                             style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
-                            color = if (account.balance >= 0) MaterialTheme.colorScheme.primary else Color(0xFFD32F2F)
+                            color = if (account.balance >= 0) MaterialTheme.colorScheme.primary else Color(0xFFEF4444)
                         )
                         Text("${accountTransactions.size} transactions",
                             style = MaterialTheme.typography.bodySmall,
@@ -141,7 +141,7 @@ private fun QuickBalanceEditDialog(
                         if (diff >= 0) "+ ₹${"%.2f".format(diff)} will be added"
                         else "- ₹${"%.2f".format(-diff)} will be deducted",
                         style = MaterialTheme.typography.bodySmall,
-                        color = if (diff >= 0) Color(0xFF2E7D32) else Color(0xFFD32F2F)
+                        color = if (diff >= 0) Color(0xFF059669) else Color(0xFFEF4444)
                     )
                 }
             }
@@ -157,3 +157,9 @@ private fun QuickBalanceEditDialog(
         }
     )
 }
+
+
+
+
+
+

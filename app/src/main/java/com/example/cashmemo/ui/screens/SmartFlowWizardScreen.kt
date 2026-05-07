@@ -155,7 +155,7 @@ fun SmartFlowWizardScreen(
                     OutlinedButton(
                         onClick  = { step-- },
                         modifier = Modifier.weight(1f).height(52.dp),
-                        shape    = RoundedCornerShape(14.dp)
+                        shape    = RoundedCornerShape(12.dp)
                     ) { Text("Back") }
                 }
 
@@ -190,7 +190,7 @@ fun SmartFlowWizardScreen(
                         }
                     },
                     modifier = Modifier.weight(1f).height(52.dp),
-                    shape    = RoundedCornerShape(14.dp),
+                    shape    = RoundedCornerShape(12.dp),
                     enabled  = canProceed
                 ) {
                     Text(if (isLastStep) "Save All" else "Next →", fontWeight = FontWeight.SemiBold)
@@ -204,9 +204,9 @@ fun SmartFlowWizardScreen(
 private data class EventOption(val label: String, val icon: ImageVector, val color: Color, val hint: String)
 
 private val EVENT_OPTIONS = listOf(
-    EventOption("Received",  Icons.Default.ArrowDownward,   Color(0xFF2E7D32), "Money came in"),
-    EventOption("Spent",     Icons.Default.ArrowUpward,     Color(0xFFC62828), "Money went out"),
-    EventOption("Moved",     Icons.Default.SwapHoriz,       Color(0xFF1565C0), "Transfer between accounts"),
+    EventOption("Received",  Icons.Default.ArrowDownward,   Color(0xFF059669), "Money came in"),
+    EventOption("Spent",     Icons.Default.ArrowUpward,     Color(0xFFEF4444), "Money went out"),
+    EventOption("Moved",     Icons.Default.SwapHoriz,       Color(0xFF3B82F6), "Transfer between accounts"),
     EventOption("Lent",      Icons.Default.Handshake,       Color(0xFFF57F17), "Lent money to someone"),
     EventOption("Borrowed",  Icons.Default.CreditCard,      Color(0xFF6A1B9A), "Borrowed money from someone")
 )
@@ -219,7 +219,7 @@ private fun Step1EventType(selected: String, onSelect: (String) -> Unit) {
             val isSelected = opt.label == selected
             Card(
                 modifier = Modifier.fillMaxWidth().clickable { onSelect(opt.label) },
-                shape    = RoundedCornerShape(14.dp),
+                shape    = RoundedCornerShape(12.dp),
                 colors   = CardDefaults.cardColors(
                     containerColor = if (isSelected) opt.color.copy(alpha = 0.12f)
                                      else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
@@ -381,3 +381,10 @@ private fun ConfirmRow(label: String, value: String) {
         Text(value, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold))
     }
 }
+
+
+
+
+
+
+

@@ -1,4 +1,4 @@
-package com.example.cashmemo.ui.components
+﻿package com.example.cashmemo.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -56,7 +56,7 @@ fun PolishedSummaryCard(
                     )
                 }
                 Text(
-                    text = "₹ ${String.format(Locale.getDefault(), "%,.0f", amount)}",
+                    text = "â‚¹ ${String.format(Locale.getDefault(), "%,.0f", amount)}",
                     style = MaterialTheme.typography.headlineLarge.copy(
                         fontWeight = FontWeight.ExtraBold,
                         color = Color.White,
@@ -142,3 +142,4 @@ fun DataPoint(label: String, value: String, valueColor: Color = MaterialTheme.co
         )
     }
 }
+

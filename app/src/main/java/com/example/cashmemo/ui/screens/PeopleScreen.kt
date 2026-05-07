@@ -1,4 +1,4 @@
-package com.example.cashmemo.ui.screens
+﻿package com.example.cashmemo.ui.screens
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -84,8 +84,7 @@ fun PersonCard(person: Person, onEdit: () -> Unit, onDelete: () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape    = RoundedCornerShape(16.dp),
-        colors   = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        colors   = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         Row(
             modifier              = Modifier.padding(16.dp).fillMaxWidth(),
@@ -112,10 +111,10 @@ fun PersonCard(person: Person, onEdit: () -> Unit, onDelete: () -> Unit) {
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     if (person.phone.isNotBlank()) {
-                        Text("📞 ${person.phone}", style = MaterialTheme.typography.bodySmall,
+                        Text("ðŸ“ž ${person.phone}", style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                     } else {
-                        Text("No phone — tap edit to add", style = MaterialTheme.typography.bodySmall,
+                        Text("No phone â€” tap edit to add", style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.error.copy(alpha = 0.6f))
                     }
                 }
@@ -141,17 +140,17 @@ fun AddPersonDialog(initial: Person? = null, onDismiss: () -> Unit, onConfirm: (
 
     // Country codes list
     val countryCodes = remember { listOf(
-        "+91 🇮🇳 India", "+1 🇺🇸 USA/Canada", "+44 🇬🇧 UK",
-        "+61 🇦🇺 Australia", "+971 🇦🇪 UAE", "+65 🇸🇬 Singapore",
-        "+60 🇲🇾 Malaysia", "+966 🇸🇦 Saudi Arabia", "+974 🇶🇦 Qatar",
-        "+968 🇴🇲 Oman", "+973 🇧🇭 Bahrain", "+49 🇩🇪 Germany",
-        "+33 🇫🇷 France", "+81 🇯🇵 Japan", "+86 🇨🇳 China"
+        "+91 ðŸ‡®ðŸ‡³ India", "+1 ðŸ‡ºðŸ‡¸ USA/Canada", "+44 ðŸ‡¬ðŸ‡§ UK",
+        "+61 ðŸ‡¦ðŸ‡º Australia", "+971 ðŸ‡¦ðŸ‡ª UAE", "+65 ðŸ‡¸ðŸ‡¬ Singapore",
+        "+60 ðŸ‡²ðŸ‡¾ Malaysia", "+966 ðŸ‡¸ðŸ‡¦ Saudi Arabia", "+974 ðŸ‡¶ðŸ‡¦ Qatar",
+        "+968 ðŸ‡´ðŸ‡² Oman", "+973 ðŸ‡§ðŸ‡­ Bahrain", "+49 ðŸ‡©ðŸ‡ª Germany",
+        "+33 ðŸ‡«ðŸ‡· France", "+81 ðŸ‡¯ðŸ‡µ Japan", "+86 ðŸ‡¨ðŸ‡³ China"
     )}
     // Parse existing phone into prefix + number
     val existingPhone = initial?.phone ?: ""
     val initialPrefix = remember {
         countryCodes.find { existingPhone.startsWith(it.substringBefore(" ")) }
-            ?: "+91 🇮🇳 India"
+            ?: "+91 ðŸ‡®ðŸ‡³ India"
     }
     val initialNumber = remember {
         val code = initialPrefix.substringBefore(" ")
@@ -268,3 +267,9 @@ fun EmptyPeopleState(onAdd: () -> Unit = {}) {
         Button(onClick = onAdd) { Text("Add First Contact") }
     }
 }
+
+
+
+
+
+

@@ -1,4 +1,4 @@
-package com.example.cashmemo.ui.screens
+﻿package com.example.cashmemo.ui.screens
 
 import android.content.Intent
 import androidx.core.content.FileProvider
@@ -29,7 +29,7 @@ import com.example.cashmemo.data.model.Debt
 import com.example.cashmemo.data.model.Transaction
 import java.util.Locale
 
-// ── Data model for a single flow entry ───────────────────────────────────────
+// â”€â”€ Data model for a single flow entry â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 data class FlowEntry(
     val from: String,
     val to: String,
@@ -245,13 +245,13 @@ fun MoneyFlowScreen(viewModel: FinanceViewModel) {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text("Flow Summary", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold))
                         HorizontalDivider()
-                        FlowSummaryRow("Total Inflow",   "₹${String.format(locale, "%,.0f", totalIn)}",  Color(0xFF10B981))
-                        FlowSummaryRow("Total Outflow",  "₹${String.format(locale, "%,.0f", totalOut)}", Color(0xFFEF4444))
-                        FlowSummaryRow("Lent Out",       "₹${String.format(locale, "%,.0f", lentOut)}",  Color(0xFFF59E0B))
+                        FlowSummaryRow("Total Inflow",   "â‚¹${String.format(locale, "%,.0f", totalIn)}",  Color(0xFF059669))
+                        FlowSummaryRow("Total Outflow",  "â‚¹${String.format(locale, "%,.0f", totalOut)}", Color(0xFFEF4444))
+                        FlowSummaryRow("Lent Out",       "â‚¹${String.format(locale, "%,.0f", lentOut)}",  Color(0xFFF59E0B))
                         HorizontalDivider()
                         FlowSummaryRow("Net Flow",
-                            "₹${String.format(locale, "%,.0f", totalIn - totalOut)}",
-                            if (totalIn >= totalOut) Color(0xFF10B981) else Color(0xFFEF4444),
+                            "â‚¹${String.format(locale, "%,.0f", totalIn - totalOut)}",
+                            if (totalIn >= totalOut) Color(0xFF059669) else Color(0xFFEF4444),
                             bold = true)
                     }
                 }
@@ -300,14 +300,14 @@ private fun AccountFlowCard(name: String, inflow: Double, outflow: Double, local
             Column(Modifier.weight(1f)) {
                 Text(name, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
                     maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text("Net: ₹${String.format(locale, "%,.0f", net)}",
+                Text("Net: â‚¹${String.format(locale, "%,.0f", net)}",
                     style = MaterialTheme.typography.labelSmall,
-                    color = if (net >= 0) Color(0xFF10B981) else Color(0xFFEF4444))
+                    color = if (net >= 0) Color(0xFF059669) else Color(0xFFEF4444))
             }
             Spacer(Modifier.width(8.dp))
             Column(horizontalAlignment = Alignment.End) {
-                Text("▲ ₹${String.format(locale, "%,.0f", inflow)}", fontSize = 11.sp, color = Color(0xFF10B981))
-                Text("▼ ₹${String.format(locale, "%,.0f", outflow)}", fontSize = 11.sp, color = Color(0xFFEF4444))
+                Text("â–² â‚¹${String.format(locale, "%,.0f", inflow)}", fontSize = 11.sp, color = Color(0xFF059669))
+                Text("â–¼ â‚¹${String.format(locale, "%,.0f", outflow)}", fontSize = 11.sp, color = Color(0xFFEF4444))
             }
         }
     }
@@ -316,7 +316,7 @@ private fun AccountFlowCard(name: String, inflow: Double, outflow: Double, local
 @Composable
 private fun FlowEntryCard(flow: FlowEntry, locale: Locale) {
     val (bgColor, arrowColor, icon) = when (flow.flowType) {
-        FlowType.INCOME        -> Triple(Color(0xFF10B981).copy(0.08f), Color(0xFF10B981), Icons.Default.ArrowDownward)
+        FlowType.INCOME        -> Triple(Color(0xFF059669).copy(0.08f), Color(0xFF059669), Icons.Default.ArrowDownward)
         FlowType.EXPENSE       -> Triple(Color(0xFFEF4444).copy(0.08f), Color(0xFFEF4444), Icons.Default.ArrowUpward)
         FlowType.TRANSFER      -> Triple(Color(0xFF3B82F6).copy(0.08f), Color(0xFF3B82F6), Icons.AutoMirrored.Filled.ArrowForward)
         FlowType.LENDING       -> Triple(Color(0xFFF59E0B).copy(0.08f), Color(0xFFF59E0B), Icons.Default.Person)
@@ -329,14 +329,14 @@ private fun FlowEntryCard(flow: FlowEntry, locale: Locale) {
         CardDefaults.cardColors(containerColor = bgColor)) {
         Row(Modifier.padding(12.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             // Icon
-            Surface(Modifier.size(36.dp), RoundedCornerShape(10.dp), color = arrowColor.copy(0.15f)) {
+            Surface(Modifier.size(36.dp), RoundedCornerShape(8.dp), color = arrowColor.copy(0.15f)) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(icon, null, Modifier.size(18.dp), tint = arrowColor)
                 }
             }
             Spacer(Modifier.width(10.dp))
 
-            // From → To
+            // From â†’ To
             Column(Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -358,7 +358,7 @@ private fun FlowEntryCard(flow: FlowEntry, locale: Locale) {
             Spacer(Modifier.width(8.dp))
 
             // Amount
-            Text("₹${String.format(locale, "%,.0f", flow.amount)}",
+            Text("â‚¹${String.format(locale, "%,.0f", flow.amount)}",
                 style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                 color = arrowColor)
         }
@@ -374,3 +374,10 @@ private fun FlowSummaryRow(label: String, value: String, color: Color, bold: Boo
             else MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold), color = color)
     }
 }
+
+
+
+
+
+
+
