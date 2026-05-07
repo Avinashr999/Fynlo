@@ -285,6 +285,47 @@ fun SettingsScreen(
         // â”€â”€ App Info â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         SettingsSectionLabel("App Info")
         SettingsCard {
+            SettingsActionRow(
+                icon     = Icons.Default.BugReport,
+                color    = Red,
+                title    = "Report a Bug",
+                subtitle = "Send feedback via WhatsApp or Email"
+            ) {
+                val deviceInfo = buildString {
+                    appendLine("Device: ${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}")
+                    appendLine("Android: ${android.os.Build.VERSION.RELEASE}")
+                    appendLine("App Version: ${com.example.cashmemo.BuildConfig.VERSION_NAME} (${com.example.cashmemo.BuildConfig.VERSION_CODE})")
+                    appendLine("\nDescribe your issue:\n[Type here]")
+                }
+                try {
+                    context.startActivity(android.content.Intent(
+                        android.content.Intent.ACTION_VIEW,
+                        android.net.Uri.parse("https://wa.me/918500504810?text=${android.net.Uri.encode(deviceInfo)}")
+                    ))
+                } catch (e: Exception) {
+                    context.startActivity(android.content.Intent(android.content.Intent.ACTION_SENDTO).apply {
+                        data = android.net.Uri.parse("mailto:avinash999.reddy@gmail.com")
+                        putExtra(android.content.Intent.EXTRA_SUBJECT, "Cash Memo Bug Report")
+                        putExtra(android.content.Intent.EXTRA_TEXT, deviceInfo)
+                    })
+                }
+            }
+            SettingsDivider()
+            SettingsActionRow(
+                icon  = Icons.Default.Star,
+                color = Amber,
+                title = "Rate on Play Store",
+                subtitle = "Enjoying Cash Memo? Leave us a review!"
+            ) {
+                try {
+                    context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW,
+                        android.net.Uri.parse("market://details?id=${context.packageName}")))
+                } catch (e: Exception) {
+                    context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW,
+                        android.net.Uri.parse("https://play.google.com/store/apps/details?id=${context.packageName}")))
+                }
+            }
+            SettingsDivider()
             Row(
                 Modifier.fillMaxWidth().clickable { onNavigateToAbout() }.padding(vertical = 6.dp),
                 Arrangement.SpaceBetween, Alignment.CenterVertically
