@@ -279,7 +279,7 @@ fun SettingsScreen(viewModel: FinanceViewModel, onNavigateToAbout: () -> Unit, o
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column {
+                Column(Modifier.weight(1f).padding(end = 12.dp)) {
                     Text(if (pinSet) "PIN Lock Enabled" else "PIN Lock Disabled",
                         style = MaterialTheme.typography.bodyLarge)
                     Text(if (pinSet) "App locks when you switch away" else "Set a 4-digit PIN to secure the app",
@@ -288,11 +288,15 @@ fun SettingsScreen(viewModel: FinanceViewModel, onNavigateToAbout: () -> Unit, o
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     if (pinSet) {
-                        OutlinedButton(onClick = { pinManager.clearPin(); pinSet = false },
-                            shape = RoundedCornerShape(8.dp)) { Text("Remove") }
+                        OutlinedButton(
+                            onClick = { pinManager.clearPin(); pinSet = false },
+                            shape = RoundedCornerShape(8.dp)
+                        ) { Text("Remove") }
                     }
-                    Button(onClick = { showPinSetup = true },
-                        shape = RoundedCornerShape(8.dp)) {
+                    Button(
+                        onClick = { showPinSetup = true },
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
                         Text(if (pinSet) "Change" else "Set PIN")
                     }
                 }
