@@ -1,10 +1,13 @@
 package com.example.cashmemo.ui
 
 import androidx.compose.animation.*
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.draw.clip
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.filled.Business
@@ -198,144 +201,169 @@ fun MainNavigation(viewModel: FinanceViewModel) {
     }
 
     ModalNavigationDrawer(
-        drawerState = drawerState,
+        drawerState   = drawerState,
         drawerContent = {
-            ModalDrawerSheet {
-            Column(
-                modifier = Modifier
-                    .fillMaxHeight()
-                    .verticalScroll(rememberScrollState())
+            ModalDrawerSheet(
+                drawerContainerColor = MaterialTheme.colorScheme.surface,
+                modifier = Modifier.width(300.dp)
             ) {
-            Spacer(Modifier.height(12.dp))
-                Text(
-                    "Cash Memo Pro", 
-                    modifier = Modifier.padding(16.dp), 
-                    style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold)
-                )
-                HorizontalDivider()
-                NavigationDrawerItem(
-                    icon = { Icon(Icons.Default.Person, contentDescription = null) },
-                    label = { Text("Profile & Security") },
-                    selected = currentRoute == Screen.Profile.route,
-                    onClick = { 
+                Column(
+                    modifier = Modifier.fillMaxHeight().verticalScroll(rememberScrollState())
+                ) {
+
+                    // ── Brand Header ─────────────────────────────────────────
+                    Box(
+                        modifier = Modifier.fillMaxWidth()
+                            .background(
+                                androidx.compose.ui.graphics.Brush.verticalGradient(
+                                    listOf(Color(0xFF059669), Color(0xFF047857))
+                                )
+                            )
+                            .padding(start = 20.dp, end = 20.dp, top = 48.dp, bottom = 24.dp)
+                    ) {
+                        Column {
+                            // App icon circle
+                            Box(
+                                modifier = Modifier
+                                    .size(56.dp)
+                                    .clip(CircleShape)
+                                    .background(Color.White.copy(alpha = 0.2f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    Icons.Default.AccountBalanceWallet, null,
+                                    Modifier.size(28.dp), tint = Color.White
+                                )
+                            }
+                            Spacer(Modifier.height(12.dp))
+                            Text(
+                                "Cash Memo",
+                                style = MaterialTheme.typography.titleLarge.copy(
+                                    fontWeight = FontWeight.ExtraBold, color = Color.White
+                                )
+                            )
+                            Text(
+                                "Personal Finance Manager",
+                                style = MaterialTheme.typography.bodySmall.copy(
+                                    color = Color.White.copy(alpha = 0.75f)
+                                )
+                            )
+                        }
+                    }
+
+                    Spacer(Modifier.height(8.dp))
+
+                    // ── Account ──────────────────────────────────────────────
+                    DrawerSectionLabel("Account")
+                    DrawerItem(Icons.Default.Person, "Profile & Security",
+                        currentRoute == Screen.Profile.route) {
                         navController.navigate(Screen.Profile.route)
-                        scope.launch { drawerState.close() } 
+                        scope.launch { drawerState.close() }
                     }
-                )
-                NavigationDrawerItem(
-                    icon = { Icon(Icons.Default.Group, contentDescription = null) },
-                    label = { Text("Contact Book") },
-                    selected = currentRoute == Screen.People.route,
-                    onClick = { 
+                    DrawerItem(Icons.Default.Group, "Contact Book",
+                        currentRoute == Screen.People.route) {
                         navController.navigate(Screen.People.route)
-                        scope.launch { drawerState.close() } 
+                        scope.launch { drawerState.close() }
                     }
-                )
-                NavigationDrawerItem(
-                    icon = { Icon(Icons.Default.Business, contentDescription = null) },
-                    label = { Text("Manage Projects") },
-                    selected = currentRoute == Screen.Projects.route,
-                    onClick = {
+                    DrawerItem(Icons.Default.Business, "Manage Projects",
+                        currentRoute == Screen.Projects.route) {
                         navController.navigate(Screen.Projects.route)
                         scope.launch { drawerState.close() }
                     }
-                )
-                NavigationDrawerItem(
-                    icon = { Icon(Icons.Default.AccountBalanceWallet, contentDescription = null) },
-                    label = { Text("Budgeting") },
-                    selected = currentRoute == Screen.Budgets.route,
-                    onClick = { 
+
+                    DrawerDivider()
+
+                    // ── Finance Tools ─────────────────────────────────────────
+                    DrawerSectionLabel("Finance Tools")
+                    DrawerItem(Icons.Default.AccountBalanceWallet, "Budgeting",
+                        currentRoute == Screen.Budgets.route) {
                         navController.navigate(Screen.Budgets.route)
-                        scope.launch { drawerState.close() } 
+                        scope.launch { drawerState.close() }
                     }
-                )
-                NavigationDrawerItem(
-                    icon = { Icon(Icons.Default.Star, contentDescription = null) },
-                    label = { Text("Savings Goals") },
-                    selected = currentRoute == Screen.Goals.route,
-                    onClick = { 
+                    DrawerItem(Icons.Default.Star, "Savings Goals",
+                        currentRoute == Screen.Goals.route) {
                         navController.navigate(Screen.Goals.route)
-                        scope.launch { drawerState.close() } 
+                        scope.launch { drawerState.close() }
                     }
-                )
-                NavigationDrawerItem(
-                    icon     = { Icon(Icons.Default.Repeat, null) },
-                    label    = { Text("Recurring Transactions") },
-                    selected = currentRoute == Screen.Recurring.route,
-                    onClick  = { navController.navigate(Screen.Recurring.route); scope.launch { drawerState.close() } }
-                )
-                HorizontalDivider(Modifier.padding(vertical = 4.dp))
-                Text("Reports", style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(start = 16.dp, top = 4.dp, bottom = 2.dp))
-                NavigationDrawerItem(
-                    icon     = { Icon(Icons.Default.DateRange, null) },
-                    label    = { Text("Monthly Summary") },
-                    selected = currentRoute == Screen.Monthly.route,
-                    onClick  = { navController.navigate(Screen.Monthly.route); scope.launch { drawerState.close() } }
-                )
-                NavigationDrawerItem(
-                    icon     = { Icon(Icons.Default.List, null) },
-                    label    = { Text("Profit & Loss") },
-                    selected = currentRoute == Screen.ProfitLoss.route,
-                    onClick  = { navController.navigate(Screen.ProfitLoss.route); scope.launch { drawerState.close() } }
-                )
-                NavigationDrawerItem(
-                    icon     = { Icon(Icons.Default.Schedule, null) },
-                    label    = { Text("Debt Payoff Tracker") },
-                    selected = currentRoute == Screen.DebtPayoff.route,
-                    onClick  = { navController.navigate(Screen.DebtPayoff.route); scope.launch { drawerState.close() } }
-                )
-                NavigationDrawerItem(
-                    icon     = { Icon(Icons.AutoMirrored.Filled.TrendingUp, null) },
-                    label    = { Text("Net Worth History") },
-                    selected = currentRoute == Screen.NetWorthH.route,
-                    onClick  = { navController.navigate(Screen.NetWorthH.route); scope.launch { drawerState.close() } }
-                )
-                NavigationDrawerItem(
-                    icon     = { Icon(Icons.Default.SwapHoriz, null) },
-                    label    = { Text("Money Flow") },
-                    selected = currentRoute == Screen.MoneyFlow.route,
-                    onClick  = { navController.navigate(Screen.MoneyFlow.route); scope.launch { drawerState.close() } }
-                )
-                NavigationDrawerItem(
-                    icon     = { Icon(Icons.Default.Calculate, null) },
-                    label    = { Text("Loan Calculator") },
-                    selected = currentRoute == Screen.LoanCalc.route,
-                    onClick  = { navController.navigate(Screen.LoanCalc.route); scope.launch { drawerState.close() } }
-                )
-                HorizontalDivider(Modifier.padding(vertical = 4.dp))
-                NavigationDrawerItem(
-                    icon = { Icon(Icons.Default.Settings, contentDescription = null) },
-                    label = { Text("App Settings") },
-                    selected = currentRoute == Screen.Settings.route,
-                    onClick = {
+                    DrawerItem(Icons.Default.Repeat, "Recurring Transactions",
+                        currentRoute == Screen.Recurring.route) {
+                        navController.navigate(Screen.Recurring.route)
+                        scope.launch { drawerState.close() }
+                    }
+                    DrawerItem(Icons.AutoMirrored.Filled.ShowChart, "Investments",
+                        currentRoute == Screen.Invest.route) {
+                        navController.navigate(Screen.Invest.route)
+                        scope.launch { drawerState.close() }
+                    }
+                    DrawerItem(Icons.Default.Calculate, "Loan Calculator",
+                        currentRoute == Screen.LoanCalc.route) {
+                        navController.navigate(Screen.LoanCalc.route)
+                        scope.launch { drawerState.close() }
+                    }
+
+                    DrawerDivider()
+
+                    // ── Reports ───────────────────────────────────────────────
+                    DrawerSectionLabel("Reports")
+                    DrawerItem(Icons.Default.DateRange, "Monthly Summary",
+                        currentRoute == Screen.Monthly.route) {
+                        navController.navigate(Screen.Monthly.route)
+                        scope.launch { drawerState.close() }
+                    }
+                    DrawerItem(Icons.Default.List, "Profit & Loss",
+                        currentRoute == Screen.ProfitLoss.route) {
+                        navController.navigate(Screen.ProfitLoss.route)
+                        scope.launch { drawerState.close() }
+                    }
+                    DrawerItem(Icons.Default.Schedule, "Debt Payoff Tracker",
+                        currentRoute == Screen.DebtPayoff.route) {
+                        navController.navigate(Screen.DebtPayoff.route)
+                        scope.launch { drawerState.close() }
+                    }
+                    DrawerItem(Icons.AutoMirrored.Filled.TrendingUp, "Net Worth History",
+                        currentRoute == Screen.NetWorthH.route) {
+                        navController.navigate(Screen.NetWorthH.route)
+                        scope.launch { drawerState.close() }
+                    }
+                    DrawerItem(Icons.Default.SwapHoriz, "Money Flow",
+                        currentRoute == Screen.MoneyFlow.route) {
+                        navController.navigate(Screen.MoneyFlow.route)
+                        scope.launch { drawerState.close() }
+                    }
+
+                    DrawerDivider()
+
+                    // ── App ───────────────────────────────────────────────────
+                    DrawerSectionLabel("App")
+                    DrawerItem(Icons.Default.Settings, "Settings",
+                        currentRoute == Screen.Settings.route) {
                         navController.navigate(Screen.Settings.route)
                         scope.launch { drawerState.close() }
                     }
-                )
-                NavigationDrawerItem(
-                    icon = { Icon(Icons.Default.Info, contentDescription = null) },
-                    label = { Text("About & Disclaimer") },
-                    selected = currentRoute == Screen.About.route,
-                    onClick = { 
+                    DrawerItem(Icons.Default.Info, "About & Disclaimer",
+                        currentRoute == Screen.About.route) {
                         navController.navigate(Screen.About.route)
-                        scope.launch { drawerState.close() } 
+                        scope.launch { drawerState.close() }
                     }
-                )
-                NavigationDrawerItem(
-                    icon = { Icon(Icons.Default.Lock, contentDescription = null) },
-                    label = { Text("Logout & Lock") },
-                    selected = false,
-                    onClick = { 
-                        isLoggedIn = false
-                        scope.launch { drawerState.close() } 
-                    },
-                    modifier = Modifier.padding(bottom = 16.dp)
-                )
-            } // close scrollable Column
+
+                    DrawerDivider()
+
+                    // ── Logout ────────────────────────────────────────────────
+                    NavigationDrawerItem(
+                        icon     = { Icon(Icons.Default.Logout, null,
+                            tint = Color(0xFFEF4444)) },
+                        label    = { Text("Logout & Lock",
+                            color = Color(0xFFEF4444),
+                            fontWeight = FontWeight.SemiBold) },
+                        selected = false,
+                        onClick  = { isLoggedIn = false; scope.launch { drawerState.close() } },
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
+                    )
+
+                    Spacer(Modifier.height(24.dp))
+                } // close Column
             } // close ModalDrawerSheet
-        }  // close drawerContent lambda
+        }  // close drawerContent
     ) {
         Scaffold(
             topBar = {
@@ -581,4 +609,66 @@ fun ActionItem(icon: ImageVector, label: String, onClick: () -> Unit) {
         Spacer(Modifier.height(8.dp))
         Text(label, style = MaterialTheme.typography.labelLarge)
     }
+}
+
+// ── Drawer helper composables ────────────────────────────────────────
+
+@Composable
+fun DrawerSectionLabel(title: String) {
+    Text(
+        text     = title.uppercase(),
+        style    = MaterialTheme.typography.labelSmall.copy(
+            fontWeight = FontWeight.Bold,
+            letterSpacing = androidx.compose.ui.unit.TextUnit(1.5f,
+                androidx.compose.ui.unit.TextUnitType.Sp)
+        ),
+        color    = Color(0xFF059669),
+        modifier = Modifier.padding(start = 20.dp, top = 12.dp, bottom = 4.dp)
+    )
+}
+
+@Composable
+fun DrawerItem(
+    icon: ImageVector,
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    NavigationDrawerItem(
+        icon     = {
+            Icon(
+                imageVector        = icon,
+                contentDescription = null,
+                modifier           = Modifier.size(20.dp),
+                tint               = if (selected) Color(0xFF059669)
+                                     else MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        },
+        label    = {
+            Text(
+                text       = label,
+                style      = MaterialTheme.typography.bodyMedium.copy(
+                    fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal
+                ),
+                color      = if (selected) Color(0xFF059669)
+                             else MaterialTheme.colorScheme.onSurface
+            )
+        },
+        selected = selected,
+        onClick  = onClick,
+        colors   = NavigationDrawerItemDefaults.colors(
+            selectedContainerColor   = Color(0xFF059669).copy(alpha = 0.1f),
+            unselectedContainerColor = androidx.compose.ui.graphics.Color.Transparent
+        ),
+        modifier = Modifier.padding(horizontal = 12.dp, vertical = 1.dp)
+    )
+}
+
+@Composable
+fun DrawerDivider() {
+    HorizontalDivider(
+        modifier  = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+        thickness = 0.5.dp,
+        color     = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+    )
 }
