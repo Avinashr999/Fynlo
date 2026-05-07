@@ -277,7 +277,7 @@ fun MainNavigation(viewModel: FinanceViewModel) {
 
                     // ── Finance Tools ─────────────────────────────────────────
                     DrawerSectionLabel("Finance Tools")
-                    DrawerItem(Icons.Default.AccountBalanceWallet, "Budgeting",
+                    DrawerItem(Icons.Default.PieChart, "Budgeting",
                         currentRoute == Screen.Budgets.route) {
                         navController.navigate(Screen.Budgets.route)
                         scope.launch { drawerState.close() }
@@ -662,7 +662,7 @@ fun DrawerItem(
             selectedContainerColor   = Color(0xFF059669).copy(alpha = 0.1f),
             unselectedContainerColor = Color.Transparent
         ),
-        modifier = Modifier.padding(horizontal = 12.dp, vertical = 1.dp)
+        modifier = Modifier.padding(horizontal = 12.dp, vertical = 1.dp).height(48.dp)
     )
 }
 
