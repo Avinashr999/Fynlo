@@ -328,10 +328,17 @@ fun LendingCard(borrower: Borrower, isOverdue: Boolean = false, onDelete: () -> 
                             Icon(Icons.Default.Sms, "SMS", Modifier.size(22.dp), tint = Color(0xFF3B82F6))
                         }
                     } else {
-                        // No phone — show hint icon
-                        IconButton(onClick = { /* prompt user to edit and add phone */ onEdit() }) {
-                            Icon(Icons.Default.PhoneEnabled, "Add Phone", Modifier.size(20.dp),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f))
+                        // No phone — show clear hint
+                        TextButton(
+                            onClick = onEdit,
+                            contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp)
+                        ) {
+                            Icon(Icons.Default.PhoneEnabled, null, Modifier.size(14.dp),
+                                tint = MaterialTheme.colorScheme.primary)
+                            Spacer(Modifier.width(4.dp))
+                            Text("Add Phone",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.primary)
                         }
                     }
                     IconButton(onClick = onEdit) {
