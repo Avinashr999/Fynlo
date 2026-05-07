@@ -46,6 +46,12 @@ class CashMemoApplication : Application() {
         super.onCreate()
 
         FirebaseApp.initializeApp(this)
+
+        // Crashlytics — auto-captures all crashes and sends to Firebase Console
+        com.google.firebase.crashlytics.FirebaseCrashlytics.getInstance().apply {
+            setCrashlyticsCollectionEnabled(!BuildConfig.DEBUG) // only in release
+        }
+
         ReminderScheduler.schedule(this)
 
         firestoreRepository = FirestoreRepository("")
