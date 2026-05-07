@@ -233,7 +233,7 @@ private fun ExpenseRow(txn: Transaction, locale: Locale) {
         horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         Surface(Modifier.size(40.dp), RoundedCornerShape(12.dp),
             color = Color(0xFFEF4444).copy(alpha = 0.1f)) {
-            Box(Alignment.Center) {
+            Box(contentAlignment = Alignment.Center) {
                 Icon(Icons.Default.ShoppingCart, null, tint = Color(0xFFEF4444), modifier = Modifier.size(20.dp))
             }
         }

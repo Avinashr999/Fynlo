@@ -308,9 +308,6 @@ fun TransactionItem(txn: Transaction, onDelete: () -> Unit = {}, onEdit: (Transa
                         tint = Color(0xFFEF4444).copy(alpha = 0.7f))
                 }
             }
-            }
-        }
-    }
 
             if (txn.notes.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(12.dp))
@@ -350,6 +347,7 @@ fun TransactionItem(txn: Transaction, onDelete: () -> Unit = {}, onEdit: (Transa
             }
         }
     }
+}
 }
 
 @Composable

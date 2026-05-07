@@ -193,13 +193,13 @@ fun HomeScreen(viewModel: FinanceViewModel, onNavigateToScreen: (String) -> Unit
                 CardDefaults.cardColors(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     val catColors = listOf(Color(0xFF3B82F6),Color(0xFF10B981),Color(0xFFF59E0B),Color(0xFFEF4444),Color(0xFF8B5CF6))
-                    analytics.take(5).forEachIndexed { i, item ->
+                    analytics.entries.sortedByDescending { it.value }.take(5).forEachIndexed { i, item ->
                         Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
                             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 Box(Modifier.size(8.dp).clip(CircleShape).background(catColors[i % catColors.size]))
-                                Text(item.category, style = MaterialTheme.typography.bodySmall)
+                                Text(item.key, style = MaterialTheme.typography.bodySmall)
                             }
-                            Text("$currencySymbol${String.format(locale, "%,.0f", item.amount)}",
+                            Text("$currencySymbol${String.format(locale, "%,.0f", item.value)}",
                                 style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
                                 color = catColors[i % catColors.size])
                         }
