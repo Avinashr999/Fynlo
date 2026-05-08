@@ -87,7 +87,11 @@ fun LoginScreen(onSignedIn: () -> Unit) {
                     modifier         = Modifier
                         .size(90.dp)
                         .clip(RoundedCornerShape(20.dp))
-                        .background(Color(0xFF059669)),
+                        .background(
+                            Brush.linearGradient(
+                                listOf(Color(0xFF0EA5E9), Color(0xFF1D4ED8))
+                            )
+                        ),
                     contentAlignment = Alignment.Center
                 ) {
                     Image(
