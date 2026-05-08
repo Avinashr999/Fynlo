@@ -32,7 +32,7 @@ import java.util.Locale
 
 private val CAT_COLORS = listOf(
     Color(0xFF3B82F6), Color(0xFF059669), Color(0xFFF59E0B),
-    Color(0xFFEF4444), Color(0xFF8B5CF6), Color(0xFFEC4899),
+    Color(0xFFEF4444), Color(0xFF6B7280), Color(0xFFEC4899),
     Color(0xFF06B6D4), Color(0xFF84CC16)
 )
 

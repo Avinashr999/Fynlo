@@ -320,7 +320,7 @@ private fun FlowEntryCard(flow: FlowEntry, locale: Locale) {
         FlowType.EXPENSE       -> Triple(Color(0xFFEF4444).copy(0.08f), Color(0xFFEF4444), Icons.Default.ArrowUpward)
         FlowType.TRANSFER      -> Triple(Color(0xFF3B82F6).copy(0.08f), Color(0xFF3B82F6), Icons.AutoMirrored.Filled.ArrowForward)
         FlowType.LENDING       -> Triple(Color(0xFFF59E0B).copy(0.08f), Color(0xFFF59E0B), Icons.Default.Person)
-        FlowType.DEBT_RECEIVED -> Triple(Color(0xFF8B5CF6).copy(0.08f), Color(0xFF8B5CF6), Icons.Default.CreditCard)
+        FlowType.DEBT_RECEIVED -> Triple(Color(0xFF6B7280).copy(0.08f), Color(0xFF6B7280), Icons.Default.CreditCard)
         FlowType.DEBT_REPAY    -> Triple(Color(0xFFEF4444).copy(0.08f), Color(0xFFEF4444), Icons.Default.CreditCard)
         FlowType.INVESTMENT    -> Triple(Color(0xFF06B6D4).copy(0.08f), Color(0xFF06B6D4), Icons.Default.TrendingUp)
     }

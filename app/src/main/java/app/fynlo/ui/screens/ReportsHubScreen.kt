@@ -297,7 +297,7 @@ fun ReportsHubScreen(
                 }
             }
             Spacer(Modifier.height(8.dp))
-            val expColors = listOf(Color(0xFFEF4444), Color(0xFFF59E0B), Color(0xFF8B5CF6),
+            val expColors = listOf(Color(0xFFEF4444), Color(0xFFF59E0B), Color(0xFF6B7280),
                 Color(0xFFEC4899), Color(0xFF06B6D4), Color(0xFF84CC16))
             val maxExp = expByCat.firstOrNull()?.value ?: 1.0
             Card(Modifier.fillMaxWidth(), RoundedCornerShape(16.dp),
@@ -369,7 +369,7 @@ fun ReportsHubScreen(
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             ReportLinkCard("P&L Statement", Icons.Default.List, green, Modifier.weight(1f), onNavigateToPL)
             ReportLinkCard("Net Worth", Icons.AutoMirrored.Filled.TrendingUp, blue, Modifier.weight(1f), onNavigateToNetWorth)
-            ReportLinkCard("Money Flow", Icons.Default.SwapHoriz, Color(0xFF8B5CF6), Modifier.weight(1f), onNavigateToMoneyFlow)
+            ReportLinkCard("Money Flow", Icons.Default.SwapHoriz, Color(0xFF6B7280), Modifier.weight(1f), onNavigateToMoneyFlow)
         }
 
         Spacer(Modifier.height(100.dp))

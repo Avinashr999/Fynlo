@@ -190,7 +190,7 @@ fun HomeScreen(viewModel: FinanceViewModel, onNavigateToScreen: (String) -> Unit
             Card(Modifier.fillMaxWidth(), RoundedCornerShape(16.dp),
                 CardDefaults.cardColors(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    val catColors = listOf(Color(0xFF3B82F6),Color(0xFF059669),Color(0xFFF59E0B),Color(0xFFEF4444),Color(0xFF8B5CF6))
+                    val catColors = listOf(Color(0xFF3B82F6),Color(0xFF059669),Color(0xFFF59E0B),Color(0xFFEF4444),Color(0xFF6B7280))
                     analytics.entries.sortedByDescending { it.value }.take(5).forEachIndexed { i, item ->
                         Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
                             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {

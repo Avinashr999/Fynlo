@@ -27,16 +27,16 @@ object AppRadius {
 }
 
 object AppColor {
-    val green        = Color(0xFF059669)
+    val green = Emerald500
     val greenLight   = Color(0xFF059669).copy(alpha = 0.1f)
-    val red          = Color(0xFFEF4444)
+    val red = SemanticRed
     val redLight     = Color(0xFFEF4444).copy(alpha = 0.1f)
-    val blue         = Color(0xFF3B82F6)
+    val blue = SemanticBlue
     val blueLight    = Color(0xFF3B82F6).copy(alpha = 0.1f)
-    val amber        = Color(0xFFF59E0B)
+    val amber = SemanticAmber
     val amberLight   = Color(0xFFF59E0B).copy(alpha = 0.1f)
-    val purple       = Color(0xFF8B5CF6)
-    val purpleLight  = Color(0xFF8B5CF6).copy(alpha = 0.1f)
+    val purple       = Color(0xFF6B7280)
+    val purpleLight  = Color(0xFF6B7280).copy(alpha = 0.1f)
     val teal         = Color(0xFF06B6D4)
 }
 

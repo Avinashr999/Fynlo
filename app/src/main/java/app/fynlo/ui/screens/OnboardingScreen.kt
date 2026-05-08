@@ -164,7 +164,7 @@ fun IllustrationInvestment() {
 fun IllustrationSync() {
     Canvas(modifier = Modifier.size(200.dp)) {
         val w = size.width; val h = size.height
-        val purple = Color(0xFF8B5CF6); val light = Color(0xFFEDE9FE)
+        val purple = Color(0xFF6B7280); val light = Color(0xFFEDE9FE)
         // Cloud shape
         drawCircle(light, w*0.18f, Offset(w*0.38f, h*0.38f))
         drawCircle(light, w*0.14f, Offset(w*0.56f, h*0.40f))
@@ -211,7 +211,7 @@ private val pages = listOf(
     OnboardingPage(
         "Real-Time Cloud Sync",
         "Sign in with Google to sync your data across all your devices instantly.",
-        Color(0xFF8B5CF6), { IllustrationSync() }
+        Color(0xFF6B7280), { IllustrationSync() }
     )
 )
 

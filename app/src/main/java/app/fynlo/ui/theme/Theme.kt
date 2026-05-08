@@ -6,102 +6,97 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.SideEffect
-import androidx.compose.runtime.compositionLocalOf
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
-private val DarkColorScheme = darkColorScheme(
-    primary                  = DarkPrimary,
-    onPrimary                = Color.Black,
-    primaryContainer         = Color(0xFF004D3D),
-    onPrimaryContainer       = Color(0xFF80CBC4),
-    secondary                = PrimaryLight,
-    onSecondary              = Color.Black,
-    secondaryContainer       = Color(0xFF004D3D),
-    onSecondaryContainer     = Color(0xFF80CBC4),
-    tertiary                 = Color(0xFF4DB6AC),
-    background               = DarkBackground,
-    surface                  = DarkSurface,
-    surfaceVariant           = Color(0xFF2C2C2C),
-    onSurfaceVariant         = Color(0xFFAAAAAA),
-    surfaceContainer         = Color(0xFF2C2C2C),
-    surfaceContainerHigh     = Color(0xFF333333),
-    surfaceContainerHighest  = Color(0xFF3A3A3A),
-    surfaceContainerLow      = Color(0xFF252525),
-    surfaceContainerLowest   = Color(0xFF1E1E1E),
-    outline                  = Color(0xFF555555),
-    outlineVariant           = Color(0xFF3A3A3A),
-    error                    = ErrorRed
-)
-
+// ── Carbon + Emerald — Light ─────────────────────────────────────────────────
 private val LightColorScheme = lightColorScheme(
-    primary                  = LightPrimary,
+    primary                  = Emerald500,
     onPrimary                = Color.White,
-    primaryContainer         = Color(0xFFB2DFDB),   // light teal - not purple
-    onPrimaryContainer       = Color(0xFF00352E),
-    secondary                = PrimaryLight,
+    primaryContainer         = Emerald100,
+    onPrimaryContainer       = Emerald700,
+    secondary                = Emerald600,
     onSecondary              = Color.White,
-    secondaryContainer       = Color(0xFFB2DFDB),   // light teal for FilterChip selected
-    onSecondaryContainer     = Color(0xFF003731),
-    tertiary                 = Color(0xFF059669),
+    secondaryContainer       = Emerald100,
+    onSecondaryContainer     = Emerald700,
+    tertiary                 = SemanticBlue,
+    onTertiary               = Color.White,
     background               = LightBackground,
+    onBackground             = Carbon900,
     surface                  = LightSurface,
-    surfaceVariant           = Color(0xFFF1F3F4),
-    onSurfaceVariant         = Color(0xFF555555),
-    surfaceContainer         = Color(0xFFF1F3F4),
-    surfaceContainerHigh     = Color(0xFFECECEC),
-    surfaceContainerHighest  = Color(0xFFE5E5E5),
-    surfaceContainerLow      = Color(0xFFF5F5F5),
-    surfaceContainerLowest   = Color(0xFFFFFFFF),
-    outline                  = Color(0xFFBDBDBD),
-    outlineVariant           = Color(0xFFE0E0E0),
-    error                    = ErrorRed
+    onSurface                = Carbon900,
+    surfaceVariant           = Carbon100,
+    onSurfaceVariant         = Carbon500,
+    surfaceContainer         = Carbon100,
+    surfaceContainerHigh     = Carbon200,
+    surfaceContainerHighest  = Color(0xFFE4E4E7),
+    surfaceContainerLow      = Carbon50,
+    surfaceContainerLowest   = Color.White,
+    outline                  = Carbon200,
+    outlineVariant           = Color(0xFFE4E4E7),
+    error                    = SemanticRed,
+    onError                  = Color.White,
+    inverseSurface           = Carbon900,
+    inverseOnSurface         = Carbon50,
+    inversePrimary           = Emerald400,
+    scrim                    = Color.Black
 )
 
-/** App-wide theme override: null = follow system, true = force dark, false = force light */
-object ThemeController {
-    var darkModeOverride by mutableStateOf<Boolean?>(null)
-
-    fun load(context: android.content.Context) {
-        val prefs = context.getSharedPreferences("cashmemo_theme", android.content.Context.MODE_PRIVATE)
-        darkModeOverride = when (prefs.getString("mode", "system")) {
-            "dark"  -> true
-            "light" -> false
-            else    -> null
-        }
-    }
-
-    fun save(context: android.content.Context) {
-        val prefs = context.getSharedPreferences("cashmemo_theme", android.content.Context.MODE_PRIVATE)
-        prefs.edit().putString("mode", when (darkModeOverride) {
-            true  -> "dark"
-            false -> "light"
-            null  -> "system"
-        }).apply()
-    }
-}
+// ── Carbon + Emerald — Dark ──────────────────────────────────────────────────
+private val DarkColorScheme = darkColorScheme(
+    primary                  = Emerald400,
+    onPrimary                = Carbon950,
+    primaryContainer         = Emerald700,
+    onPrimaryContainer       = Emerald100,
+    secondary                = Emerald400,
+    onSecondary              = Carbon950,
+    secondaryContainer       = Emerald700,
+    onSecondaryContainer     = Emerald100,
+    tertiary                 = SemanticBlue,
+    onTertiary               = Color.White,
+    background               = DarkBackground,
+    onBackground             = Carbon50,
+    surface                  = DarkSurface,
+    onSurface                = Carbon50,
+    surfaceVariant           = Carbon700,
+    onSurfaceVariant         = Carbon400,
+    surfaceContainer         = Carbon800,
+    surfaceContainerHigh     = Carbon700,
+    surfaceContainerHighest  = Carbon600,
+    surfaceContainerLow      = Color(0xFF1F1F22),
+    surfaceContainerLowest   = Carbon900,
+    outline                  = Carbon700,
+    outlineVariant           = Carbon700,
+    error                    = SemanticRed,
+    onError                  = Color.White,
+    inverseSurface           = Carbon50,
+    inverseOnSurface         = Carbon900,
+    inversePrimary           = Emerald500,
+    scrim                    = Color.Black
+)
 
 @Composable
 fun CashMemoTheme(
-    darkTheme: Boolean = ThemeController.darkModeOverride ?: isSystemInDarkTheme(),
+    darkTheme: Boolean = isSystemInDarkTheme(),
     content: @Composable () -> Unit
 ) {
-    val colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme
-    val view        = LocalView.current
+    val colorScheme = when {
+        ThemeController.darkModeOverride == true  -> DarkColorScheme
+        ThemeController.darkModeOverride == false -> LightColorScheme
+        darkTheme                                  -> DarkColorScheme
+        else                                       -> LightColorScheme
+    }
 
+    val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as Activity).window
-            @Suppress("DEPRECATION")
-            window.statusBarColor = colorScheme.primary.toArgb()
-            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !darkTheme
+            window.statusBarColor = colorScheme.background.toArgb()
+            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars =
+                colorScheme.background == LightBackground
         }
     }
 
