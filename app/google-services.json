@@ -1,4 +1,4 @@
-{
+﻿{
   "project_info": {
     "project_number": "1016532477819",
     "project_id": "com-example-cashmemo-37d57",
@@ -9,7 +9,7 @@
       "client_info": {
         "mobilesdk_app_id": "1:1016532477819:android:bd2dc6eba65f4386a43fde",
         "android_client_info": {
-          "package_name": "com.cashmemo.finance"
+          "package_name": "app.fynlo"
         }
       },
       "oauth_client": [
@@ -17,7 +17,7 @@
           "client_id": "1016532477819-tnbkj1c7g1qor11a3p79vvctporsdjcs.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
-            "package_name": "com.cashmemo.finance",
+            "package_name": "app.fynlo",
             "certificate_hash": "9c1df32256f9873898de2f62d7c94b33a7cc20f2"
           }
         },
@@ -46,7 +46,7 @@
       "client_info": {
         "mobilesdk_app_id": "1:1016532477819:android:30f61137aadd0146a43fde",
         "android_client_info": {
-          "package_name": "com.example.cashmemo"
+          "package_name": "app.fynlo"
         }
       },
       "oauth_client": [
@@ -54,7 +54,7 @@
           "client_id": "1016532477819-1eath9a4ckfm4r5merkijfmq2dc2t6j8.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
-            "package_name": "com.example.cashmemo",
+            "package_name": "app.fynlo",
             "certificate_hash": "9c1df32256f9873898de2f62d7c94b33a7cc20f2"
           }
         },

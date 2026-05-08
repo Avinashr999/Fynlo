@@ -9,7 +9,7 @@
 }
 
 android {
-    namespace = "com.example.cashmemo"
+    namespace = "app.fynlo"
     compileSdk = 36
 
     signingConfigs {
@@ -22,7 +22,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.cashmemo.finance"
+        applicationId = "app.fynlo"
         minSdk = 26
         targetSdk = 36
         versionCode = 120
