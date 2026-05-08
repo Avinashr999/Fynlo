@@ -1,4 +1,4 @@
-package com.example.cashmemo.ui.screens
+﻿package com.example.cashmemo.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -54,7 +54,7 @@ fun AboutScreen() {
                     Icon(Icons.Default.AccountBalanceWallet, null, Modifier.size(28.dp), tint = green)
                 }
                 Column {
-                    Text("Cash Memo",
+                    Text("Fynlo",
                         style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold))
                     Text("Personal Finance Manager",
                         style = MaterialTheme.typography.bodySmall,
@@ -73,7 +73,7 @@ fun AboutScreen() {
         Spacer(Modifier.height(20.dp))
 
         // ── Feature highlights ───────────────────────────────────────────────
-        Text("What Cash Memo Does",
+        Text("What Fynlo Does",
             style    = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
             modifier = Modifier.padding(bottom = 10.dp))
 
@@ -121,7 +121,7 @@ fun AboutScreen() {
         AboutInfoCard(
             icon  = Icons.Default.Gavel,
             title = "Legal Disclaimer",
-            body  = "Cash Memo is a manual-entry personal finance ledger for personal use only. It is NOT a banking, lending, or investment advisory service. Always verify your data with official bank statements. The developer is not responsible for any financial decisions made using this app.",
+            body  = "Fynlo is a manual-entry personal finance ledger for personal use only. It is NOT a banking, lending, or investment advisory service. Always verify your data with official bank statements. The developer is not responsible for any financial decisions made using this app.",
             color = Color(0xFFEF4444)
         )
 

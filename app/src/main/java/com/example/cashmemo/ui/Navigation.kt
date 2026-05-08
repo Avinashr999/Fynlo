@@ -241,7 +241,7 @@ fun MainNavigation(viewModel: FinanceViewModel) {
                             }
                             Spacer(Modifier.height(12.dp))
                             Text(
-                                "Cash Memo",
+                                "Fynlo",
                                 style = MaterialTheme.typography.titleLarge.copy(
                                     fontWeight = FontWeight.ExtraBold, color = Color.White
                                 )
@@ -375,7 +375,7 @@ fun MainNavigation(viewModel: FinanceViewModel) {
                                    !bottomNavItems.any { it.route == currentRoute }
                 
                 CenterAlignedTopAppBar(
-                    title = { Text("Cash Memo") },
+                    title = { Text("Fynlo") },
                     actions = {
                         IconButton(onClick = { navController.navigate(Screen.GlobalSearch.route) }) {
                             Icon(Icons.Default.Search, contentDescription = "Search")

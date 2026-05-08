@@ -305,7 +305,7 @@ fun SettingsScreen(
                 } catch (e: Exception) {
                     context.startActivity(android.content.Intent(android.content.Intent.ACTION_SENDTO).apply {
                         data = android.net.Uri.parse("mailto:avinash999.reddy@gmail.com")
-                        putExtra(android.content.Intent.EXTRA_SUBJECT, "Cash Memo Bug Report")
+                        putExtra(android.content.Intent.EXTRA_SUBJECT, "Fynlo Bug Report")
                         putExtra(android.content.Intent.EXTRA_TEXT, deviceInfo)
                     })
                 }
@@ -315,7 +315,7 @@ fun SettingsScreen(
                 icon  = Icons.Default.Star,
                 color = Amber,
                 title = "Rate on Play Store",
-                subtitle = "Enjoying Cash Memo? Leave us a review!"
+                subtitle = "Enjoying Fynlo? Leave us a review!"
             ) {
                 try {
                     context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW,

@@ -66,7 +66,7 @@ fun PinScreen(
         }
         BiometricPrompt(activity, executor, callback).authenticate(
             BiometricPrompt.PromptInfo.Builder()
-                .setTitle("Unlock Cash Memo")
+                .setTitle("Unlock Fynlo")
                 .setSubtitle("Use fingerprint or face to unlock")
                 .setNegativeButtonText("Use PIN")
                 .build()

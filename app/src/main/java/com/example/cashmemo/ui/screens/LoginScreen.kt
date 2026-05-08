@@ -92,13 +92,13 @@ fun LoginScreen(onSignedIn: () -> Unit) {
                 ) {
                     Image(
                         painter            = painterResource(id = R.drawable.ic_launcher_foreground),
-                        contentDescription = "Cash Memo",
+                        contentDescription = "Fynlo",
                         modifier           = Modifier.size(90.dp)
                     )
                 }
 
             Text(
-                "Cash Memo",
+                "Fynlo",
                 fontSize   = 32.sp,
                 fontWeight = FontWeight.ExtraBold,
                 color      = Color.White
