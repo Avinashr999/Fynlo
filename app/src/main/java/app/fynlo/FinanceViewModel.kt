@@ -219,7 +219,7 @@ class FinanceViewModel(private val repository: FinanceRepository) : ViewModel() 
 
     fun updateBorrower(borrower: Borrower) {
         viewModelScope.launch {
-            repository.insertBorrowerWithSource(borrower.copy(projectId = pid), "Cash in Hand", pid)
+            repository.updateBorrower(borrower.copy(projectId = pid))
         }
     }
 
@@ -239,6 +239,12 @@ class FinanceViewModel(private val repository: FinanceRepository) : ViewModel() 
     fun updateInvestmentValue(investment: Investment, newCurrentVal: Double) {
         viewModelScope.launch {
             repository.updateInvestmentValue(investment, newCurrentVal)
+        }
+    }
+
+    fun updateInvestment(investment: Investment) {
+        viewModelScope.launch {
+            repository.updateInvestment(investment.copy(projectId = pid))
         }
     }
 

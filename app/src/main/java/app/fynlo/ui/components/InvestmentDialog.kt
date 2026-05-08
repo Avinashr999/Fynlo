@@ -25,7 +25,7 @@ fun AddInvestmentDialog(
     var name by remember { mutableStateOf(initialInvestment?.name ?: "") }
     var amount by remember { mutableStateOf(initialInvestment?.invested?.toString() ?: "") }
     var currentVal by remember { mutableStateOf(initialInvestment?.currentVal?.toString() ?: "") }
-    var date by remember { mutableStateOf(initialInvestment?.date ?: java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy"))) }
+    var date by remember { mutableStateOf(initialInvestment?.date?.let { DateUtils.formatToDisplay(it) } ?: java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy"))) }
     var type by remember { mutableStateOf(initialInvestment?.type ?: "Stocks") }
     var notes by remember { mutableStateOf(initialInvestment?.notes ?: "") }
     
@@ -140,11 +140,10 @@ fun AddInvestmentDialog(
                     }
                 }
 
-                OutlinedTextField(
-                    value = date,
+                DatePickerField(
+                    value         = date,
                     onValueChange = { date = it },
-                    label = { Text("Date (DD-MM-YYYY)") },
-                    modifier = Modifier.fillMaxWidth()
+                    label         = "Investment Date"
                 )
 
                 OutlinedTextField(

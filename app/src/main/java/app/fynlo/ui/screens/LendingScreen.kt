@@ -43,8 +43,10 @@ import java.util.Locale
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> Unit = {}) {
-    val borrowers by viewModel.borrowers.collectAsState()
-    val people    by viewModel.people.collectAsState()  // for phone lookup
+    val borrowers     by viewModel.borrowers.collectAsState()
+    val people        by viewModel.people.collectAsState()  // for phone lookup
+    val currentProject by viewModel.currentProject.collectAsState()
+    val currencySymbol = app.fynlo.logic.CurrencyUtils.symbolFor(currentProject?.currency ?: "INR")
     var showEmiCalc by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
     var sortBy      by remember { mutableStateOf("Overdue") } // Overdue, Amount, Name, Date
@@ -157,7 +159,7 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
                             Column {
                                 Text("Total Outstanding", style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                Text("₹${String.format(java.util.Locale.getDefault(), "%,.0f", totalOut)}",
+                                Text("$currencySymbol${String.format(java.util.Locale.getDefault(), "%,.0f", totalOut)}",
                                     style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
                                     color = Color(0xFF3B82F6))
                             }
@@ -187,6 +189,7 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
                         LendingCard(
                             borrower  = borrower,
                             people    = people,
+                            currencySymbol = currencySymbol,
                             isOverdue = borrower.due.isNotBlank() && borrower.due < today,
                             onDelete  = { viewModel.deleteBorrower(borrower) },
                             onEdit    = { editingBorrower = borrower },
@@ -214,6 +217,7 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
                                     LendingCard(
                                         borrower  = borrower,
                                         people    = people,
+                                        currencySymbol = currencySymbol,
                                         isOverdue = false,
                                         onDelete  = { viewModel.deleteBorrower(borrower) },
                                         onEdit    = { editingBorrower = borrower },
@@ -238,7 +242,7 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
     }
 }
 @Composable
-fun LendingCard(borrower: Borrower, people: List<app.fynlo.data.model.Person> = emptyList(), isOverdue: Boolean = false, onDelete: () -> Unit, onEdit: () -> Unit, onCollect: () -> Unit, onClick: () -> Unit) {
+fun LendingCard(borrower: Borrower, people: List<app.fynlo.data.model.Person> = emptyList(), currencySymbol: String = "₹", isOverdue: Boolean = false, onDelete: () -> Unit, onEdit: () -> Unit, onCollect: () -> Unit, onClick: () -> Unit) {
     // Pulsing animation for overdue
     val infiniteTransition = rememberInfiniteTransition(label = "pulse")
     val pulseAlpha by infiniteTransition.animateFloat(
@@ -310,8 +314,8 @@ fun LendingCard(borrower: Borrower, people: List<app.fynlo.data.model.Person> = 
                     if (phone.isNotBlank()) {
                         val outstanding = InterestEngine.calcOutstanding(borrower.amount, interest, borrower.paid)
                         val dueStr = if (borrower.due.isNotBlank()) " due on ${borrower.due}" else ""
-                        val waMsg  = "Hi ${borrower.name}, this is a friendly reminder that your outstanding loan balance is ₹${String.format(locale, "%,.0f", outstanding)}$dueStr. Kindly arrange repayment at your earliest convenience. Thank you! - Fynlo"
-                        val smsMsg = "Hi ${borrower.name}, outstanding: ₹${String.format(locale, "%,.0f", outstanding)}$dueStr. Please repay. -Fynlo"
+                        val waMsg  = "Hi ${borrower.name}, this is a friendly reminder that your outstanding loan balance is $currencySymbol${String.format(locale, "%,.0f", outstanding)}$dueStr. Kindly arrange repayment at your earliest convenience. Thank you! - Fynlo"
+                        val smsMsg = "Hi ${borrower.name}, outstanding: $currencySymbol${String.format(locale, "%,.0f", outstanding)}$dueStr. Please repay. -Fynlo"
 
                         IconButton(onClick = {
                             val uri = android.net.Uri.parse("https://wa.me/$intlPhone?text=${android.net.Uri.encode(waMsg)}")
@@ -355,13 +359,13 @@ fun LendingCard(borrower: Borrower, people: List<app.fynlo.data.model.Person> = 
                         val summary = buildString {
                             appendLine("=== Loan Summary ===")
                             appendLine("Borrower : ${borrower.name}")
-                            appendLine("Principal: ₹${String.format(locale, "%,.2f", borrower.amount)}")
+                            appendLine("Principal: $currencySymbol${String.format(locale, "%,.2f", borrower.amount)}")
                             appendLine("Interest : ${borrower.rate}% (${borrower.type})")
                             appendLine("Lent On  : ${borrower.date}")
                             if (borrower.due.isNotBlank()) appendLine("Due Date : ${borrower.due}")
-                            appendLine("Paid     : ₹${String.format(locale, "%,.2f", borrower.paid)}")
-                            appendLine("Interest : ₹${String.format(locale, "%,.2f", interest)}")
-                            appendLine("Outstanding: ₹${String.format(locale, "%,.2f", outstanding)}")
+                            appendLine("Paid     : $currencySymbol${String.format(locale, "%,.2f", borrower.paid)}")
+                            appendLine("Interest : $currencySymbol${String.format(locale, "%,.2f", interest)}")
+                            appendLine("Outstanding: $currencySymbol${String.format(locale, "%,.2f", outstanding)}")
                             appendLine()
                             appendLine("Generated by Fynlo App")
                         }
@@ -394,7 +398,7 @@ fun LendingCard(borrower: Borrower, people: List<app.fynlo.data.model.Person> = 
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Column {
                     Text("Principal", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text("₹ ${String.format(Locale.getDefault(), "%,.0f", borrower.amount)}", style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold))
+                    Text("$currencySymbol ${String.format(Locale.getDefault(), "%,.0f", borrower.amount)}", style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold))
                     Text("Lent: ${DateUtils.formatToDisplay(borrower.date)}", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
                     
                     if (borrower.due.isNotEmpty()) {
@@ -408,7 +412,7 @@ fun LendingCard(borrower: Borrower, people: List<app.fynlo.data.model.Person> = 
                 }
                 Column(horizontalAlignment = Alignment.End) {
                     Text("Interest (${borrower.rate}%)", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text("₹ ${String.format(Locale.getDefault(), "%,.0f", interest)}", style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold, color = Color(0xFF059669)))
+                    Text("$currencySymbol ${String.format(Locale.getDefault(), "%,.0f", interest)}", style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold, color = Color(0xFF059669)))
                     Text(borrower.type, style = MaterialTheme.typography.labelSmall, color = Color.Gray)
                 }
             }
@@ -420,11 +424,11 @@ fun LendingCard(borrower: Borrower, people: List<app.fynlo.data.model.Person> = 
                     Column(Modifier.fillMaxWidth().padding(10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
                             Text("➔ SI (until due date)", style = MaterialTheme.typography.labelSmall, color = Color(0xFF059669))
-                            Text("₹ ${String.format(locale, "%,.0f", bothPortions.first)}", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold), color = Color(0xFF059669))
+                            Text("$currencySymbol ${String.format(locale, "%,.0f", bothPortions.first)}", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold), color = Color(0xFF059669))
                         }
                         Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
                             Text("➔ CI (after due date)", style = MaterialTheme.typography.labelSmall, color = Color(0xFFEF4444))
-                            Text("₹ ${String.format(locale, "%,.0f", bothPortions.second)}", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold), color = Color(0xFFEF4444))
+                            Text("$currencySymbol ${String.format(locale, "%,.0f", bothPortions.second)}", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold), color = Color(0xFFEF4444))
                         }
                     }
                 }
@@ -446,11 +450,11 @@ fun LendingCard(borrower: Borrower, people: List<app.fynlo.data.model.Person> = 
                     }
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text("Per Day Interest", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text("₹ ${String.format(locale, "%,.2f", perDayInterest)}", style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold), color = Color(0xFF059669))
+                        Text("$currencySymbol ${String.format(locale, "%,.2f", perDayInterest)}", style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold), color = Color(0xFF059669))
                     }
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text("Paid So Far", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text("₹ ${String.format(locale, "%,.0f", borrower.paid)}", style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold), color = MaterialTheme.colorScheme.primary)
+                        Text("$currencySymbol ${String.format(locale, "%,.0f", borrower.paid)}", style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold), color = MaterialTheme.colorScheme.primary)
                     }
                 }
             }
@@ -465,7 +469,7 @@ fun LendingCard(borrower: Borrower, people: List<app.fynlo.data.model.Person> = 
                 Column {
                     Text("Total Outstanding", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text(
-                        "₹ ${String.format(Locale.getDefault(), "%,.0f", outs)}", 
+                        "$currencySymbol ${String.format(Locale.getDefault(), "%,.0f", outs)}",
                         style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.error)
                     )
                 }

@@ -94,28 +94,36 @@ class FinanceRepository(
         affectedAccounts.forEach { syncAccountByName(it) }
     }
     suspend fun editTransaction(old: Transaction, new: Transaction) {
-        // If amount or type changed, reverse old balance effect then apply new
-        val amountChanged = old.amount != new.amount
         db.withTransaction {
-            if (amountChanged) {
-                // Reverse old
-                when (old.type.lowercase()) {
-                    "expense"  -> dao.updateAccountBalance(old.fromAcct,  old.amount)
-                    "income"   -> dao.updateAccountBalance(old.toAcct,   -old.amount)
+            // 1. Reverse old transaction effect
+            when (old.type.lowercase()) {
+                "expense"  -> dao.updateAccountBalance(old.fromAcct,  old.amount)
+                "income"   -> dao.updateAccountBalance(old.toAcct,   -old.amount)
+                "transfer" -> {
+                    dao.updateAccountBalance(old.fromAcct,  old.amount)
+                    dao.updateAccountBalance(old.toAcct,   -old.amount)
                 }
-                // Apply new
-                when (new.type.lowercase()) {
-                    "expense"  -> dao.updateAccountBalance(new.fromAcct, -new.amount)
-                    "income"   -> dao.updateAccountBalance(new.toAcct,    new.amount)
+            }
+
+            // 2. Apply new transaction effect
+            when (new.type.lowercase()) {
+                "expense"  -> dao.updateAccountBalance(new.fromAcct, -new.amount)
+                "income"   -> dao.updateAccountBalance(new.toAcct,    new.amount)
+                "transfer" -> {
+                    dao.updateAccountBalance(new.fromAcct, -new.amount)
+                    dao.updateAccountBalance(new.toAcct,    new.amount)
                 }
             }
             dao.insertTransaction(new)
             sync { setTransaction(new) }
         }
-        if (amountChanged) {
-            val acct = if (new.type.lowercase() == "expense") new.fromAcct else new.toAcct
-            syncAccountByName(acct)
-        }
+        // Sync affected accounts
+        val affected = mutableSetOf<String>()
+        if (old.fromAcct.isNotBlank()) affected.add(old.fromAcct)
+        if (old.toAcct.isNotBlank())   affected.add(old.toAcct)
+        if (new.fromAcct.isNotBlank()) affected.add(new.fromAcct)
+        if (new.toAcct.isNotBlank())   affected.add(new.toAcct)
+        affected.forEach { syncAccountByName(it) }
     }
 
     suspend fun deleteTransaction(transaction: Transaction) {
@@ -209,6 +217,12 @@ class FinanceRepository(
 
     suspend fun updateInvestmentValue(investment: Investment, newCurrentVal: Double) {
         val updated = investment.copy(currentVal = newCurrentVal, updatedAt = System.currentTimeMillis())
+        dao.insertInvestment(updated)
+        sync { setInvestment(updated) }
+    }
+
+    suspend fun updateInvestment(investment: Investment) {
+        val updated = investment.copy(updatedAt = System.currentTimeMillis())
         dao.insertInvestment(updated)
         sync { setInvestment(updated) }
     }

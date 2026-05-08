@@ -40,6 +40,8 @@ private val CAT_COLORS = listOf(
 fun SpendScreen(viewModel: FinanceViewModel) {
     val transactions by viewModel.transactions.collectAsState()
     val budgets      by viewModel.budgets.collectAsState()
+    val currentProject by viewModel.currentProject.collectAsState()
+    val currencySymbol = app.fynlo.logic.CurrencyUtils.symbolFor(currentProject?.currency ?: "INR")
     val locale       = remember { Locale.getDefault() }
     var showDialog   by remember { mutableStateOf(false) }
     var selectedTab  by remember { mutableIntStateOf(0) }
@@ -121,7 +123,7 @@ fun SpendScreen(viewModel: FinanceViewModel) {
                     Column(Modifier.padding(20.dp)) {
                         Text(selectedMonth.format(monthFmt), style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text("₹ ${String.format(locale, "%,.0f", total)}",
+                        Text("$currencySymbol ${String.format(locale, "%,.0f", total)}",
                             style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold),
                             color = Color(0xFFEF4444))
                         Text("${expenses.size} transactions", style = MaterialTheme.typography.bodySmall,
@@ -155,7 +157,7 @@ fun SpendScreen(viewModel: FinanceViewModel) {
                                             Text(cat, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold))
                                         }
                                         Column(horizontalAlignment = Alignment.End) {
-                                            Text("₹ ${String.format(locale, "%,.0f", amt)}",
+                                            Text("$currencySymbol ${String.format(locale, "%,.0f", amt)}",
                                                 style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                                                 color = color)
                                             if (budgetPct != null) {
@@ -166,7 +168,7 @@ fun SpendScreen(viewModel: FinanceViewModel) {
                                                 }
                                                 Surface(color = pctColor.copy(alpha = 0.12f),
                                                     shape = RoundedCornerShape(4.dp)) {
-                                                    Text("$budgetPct% of ₹${String.format(locale, "%,.0f", budget!!.limitAmount)}",
+                                                    Text("$budgetPct% of $currencySymbol${String.format(locale, "%,.0f", budget!!.limitAmount)}",
                                                         style = MaterialTheme.typography.labelSmall, color = pctColor,
                                                         modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
                                                 }
@@ -182,7 +184,7 @@ fun SpendScreen(viewModel: FinanceViewModel) {
                                     }
                                     // Budget limit line label
                                     if (budget != null) {
-                                        Text("Budget: ₹${String.format(locale, "%,.0f", budget.limitAmount)}",
+                                        Text("Budget: $currencySymbol${String.format(locale, "%,.0f", budget.limitAmount)}",
                                             style = MaterialTheme.typography.labelSmall,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f))
                                     }
@@ -200,7 +202,7 @@ fun SpendScreen(viewModel: FinanceViewModel) {
                     }
                     Spacer(Modifier.height(8.dp))
                     expenses.sortedByDescending { it.date }.take(15).forEach { txn ->
-                        ExpenseRow(txn, locale)
+                        ExpenseRow(txn, currencySymbol, locale)
                         HorizontalDivider(Modifier.padding(vertical = 2.dp),
                             color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
                     }
@@ -228,7 +230,7 @@ fun SpendScreen(viewModel: FinanceViewModel) {
 }
 
 @Composable
-private fun ExpenseRow(txn: Transaction, locale: Locale) {
+private fun ExpenseRow(txn: Transaction, currencySymbol: String, locale: Locale) {
     Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         Surface(Modifier.size(40.dp), RoundedCornerShape(12.dp),
@@ -244,7 +246,7 @@ private fun ExpenseRow(txn: Transaction, locale: Locale) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         Column(horizontalAlignment = Alignment.End) {
-            Text("-₹ ${String.format(locale, "%,.0f", txn.amount)}",
+            Text("-$currencySymbol ${String.format(locale, "%,.0f", txn.amount)}",
                 style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                 color = Color(0xFFEF4444))
             Text(txn.date, style = MaterialTheme.typography.labelSmall,

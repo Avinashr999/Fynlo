@@ -32,8 +32,8 @@ fun AddDebtDialog(
     var customName by remember { mutableStateOf(initialDebt?.name ?: "") }
     var amount by remember { mutableStateOf(initialDebt?.amount?.toString() ?: "") }
     var rate by remember { mutableStateOf(initialDebt?.rate?.toString() ?: "") }
-    var date by remember { mutableStateOf(initialDebt?.date ?: java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy"))) }
-    var due by remember { mutableStateOf(initialDebt?.due ?: "") }
+    var date by remember { mutableStateOf(initialDebt?.date?.let { DateUtils.formatToDisplay(it) } ?: java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy"))) }
+    var due by remember { mutableStateOf(initialDebt?.due?.let { DateUtils.formatToDisplay(it) } ?: "") }
     var notes by remember { mutableStateOf(initialDebt?.notes ?: "") }
     
     var expandedDest by remember { mutableStateOf(false) }

@@ -25,14 +25,20 @@ import java.util.Locale
 @Composable
 fun InvestmentScreen(viewModel: FinanceViewModel) {
     val investments by viewModel.investments.collectAsState()
+    val currentProject by viewModel.currentProject.collectAsState()
+    val currencySymbol = app.fynlo.logic.CurrencyUtils.symbolFor(currentProject?.currency ?: "INR")
     var editingInvest  by remember { mutableStateOf<Investment?>(null) }
     var updatingInvest by remember { mutableStateOf<Investment?>(null) }
 
     if (editingInvest != null) {
         AddInvestmentDialog(
             onDismiss = { editingInvest = null },
-            onConfirm = { invest, _ ->
-                viewModel.addInvestmentWithSource(invest, "Cash in Hand")
+            onConfirm = { invest, source ->
+                if (editingInvest?.id?.isNotBlank() == true) {
+                    viewModel.updateInvestment(invest)
+                } else {
+                    viewModel.addInvestmentWithSource(invest, source)
+                }
                 editingInvest = null
             },
             initialInvestment = editingInvest
@@ -42,6 +48,7 @@ fun InvestmentScreen(viewModel: FinanceViewModel) {
     if (updatingInvest != null) {
         UpdateInvestmentValueDialog(
             investment = updatingInvest!!,
+            currencySymbol = currencySymbol,
             onDismiss  = { updatingInvest = null },
             onConfirm  = { newVal ->
                 viewModel.updateInvestmentValue(updatingInvest!!, newVal)
@@ -72,6 +79,7 @@ fun InvestmentScreen(viewModel: FinanceViewModel) {
                 items(investments) { invest ->
                     InvestmentCard(
                         invest   = invest,
+                        currencySymbol = currencySymbol,
                         onDelete = { viewModel.deleteInvestment(invest) },
                         onEdit   = { editingInvest = invest },
                         onUpdate = { updatingInvest = invest }
@@ -83,7 +91,7 @@ fun InvestmentScreen(viewModel: FinanceViewModel) {
 }
 
 @Composable
-fun InvestmentCard(invest: Investment, onDelete: () -> Unit, onEdit: () -> Unit, onUpdate: () -> Unit) {
+fun InvestmentCard(invest: Investment, currencySymbol: String = "₹", onDelete: () -> Unit, onEdit: () -> Unit, onUpdate: () -> Unit) {
     val growth = invest.currentVal - invest.invested
     val growthPercent = if (invest.invested > 0) (growth / invest.invested) * 100 else 0.0
 
@@ -137,12 +145,12 @@ fun InvestmentCard(invest: Investment, onDelete: () -> Unit, onEdit: () -> Unit,
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Column {
                     Text("Invested Principal", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text("₹ ${String.format(Locale.getDefault(), "%,.0f", invest.invested)}", style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold))
+                    Text("$currencySymbol ${String.format(Locale.getDefault(), "%,.0f", invest.invested)}", style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold))
                     Text("Date: ${DateUtils.formatToDisplay(invest.date)}", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
                 }
                 Column(horizontalAlignment = Alignment.End) {
                     Text("Current Value", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text("₹ ${String.format(Locale.getDefault(), "%,.0f", invest.currentVal)}", style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold, color = Color(0xFF059669)))
+                    Text("$currencySymbol ${String.format(Locale.getDefault(), "%,.0f", invest.currentVal)}", style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold, color = Color(0xFF059669)))
                     Text("Type: ${invest.type}", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
                 }
             }
@@ -179,6 +187,7 @@ fun EmptyInvestState() {
 @Composable
 fun UpdateInvestmentValueDialog(
     investment: Investment,
+    currencySymbol: String = "₹",
     onDismiss: () -> Unit,
     onConfirm: (Double) -> Unit
 ) {
@@ -194,11 +203,11 @@ fun UpdateInvestmentValueDialog(
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(investment.name, style = MaterialTheme.typography.titleSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text("Invested: ₹ ${String.format(locale, "%,.2f", investment.invested)}",
+                Text("Invested: $currencySymbol ${String.format(locale, "%,.2f", investment.invested)}",
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 OutlinedTextField(
                     value = newValue, onValueChange = { newValue = it },
-                    label = { Text("Current Market Value (₹)") }, singleLine = true,
+                    label = { Text("Current Market Value ($currencySymbol)") }, singleLine = true,
                     keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
                         keyboardType = androidx.compose.ui.text.input.KeyboardType.Decimal
                     ),
@@ -207,7 +216,7 @@ fun UpdateInvestmentValueDialog(
                 if (growth != null) {
                     val pct = if (investment.invested > 0) (growth / investment.invested) * 100 else 0.0
                     Text(
-                        "${if (growth >= 0) "+" else ""}₹ ${String.format(locale, "%,.2f", growth)} (${String.format(locale, "%.1f", pct)}%)",
+                        "${if (growth >= 0) "+" else ""}$currencySymbol ${String.format(locale, "%,.2f", growth)} (${String.format(locale, "%.1f", pct)}%)",
                         style = MaterialTheme.typography.bodyMedium.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.Bold),
                         color = if (growth >= 0) Color(0xFF059669) else Color(0xFFEF4444)
                     )

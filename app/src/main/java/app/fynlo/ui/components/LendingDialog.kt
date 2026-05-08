@@ -32,8 +32,8 @@ fun AddLendingDialog(
 
     var amount by remember { mutableStateOf(initialBorrower?.amount?.toString() ?: "") }
     var rate by remember { mutableStateOf(initialBorrower?.rate?.toString() ?: "") }
-    var date by remember { mutableStateOf(initialBorrower?.date ?: java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy"))) }
-    var due by remember { mutableStateOf(initialBorrower?.due ?: "") }
+    var date by remember { mutableStateOf(initialBorrower?.date?.let { DateUtils.formatToDisplay(it) } ?: java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy"))) }
+    var due by remember { mutableStateOf(initialBorrower?.due?.let { DateUtils.formatToDisplay(it) } ?: "") }
     var notes by remember { mutableStateOf(initialBorrower?.notes ?: "") }
     var expandedType by remember { mutableStateOf(false) }
     var selectedType by remember { mutableStateOf(initialBorrower?.type ?: "Simple Interest") }

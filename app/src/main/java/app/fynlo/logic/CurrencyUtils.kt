@@ -39,11 +39,25 @@ object CurrencyUtils {
     /** Format without decimal for large round numbers */
     fun formatCompact(amount: Double, currencyCode: String, locale: java.util.Locale = java.util.Locale.getDefault()): String {
         val symbol = symbolFor(currencyCode)
-        return when {
-            amount >= 10_000_000 -> "$symbol ${String.format(locale, "%.1f", amount / 10_000_000)}Cr"
-            amount >= 100_000   -> "$symbol ${String.format(locale, "%.1f", amount / 100_000)}L"
-            amount >= 1_000     -> "$symbol ${String.format(locale, "%.1f", amount / 1_000)}K"
-            else                -> "$symbol ${String.format(locale, "%,.0f", amount)}"
+        val isIndian = currencyCode.equals("INR", ignoreCase = true) || 
+                       currencyCode.equals("NPR", ignoreCase = true) || 
+                       currencyCode.equals("LKR", ignoreCase = true) || 
+                       currencyCode.equals("BDT", ignoreCase = true)
+        
+        return if (isIndian) {
+            when {
+                amount >= 10_000_000 -> "$symbol${String.format(locale, "%.1f", amount / 10_000_000)}Cr"
+                amount >= 100_000   -> "$symbol${String.format(locale, "%.1f", amount / 100_000)}L"
+                amount >= 1_000     -> "$symbol${String.format(locale, "%.1f", amount / 1_000)}K"
+                else                -> "$symbol${String.format(locale, "%,.0f", amount)}"
+            }
+        } else {
+            when {
+                amount >= 1_000_000_000 -> "$symbol${String.format(locale, "%.1f", amount / 1_000_000_000)}B"
+                amount >= 1_000_000 -> "$symbol${String.format(locale, "%.1f", amount / 1_000_000)}M"
+                amount >= 1_000     -> "$symbol${String.format(locale, "%.1f", amount / 1_000)}K"
+                else                -> "$symbol${String.format(locale, "%,.0f", amount)}"
+            }
         }
     }
 }
