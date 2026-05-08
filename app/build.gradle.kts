@@ -14,10 +14,10 @@ android {
 
     signingConfigs {
         create("release") {
-            storeFile     = file("cashmemo-release.jks")
-            storePassword = "CashMemo@2024"
-            keyAlias      = "cashmemo"
-            keyPassword   = "CashMemo@2024"
+            storeFile     = file("fynlo-release.jks")
+            storePassword = "Fynlo@2024"
+            keyAlias      = "fynlo"
+            keyPassword   = "Fynlo@2024"
         }
     }
 
