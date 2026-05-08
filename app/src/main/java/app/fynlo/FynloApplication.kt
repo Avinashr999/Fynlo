@@ -24,7 +24,7 @@ import kotlinx.coroutines.launch
 class FynloApplication : Application() {
 
     val database: FynloDatabase by lazy {
-        Room.databaseBuilder(this, FynloDatabase::class.java, "cashmemo_database")
+        Room.databaseBuilder(this, FynloDatabase::class.java, "Fynlo_database")
             .addMigrations(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
             .build()
     }
@@ -38,7 +38,7 @@ class FynloApplication : Application() {
     // Supervised scope — child coroutine failures don't crash sibling coroutines or the app
     private val appScope = CoroutineScope(
         SupervisorJob() + Dispatchers.IO + CoroutineExceptionHandler { _, e ->
-            Log.e("CashMemoApp", "Unhandled coroutine exception: ${e.message}", e)
+            Log.e("FynloApp", "Unhandled coroutine exception: ${e.message}", e)
         }
     )
 
@@ -66,7 +66,7 @@ class FynloApplication : Application() {
                 val uid = authManager.userId
                 if (uid.isNotEmpty()) initRemote(uid)
             } catch (e: Exception) {
-                Log.e("CashMemoApp", "onCreate init failed: ${e.message}", e)
+                Log.e("FynloApp", "onCreate init failed: ${e.message}", e)
             }
         }
     }
@@ -76,7 +76,7 @@ class FynloApplication : Application() {
             try {
                 initRemote(uid)
             } catch (e: Exception) {
-                Log.e("CashMemoApp", "onGoogleSignInComplete failed: ${e.message}", e)
+                Log.e("FynloApp", "onGoogleSignInComplete failed: ${e.message}", e)
             }
         }
     }
@@ -92,7 +92,7 @@ class FynloApplication : Application() {
             repository.updateRemote(firestoreRepository, syncManager)
             syncManager.startListening()
         } catch (e: Exception) {
-            Log.e("CashMemoApp", "initRemote setup failed: ${e.message}", e)
+            Log.e("FynloApp", "initRemote setup failed: ${e.message}", e)
             return
         }
 
@@ -116,18 +116,18 @@ class FynloApplication : Application() {
                         }
                     }
                 } catch (e: Exception) {
-                    Log.e("CashMemoApp", "normalization failed (non-fatal): ${e.message}", e)
+                    Log.e("FynloApp", "normalization failed (non-fatal): ${e.message}", e)
                 }
 
                 // Daily backup — fully isolated, never crashes the app
                 try {
                     repository.takeBackupIfNeeded(uid)
                 } catch (e: Exception) {
-                    Log.e("CashMemoApp", "backup failed (non-fatal): ${e.message}", e)
+                    Log.e("FynloApp", "backup failed (non-fatal): ${e.message}", e)
                 }
 
             } catch (e: Exception) {
-                Log.e("CashMemoApp", "initRemote coroutine failed: ${e.message}", e)
+                Log.e("FynloApp", "initRemote coroutine failed: ${e.message}", e)
             }
         }
     }

@@ -103,7 +103,7 @@ fun MainNavigation(viewModel: FinanceViewModel) {
     }
 
     // Onboarding â€” show only on first launch
-    val prefs = remember { context.getSharedPreferences("cashmemo_prefs", android.content.Context.MODE_PRIVATE) }
+    val prefs = remember { context.getSharedPreferences("fynlo_prefs", android.content.Context.MODE_PRIVATE) }
     var showOnboarding by remember { mutableStateOf(!prefs.getBoolean("onboarding_done", false)) }
 
 

@@ -20,7 +20,7 @@ class ReminderWorker(
 ) : CoroutineWorker(context, params) {
 
     companion object {
-        const val CHANNEL_ID   = "cashmemo_reminders"
+        const val CHANNEL_ID   = "Fynlo_reminders"
         const val CHANNEL_NAME = "Loan & Due Date Reminders"
     }
 

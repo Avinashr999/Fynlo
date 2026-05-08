@@ -163,7 +163,7 @@ fun SettingsScreen(
                     color = Green,
                     title = "Export Full Backup (.xlsx)",
                     subtitle = "All data in 7 sheets â€” opens in Excel/Sheets"
-                ) { xlsxLauncher.launch("CashMemo_Backup_${System.currentTimeMillis()}.xlsx") }
+                ) { xlsxLauncher.launch("Fynlo_Backup_${System.currentTimeMillis()}.xlsx") }
 
                 SettingsDivider()
 
@@ -172,7 +172,7 @@ fun SettingsScreen(
                     color = Blue,
                     title = "Export JSON Backup",
                     subtitle = "Full backup for restore"
-                ) { jsonLauncher.launch("CashMemo_Backup_${System.currentTimeMillis()}.json") }
+                ) { jsonLauncher.launch("Fynlo_Backup_${System.currentTimeMillis()}.json") }
 
                 SettingsDivider()
 
@@ -181,7 +181,7 @@ fun SettingsScreen(
                     color = Blue,
                     title = "Export Expenses (.csv)",
                     subtitle = "Transactions in spreadsheet format"
-                ) { csvLauncher.launch("CashMemo_Expenses_${System.currentTimeMillis()}.csv") }
+                ) { csvLauncher.launch("Fynlo_Expenses_${System.currentTimeMillis()}.csv") }
 
                 SettingsDivider()
 
@@ -190,7 +190,7 @@ fun SettingsScreen(
                     color = Red,
                     title = "Export PDF Report",
                     subtitle = "Financial summary report"
-                ) { pdfLauncher.launch("CashMemo_Report_${System.currentTimeMillis()}.pdf") }
+                ) { pdfLauncher.launch("Fynlo_Report_${System.currentTimeMillis()}.pdf") }
 
                 SettingsDivider()
 

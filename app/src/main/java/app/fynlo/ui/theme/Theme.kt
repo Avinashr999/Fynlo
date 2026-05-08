@@ -79,7 +79,7 @@ private val DarkColorScheme = darkColorScheme(
 )
 
 @Composable
-fun CashMemoTheme(
+fun FynloTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     content: @Composable () -> Unit
 ) {

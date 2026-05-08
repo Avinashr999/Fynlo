@@ -9,7 +9,7 @@ import java.security.MessageDigest
  */
 class PinManager(context: Context) {
 
-    private val prefs = context.getSharedPreferences("cashmemo_pin", Context.MODE_PRIVATE)
+    private val prefs = context.getSharedPreferences("Fynlo_pin", Context.MODE_PRIVATE)
 
     val isPinSet: Boolean
         get() = prefs.getString("pin_hash", null) != null

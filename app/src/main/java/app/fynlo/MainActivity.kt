@@ -11,7 +11,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import app.fynlo.ui.MainNavigation
-import app.fynlo.ui.theme.CashMemoTheme
+import app.fynlo.ui.theme.FynloTheme
 
 class MainActivity : FragmentActivity() {
 
@@ -39,7 +39,7 @@ class MainActivity : FragmentActivity() {
         val viewModel = FinanceViewModel(app.repository)
 
         setContent {
-            CashMemoTheme {
+            FynloTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background,

@@ -5,8 +5,8 @@ import androidx.work.*
 import java.util.concurrent.TimeUnit
 
 object ReminderScheduler {
-    private const val WORK_NAME           = "cashmemo_daily_reminder"
-    private const val RECURRING_WORK_NAME = "cashmemo_recurring"
+    private const val WORK_NAME           = "Fynlo_daily_reminder"
+    private const val RECURRING_WORK_NAME = "Fynlo_recurring"
 
     fun schedule(context: Context) {
         // Daily reminders (loan dues, budget alerts)
