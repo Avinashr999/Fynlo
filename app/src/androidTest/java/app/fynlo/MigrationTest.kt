@@ -3,7 +3,7 @@
 import androidx.room.testing.MigrationTestHelper
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
-import app.fynlo.data.local.CashMemoDatabase
+import app.fynlo.data.local.FynloDatabase
 import app.fynlo.data.local.MIGRATION_3_4
 import app.fynlo.data.local.MIGRATION_4_5
 import org.junit.Assert.*
@@ -21,7 +21,7 @@ class MigrationTest {
     @get:Rule
     val helper = MigrationTestHelper(
         InstrumentationRegistry.getInstrumentation(),
-        CashMemoDatabase::class.java
+        FynloDatabase::class.java
     )
 
     @Test

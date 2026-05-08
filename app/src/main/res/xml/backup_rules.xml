@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <full-backup-content>
     <!-- Back up the Room database and its journal/wal files -->
-    <include domain="database" path="cashmemo_database" />
-    <include domain="database" path="cashmemo_database-shm" />
-    <include domain="database" path="cashmemo_database-wal" />
+    <include domain="database" path="Fynlo_database" />
+    <include domain="database" path="Fynlo_database-shm" />
+    <include domain="database" path="Fynlo_database-wal" />
 </full-backup-content>

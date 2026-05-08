@@ -1,5 +1,5 @@
-# Cash Memo - Complete AI Portability File
-**Project Name**: Cash Memo
+# Fynlo - Complete AI Portability File
+**Project Name**: Fynlo
 **Version**: 1.8.0
 **Platform**: Android (Kotlin, Jetpack Compose, Room)
 
@@ -32,4 +32,4 @@ onConfirm = { borrower, source -> viewModel.addBorrowerWithSource(borrower, sour
 ```
 
 ## 4. How to Resume
-Upload this file and the `CASH_MEMO_ALL_SOURCE.txt` (if created) to any AI like Claude or ChatGPT. The app is 100% production-ready for personal ledger usage.
+Upload this file and the `FYNLO_ALL_SOURCE.txt` (if created) to any AI like Claude or ChatGPT. The app is 100% production-ready for personal ledger usage.

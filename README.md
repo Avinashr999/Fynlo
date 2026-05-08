@@ -1,6 +1,6 @@
-# Cash Memo
+# Fynlo
 
-A personal-use Android financial ledger built with Kotlin and Jetpack Compose. Cash Memo tracks every rupee using double-entry principles (origin → destination), with PIN security, automated anniversary-based interest, PDF/CSV exports, and an optional Firebase-backed sync for cross-device use.
+A personal-use Android financial ledger built with Kotlin and Jetpack Compose. Fynlo tracks everyy rupee using double-entry principles (origin → destination), with PIN security, automated anniversary-based interest, PDF/CSV exports, and an optional Firebase-backed sync for cross-device use.
 
 Current version: **2.0.0** (versionCode 90).
 
@@ -43,7 +43,7 @@ Current version: **2.0.0** (versionCode 90).
 The app uses Firebase for optional sync. The repo includes `app/google-services.json` so it builds out of the box. If you fork this and want your own Firebase project:
 
 1. Create a project at <https://console.firebase.google.com>.
-2. Add an Android app with package name `com.example.cashmemo` (or your own — you'll also need to update `applicationId` in `app/build.gradle.kts`).
+2. Add an Android app with package name `app.fynlo` (or your own — you'll also need to update package name in code)date `applicationId` in `app/build.gradle.kts`).
 3. Enable **Firestore** and **Authentication → Google Sign-In**.
 4. Download the new `google-services.json` and replace `app/google-services.json`.
 
@@ -65,8 +65,8 @@ Open the project in Android Studio and run the `app` configuration on an emulato
 ## Project Layout
 
 ```
-app/src/main/java/com/example/cashmemo/
-├── CashMemoApplication.kt
+app/src/main/java/app/fynlo/
+├── FynloApplication.kt
 ├── MainActivity.kt
 ├── FinanceViewModel.kt
 ├── UiState.kt
@@ -77,7 +77,7 @@ app/src/main/java/com/example/cashmemo/
 
 ## Privacy
 
-Cash Memo stores all data locally in Room. Optional Firestore sync is opt-in via Google Sign-In. See [PRIVACY_POLICY.md](PRIVACY_POLICY.md) for the full policy.
+Fynlo stores all data locally in Room. Optional Firestore sync is opt-in via Google Sign-In. See [PRIVACY_POLICY.md](PRIVACY_POLICY.md) for the full policy.
 
 ## License
 

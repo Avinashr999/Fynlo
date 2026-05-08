@@ -22,5 +22,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "Cash Memo"
+rootProject.name = "Fynlo"
 include(":app")

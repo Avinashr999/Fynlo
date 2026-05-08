@@ -1,4 +1,4 @@
-# Cash Memo — ProGuard / R8 Rules (Production)
+# Fynlo — ProGuard / R8 Rules (Production)
 
 # ── Room ─────────────────────────────────────────────────────────────────────
 -keepclassmembers class * extends androidx.room.RoomDatabase { <init>(...); }
@@ -9,27 +9,27 @@
 
 # ── Kotlin Serialization (all domain models) ─────────────────────────────────
 -keepattributes *Annotation*, InnerClasses, EnclosingMethod, Signature, RuntimeVisibleAnnotations
--keep @kotlinx.serialization.Serializable class com.example.cashmemo.data.model.** { *; }
--keepclassmembers class com.example.cashmemo.data.model.** { *; }
+-keep @kotlinx.serialization.Serializable class app.fynlo.data.model.** { *; }
+-keepclassmembers class app.fynlo.data.model.** { *; }
 
 # ── Explicit model preservation ───────────────────────────────────────────────
--keep class com.example.cashmemo.data.model.Account        { *; }
--keep class com.example.cashmemo.data.model.Transaction    { *; }
--keep class com.example.cashmemo.data.model.Borrower       { *; }
--keep class com.example.cashmemo.data.model.Investment     { *; }
--keep class com.example.cashmemo.data.model.Debt           { *; }
--keep class com.example.cashmemo.data.model.Payment        { *; }
--keep class com.example.cashmemo.data.model.DebtPayment    { *; }
--keep class com.example.cashmemo.data.model.Budget         { *; }
--keep class com.example.cashmemo.data.model.Goal           { *; }
--keep class com.example.cashmemo.data.model.Project        { *; }
--keep class com.example.cashmemo.data.model.Person         { *; }
--keep class com.example.cashmemo.data.model.FinancialSummary { *; }
--keep class com.example.cashmemo.data.model.RecurringTransaction { *; }
--keep class com.example.cashmemo.data.model.NetWorthSnapshot { *; }
+-keep class app.fynlo.data.model.Account        { *; }
+-keep class app.fynlo.data.model.Transaction    { *; }
+-keep class app.fynlo.data.model.Borrower       { *; }
+-keep class app.fynlo.data.model.Investment     { *; }
+-keep class app.fynlo.data.model.Debt           { *; }
+-keep class app.fynlo.data.model.Payment        { *; }
+-keep class app.fynlo.data.model.DebtPayment    { *; }
+-keep class app.fynlo.data.model.Budget         { *; }
+-keep class app.fynlo.data.model.Goal           { *; }
+-keep class app.fynlo.data.model.Project        { *; }
+-keep class app.fynlo.data.model.Person         { *; }
+-keep class app.fynlo.data.model.FinancialSummary { *; }
+-keep class app.fynlo.data.model.RecurringTransaction { *; }
+-keep class app.fynlo.data.model.NetWorthSnapshot { *; }
 
 # ── Kotlin companion objects ──────────────────────────────────────────────────
--keepclassmembers class com.example.cashmemo.** {
+-keepclassmembers class app.fynlo.** {
     *** Companion;
 }
 -keepnames class kotlinx.serialization.json.Json { *; }
@@ -52,7 +52,7 @@
 
 # ── WorkManager ───────────────────────────────────────────────────────────────
 -keep class androidx.work.** { *; }
--keep class com.example.cashmemo.notifications.** { *; }
+-keep class app.fynlo.notifications.** { *; }
 
 # ── Biometric ────────────────────────────────────────────────────────────────
 -keep class androidx.biometric.** { *; }
@@ -69,7 +69,7 @@
 }
 
 # ── Keep BuildConfig ──────────────────────────────────────────────────────────
--keep class com.example.cashmemo.BuildConfig { *; }
+-keep class app.fynlo.BuildConfig { *; }
 
 # ── Navigation ───────────────────────────────────────────────────────────────
 -keep class androidx.navigation.** { *; }

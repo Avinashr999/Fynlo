@@ -1,11 +1,11 @@
-# Privacy Policy for Cash Memo
+# Privacy Policy for Fynlo
 
 **Last Updated: April 24, 2026**
 
-This Privacy Policy describes how **Cash Memo** ("the App", "we", "us", or "our") handles your information when you use our mobile application.
+This Privacy Policy describes how **Fynlo** ("the App", "we", "us", or "our") handles your information when you use our mobile application.
 
 ## 1. Data Collection & Privacy
-Cash Memo is a **manual entry personal ledger**. 
+Fynlo is a **manual entry personal ledger**.
 *   **No Central Collection**: We do not collect, store, or share your financial data on our own servers. 
 *   **User Ownership**: All financial records, notes, and transactions are yours. We have no access to your data.
 
