@@ -1,6 +1,5 @@
-﻿package app.fynlo.ui.screens
+package app.fynlo.ui.screens
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -12,7 +11,6 @@ import androidx.compose.material.icons.automirrored.filled.Notes
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Payments
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PictureAsPdf
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -23,8 +21,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.fynlo.FinanceViewModel
 import app.fynlo.data.model.Borrower
+import app.fynlo.data.model.Payment
 import app.fynlo.logic.DateUtils
 import app.fynlo.logic.InterestEngine
+import app.fynlo.ui.components.AddLendingDialog
+import app.fynlo.ui.components.CollectPaymentDialog
 import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -35,10 +36,11 @@ fun CustomerDetailScreen(
     onNavigateBack: () -> Unit
 ) {
     val borrowers by viewModel.borrowers.collectAsState()
-    val transactions by viewModel.transactions.collectAsState()
-    
+    // FIX 1: Use the payments table (loanId FK) instead of filtering transactions by name
+    val allPayments by viewModel.payments.collectAsState()
+
     val borrower = borrowers.find { it.id == borrowerId }
-    
+
     if (borrower == null) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Text("Customer not found")
@@ -46,8 +48,10 @@ fun CustomerDetailScreen(
         return
     }
 
-    // Filter transactions related to this customer (Repayments)
-    val history = transactions.filter { it.desc.contains(borrower.name, ignoreCase = true) }
+    // Properly filtered payments for this specific loan
+    val loanPayments = allPayments
+        .filter { it.loanId == borrowerId }
+        .sortedByDescending { it.date }
 
     val interest = InterestEngine.calcIntAccrued(
         borrower.amount, borrower.rate, borrower.date, borrower.type, borrower.due, borrower.paid
@@ -55,6 +59,63 @@ fun CustomerDetailScreen(
     val totalOutstanding = InterestEngine.calcOutstanding(borrower.amount, interest, borrower.paid)
 
     val context = androidx.compose.ui.platform.LocalContext.current
+
+    // FIX 2: Edit dialog state
+    var showEditDialog by remember { mutableStateOf(false) }
+    // Collect payment from detail screen
+    var showCollectDialog by remember { mutableStateOf(false) }
+    // FIX 3: Delete confirmation state
+    var showDeleteConfirm by remember { mutableStateOf(false) }
+
+    if (showEditDialog) {
+        AddLendingDialog(
+            viewModel = viewModel,
+            onDismiss = { showEditDialog = false },
+            onConfirm = { updated, _ ->
+                viewModel.updateBorrower(updated)
+                showEditDialog = false
+            },
+            initialBorrower = borrower
+        )
+    }
+
+    if (showCollectDialog) {
+        CollectPaymentDialog(
+            borrower = borrower,
+            onDismiss = { showCollectDialog = false },
+            onConfirm = { payment, dest ->
+                viewModel.collectLoanPayment(payment, dest)
+                showCollectDialog = false
+            }
+        )
+    }
+
+    // FIX 3: Confirmation dialog before delete
+    if (showDeleteConfirm) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirm = false },
+            title = { Text("Delete Borrower?") },
+            text = {
+                Text(
+                    "This will permanently delete ${borrower.name} and all their payment records. " +
+                    "This cannot be undone."
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.deleteBorrower(borrower)
+                        showDeleteConfirm = false
+                        onNavigateBack()
+                    },
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                ) { Text("Delete") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirm = false }) { Text("Cancel") }
+            }
+        )
+    }
 
     Scaffold(
         topBar = {
@@ -66,15 +127,23 @@ fun CustomerDetailScreen(
                     }
                 },
                 actions = {
+                    // FIX 2: Edit button now functional
+                    IconButton(onClick = { showEditDialog = true }) {
+                        Icon(Icons.Default.Edit, contentDescription = "Edit")
+                    }
                     IconButton(onClick = {
-                        // Generate and share loan statement PDF
-                        val file = java.io.File(context.cacheDir, "loan_statement_${borrower.name.replace(" ","_")}.pdf")
+                        val file = java.io.File(
+                            context.cacheDir,
+                            "loan_statement_${borrower.name.replace(" ", "_")}.pdf"
+                        )
                         file.outputStream().use { os ->
                             app.fynlo.logic.ExportUtility.generateLoanStatementPDF(
-                                os, borrower, history, interest, totalOutstanding
+                                os, borrower, emptyList(), interest, totalOutstanding
                             )
                         }
-                        val uri = androidx.core.content.FileProvider.getUriForFile(context, "app.fynlo.provider", file)
+                        val uri = androidx.core.content.FileProvider.getUriForFile(
+                            context, "app.fynlo.provider", file
+                        )
                         context.startActivity(android.content.Intent.createChooser(
                             android.content.Intent(android.content.Intent.ACTION_SEND).apply {
                                 type = "application/pdf"
@@ -85,11 +154,13 @@ fun CustomerDetailScreen(
                     }) {
                         Icon(Icons.Default.PictureAsPdf, contentDescription = "Export PDF")
                     }
-                    IconButton(onClick = {
-                        viewModel.deleteBorrower(borrower)
-                        onNavigateBack()
-                    }) {
-                        Icon(Icons.Default.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error)
+                    // FIX 3: Now shows confirm dialog before deleting
+                    IconButton(onClick = { showDeleteConfirm = true }) {
+                        Icon(
+                            Icons.Default.Delete,
+                            contentDescription = "Delete",
+                            tint = MaterialTheme.colorScheme.error
+                        )
                     }
                 }
             )
@@ -103,40 +174,128 @@ fun CustomerDetailScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp),
             contentPadding = PaddingValues(vertical = 16.dp)
         ) {
-            // Summary Card
+            // Summary card
             item {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+                    ),
                     shape = RoundedCornerShape(20.dp)
                 ) {
                     Column(modifier = Modifier.padding(24.dp)) {
                         Text("Current Balance", style = MaterialTheme.typography.labelMedium)
                         Text(
                             "₹ ${String.format(Locale.getDefault(), "%,.0f", totalOutstanding)}",
-                            style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.error)
+                            style = MaterialTheme.typography.headlineLarge.copy(
+                                fontWeight = FontWeight.ExtraBold,
+                                color = if (totalOutstanding > 0) MaterialTheme.colorScheme.error
+                                        else Color(0xFF059669)
+                            )
                         )
                         Spacer(Modifier.height(16.dp))
-                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
                             DetailItem("Principal", "₹${borrower.amount.toInt()}")
-                            DetailItem("Interest", "₹${interest.toInt()}")
-                            DetailItem("Paid", "₹${borrower.paid.toInt()}")
+                            DetailItem("Interest",  "₹${interest.toInt()}")
+                            DetailItem("Paid",      "₹${borrower.paid.toInt()}")
+                        }
+                        if (borrower.rate > 0) {
+                            Spacer(Modifier.height(8.dp))
+                            Text(
+                                "Rate: ${borrower.rate}% • ${borrower.type}",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
                     }
                 }
             }
 
-            item {
-                Text("Payment History", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
+            // Collect payment button (only when outstanding > 0)
+            if (totalOutstanding > 0) {
+                item {
+                    Button(
+                        onClick = { showCollectDialog = true },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF059669))
+                    ) {
+                        Icon(Icons.Default.Payments, null, Modifier.size(18.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text("Collect Payment")
+                    }
+                }
             }
 
-            if (history.isEmpty()) {
+            // Payment history header
+            item {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        "Payment History",
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                    )
+                    if (loanPayments.isNotEmpty()) {
+                        Text(
+                            "${loanPayments.size} payment${if (loanPayments.size != 1) "s" else ""}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+
+            // FIX 1: Real payments from the payments table, matched by loanId
+            if (loanPayments.isEmpty()) {
                 item {
-                    Text("No payment records found.", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                    Text(
+                        "No payments collected yet.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.Gray
+                    )
                 }
             } else {
-                items(history) { txn ->
-                    RepaymentItem(txn)
+                items(loanPayments, key = { it.id }) { payment ->
+                    PaymentItem(payment)
+                }
+            }
+
+            // Notes
+            if (borrower.notes.isNotBlank()) {
+                item {
+                    Text(
+                        "Notes",
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                    )
+                }
+                item {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                        )
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(16.dp),
+                            verticalAlignment = Alignment.Top
+                        ) {
+                            Icon(
+                                Icons.AutoMirrored.Filled.Notes,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(Modifier.width(12.dp))
+                            Text(borrower.notes, style = MaterialTheme.typography.bodyMedium)
+                        }
+                    }
                 }
             }
         }
@@ -144,7 +303,7 @@ fun CustomerDetailScreen(
 }
 
 @Composable
-fun RepaymentItem(txn: app.fynlo.data.model.Transaction) {
+fun PaymentItem(payment: Payment) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
@@ -160,17 +319,39 @@ fun RepaymentItem(txn: app.fynlo.data.model.Transaction) {
                 modifier = Modifier.size(40.dp)
             ) {
                 Box(contentAlignment = Alignment.Center) {
-                    Icon(Icons.Default.Payments, contentDescription = null, tint = Color(0xFF059669), modifier = Modifier.size(20.dp))
+                    Icon(
+                        Icons.Default.Payments,
+                        contentDescription = null,
+                        tint = Color(0xFF059669),
+                        modifier = Modifier.size(20.dp)
+                    )
                 }
             }
             Spacer(Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(txn.category, style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold))
-                Text(DateUtils.formatToDisplay(txn.date), style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+                Text(
+                    payment.type.ifBlank { "Repayment" },
+                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold)
+                )
+                Text(
+                    DateUtils.formatToDisplay(payment.date),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Color.Gray
+                )
+                if (payment.notes.isNotBlank()) {
+                    Text(
+                        payment.notes,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
             Text(
-                "₹ ${String.format(Locale.getDefault(), "%,.0f", txn.amount)}",
-                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold, color = Color(0xFF059669))
+                "₹ ${String.format(Locale.getDefault(), "%,.0f", payment.amount)}",
+                style = MaterialTheme.typography.bodyLarge.copy(
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF059669)
+                )
             )
         }
     }
@@ -183,11 +364,3 @@ fun DetailItem(label: String, value: String) {
         Text(value, style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold))
     }
 }
-
-
-
-
-
-
-
-
