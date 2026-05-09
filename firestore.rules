@@ -142,13 +142,23 @@ service cloud.firestore {
         allow delete: if isOwner(userId);
       }
 
+      // ── Investment Valuations (market value history) ──────────────────────
+      match /investment_valuations/{valuationId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId)
+          && hasFields(['investmentId', 'date', 'value'])
+          && request.resource.data.value is number;
+        allow update: if isOwner(userId);
+        allow delete: if isOwner(userId);
+      }
+
       // ── Backups (read-only after creation, never deletable from client) ───
       match /backups/{date} {
         allow read: if isOwner(userId);
         // Only allow create (not update/delete) to protect backup integrity
         allow create: if isOwner(userId)
           && hasFields(['date', 'netWorth', 'createdAt']);
-        allow update: if false;  // Backups are immutable
+        allow update: if isOwner(userId);  // allow same-day overwrite
         allow delete: if false;  // Backups cannot be deleted from client
 
         // Backup sub-collections (accounts, borrowers snapshots)
