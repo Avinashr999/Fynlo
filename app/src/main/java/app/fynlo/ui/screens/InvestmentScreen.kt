@@ -20,24 +20,37 @@ import app.fynlo.FinanceViewModel
 import app.fynlo.data.model.Investment
 import app.fynlo.logic.DateUtils
 import app.fynlo.ui.components.AddInvestmentDialog
+import app.fynlo.ui.components.InvestmentSaveRequest
 import java.util.Locale
 
 @Composable
 fun InvestmentScreen(viewModel: FinanceViewModel) {
-    val investments by viewModel.investments.collectAsState()
+    val investments    by viewModel.investments.collectAsState()
+    val accounts       by viewModel.accounts.collectAsState()
+    val debts          by viewModel.debts.collectAsState()
     val currentProject by viewModel.currentProject.collectAsState()
     val currencySymbol = app.fynlo.logic.CurrencyUtils.symbolFor(currentProject?.currency ?: "INR")
+
     var editingInvest  by remember { mutableStateOf<Investment?>(null) }
     var updatingInvest by remember { mutableStateOf<Investment?>(null) }
+    var deletingInvest by remember { mutableStateOf<Investment?>(null) }
 
+    // ── Edit dialog ────────────────────────────────────────────────────────────
     if (editingInvest != null) {
         AddInvestmentDialog(
+            accounts = accounts,
+            debts    = debts,
             onDismiss = { editingInvest = null },
-            onConfirm = { invest, source ->
+            onConfirm = { req: InvestmentSaveRequest ->
                 if (editingInvest?.id?.isNotBlank() == true) {
-                    viewModel.updateInvestment(invest)
+                    viewModel.updateInvestment(req.investment)
                 } else {
-                    viewModel.addInvestmentWithSource(invest, source)
+                    when (req.sourceType) {
+                        "account"       -> viewModel.addInvestmentFundedByAccount(req.investment, req.sourceAccountName)
+                        "existing_debt" -> req.sourceDebt?.let { viewModel.addInvestmentFundedByExistingDebt(req.investment, it) }
+                        "new_loan"      -> req.newLoan?.let { viewModel.addInvestmentFundedByNewLoan(req.investment, it) }
+                        else            -> viewModel.addInvestmentWithSource(req.investment, req.sourceAccountName)
+                    }
                 }
                 editingInvest = null
             },
@@ -45,6 +58,7 @@ fun InvestmentScreen(viewModel: FinanceViewModel) {
         )
     }
 
+    // ── Update value dialog ────────────────────────────────────────────────────
     if (updatingInvest != null) {
         UpdateInvestmentValueDialog(
             investment = updatingInvest!!,
@@ -53,6 +67,52 @@ fun InvestmentScreen(viewModel: FinanceViewModel) {
             onConfirm  = { newVal ->
                 viewModel.updateInvestmentValue(updatingInvest!!, newVal)
                 updatingInvest = null
+            }
+        )
+    }
+
+    // ── Smart delete confirmation — shows options based on sourceType ──────────
+    if (deletingInvest != null) {
+        val inv = deletingInvest!!
+        AlertDialog(
+            onDismissRequest = { deletingInvest = null },
+            title = { Text("Delete Investment") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text("${inv.name}  •  ₹${String.format(java.util.Locale.getDefault(), "%,.0f", inv.invested)}")
+                    Spacer(Modifier.height(4.dp))
+                    when (inv.sourceType) {
+                        "account"  -> Text("This was funded from ${inv.fundingSource}. Do you also want to restore ₹${String.format("%,.0f", inv.invested)} back to that account?", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        "new_loan" -> Text("This investment has a linked loan (${inv.fundingSource}). Do you want to delete the loan record too?", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        else       -> Text("This will permanently remove the investment record.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+            },
+            confirmButton = {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp), horizontalAlignment = Alignment.End) {
+                    when (inv.sourceType) {
+                        "account" -> {
+                            Button(onClick = { viewModel.deleteInvestmentAndReverseAccount(inv); deletingInvest = null }) {
+                                Text("Delete + Restore to ${inv.fundingSource.take(12)}")
+                            }
+                        }
+                        "new_loan" -> {
+                            Button(
+                                onClick = { viewModel.deleteInvestmentAndLinkedLoan(inv); deletingInvest = null },
+                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                            ) {
+                                Text("Delete Investment + Loan")
+                            }
+                        }
+                        else -> {}
+                    }
+                    OutlinedButton(onClick = { viewModel.deleteInvestment(inv); deletingInvest = null }) {
+                        Text("Delete Record Only")
+                    }
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { deletingInvest = null }) { Text("Cancel") }
             }
         )
     }
@@ -80,7 +140,7 @@ fun InvestmentScreen(viewModel: FinanceViewModel) {
                     InvestmentCard(
                         invest   = invest,
                         currencySymbol = currencySymbol,
-                        onDelete = { viewModel.deleteInvestment(invest) },
+                        onDelete = { deletingInvest = invest },
                         onEdit   = { editingInvest = invest },
                         onUpdate = { updatingInvest = invest }
                     )

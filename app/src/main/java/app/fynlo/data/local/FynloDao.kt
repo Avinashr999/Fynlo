@@ -116,6 +116,9 @@ interface FynloDao {
     @Delete
     suspend fun deleteDebt(debt: Debt)
 
+    @Query("DELETE FROM debts WHERE id = :id")
+    suspend fun deleteDebtById(id: String)
+
     // ─── People ───────────────────────────────────────────────────────────────
 
     @Query("SELECT * FROM people ORDER BY name ASC")

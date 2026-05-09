@@ -230,10 +230,19 @@ class FinanceViewModel(private val repository: FinanceRepository) : ViewModel() 
         }
     }
 
+    // ─── Add investment — pick the right repository function by source type ─────
+    fun addInvestmentFundedByAccount(investment: Investment, accountName: String) {
+        viewModelScope.launch { repository.insertInvestmentFundedByAccount(investment.copy(projectId = pid), accountName, pid) }
+    }
+    fun addInvestmentFundedByExistingDebt(investment: Investment, debt: app.fynlo.data.model.Debt) {
+        viewModelScope.launch { repository.insertInvestmentFundedByExistingDebt(investment.copy(projectId = pid), debt, pid) }
+    }
+    fun addInvestmentFundedByNewLoan(investment: Investment, newDebt: app.fynlo.data.model.Debt) {
+        viewModelScope.launch { repository.insertInvestmentFundedByNewLoan(investment.copy(projectId = pid), newDebt.copy(projectId = pid), pid) }
+    }
+    // Legacy shim kept so Navigation.kt compiles without changes until updated
     fun addInvestmentWithSource(investment: Investment, source: String) {
-        viewModelScope.launch {
-            repository.insertInvestmentWithSource(investment.copy(projectId = pid), source, pid)
-        }
+        viewModelScope.launch { repository.insertInvestmentWithSource(investment.copy(projectId = pid), source, pid) }
     }
 
     fun updateInvestmentValue(investment: Investment, newCurrentVal: Double) {
@@ -249,7 +258,13 @@ class FinanceViewModel(private val repository: FinanceRepository) : ViewModel() 
     }
 
     fun deleteInvestment(investment: Investment) {
-        viewModelScope.launch { repository.deleteInvestment(investment) }
+        viewModelScope.launch { repository.deleteInvestmentOnly(investment) }
+    }
+    fun deleteInvestmentAndReverseAccount(investment: Investment) {
+        viewModelScope.launch { repository.deleteInvestmentAndReverseAccount(investment) }
+    }
+    fun deleteInvestmentAndLinkedLoan(investment: Investment) {
+        viewModelScope.launch { repository.deleteInvestmentAndLinkedLoan(investment) }
     }
 
     fun addTransaction(transaction: Transaction) {

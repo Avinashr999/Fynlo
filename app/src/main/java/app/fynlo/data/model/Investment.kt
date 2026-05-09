@@ -20,5 +20,9 @@ data class Investment(
     val withdrawn: Double = 0.0,
     val notes: String = "",
     val projectId: String = "personal",
-    val updatedAt: Long = 0L
+    val updatedAt: Long = 0L,
+    // Funding source tracking — added v2.10
+    val fundingSource: String = "",   // account name or debt/lender name
+    val sourceType: String = "",      // "account" | "existing_debt" | "new_loan"
+    val linkedDebtId: String = ""     // non-empty only when sourceType = "new_loan"
 )

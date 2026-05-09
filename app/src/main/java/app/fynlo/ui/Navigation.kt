@@ -195,10 +195,19 @@ fun MainNavigation(viewModel: FinanceViewModel) {
     }
 
     if (showInvestmentDialog) {
+        val navAccounts by viewModel.accounts.collectAsState()
+        val navDebts    by viewModel.debts.collectAsState()
         AddInvestmentDialog(
+            accounts  = navAccounts,
+            debts     = navDebts,
             onDismiss = { showInvestmentDialog = false },
-            onConfirm = { invest, source ->
-                viewModel.addInvestmentWithSource(invest, source)
+            onConfirm = { req: InvestmentSaveRequest ->
+                when (req.sourceType) {
+                    "account"       -> viewModel.addInvestmentFundedByAccount(req.investment, req.sourceAccountName)
+                    "existing_debt" -> req.sourceDebt?.let { viewModel.addInvestmentFundedByExistingDebt(req.investment, it) }
+                    "new_loan"      -> req.newLoan?.let { viewModel.addInvestmentFundedByNewLoan(req.investment, it) }
+                    else            -> viewModel.addInvestmentWithSource(req.investment, req.sourceAccountName)
+                }
                 showInvestmentDialog = false
             }
         )

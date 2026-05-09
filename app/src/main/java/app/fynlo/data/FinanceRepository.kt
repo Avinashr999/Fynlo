@@ -199,17 +199,87 @@ class FinanceRepository(
         val a = account.copy(updatedAt = System.currentTimeMillis())
         dao.insertAccount(a); sync { setAccount(a) }
     }
-    suspend fun insertInvestmentWithSource(investment: Investment, sourceAccount: String, projectId: String = investment.projectId) {
+    // ─── Investment — funded by own account ────────────────────────────────────
+    suspend fun insertInvestmentFundedByAccount(investment: Investment, accountName: String, projectId: String = investment.projectId) {
         db.withTransaction {
-            val i = investment.copy(projectId = projectId, updatedAt = System.currentTimeMillis())
+            val i = investment.copy(sourceType = "account", fundingSource = accountName, projectId = projectId, updatedAt = System.currentTimeMillis())
             dao.insertInvestment(i)
-            dao.updateAccountBalance(sourceAccount, -investment.invested)
-            val t = Transaction(java.util.UUID.randomUUID().toString(), investment.date, "Expense", investment.invested, fromAcct = sourceAccount, category = "Investment", desc = "Invested in ${investment.name}", notes = investment.notes, projectId = projectId, updatedAt = System.currentTimeMillis())
+            dao.updateAccountBalance(accountName, -investment.invested)
+            val t = Transaction(java.util.UUID.randomUUID().toString(), investment.date, "Expense", investment.invested,
+                fromAcct = accountName, category = "Investment",
+                desc = "Invested in ${investment.name}", notes = investment.notes,
+                projectId = projectId, updatedAt = System.currentTimeMillis())
             dao.insertTransaction(t)
             sync { setInvestment(i); setTransaction(t) }
         }
-        syncAccountByName(sourceAccount)
+        syncAccountByName(accountName)
     }
+
+    // ─── Investment — funded by existing recorded debt ──────────────────────────
+    suspend fun insertInvestmentFundedByExistingDebt(investment: Investment, debt: app.fynlo.data.model.Debt, projectId: String = investment.projectId) {
+        db.withTransaction {
+            val i = investment.copy(sourceType = "existing_debt", fundingSource = debt.name, linkedDebtId = debt.id, projectId = projectId, updatedAt = System.currentTimeMillis())
+            dao.insertInvestment(i)
+            val t = Transaction(java.util.UUID.randomUUID().toString(), investment.date, "Transfer", investment.invested,
+                fromAcct = debt.name, toAcct = investment.name, category = "Investment",
+                desc = "Invested in ${investment.name} using ${debt.name} loan funds",
+                notes = investment.notes, projectId = projectId, updatedAt = System.currentTimeMillis())
+            dao.insertTransaction(t)
+            sync { setInvestment(i); setTransaction(t) }
+        }
+    }
+
+    // ─── Investment — auto-create new loan + link to investment ─────────────────
+    suspend fun insertInvestmentFundedByNewLoan(investment: Investment, newDebt: app.fynlo.data.model.Debt, projectId: String = investment.projectId) {
+        db.withTransaction {
+            val d = newDebt.copy(projectId = projectId, updatedAt = System.currentTimeMillis())
+            dao.insertDebt(d)
+            val i = investment.copy(sourceType = "new_loan", fundingSource = d.name, linkedDebtId = d.id, projectId = projectId, updatedAt = System.currentTimeMillis())
+            dao.insertInvestment(i)
+            val t = Transaction(java.util.UUID.randomUUID().toString(), investment.date, "Transfer", investment.invested,
+                fromAcct = d.name, toAcct = investment.name, category = "Investment",
+                desc = "Invested ₹${investment.invested.toInt()} in ${investment.name} via ${d.name} loan",
+                notes = investment.notes, projectId = projectId, updatedAt = System.currentTimeMillis())
+            dao.insertTransaction(t)
+            sync { setDebt(d); setInvestment(i); setTransaction(t) }
+        }
+    }
+
+    // ─── Keep old function as no-op shim so nothing else breaks ───────────────
+    suspend fun insertInvestmentWithSource(investment: Investment, sourceAccount: String, projectId: String = investment.projectId) {
+        insertInvestmentFundedByAccount(investment, sourceAccount, projectId)
+    }
+
+    // ─── Delete — record only, no balance reversal ─────────────────────────────
+    suspend fun deleteInvestmentOnly(investment: Investment) {
+        dao.deleteInvestment(investment)
+        sync { deleteInvestment(investment.id) }
+    }
+
+    // ─── Delete — record + reverse source account balance ─────────────────────
+    suspend fun deleteInvestmentAndReverseAccount(investment: Investment) {
+        db.withTransaction {
+            dao.updateAccountBalance(investment.fundingSource, investment.invested)
+            dao.deleteInvestment(investment)
+        }
+        sync { deleteInvestment(investment.id) }
+        syncAccountByName(investment.fundingSource)
+    }
+
+    // ─── Delete — record + delete the linked loan that was auto-created ────────
+    suspend fun deleteInvestmentAndLinkedLoan(investment: Investment) {
+        db.withTransaction {
+            if (investment.linkedDebtId.isNotEmpty()) {
+                dao.deleteDebtById(investment.linkedDebtId)
+            }
+            dao.deleteInvestment(investment)
+        }
+        sync {
+            if (investment.linkedDebtId.isNotEmpty()) deleteDebt(investment.linkedDebtId)
+            deleteInvestment(investment.id)
+        }
+    }
+
     suspend fun upsertAccount(account: Account) {
         dao.insertAccount(account)
         sync { setAccount(account) }
@@ -228,8 +298,9 @@ class FinanceRepository(
     }
 
     suspend fun deleteInvestment(investment: Investment) {
-        db.withTransaction { dao.updateAccountBalance("HDFC Bank", investment.invested); dao.deleteInvestment(investment) }
-        sync { deleteInvestment(investment.id) }
+        // Legacy shim — use deleteInvestmentOnly, deleteInvestmentAndReverseAccount,
+        // or deleteInvestmentAndLinkedLoan from the ViewModel based on user choice.
+        deleteInvestmentOnly(investment)
     }
     suspend fun insertDebtWithDestination(debt: Debt, destinationAccount: String, projectId: String = debt.projectId) {
         db.withTransaction {
