@@ -29,7 +29,6 @@ import app.fynlo.data.model.Debt
 import app.fynlo.data.model.Transaction
 import java.util.Locale
 
-// ── Data model for a single flow entry ───────────────────────────────────
 data class FlowEntry(
     val from: String,
     val to: String,
@@ -49,15 +48,15 @@ fun MoneyFlowScreen(viewModel: FinanceViewModel) {
     val borrowers    by viewModel.borrowers.collectAsState()
     val debts        by viewModel.debts.collectAsState()
     val accounts     by viewModel.allAccountsUnfiltered.collectAsState()
+    val currentProject by viewModel.currentProject.collectAsState()
+    val currencySymbol = app.fynlo.logic.CurrencyUtils.symbolFor(currentProject?.currency ?: "INR")
     val locale       = remember { Locale.getDefault() }
     val context      = LocalContext.current
     var showExportMenu by remember { mutableStateOf(false) }
 
-    // Selected filter tab
     var selectedTab by remember { mutableIntStateOf(0) }
     val tabs = listOf("All", "Income", "Expense", "Transfer", "Lending", "Debt")
 
-    // Build all flow entries
     val allFlows = remember(transactions, borrowers, debts) {
         val flows = mutableListOf<FlowEntry>()
 
@@ -143,7 +142,6 @@ fun MoneyFlowScreen(viewModel: FinanceViewModel) {
         flows.sortedByDescending { it.date }
     }
 
-    // Filtered flows
     val filteredFlows = remember(allFlows, selectedTab) {
         when (selectedTab) {
             1 -> allFlows.filter { it.flowType == FlowType.INCOME }
@@ -155,9 +153,8 @@ fun MoneyFlowScreen(viewModel: FinanceViewModel) {
         }
     }
 
-    // Account net flow map
     val accountFlows = remember(allFlows, accounts) {
-        val map = mutableMapOf<String, Pair<Double, Double>>() // name -> (inflow, outflow)
+        val map = mutableMapOf<String, Pair<Double, Double>>()
         accounts.forEach { map[it.name] = Pair(0.0, 0.0) }
         allFlows.forEach { flow ->
             val inPrev  = map[flow.to]   ?: Pair(0.0, 0.0)
@@ -170,12 +167,11 @@ fun MoneyFlowScreen(viewModel: FinanceViewModel) {
 
     Column(modifier = Modifier.fillMaxSize().statusBarsPadding()) {
 
-        // Header
         Column(Modifier.padding(horizontal = 16.dp).padding(top = 16.dp, bottom = 8.dp)) {
             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
                 Column {
                     Text("Money Flow", style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold))
-                    Text("Track every rupee movement", style = MaterialTheme.typography.bodySmall,
+                    Text("Track every movement in your currency", style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 Box {
@@ -224,40 +220,37 @@ fun MoneyFlowScreen(viewModel: FinanceViewModel) {
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
 
-            // Account summary cards
             item {
                 Text("Account Flows", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
                 Spacer(Modifier.height(8.dp))
                 accountFlows.take(5).forEach { (name, flows) ->
-                    AccountFlowCard(name, flows.first, flows.second, locale)
+                    AccountFlowCard(name, flows.first, flows.second, currencySymbol, locale)
                     Spacer(Modifier.height(6.dp))
                 }
             }
 
-            // Total summary
             item {
                 val totalIn  = allFlows.filter { it.flowType == FlowType.INCOME || it.flowType == FlowType.DEBT_RECEIVED }.sumOf { it.amount }
                 val totalOut = allFlows.filter { it.flowType == FlowType.EXPENSE || it.flowType == FlowType.DEBT_REPAY }.sumOf { it.amount }
                 val lentOut  = allFlows.filter { it.flowType == FlowType.LENDING }.sumOf { it.amount }
 
                 Card(Modifier.fillMaxWidth(), RoundedCornerShape(16.dp),
-                    CardDefaults.cardColors(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f))) {
+                    CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f))) {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text("Flow Summary", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold))
                         HorizontalDivider()
-                        FlowSummaryRow("Total Inflow",   "₹${String.format(locale, "%,.0f", totalIn)}",  Color(0xFF059669))
-                        FlowSummaryRow("Total Outflow",  "₹${String.format(locale, "%,.0f", totalOut)}", Color(0xFFEF4444))
-                        FlowSummaryRow("Lent Out",       "₹${String.format(locale, "%,.0f", lentOut)}",  Color(0xFFF59E0B))
+                        FlowSummaryRow("Total Inflow",   "$currencySymbol${String.format(locale, "%,.0f", totalIn)}",  Color(0xFF059669))
+                        FlowSummaryRow("Total Outflow",  "$currencySymbol${String.format(locale, "%,.0f", totalOut)}", Color(0xFFEF4444))
+                        FlowSummaryRow("Lent Out",       "$currencySymbol${String.format(locale, "%,.0f", lentOut)}",  Color(0xFFF59E0B))
                         HorizontalDivider()
                         FlowSummaryRow("Net Flow",
-                            "₹${String.format(locale, "%,.0f", totalIn - totalOut)}",
+                            "$currencySymbol${String.format(locale, "%,.0f", totalIn - totalOut)}",
                             if (totalIn >= totalOut) Color(0xFF059669) else Color(0xFFEF4444),
                             bold = true)
                     }
                 }
             }
 
-            // Filter chips
             item {
                 Text("Transaction Flows", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
                 Spacer(Modifier.height(6.dp))
@@ -274,7 +267,6 @@ fun MoneyFlowScreen(viewModel: FinanceViewModel) {
                 }
             }
 
-            // Flow entries
             if (filteredFlows.isEmpty()) {
                 item {
                     Box(Modifier.fillMaxWidth().padding(32.dp), Alignment.Center) {
@@ -283,7 +275,7 @@ fun MoneyFlowScreen(viewModel: FinanceViewModel) {
                 }
             } else {
                 items(filteredFlows) { flow ->
-                    FlowEntryCard(flow, locale)
+                    FlowEntryCard(flow, currencySymbol, locale)
                 }
             }
 
@@ -293,28 +285,28 @@ fun MoneyFlowScreen(viewModel: FinanceViewModel) {
 }
 
 @Composable
-private fun AccountFlowCard(name: String, inflow: Double, outflow: Double, locale: Locale) {
+private fun AccountFlowCard(name: String, inflow: Double, outflow: Double, currencySymbol: String, locale: Locale) {
     val net = inflow - outflow
     Card(Modifier.fillMaxWidth(), RoundedCornerShape(12.dp)) {
         Row(Modifier.padding(12.dp).fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text(name, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
                     maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text("Net: ₹${String.format(locale, "%,.0f", net)}",
+                Text("Net: $currencySymbol${String.format(locale, "%,.0f", net)}",
                     style = MaterialTheme.typography.labelSmall,
                     color = if (net >= 0) Color(0xFF059669) else Color(0xFFEF4444))
             }
             Spacer(Modifier.width(8.dp))
             Column(horizontalAlignment = Alignment.End) {
-                Text("▲ ₹${String.format(locale, "%,.0f", inflow)}", fontSize = 11.sp, color = Color(0xFF059669))
-                Text("▼ ₹${String.format(locale, "%,.0f", outflow)}", fontSize = 11.sp, color = Color(0xFFEF4444))
+                Text("▲ $currencySymbol${String.format(locale, "%,.0f", inflow)}", fontSize = 11.sp, color = Color(0xFF059669))
+                Text("▼ $currencySymbol${String.format(locale, "%,.0f", outflow)}", fontSize = 11.sp, color = Color(0xFFEF4444))
             }
         }
     }
 }
 
 @Composable
-private fun FlowEntryCard(flow: FlowEntry, locale: Locale) {
+private fun FlowEntryCard(flow: FlowEntry, currencySymbol: String, locale: Locale) {
     val (bgColor, arrowColor, icon) = when (flow.flowType) {
         FlowType.INCOME        -> Triple(Color(0xFF059669).copy(0.08f), Color(0xFF059669), Icons.Default.ArrowDownward)
         FlowType.EXPENSE       -> Triple(Color(0xFFEF4444).copy(0.08f), Color(0xFFEF4444), Icons.Default.ArrowUpward)
@@ -328,7 +320,6 @@ private fun FlowEntryCard(flow: FlowEntry, locale: Locale) {
     Card(Modifier.fillMaxWidth(), RoundedCornerShape(12.dp),
         CardDefaults.cardColors(containerColor = bgColor)) {
         Row(Modifier.padding(12.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            // Icon
             Surface(Modifier.size(36.dp), RoundedCornerShape(8.dp), color = arrowColor.copy(0.15f)) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(icon, null, Modifier.size(18.dp), tint = arrowColor)
@@ -336,7 +327,6 @@ private fun FlowEntryCard(flow: FlowEntry, locale: Locale) {
             }
             Spacer(Modifier.width(10.dp))
 
-            // From → To
             Column(Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -357,8 +347,7 @@ private fun FlowEntryCard(flow: FlowEntry, locale: Locale) {
 
             Spacer(Modifier.width(8.dp))
 
-            // Amount
-            Text("₹${String.format(locale, "%,.0f", flow.amount)}",
+            Text("$currencySymbol${String.format(locale, "%,.0f", flow.amount)}",
                 style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                 color = arrowColor)
         }
@@ -374,12 +363,3 @@ private fun FlowSummaryRow(label: String, value: String, color: Color, bold: Boo
             else MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold), color = color)
     }
 }
-
-
-
-
-
-
-
-
-

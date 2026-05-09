@@ -25,6 +25,8 @@ import java.util.Locale
 fun NetWorthHistoryScreen(viewModel: FinanceViewModel) {
     val snapshots by viewModel.getNetWorthSnapshots().collectAsState(initial = emptyList())
     val summary   by viewModel.financialSummary.collectAsState()
+    val currentProject by viewModel.currentProject.collectAsState()
+    val currencySymbol = app.fynlo.logic.CurrencyUtils.symbolFor(currentProject?.currency ?: "INR")
     val locale    = remember { Locale.getDefault() }
 
     // Save today's snapshot on screen open
@@ -52,7 +54,7 @@ fun NetWorthHistoryScreen(viewModel: FinanceViewModel) {
             Column(Modifier.padding(20.dp)) {
                 Text("Current Net Worth", style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text("₹ ${String.format(locale, "%,.2f", summary.netWorth)}",
+                Text("$currencySymbol ${String.format(locale, "%,.2f", summary.netWorth)}",
                     style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold),
                     color = if (summary.netWorth >= 0) Color(0xFF059669) else Color(0xFFEF4444))
                 Text("${sorted.size} snapshots recorded", style = MaterialTheme.typography.bodySmall,
@@ -121,8 +123,8 @@ fun NetWorthHistoryScreen(viewModel: FinanceViewModel) {
             val changePct = if (first != 0.0) (change / Math.abs(first)) * 100 else 0.0
 
             Row(Modifier.fillMaxWidth(), Arrangement.spacedBy(10.dp)) {
-                StatCard("Highest", "₹${String.format(locale, "%,.0f", sorted.maxOf { it.netWorth })}", Color(0xFF059669), Modifier.weight(1f))
-                StatCard("Lowest",  "₹${String.format(locale, "%,.0f", sorted.minOf { it.netWorth })}", Color(0xFFEF4444), Modifier.weight(1f))
+                StatCard("Highest", "$currencySymbol${String.format(locale, "%,.0f", sorted.maxOf { it.netWorth })}", Color(0xFF059669), Modifier.weight(1f))
+                StatCard("Lowest",  "$currencySymbol${String.format(locale, "%,.0f", sorted.minOf { it.netWorth })}", Color(0xFFEF4444), Modifier.weight(1f))
                 StatCard("Change",  "${if (change >= 0) "+" else ""}${String.format(locale, "%.1f", changePct)}%",
                     if (change >= 0) Color(0xFF059669) else Color(0xFFEF4444), Modifier.weight(1f))
             }
@@ -139,11 +141,11 @@ fun NetWorthHistoryScreen(viewModel: FinanceViewModel) {
                     Text(snap.date, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                         if (prev != null) {
-                            Text("${if (diff >= 0) "+" else ""}₹${String.format(locale, "%,.0f", diff)}",
+                            Text("${if (diff >= 0) "+" else ""}$currencySymbol${String.format(locale, "%,.0f", diff)}",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = if (diff >= 0) Color(0xFF059669) else Color(0xFFEF4444))
                         }
-                        Text("₹${String.format(locale, "%,.0f", snap.netWorth)}",
+                        Text("$currencySymbol${String.format(locale, "%,.0f", snap.netWorth)}",
                             style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold))
                     }
                 }
@@ -163,11 +165,3 @@ private fun StatCard(label: String, value: String, color: Color, modifier: Modif
         }
     }
 }
-
-
-
-
-
-
-
-

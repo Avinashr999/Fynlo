@@ -154,6 +154,31 @@ class SyncManager(
             }
         }
 
+        listeners += col("investment_valuations").addSnapshotListener { snap, err ->
+            if (err != null || snap == null) { _status.value = SyncStatus.Offline; return@addSnapshotListener }
+            scope.launch {
+                snap.documentChanges.forEach { change ->
+                    runCatching {
+                        val doc = change.document
+                        if (change.type == DocumentChange.Type.REMOVED) {
+                            // dao.deleteValuationById(doc.id) // if we add this
+                            return@runCatching
+                        }
+                        val remote = InvestmentValuation(
+                            id = doc.id,
+                            investmentId = doc.str("investmentId"),
+                            date = doc.str("date"),
+                            value = doc.dbl("value"),
+                            notes = doc.str("notes"),
+                            updatedAt = doc.lng("updatedAt")
+                        )
+                        dao.insertValuation(remote)
+                    }
+                }
+                _status.value = SyncStatus.Synced
+            }
+        }
+
         listeners += col("debts").addSnapshotListener { snap, err ->
             if (err != null || snap == null) { _status.value = SyncStatus.Offline; return@addSnapshotListener }
             scope.launch {

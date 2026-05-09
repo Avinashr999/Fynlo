@@ -32,6 +32,9 @@ interface FynloDao {
     @Query("UPDATE borrowers SET paid = paid + :amount WHERE id = :borrowerId")
     suspend fun updateBorrowerPaidAmount(borrowerId: String, amount: Double)
 
+    @Query("SELECT * FROM borrowers WHERE id = :id LIMIT 1")
+    suspend fun getBorrowerById(id: String): Borrower?
+
     @Delete
     suspend fun deleteBorrower(borrower: Borrower)
 
@@ -113,6 +116,9 @@ interface FynloDao {
     @Query("UPDATE debts SET paid = paid + :amount WHERE id = :debtId")
     suspend fun updateDebtPaidAmount(debtId: String, amount: Double)
 
+    @Query("SELECT * FROM debts WHERE id = :id LIMIT 1")
+    suspend fun getDebtById(id: String): Debt?
+
     @Delete
     suspend fun deleteDebt(debt: Debt)
 
@@ -188,6 +194,12 @@ interface FynloDao {
 
     @Query("DELETE FROM projects")
     suspend fun deleteAllProjects()
+
+    @Query("DELETE FROM budgets")
+    suspend fun deleteAllBudgets()
+
+    @Query("DELETE FROM goals")
+    suspend fun deleteAllGoals()
     // ─── Legacy projectId normalization ───────────────────────────────────────
     // Fixes records created before v2.0 (empty projectId) or with the
     // placeholder "personal" string — updates them to the real project UUID.
@@ -241,4 +253,15 @@ interface FynloDao {
 
     @Query("SELECT * FROM net_worth_snapshots WHERE projectId = :pid ORDER BY date DESC LIMIT :limit")
     fun getNetWorthSnapshots(pid: String, limit: Int = 90): kotlinx.coroutines.flow.Flow<List<app.fynlo.data.model.NetWorthSnapshot>>
+
+    // ─── Investment Valuations ────────────────────────────────────────────────
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertValuation(v: app.fynlo.data.model.InvestmentValuation)
+
+    @Query("SELECT * FROM investment_valuations WHERE investmentId = :invId ORDER BY date DESC")
+    fun getValuationsForInvestment(invId: String): kotlinx.coroutines.flow.Flow<List<app.fynlo.data.model.InvestmentValuation>>
+
+    @Query("DELETE FROM investment_valuations WHERE investmentId = :invId")
+    suspend fun deleteValuationsForInvestment(invId: String)
 }

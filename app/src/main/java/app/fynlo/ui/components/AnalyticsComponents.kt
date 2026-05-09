@@ -12,7 +12,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
 @Composable
-fun SpendingAnalyticsCard(data: Map<String, Double>) {
+fun SpendingAnalyticsCard(data: Map<String, Double>, currencySymbol: String = "₹") {
     if (data.isEmpty()) return
 
     val total = data.values.sum()
@@ -46,9 +46,9 @@ fun SpendingAnalyticsCard(data: Map<String, Double>) {
                             Spacer(Modifier.width(8.dp))
                             Text(category, style = MaterialTheme.typography.bodyMedium)
                         }
-                        Text("₹${amount.toInt()} ($percent%)", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold))
+                        Text("$currencySymbol${amount.toInt()} ($percent%)", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold))
                     }
-                    Spacer(Modifier.height(4.dp))
+                    Spacer(modifier = Modifier.height(4.dp))
                     LinearProgressIndicator(
                         progress = { (amount / total).toFloat() },
                         modifier = Modifier.fillMaxWidth().height(8.dp),
@@ -61,4 +61,3 @@ fun SpendingAnalyticsCard(data: Map<String, Double>) {
         }
     }
 }
-

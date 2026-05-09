@@ -28,6 +28,8 @@ fun AccountStatementScreen(
 ) {
     val transactions by viewModel.transactions.collectAsState()
     val accounts     by viewModel.allAccountsUnfiltered.collectAsState()
+    val currentProject by viewModel.currentProject.collectAsState()
+    val currencySymbol = app.fynlo.logic.CurrencyUtils.symbolFor(currentProject?.currency ?: "INR")
     val account      = accounts.find { it.name == accountName }
     val locale       = remember { Locale.getDefault() }
 
@@ -41,6 +43,7 @@ fun AccountStatementScreen(
         QuickBalanceEditDialog(
             accountName    = accountName,
             currentBalance = account.balance,
+            currencySymbol = currencySymbol,
             onDismiss      = { showEditDialog = false },
             onConfirm      = { newBalance ->
                 viewModel.quickEditBalance(accountName, newBalance, account.balance)
@@ -82,7 +85,7 @@ fun AccountStatementScreen(
                         Text("Current Balance", style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Text(
-                            "₹ ${String.format(locale, "%,.2f", account.balance)}",
+                            "$currencySymbol ${String.format(locale, "%,.2f", account.balance)}",
                             style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold),
                             color = if (account.balance >= 0) MaterialTheme.colorScheme.primary else Color(0xFFEF4444)
                         )
@@ -100,7 +103,7 @@ fun AccountStatementScreen(
             } else {
                 LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     items(accountTransactions) { txn ->
-                        TransactionItem(txn)
+                        TransactionItem(txn, currencySymbol = currencySymbol)
                     }
                 }
             }
@@ -112,6 +115,7 @@ fun AccountStatementScreen(
 private fun QuickBalanceEditDialog(
     accountName: String,
     currentBalance: Double,
+    currencySymbol: String,
     onDismiss: () -> Unit,
     onConfirm: (Double) -> Unit
 ) {
@@ -129,7 +133,7 @@ private fun QuickBalanceEditDialog(
                 OutlinedTextField(
                     value         = input,
                     onValueChange = { input = it },
-                    label         = { Text("New Balance (₹)") },
+                    label         = { Text("New Balance ($currencySymbol)") },
                     singleLine    = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     modifier      = Modifier.fillMaxWidth(),
@@ -138,8 +142,8 @@ private fun QuickBalanceEditDialog(
                 if (newBalance != null) {
                     val diff = newBalance - currentBalance
                     Text(
-                        if (diff >= 0) "+ ₹${"%.2f".format(diff)} will be added"
-                        else "- ₹${"%.2f".format(-diff)} will be deducted",
+                        if (diff >= 0) "+ $currencySymbol${"%.2f".format(diff)} will be added"
+                        else "- $currencySymbol${"%.2f".format(-diff)} will be deducted",
                         style = MaterialTheme.typography.bodySmall,
                         color = if (diff >= 0) Color(0xFF059669) else Color(0xFFEF4444)
                     )
@@ -157,11 +161,3 @@ private fun QuickBalanceEditDialog(
         }
     )
 }
-
-
-
-
-
-
-
-

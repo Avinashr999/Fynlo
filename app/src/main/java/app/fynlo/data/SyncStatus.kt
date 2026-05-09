@@ -9,4 +9,6 @@ sealed class SyncStatus {
     object Offline : SyncStatus()
     /** Auth not ready yet. */
     object Initialising : SyncStatus()
+    /** Sync encountered a persistent error. */
+    data class Error(val message: String) : SyncStatus()
 }

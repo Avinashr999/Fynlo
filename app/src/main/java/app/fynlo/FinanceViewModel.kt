@@ -19,11 +19,8 @@ class FinanceViewModel(private val repository: FinanceRepository) : ViewModel() 
     private val _uiState = MutableStateFlow<UiState>(UiState.Initial)
     val uiState: StateFlow<UiState> = _uiState.asStateFlow()
 
-    // Sync status — reads dynamically from current SyncManager via repository
     val syncStatus: StateFlow<SyncStatus>
         get() = repository.syncStatus
-
-    // ─── Active project ───────────────────────────────────────────────────────
 
     private val _currentProjectId = MutableStateFlow("")
     val currentProjectId: StateFlow<String> = _currentProjectId.asStateFlow()
@@ -31,12 +28,10 @@ class FinanceViewModel(private val repository: FinanceRepository) : ViewModel() 
     val projects = repository.allProjects
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
-    // True once projects arrive OR after 10 second timeout
     private val _isSyncReady = MutableStateFlow(false)
     val isSyncReady: StateFlow<Boolean> = _isSyncReady.asStateFlow()
 
     init {
-        // Watch projects — auto-select first one when it arrives
         viewModelScope.launch {
             projects.collect { list ->
                 if (_currentProjectId.value.isEmpty() && list.isNotEmpty()) {
@@ -47,7 +42,6 @@ class FinanceViewModel(private val repository: FinanceRepository) : ViewModel() 
                 }
             }
         }
-        // 30-second safety timeout — show dashboard even if Firestore is very slow
         viewModelScope.launch {
             delay(30_000)
             if (!_isSyncReady.value) {
@@ -69,15 +63,9 @@ class FinanceViewModel(private val repository: FinanceRepository) : ViewModel() 
     fun deleteProject(project: Project) {
         viewModelScope.launch {
             repository.deleteProject(project)
-            // Fall back to personal if active project was deleted
             if (_currentProjectId.value == project.id) _currentProjectId.value = "personal"
         }
     }
-
-    // ─── Project-filtered data flows ──────────────────────────────────────────
-    // Each raw repository flow is combined with currentProjectId so every
-    // downstream flow (financialSummary, expenseAnalytics, etc.) automatically
-    // reflects the active project without any extra wiring.
 
     val borrowers: StateFlow<List<Borrower>> =
         combine(repository.allBorrowers, _currentProjectId) { list, pid ->
@@ -89,7 +77,6 @@ class FinanceViewModel(private val repository: FinanceRepository) : ViewModel() 
             list.filter { it.projectId == pid || it.projectId.isEmpty() || it.projectId == "personal" }
         }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
-    // All accounts across ALL projects — used by wizard and account pickers
     val allAccountsUnfiltered: StateFlow<List<Account>> =
         repository.allAccounts
             .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
@@ -130,8 +117,6 @@ class FinanceViewModel(private val repository: FinanceRepository) : ViewModel() 
             list.filter { it.projectId == pid || it.projectId.isEmpty() || it.projectId == "personal" }
         }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
-    // ─── Search ───────────────────────────────────────────────────────────────
-
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
 
@@ -148,15 +133,11 @@ class FinanceViewModel(private val repository: FinanceRepository) : ViewModel() 
 
     fun updateSearchQuery(query: String) { _searchQuery.value = query }
 
-    // ─── Analytics ────────────────────────────────────────────────────────────
-
     val expenseAnalytics: StateFlow<Map<String, Double>> = transactions.map { trans ->
         trans.filter { it.type.lowercase() == "expense" }
             .groupBy { it.category }
             .mapValues { entry -> entry.value.sumOf { it.amount } }
     }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyMap())
-
-    // ─── Financial Summary (auto-uses project-filtered flows) ─────────────────
 
     val financialSummary: StateFlow<FinancialSummary> = combine(
         transactions, accounts, investments, borrowers, debts
@@ -169,6 +150,29 @@ class FinanceViewModel(private val repository: FinanceRepository) : ViewModel() 
             )
             b.amount + accrued - b.paid
         }
+        
+        val totalInterestLoans = brws.filter { it.rate > 0 }.sumOf { b ->
+            val accrued = app.fynlo.logic.InterestEngine.calcIntAccrued(
+                b.amount, b.rate, b.date, b.type, b.due, totalPaid = b.paid
+            )
+            b.amount + accrued - b.paid
+        }
+        val totalHandLoans = brws.filter { it.rate <= 0 }.sumOf { it.amount - it.paid }
+
+        val invTypeMap = invs.groupBy { it.type }
+            .mapValues { it.value.sumOf { inv -> inv.currentVal } }
+
+        val interestBrwMap = brws.filter { it.rate > 0 }.associate { b ->
+            val accrued = app.fynlo.logic.InterestEngine.calcIntAccrued(
+                b.amount, b.rate, b.date, b.type, b.due, totalPaid = b.paid
+            )
+            b.name to (b.amount + accrued - b.paid)
+        }
+
+        val handBrwMap = brws.filter { it.rate <= 0 }.associate { b ->
+            b.name to (b.amount - b.paid)
+        }
+
         val totalAssets       = totalCash + totalInvestments + totalReceivables
         val totalDebtPrincipal = dbts.sumOf { it.amount - it.paid }
         val totalDebtInterest  = dbts.sumOf { d ->
@@ -183,6 +187,15 @@ class FinanceViewModel(private val repository: FinanceRepository) : ViewModel() 
         val net            = totalAssets - (totalDebtPrincipal + totalDebtInterest)
         val accountsMap    = accts.associate { it.name to it.balance }
 
+        // Calculate per-account growth (Month-to-Date inflow - outflow)
+        val currentMonthPrefix = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM"))
+        val thisMonthTrans = trans.filter { it.date.startsWith(currentMonthPrefix) }
+        val growthMap = accts.associate { acct ->
+            val inflow  = thisMonthTrans.filter { it.toAcct == acct.name }.sumOf { it.amount }
+            val outflow = thisMonthTrans.filter { it.fromAcct == acct.name }.sumOf { it.amount }
+            acct.name to (inflow - outflow)
+        }
+
         FinancialSummary(
             totalCash          = totalCash,
             totalInvestments   = totalInvestments,
@@ -196,16 +209,18 @@ class FinanceViewModel(private val repository: FinanceRepository) : ViewModel() 
             investmentGrowth   = invGrowth,
             lendingYield       = avgYield,
             debtBurden         = if (net != 0.0) ((totalDebtPrincipal + totalDebtInterest) / net) * 100 else 0.0,
-            accountBreakdown   = accountsMap
+            totalInterestLoans = totalInterestLoans,
+            totalHandLoans     = totalHandLoans,
+            investmentTypeBreakdown = invTypeMap,
+            interestLendingBreakdown = interestBrwMap,
+            handLendingBreakdown     = handBrwMap,
+            accountBreakdown   = accountsMap,
+            accountGrowthMap   = growthMap
         )
     }.stateIn(viewModelScope, SharingStarted.Eagerly, FinancialSummary())
 
-    // ─── Helpers ──────────────────────────────────────────────────────────────
-
     private val today get() = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
     private val pid   get() = _currentProjectId.value.ifEmpty { "personal" }
-
-    // ─── Add / Delete actions ─────────────────────────────────────────────────
 
     fun addBorrowerWithSource(borrower: Borrower, source: String) {
         viewModelScope.launch {
@@ -224,7 +239,6 @@ class FinanceViewModel(private val repository: FinanceRepository) : ViewModel() 
     }
 
     fun updateDebt(debt: Debt) {
-        val pid = currentProjectId.value
         viewModelScope.launch {
             repository.updateDebt(debt.copy(projectId = pid, updatedAt = System.currentTimeMillis()))
         }
@@ -257,6 +271,28 @@ class FinanceViewModel(private val repository: FinanceRepository) : ViewModel() 
         }
     }
 
+    fun executeLinkedInvestment(
+        investment: Investment,
+        fundingSourceType: String,
+        sourceName: String,
+        debtDetails: Debt? = null
+    ) {
+        viewModelScope.launch {
+            repository.executeLinkedInvestment(
+                investment.copy(projectId = pid),
+                fundingSourceType,
+                sourceName,
+                debtDetails?.copy(projectId = pid)
+            )
+        }
+    }
+
+    fun addValuation(v: InvestmentValuation) {
+        viewModelScope.launch { repository.addValuation(v) }
+    }
+
+    fun getValuationsForInvestment(invId: String) = repository.getValuationsForInvestment(invId)
+
     fun deleteInvestment(investment: Investment) {
         viewModelScope.launch { repository.deleteInvestmentOnly(investment) }
     }
@@ -279,22 +315,18 @@ class FinanceViewModel(private val repository: FinanceRepository) : ViewModel() 
         }
     }
 
-    /** One-time cleanup: removes seeder transactions and investments from Firestore + Room */
-    /** Restore real account balances and clean all seeder transactions */
     fun restoreRealData() {
         viewModelScope.launch {
             val uid = repository.syncManager.userId
             if (uid.isBlank()) return@launch
             val fs = com.google.firebase.firestore.FirebaseFirestore.getInstance()
 
-            // 1. Clear ALL transactions from Firestore and Room
             try {
                 val txDocs = fs.collection("users").document(uid).collection("transactions").get().await()
                 txDocs.documents.forEach { it.reference.delete().await() }
                 repository.dao.deleteAllTransactions()
             } catch (e: Exception) { android.util.Log.e("Restore", "txn: ${e.message}") }
 
-            // 2. Set real account balances
             val cashAccount = app.fynlo.data.model.Account(
                 id = "1", name = "Cash in Hand", balance = 3962.0, type = "Cash"
             )
@@ -318,21 +350,18 @@ class FinanceViewModel(private val repository: FinanceRepository) : ViewModel() 
             if (uid.isBlank()) return@launch
             val fs = com.google.firebase.firestore.FirebaseFirestore.getInstance()
 
-            // Delete all seeder investments from Firestore
             try {
                 val invDocs = fs.collection("users").document(uid).collection("investments").get().await()
                 invDocs.documents.forEach { it.reference.delete().await() }
                 repository.dao.deleteAllInvestments()
             } catch (e: Exception) { android.util.Log.e("Cleanup", "inv: ${e.message}") }
 
-            // Delete all borrowers from Firestore
             try {
                 val bDocs = fs.collection("users").document(uid).collection("borrowers").get().await()
                 bDocs.documents.forEach { it.reference.delete().await() }
                 repository.dao.deleteAllBorrowers()
             } catch (e: Exception) { android.util.Log.e("Cleanup", "borrowers: ${e.message}") }
 
-            // Delete seeder transactions (those with seeder descriptions)
             try {
                 val txDocs = fs.collection("users").document(uid).collection("transactions").get().await()
                 val seederDescs = setOf("Monthly Salary", "Grocery & Dining", "Petrol & Diesel",
@@ -350,21 +379,16 @@ class FinanceViewModel(private val repository: FinanceRepository) : ViewModel() 
                 }
             } catch (e: Exception) { android.util.Log.e("Cleanup", "txn: ${e.message}") }
 
-            // Delete seeder debts
             try {
                 val debtDocs = fs.collection("users").document(uid).collection("debts").get().await()
                 debtDocs.documents.forEach { it.reference.delete().await() }
                 repository.dao.deleteAllDebts()
             } catch (e: Exception) { android.util.Log.e("Cleanup", "debts: ${e.message}") }
 
-            // Delete seeder accounts (acc-cash, acc-hdfc, acc-sbi, acc-petty)
             try {
                 val seederAccIds = setOf("acc-cash", "acc-hdfc", "acc-sbi", "acc-petty")
                 seederAccIds.forEach { id ->
                     fs.collection("users").document(uid).collection("accounts").document(id).delete().await()
-                }
-                // Remove from Room by id
-                seederAccIds.forEach { id ->
                     repository.dao.deleteAccountById(id)
                 }
             } catch (e: Exception) { android.util.Log.e("Cleanup", "accounts: ${e.message}") }
@@ -374,15 +398,12 @@ class FinanceViewModel(private val repository: FinanceRepository) : ViewModel() 
     fun loadDummyData() {
         viewModelScope.launch {
             val seeder = app.fynlo.logic.DummyDataSeeder
-
-            // 1. Clear Room
             repository.dao.deleteAllTransactions()
             repository.dao.deleteAllBorrowers()
             repository.dao.deleteAllDebts()
             repository.dao.deleteAllInvestments()
             repository.dao.deleteAllAccounts()
 
-            // 2. Clear Firestore collections
             val collections = listOf("transactions","borrowers","debts","investments","accounts","payments","debt_payments")
             val uid = repository.syncManager.userId
             if (uid.isNotBlank()) {
@@ -397,7 +418,6 @@ class FinanceViewModel(private val repository: FinanceRepository) : ViewModel() 
                 }
             }
 
-            // 3. Insert fresh seeder data
             seeder.accounts().forEach { repository.upsertAccount(it) }
             seeder.borrowers().forEach { b ->
                 repository.dao.insertBorrower(b)
@@ -499,6 +519,10 @@ class FinanceViewModel(private val repository: FinanceRepository) : ViewModel() 
         viewModelScope.launch { repository.deleteGoal(goal) }
     }
 
+    fun wipeAllData() {
+        viewModelScope.launch { repository.wipeAllData() }
+    }
+
     fun executeFlow(result: app.fynlo.data.model.FlowResult) {
         viewModelScope.launch {
             val id = java.util.UUID.randomUUID().toString()
@@ -552,7 +576,7 @@ class FinanceViewModel(private val repository: FinanceRepository) : ViewModel() 
                         name = result.personName,
                         phone = result.personPhone,
                         amount = result.amount,
-                        rate = 0.0, // Default for wizard
+                        rate = 0.0,
                         date = result.date,
                         notes = result.notes,
                         projectId = result.projectId
@@ -565,7 +589,7 @@ class FinanceViewModel(private val repository: FinanceRepository) : ViewModel() 
                         name = result.personName,
                         phone = result.personPhone,
                         amount = result.amount,
-                        rate = 0.0, // Default for wizard
+                        rate = 0.0,
                         date = result.date,
                         notes = result.notes,
                         projectId = result.projectId
@@ -575,8 +599,6 @@ class FinanceViewModel(private val repository: FinanceRepository) : ViewModel() 
             }
         }
     }
-
-    // ─── Export / Import ──────────────────────────────────────────────────────
 
     suspend fun exportAllData(): String = repository.getAllDataAsJson()
 
@@ -596,8 +618,6 @@ class FinanceViewModel(private val repository: FinanceRepository) : ViewModel() 
         )
     }
 
-    // ─── Net Worth History ────────────────────────────────────────────────────
-
     fun getNetWorthSnapshots() = repository.getNetWorthSnapshots(pid)
 
     fun saveSnapshotNow() {
@@ -615,8 +635,6 @@ class FinanceViewModel(private val repository: FinanceRepository) : ViewModel() 
         }
     }
 
-    // ─── Recurring Transactions ──────────────────────────────────────────────
-
     val recurringTransactions: StateFlow<List<app.fynlo.data.model.RecurringTransaction>> = repository.getAllRecurringTransactions()
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
@@ -627,8 +645,6 @@ class FinanceViewModel(private val repository: FinanceRepository) : ViewModel() 
     fun deleteRecurringTransaction(r: app.fynlo.data.model.RecurringTransaction) {
         viewModelScope.launch { repository.deleteRecurringTransaction(r) }
     }
-
-    // ─── Sample data ──────────────────────────────────────────────────────────
 
     fun populateDummyData() {
         viewModelScope.launch(Dispatchers.IO) {

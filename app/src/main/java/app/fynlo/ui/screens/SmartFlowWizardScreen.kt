@@ -1,392 +1,401 @@
 ﻿package app.fynlo.ui.screens
 
 import androidx.compose.animation.*
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.fynlo.FinanceViewModel
-import app.fynlo.data.model.FlowResult
-import app.fynlo.logic.FlowRuleEngine
+import app.fynlo.data.model.Debt
+import app.fynlo.data.model.Investment
+import app.fynlo.logic.DateUtils
+import app.fynlo.ui.components.DatePickerField
 import app.fynlo.ui.components.WizardStepIndicator
-import java.time.LocalDate
-import java.time.format.DateTimeFormatter
+import java.util.*
 
-private val STEP_LABELS = listOf("Event", "Details", "Route", "Confirm")
-
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SmartFlowWizardScreen(
     viewModel: FinanceViewModel,
-    onDone: () -> Unit
+    onNavigateBack: () -> Unit
 ) {
-    val transactions     by viewModel.transactions.collectAsState()
-    val accounts         by viewModel.allAccountsUnfiltered.collectAsState()
-    val currentProjectId by viewModel.currentProjectId.collectAsState()
-    val today = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
+    var currentStep by remember { mutableIntStateOf(1) }
+    
+    // Step 1: Asset Details
+    var assetName by remember { mutableStateOf("") }
+    var assetType by remember { mutableStateOf("Stocks") }
+    var investedAmt by remember { mutableStateOf("") }
+    var purchaseDate by remember { mutableStateOf(java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy"))) }
+    
+    // Step 2: Funding Source
+    val sources = listOf("Existing Account", "New Bank Loan", "Already Settled (Historical)")
+    var selectedSource by remember { mutableStateOf(sources[0]) }
+    var accountName by remember { mutableStateOf("") } // For Existing Account
+    
+    // For New Bank Loan
+    var lenderName by remember { mutableStateOf("") }
+    var loanInterestRate by remember { mutableStateOf("12.0") }
+    var loanTenure by remember { mutableStateOf("12") }
 
-    // ── Wizard state ──────────────────────────────────────────────────────────
-    var step         by remember { mutableIntStateOf(0) }
-    var eventType    by remember { mutableStateOf("") }
-    var amount       by remember { mutableStateOf("") }
-    var description  by remember { mutableStateOf("") }
-    var category     by remember { mutableStateOf("") }
-    var fromAccount  by remember { mutableStateOf("") }
-    var toAccount    by remember { mutableStateOf("") }
-    var personName   by remember { mutableStateOf("") }
-    var personPhone  by remember { mutableStateOf("") }
-    var notes        by remember { mutableStateOf("") }
+    val accounts by viewModel.accounts.collectAsState()
 
-    val accountNames  = accounts.map { it.name }
-    val topCategories = FlowRuleEngine.topCategories(transactions)
-    val suggestedFrom = if (eventType.isNotBlank())
-        FlowRuleEngine.suggestSourceAccount(transactions, eventType) else ""
-    val suggestedCat  = if (eventType.isNotBlank() && category.isBlank())
-        FlowRuleEngine.suggestAccountForCategory(transactions, category) else ""
-
-    // Pre-fill suggested account when event type chosen
-    LaunchedEffect(eventType) {
-        if (fromAccount.isBlank() && suggestedFrom.isNotBlank()) fromAccount = suggestedFrom
-    }
-
-    Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Universal Entry Wizard") },
+                navigationIcon = {
+                    IconButton(onClick = onNavigateBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                }
+            )
+        }
+    ) { padding ->
         Column(
             modifier = Modifier
+                .padding(padding)
                 .fillMaxSize()
-                .padding(20.dp)
-                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 24.dp)
         ) {
-            // Header
-            Text(
-                "Smart Flow Wizard",
-                style    = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-                modifier = Modifier.padding(bottom = 4.dp)
-            )
-            Text(
-                "Connected money tracking in 4 steps",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(bottom = 20.dp)
-            )
+            Spacer(Modifier.height(16.dp))
+            WizardStepIndicator(currentStep = currentStep, totalSteps = 3)
+            Spacer(Modifier.height(32.dp))
 
-            WizardStepIndicator(
-                steps       = STEP_LABELS,
-                currentStep = step,
-                modifier    = Modifier.padding(bottom = 28.dp)
-            )
-
-            AnimatedContent(
-                targetState   = step,
-                transitionSpec = {
-                    if (targetState > initialState)
-                        slideInHorizontally { it } + fadeIn() togetherWith slideOutHorizontally { -it } + fadeOut()
-                    else
-                        slideInHorizontally { -it } + fadeIn() togetherWith slideOutHorizontally { it } + fadeOut()
-                },
-                label = "wizard_step"
-            ) { currentStep ->
-                when (currentStep) {
-                    0 -> Step1EventType(
-                        selected  = eventType,
-                        onSelect  = { eventType = it; step = 1 }
-                    )
-                    1 -> Step2Details(
-                        eventType    = eventType,
-                        amount       = amount,
-                        onAmountChange = { amount = it },
-                        description  = description,
-                        onDescChange = { description = it },
-                        category     = category,
-                        onCatChange  = { category = it },
-                        topCategories = topCategories,
-                        personName   = personName,
-                        onPersonName = { personName = it },
-                        personPhone  = personPhone,
-                        onPersonPhone = { personPhone = it },
-                        notes        = notes,
-                        onNotes      = { notes = it }
-                    )
-                    2 -> Step3Route(
-                        eventType    = eventType,
-                        accountNames = accountNames,
-                        fromAccount  = fromAccount,
-                        onFromChange = { fromAccount = it },
-                        toAccount    = toAccount,
-                        onToChange   = { toAccount = it },
-                        suggestedFrom = suggestedFrom
-                    )
-                    3 -> Step4Confirm(
-                        eventType   = eventType,
-                        amount      = amount.toDoubleOrNull() ?: 0.0,
-                        description = description,
-                        category    = category,
-                        fromAccount = fromAccount,
-                        toAccount   = toAccount,
-                        personName  = personName,
-                        notes       = notes,
-                        date        = today
-                    )
-                }
-            }
-
-            Spacer(Modifier.height(28.dp))
-
-            // Navigation buttons
-            Row(
-                modifier              = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                if (step > 0) {
-                    OutlinedButton(
-                        onClick  = { step-- },
-                        modifier = Modifier.weight(1f).height(52.dp),
-                        shape    = RoundedCornerShape(12.dp)
-                    ) { Text("Back") }
-                }
-
-                val isLastStep    = step == 3
-                val canProceed    = when (step) {
-                    0 -> eventType.isNotBlank()
-                    1 -> amount.toDoubleOrNull() != null && amount.toDouble() > 0
-                    2 -> fromAccount.isNotBlank() || toAccount.isNotBlank()
-                    else -> true
-                }
-
-                Button(
-                    onClick  = {
-                        if (isLastStep) {
-                            val result = FlowResult(
-                                eventType   = eventType,
-                                amount      = amount.toDoubleOrNull() ?: 0.0,
-                                description = description,
-                                fromAccount = fromAccount,
-                                toAccount   = toAccount,
-                                category    = category.ifBlank { eventType },
-                                date        = today,
-                                personName  = personName,
-                                personPhone = personPhone,
-                                notes       = notes,
-                                projectId   = currentProjectId
-                            )
-                            viewModel.executeFlow(result)
-                            onDone()
+            Box(modifier = Modifier.weight(1f)) {
+                AnimatedContent(
+                    targetState = currentStep,
+                    transitionSpec = {
+                        if (targetState > initialState) {
+                            slideInHorizontally { it } + fadeIn() togetherWith slideOutHorizontally { -it } + fadeOut()
                         } else {
-                            step++
-                        }
+                            slideInHorizontally { -it } + fadeIn() togetherWith slideOutHorizontally { it } + fadeOut()
+                        }.using(SizeTransform(clip = false))
                     },
-                    modifier = Modifier.weight(1f).height(52.dp),
-                    shape    = RoundedCornerShape(12.dp),
-                    enabled  = canProceed
-                ) {
-                    Text(if (isLastStep) "Save All" else "Next →", fontWeight = FontWeight.SemiBold)
+                    label = "wizard_step"
+                ) { step ->
+                    when (step) {
+                        1 -> StepAssetDetails(
+                            name = assetName, onNameChange = { assetName = it },
+                            type = assetType, onTypeChange = { assetType = it },
+                            amt = investedAmt, onAmtChange = { investedAmt = it },
+                            date = purchaseDate, onDateChange = { purchaseDate = it }
+                        )
+                        2 -> StepFundingSource(
+                            sources = sources,
+                            selected = selectedSource,
+                            onSourceChange = { selectedSource = it },
+                            accounts = accounts.map { it.name },
+                            selectedAcct = accountName,
+                            onAcctChange = { accountName = it },
+                            lender = lenderName,
+                            onLenderChange = { lenderName = it },
+                            rate = loanInterestRate,
+                            onRateChange = { loanInterestRate = it },
+                            tenure = loanTenure,
+                            onTenureChange = { loanTenure = it }
+                        )
+                        3 -> StepVerification(
+                            assetName = assetName,
+                            amt = investedAmt.toDoubleOrNull() ?: 0.0,
+                            source = selectedSource,
+                            sourceName = if (selectedSource == sources[0]) accountName else lenderName
+                        )
+                    }
                 }
             }
-        }
-    }
-}
-// ── Step 1: Choose event type ─────────────────────────────────────────────────
 
-private data class EventOption(val label: String, val icon: ImageVector, val color: Color, val hint: String)
-
-private val EVENT_OPTIONS = listOf(
-    EventOption("Received",  Icons.Default.ArrowDownward,   Color(0xFF059669), "Money came in"),
-    EventOption("Spent",     Icons.Default.ArrowUpward,     Color(0xFFEF4444), "Money went out"),
-    EventOption("Moved",     Icons.Default.SwapHoriz,       Color(0xFF3B82F6), "Transfer between accounts"),
-    EventOption("Lent",      Icons.Default.Handshake,       Color(0xFFF57F17), "Lent money to someone"),
-    EventOption("Borrowed",  Icons.Default.CreditCard,      Color(0xFF6A1B9A), "Borrowed money from someone")
-)
-
-@Composable
-private fun Step1EventType(selected: String, onSelect: (String) -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text("What happened?", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold), modifier = Modifier.padding(bottom = 4.dp))
-        EVENT_OPTIONS.forEach { opt ->
-            val isSelected = opt.label == selected
-            Card(
-                modifier = Modifier.fillMaxWidth().clickable { onSelect(opt.label) },
-                shape    = RoundedCornerShape(12.dp),
-                colors   = CardDefaults.cardColors(
-                    containerColor = if (isSelected) opt.color.copy(alpha = 0.12f)
-                                     else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
-                ),
-                border   = if (isSelected) androidx.compose.foundation.BorderStroke(1.5.dp, opt.color) else null
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 24.dp),
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Icon(opt.icon, contentDescription = null, tint = opt.color, modifier = Modifier.size(28.dp))
-                    Spacer(Modifier.width(14.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(opt.label, fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
-                        Text(opt.hint, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                if (currentStep > 1) {
+                    OutlinedButton(
+                        onClick = { currentStep-- },
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Icon(Icons.Default.ArrowBack, null, Modifier.size(18.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text("Previous")
                     }
-                    if (isSelected) Icon(Icons.Default.CheckCircle, contentDescription = null, tint = opt.color)
+                } else {
+                    Spacer(Modifier.width(1.dp))
+                }
+
+                if (currentStep < 3) {
+                    Button(
+                        onClick = { currentStep++ },
+                        enabled = isStepValid(currentStep, assetName, investedAmt, selectedSource, accountName, lenderName),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text("Next")
+                        Spacer(Modifier.width(8.dp))
+                        Icon(Icons.AutoMirrored.Filled.ArrowForward, null, Modifier.size(18.dp))
+                    }
+                } else {
+                    Button(
+                        onClick = {
+                            val inv = Investment(
+                                id = UUID.randomUUID().toString(),
+                                name = assetName,
+                                type = assetType,
+                                invested = investedAmt.toDoubleOrNull() ?: 0.0,
+                                currentVal = investedAmt.toDoubleOrNull() ?: 0.0,
+                                date = DateUtils.parseInput(purchaseDate),
+                                notes = "Logged via Smart Wizard"
+                            )
+                            
+                            val debt = if (selectedSource == sources[1]) {
+                                Debt(
+                                    id = UUID.randomUUID().toString(),
+                                    name = lenderName,
+                                    amount = investedAmt.toDoubleOrNull() ?: 0.0,
+                                    rate = loanInterestRate.toDoubleOrNull() ?: 0.0,
+                                    date = DateUtils.parseInput(purchaseDate),
+                                    notes = "Loan for $assetName",
+                                    intType = "Simple Interest"
+                                )
+                            } else null
+
+                            val finalSourceType = when(selectedSource) {
+                                sources[0] -> "Account"
+                                sources[1] -> "Debt"
+                                else -> "Already Settled"
+                            }
+
+                            viewModel.executeLinkedInvestment(
+                                investment = inv,
+                                fundingSourceType = finalSourceType,
+                                sourceName = if (finalSourceType == "Account") accountName else lenderName,
+                                debtDetails = debt
+                            )
+                            onNavigateBack()
+                        },
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF059669))
+                    ) {
+                        Icon(Icons.Default.Check, null, Modifier.size(18.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text("Confirm & Execute")
+                    }
                 }
             }
         }
     }
 }
 
-// ── Step 2: Amount, category, person ─────────────────────────────────────────
+private fun isStepValid(step: Int, name: String, amt: String, source: String, acct: String, lender: String): Boolean {
+    return when(step) {
+        1 -> name.isNotBlank() && (amt.toDoubleOrNull() ?: 0.0) > 0
+        2 -> when(source) {
+            "Existing Account" -> acct.isNotBlank()
+            "New Bank Loan" -> lender.isNotBlank()
+            else -> true
+        }
+        else -> true
+    }
+}
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun Step2Details(
-    eventType: String, amount: String, onAmountChange: (String) -> Unit,
-    description: String, onDescChange: (String) -> Unit,
-    category: String, onCatChange: (String) -> Unit, topCategories: List<String>,
-    personName: String, onPersonName: (String) -> Unit,
-    personPhone: String, onPersonPhone: (String) -> Unit,
-    notes: String, onNotes: (String) -> Unit
+fun StepAssetDetails(
+    name: String, onNameChange: (String) -> Unit,
+    type: String, onTypeChange: (String) -> Unit,
+    amt: String, onAmtChange: (String) -> Unit,
+    date: String, onDateChange: (String) -> Unit
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        Text("Enter details", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold))
+    val types = listOf("Stocks", "Mutual Funds", "Gold", "Business", "Real Estate", "Other")
+    var expanded by remember { mutableStateOf(false) }
+
+    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        Text("What did you acquire?", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+        
         OutlinedTextField(
-            value = amount, onValueChange = onAmountChange,
-            label = { Text("Amount (₹)") }, singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-            modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)
+            value = name, onValueChange = onNameChange,
+            label = { Text("Asset Name (e.g. HDFC Bank Eq)") },
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp)
         )
-        OutlinedTextField(
-            value = description, onValueChange = onDescChange,
-            label = { Text("Description") }, singleLine = true,
-            modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)
-        )
-        if (eventType in listOf("Received", "Spent")) {
-            Text("Category", style = MaterialTheme.typography.labelMedium)
-            if (topCategories.isNotEmpty()) {
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(topCategories) { cat ->
-                        FilterChip(selected = cat == category, onClick = { onCatChange(cat) }, label = { Text(cat) })
-                    }
+
+        ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = !expanded }) {
+            OutlinedTextField(
+                value = type, onValueChange = {}, readOnly = true,
+                label = { Text("Asset Class") },
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
+                modifier = Modifier.menuAnchor(androidx.compose.material3.ExposedDropdownMenuAnchorType.PrimaryNotEditable, true).fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp)
+            )
+            ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                types.forEach { t ->
+                    DropdownMenuItem(text = { Text(t) }, onClick = { onTypeChange(t); expanded = false })
                 }
             }
-            OutlinedTextField(
-                value = category, onValueChange = onCatChange,
-                label = { Text("Or type category") }, singleLine = true,
-                modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)
-            )
         }
-        if (eventType in listOf("Lent", "Borrowed")) {
-            OutlinedTextField(value = personName, onValueChange = onPersonName, label = { Text("Person name") }, singleLine = true, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp))
-            OutlinedTextField(value = personPhone, onValueChange = onPersonPhone, label = { Text("Phone (optional)") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone), modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp))
-        }
-        OutlinedTextField(value = notes, onValueChange = onNotes, label = { Text("Notes (optional)") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp), maxLines = 3)
+
+        OutlinedTextField(
+            value = amt, onValueChange = onAmtChange,
+            label = { Text("Purchase Amount (Historical Cost)") },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp)
+        )
+
+        DatePickerField(value = date, onValueChange = onDateChange, label = "Transaction Date")
     }
 }
 
-// ── Step 3: Route money ───────────────────────────────────────────────────────
-
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun Step3Route(
-    eventType: String, accountNames: List<String>,
-    fromAccount: String, onFromChange: (String) -> Unit,
-    toAccount: String, onToChange: (String) -> Unit,
-    suggestedFrom: String
+fun StepFundingSource(
+    sources: List<String>,
+    selected: String,
+    onSourceChange: (String) -> Unit,
+    accounts: List<String>,
+    selectedAcct: String,
+    onAcctChange: (String) -> Unit,
+    lender: String,
+    onLenderChange: (String) -> Unit,
+    rate: String,
+    onRateChange: (String) -> Unit,
+    tenure: String,
+    onTenureChange: (String) -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        Text("Route the money", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold))
-        val needsFrom = eventType in listOf("Spent", "Lent", "Moved")
-        val needsTo   = eventType in listOf("Received", "Borrowed", "Moved")
-        if (needsFrom) {
-            Text("From account", style = MaterialTheme.typography.labelMedium)
-            if (suggestedFrom.isNotBlank()) {
-                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 4.dp)) {
-                    Icon(Icons.Default.Lightbulb, contentDescription = null, tint = Color(0xFFF59E0B), modifier = Modifier.size(16.dp))
-                    Spacer(Modifier.width(4.dp))
-                    Text("Suggested: $suggestedFrom", style = MaterialTheme.typography.bodySmall, color = Color(0xFFF59E0B))
+        Text("How was this funded?", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+        
+        sources.forEach { src ->
+            Surface(
+                onClick = { onSourceChange(src) },
+                shape = RoundedCornerShape(12.dp),
+                color = if (selected == src) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                border = if (selected == src) androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                    RadioButton(selected = (selected == src), onClick = { onSourceChange(src) })
+                    Spacer(Modifier.width(12.dp))
+                    Text(src, style = MaterialTheme.typography.bodyLarge)
                 }
             }
-            AccountChipRow(accounts = accountNames, selected = fromAccount, onSelect = onFromChange)
         }
-        if (needsTo) {
-            Text("To account", style = MaterialTheme.typography.labelMedium)
-            AccountChipRow(accounts = accountNames, selected = toAccount, onSelect = onToChange)
-        }
-        if (accountNames.isEmpty()) {
-            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)) {
-                Text("No accounts found. Add an account in Settings first.", modifier = Modifier.padding(12.dp), style = MaterialTheme.typography.bodySmall)
+
+        Spacer(Modifier.height(8.dp))
+
+        if (selected == sources[0]) {
+            var exp by remember { mutableStateOf(false) }
+            ExposedDropdownMenuBox(expanded = exp, onExpandedChange = { exp = !exp }) {
+                OutlinedTextField(
+                    value = selectedAcct, onValueChange = {}, readOnly = true,
+                    label = { Text("Select Bank / Cash Account") },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(exp) },
+                    modifier = Modifier.menuAnchor(androidx.compose.material3.ExposedDropdownMenuAnchorType.PrimaryNotEditable, true).fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp)
+                )
+                ExposedDropdownMenu(expanded = exp, onDismissRequest = { exp = false }) {
+                    accounts.forEach { a ->
+                        DropdownMenuItem(text = { Text(a) }, onClick = { onAcctChange(a); exp = false })
+                    }
+                }
             }
-        }
-    }
-}
-
-@Composable
-private fun AccountChipRow(accounts: List<String>, selected: String, onSelect: (String) -> Unit) {
-    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        items(accounts) { name ->
-            FilterChip(selected = name == selected, onClick = { onSelect(name) }, label = { Text(name) })
-        }
-    }
-}
-
-// ── Step 4: Confirm preview ───────────────────────────────────────────────────
-
-@Composable
-private fun Step4Confirm(
-    eventType: String, amount: Double, description: String, category: String,
-    fromAccount: String, toAccount: String, personName: String, notes: String, date: String
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text("Review & confirm", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold))
-        Card(shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)), modifier = Modifier.fillMaxWidth()) {
-            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                ConfirmRow("Event",       eventType)
-                ConfirmRow("Amount",      "₹ ${"%.2f".format(amount)}")
-                if (description.isNotBlank()) ConfirmRow("Description", description)
-                if (category.isNotBlank())    ConfirmRow("Category",    category)
-                if (fromAccount.isNotBlank()) ConfirmRow("From",        fromAccount)
-                if (toAccount.isNotBlank())   ConfirmRow("To",          toAccount)
-                if (personName.isNotBlank())  ConfirmRow("Person",      personName)
-                if (notes.isNotBlank())       ConfirmRow("Notes",       notes)
-                ConfirmRow("Date",        date)
-            }
-        }
-        Card(shape = RoundedCornerShape(12.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.4f)), modifier = Modifier.fillMaxWidth()) {
-            Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.Info, contentDescription = null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.secondary)
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    when (eventType) {
-                        "Lent"     -> "Will create a Borrower record + an Expense transaction from $fromAccount."
-                        "Borrowed" -> "Will create a Debt record + an Income transaction into $toAccount."
-                        "Moved"    -> "Will create a Transfer: $fromAccount → $toAccount."
-                        "Received" -> "Will add Income to $toAccount."
-                        else       -> "Will record an Expense from $fromAccount."
-                    },
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSecondaryContainer
+        } else if (selected == sources[1]) {
+            OutlinedTextField(
+                value = lender, onValueChange = onLenderChange,
+                label = { Text("Lender Name (Bank/Person)") },
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp)
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedTextField(
+                    value = rate, onValueChange = onRateChange,
+                    label = { Text("Int. Rate (%)") },
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(12.dp)
+                )
+                OutlinedTextField(
+                    value = tenure, onValueChange = onTenureChange,
+                    label = { Text("Tenure (Mo)") },
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(12.dp)
                 )
             }
+        } else {
+            Surface(
+                color = Color(0xFFFDE68A).copy(alpha = 0.2f),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.Info, null, tint = Color(0xFFD97706))
+                    Spacer(Modifier.width(12.dp))
+                    Text("Choosing this will NOT deduct money from your current accounts. Perfect for historical data.", 
+                        style = MaterialTheme.typography.bodySmall, color = Color(0xFF92400E))
+                }
+            }
         }
     }
 }
 
 @Composable
-private fun ConfirmRow(label: String, value: String) {
-    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-        Text(label, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text(value, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold))
+fun StepVerification(
+    assetName: String,
+    amt: Double,
+    source: String,
+    sourceName: String
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
+        Text("Double-Entry Verification", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+        
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+        ) {
+            Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                EntryRow("Debit (Asset)", assetName, "+ ₹${String.format("%,.0f", amt)}", Color(0xFF059669))
+                
+                val creditLabel = when(source) {
+                    "Existing Account" -> "Cash/Bank: $sourceName"
+                    "New Bank Loan" -> "Liability: $sourceName"
+                    else -> "Equity (Historical)"
+                }
+                EntryRow("Credit (Source)", creditLabel, "- ₹${String.format("%,.0f", amt)}", if (source == "New Bank Loan") Color(0xFFEF4444) else Color(0xFF3B82F6))
+                
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f), modifier = Modifier.padding(vertical = 8.dp))
+                
+                Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
+                    Text("Impact on Net Worth", style = MaterialTheme.typography.bodySmall)
+                    Text("₹ 0 (Neutral)", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+        
+        Text("By clicking confirm, the app will execute these balanced ledger entries simultaneously to maintain financial integrity.", 
+            style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
-
-
-
-
-
-
-
-
+@Composable
+private fun EntryRow(side: String, label: String, valStr: String, color: Color) {
+    Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
+        Column {
+            Text(side, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(label, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+        }
+        Text(valStr, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.ExtraBold, color = color)
+    }
+}

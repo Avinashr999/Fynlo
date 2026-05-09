@@ -1,96 +1,72 @@
 ﻿package app.fynlo.ui.components
 
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 @Composable
-fun WizardStepIndicator(
-    steps: List<String>,
-    currentStep: Int,
-    modifier: Modifier = Modifier
-) {
+fun WizardStepIndicator(currentStep: Int, totalSteps: Int) {
     Row(
-        modifier            = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceEvenly,
-        verticalAlignment   = Alignment.CenterVertically
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center
     ) {
-        steps.forEachIndexed { index, label ->
-            val isActive   = index == currentStep
-            val isComplete = index < currentStep
-
-            val dotColor by animateColorAsState(
-                targetValue = when {
-                    isComplete -> MaterialTheme.colorScheme.primary
-                    isActive   -> MaterialTheme.colorScheme.primary
-                    else       -> MaterialTheme.colorScheme.outlineVariant
-                },
-                animationSpec = tween(300),
-                label = "dot_$index"
+        for (i in 1..totalSteps) {
+            StepCircle(
+                step = i,
+                active = i == currentStep,
+                completed = i < currentStep
             )
-            val textColor by animateColorAsState(
-                targetValue = if (isActive || isComplete)
-                    MaterialTheme.colorScheme.primary
-                else
-                    MaterialTheme.colorScheme.outlineVariant,
-                animationSpec = tween(300),
-                label = "text_$index"
-            )
-
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Box(
-                    modifier          = Modifier
-                        .size(if (isActive) 32.dp else 26.dp)
-                        .clip(CircleShape)
-                        .background(
-                            if (isActive) MaterialTheme.colorScheme.primary
-                            else dotColor.copy(alpha = if (isComplete) 0.25f else 0.15f)
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text       = if (isComplete) "✓" else "${index + 1}",
-                        color      = if (isActive) MaterialTheme.colorScheme.onPrimary
-                                     else textColor,
-                        fontSize   = 13.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    text      = label,
-                    fontSize  = 10.sp,
-                    color     = textColor,
-                    fontWeight = if (isActive) FontWeight.SemiBold else FontWeight.Normal
-                )
-            }
-
-            // Connector line between steps
-            if (index < steps.lastIndex) {
+            if (i < totalSteps) {
                 Box(
                     modifier = Modifier
-                        .weight(1f)
+                        .width(40.dp)
                         .height(2.dp)
-                        .padding(horizontal = 4.dp)
-                        .background(
-                            if (isComplete) MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)
-                            else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
-                        )
+                        .background(if (i < currentStep) Color(0xFF059669) else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
                 )
             }
         }
     }
 }
 
+@Composable
+private fun StepCircle(step: Int, active: Boolean, completed: Boolean) {
+    val bgColor = when {
+        completed -> Color(0xFF059669)
+        active -> MaterialTheme.colorScheme.primary
+        else -> MaterialTheme.colorScheme.surfaceVariant
+    }
+    
+    val textColor = if (completed || active) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
+
+    Box(
+        modifier = Modifier
+            .size(32.dp)
+            .clip(CircleShape)
+            .background(bgColor),
+        contentAlignment = Alignment.Center
+    ) {
+        if (completed) {
+            Icon(Icons.Default.Check, null, Modifier.size(16.dp), tint = Color.White)
+        } else {
+            Text(
+                text = step.toString(),
+                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                color = textColor
+            )
+        }
+    }
+}

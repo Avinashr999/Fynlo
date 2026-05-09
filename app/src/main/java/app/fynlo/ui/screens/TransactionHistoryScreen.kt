@@ -29,6 +29,8 @@ import java.util.Locale
 fun TransactionHistoryScreen(viewModel: FinanceViewModel) {
     val transactions by viewModel.filteredTransactions.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
+    val currentProject by viewModel.currentProject.collectAsState()
+    val currencySymbol = app.fynlo.logic.CurrencyUtils.symbolFor(currentProject?.currency ?: "INR")
     
     var selectedType   by remember { mutableStateOf("All") }
     var showDateFilter by remember { mutableStateOf(false) }
@@ -42,7 +44,6 @@ fun TransactionHistoryScreen(viewModel: FinanceViewModel) {
     val filteredHistory = remember(transactions, selectedType, fromDate, toDate) {
         var list = if (selectedType == "All") transactions
                    else transactions.filter { it.type.equals(selectedType, ignoreCase = true) }
-        // Date range filter (convert DD-MM-YYYY to YYYY-MM-DD for comparison)
         if (fromDate.isNotBlank()) {
             val from = runCatching {
                 val d = java.time.LocalDate.parse(fromDate, java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy"))
@@ -72,7 +73,6 @@ fun TransactionHistoryScreen(viewModel: FinanceViewModel) {
             modifier = Modifier.padding(vertical = 16.dp)
         )
 
-        // Bulk delete confirmation
         if (showBulkDeleteConfirm) {
             AlertDialog(
                 onDismissRequest = { showBulkDeleteConfirm = false },
@@ -94,7 +94,6 @@ fun TransactionHistoryScreen(viewModel: FinanceViewModel) {
             )
         }
 
-        // Selection mode toolbar
         if (selectionMode) {
             Row(Modifier.fillMaxWidth().padding(bottom = 8.dp),
                 Arrangement.SpaceBetween, Alignment.CenterVertically) {
@@ -139,13 +138,11 @@ fun TransactionHistoryScreen(viewModel: FinanceViewModel) {
             }
         }
 
-        // Date range filter
         if (showDateFilter) {
             val today = java.time.LocalDate.now()
             val displayFmt = java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy")
             Card(Modifier.fillMaxWidth().padding(bottom = 8.dp), shape = RoundedCornerShape(12.dp)) {
                 Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    // Quick preset chips
                     Text("Quick Select", style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                     androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -166,7 +163,6 @@ fun TransactionHistoryScreen(viewModel: FinanceViewModel) {
                         }
                     }
                     HorizontalDivider()
-                    // Manual date pickers
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         app.fynlo.ui.components.DatePickerField(
                             value = fromDate, onValueChange = { fromDate = it },
@@ -199,8 +195,7 @@ fun TransactionHistoryScreen(viewModel: FinanceViewModel) {
                 verticalArrangement = Arrangement.spacedBy(4.dp),
                 contentPadding      = PaddingValues(bottom = 100.dp)
             ) {
-                // Group by month, show monthly total
-                val byMonth = filteredHistory.groupBy { it.date.substring(0, 7) } // yyyy-MM
+                val byMonth = filteredHistory.groupBy { it.date.substring(0, 7) }
                 byMonth.keys.sortedByDescending { it }.forEach { month ->
                     val monthTransactions = byMonth[month] ?: emptyList()
                     val monthIncome  = monthTransactions.filter { it.type.equals("income", true) }.sumOf { it.amount }
@@ -217,10 +212,10 @@ fun TransactionHistoryScreen(viewModel: FinanceViewModel) {
                             Row(Modifier.padding(12.dp).fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
                                 Text(monthLabel, style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold))
                                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                    Text("+₹${String.format(locale, "%,.0f", monthIncome)}",
+                                    Text("+${currencySymbol}${String.format(locale, "%,.0f", monthIncome)}",
                                         style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
                                         color = Color(0xFF059669))
-                                    Text("-₹${String.format(locale, "%,.0f", monthExpense)}",
+                                    Text("-${currencySymbol}${String.format(locale, "%,.0f", monthExpense)}",
                                         style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
                                         color = Color(0xFFEF4444))
                                 }
@@ -228,7 +223,6 @@ fun TransactionHistoryScreen(viewModel: FinanceViewModel) {
                         }
                     }
 
-                    // Group by date within month
                     val byDate = monthTransactions.groupBy { it.date }
                     byDate.keys.sortedByDescending { it }.forEach { date ->
                         item {
@@ -242,6 +236,7 @@ fun TransactionHistoryScreen(viewModel: FinanceViewModel) {
                                 txn         = transaction,
                                 isSelected  = transaction.id in selectedIds,
                                 selectionMode = selectionMode,
+                                currencySymbol = currencySymbol,
                                 onLongPress = { selectionMode = true; selectedIds = selectedIds + transaction.id },
                                 onSelect    = {
                                     selectedIds = if (transaction.id in selectedIds)
@@ -267,6 +262,7 @@ fun TransactionItem(
     onEdit: (Transaction) -> Unit = {},
     isSelected: Boolean = false,
     selectionMode: Boolean = false,
+    currencySymbol: String = "₹",
     onLongPress: () -> Unit = {},
     onSelect: () -> Unit = {}
 ) {
@@ -291,7 +287,7 @@ fun TransactionItem(
         AlertDialog(
             onDismissRequest = { showDeleteConfirm = false },
             title = { Text("Delete Transaction?") },
-            text  = { Text("Delete ₹${String.format(java.util.Locale.getDefault(), "%,.0f", txn.amount)} ${txn.category}? This will reverse the account balance.") },
+            text  = { Text("Delete $currencySymbol${String.format(java.util.Locale.getDefault(), "%,.0f", txn.amount)} ${txn.category}? This will reverse the account balance.") },
             confirmButton = {
                 Button(onClick = { onDelete(); showDeleteConfirm = false },
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF4444))) { Text("Delete") }
@@ -327,8 +323,7 @@ fun TransactionItem(
                     modifier = Modifier.padding(start = 8.dp).align(Alignment.CenterVertically)
                 )
             }
-            // Colored left accent bar
-            Box(Modifier.width(4.dp).fillMaxHeight().background(rowColor,
+            Box(Modifier.width(4.dp).height(IntrinsicSize.Max).background(rowColor,
                 RoundedCornerShape(topStart = 12.dp, bottomStart = 12.dp)))
             Column(modifier = Modifier.padding(12.dp).weight(1f)) {
                 Row(
@@ -361,7 +356,7 @@ fun TransactionItem(
 
                     Column(horizontalAlignment = Alignment.End) {
                         Text(
-                            text  = "${amountPrefix}₹ ${String.format(locale, "%,.0f", txn.amount)}",
+                            text  = "${amountPrefix}$currencySymbol ${String.format(locale, "%,.0f", txn.amount)}",
                             style = MaterialTheme.typography.bodyLarge.copy(
                                 fontWeight = FontWeight.ExtraBold, color = rowColor)
                         )
@@ -450,5 +445,3 @@ fun getCategoryIcon(category: String): ImageVector {
         else -> Icons.Default.AccountBalanceWallet
     }
 }
-
-

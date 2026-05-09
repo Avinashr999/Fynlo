@@ -21,14 +21,31 @@ import app.fynlo.data.model.FlowTemplate
         Goal::class,
         Project::class,
         FlowTemplate::class, // new in v2.0 Phase 4
-        RecurringTransaction::class, // new in v2.4
-        NetWorthSnapshot::class        // new in v2.5
+        RecurringTransaction::class,
+        NetWorthSnapshot::class,
+        InvestmentValuation::class
     ],
     version = 8,
     exportSchema = false
 )
 abstract class FynloDatabase : RoomDatabase() {
     abstract fun dao(): FynloDao
+}
+
+val MIGRATION_7_8 = object : Migration(7, 8) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("""
+            CREATE TABLE IF NOT EXISTS `investment_valuations` (
+                `id` TEXT NOT NULL, 
+                `investmentId` TEXT NOT NULL, 
+                `date` TEXT NOT NULL, 
+                `value` REAL NOT NULL, 
+                `notes` TEXT NOT NULL, 
+                `updatedAt` INTEGER NOT NULL, 
+                PRIMARY KEY(`id`)
+            )
+        """.trimIndent())
+    }
 }
 
 /**

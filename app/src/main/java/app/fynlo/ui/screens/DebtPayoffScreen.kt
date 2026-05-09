@@ -20,6 +20,8 @@ import kotlin.math.ceil
 @Composable
 fun DebtPayoffScreen(viewModel: FinanceViewModel) {
     val debts  by viewModel.debts.collectAsState()
+    val currentProject by viewModel.currentProject.collectAsState()
+    val currencySymbol = app.fynlo.logic.CurrencyUtils.symbolFor(currentProject?.currency ?: "INR")
     val locale = remember { Locale.getDefault() }
 
     val activeDebts = debts.filter { it.status != "Cleared" && it.amount > it.paid }
@@ -37,16 +39,15 @@ fun DebtPayoffScreen(viewModel: FinanceViewModel) {
                 }
             }
         } else {
-            // Total summary
             val totalOwed = activeDebts.sumOf { d ->
                 val interest = InterestEngine.calcIntAccrued(d.amount, d.rate, d.date, d.intType, d.due, d.paid)
                 d.amount + interest - d.paid
             }
             Card(Modifier.fillMaxWidth().padding(bottom = 16.dp), RoundedCornerShape(16.dp),
-                CardDefaults.cardColors(Color(0xFFFFEBEE).copy(alpha = 0.5f))) {
+                CardDefaults.cardColors(containerColor = Color(0xFFFFEBEE).copy(alpha = 0.5f))) {
                 Column(Modifier.padding(16.dp)) {
                     Text("Total Remaining", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text("₹ ${String.format(locale, "%,.2f", totalOwed)}",
+                    Text("$currencySymbol ${String.format(locale, "%,.2f", totalOwed)}",
                         style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold),
                         color = Color(0xFFEF4444))
                     Text("Across ${activeDebts.size} active debt(s)", style = MaterialTheme.typography.bodySmall,
@@ -57,7 +58,7 @@ fun DebtPayoffScreen(viewModel: FinanceViewModel) {
             LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp),
                 contentPadding = PaddingValues(bottom = 100.dp)) {
                 items(activeDebts) { debt ->
-                    DebtPayoffCard(debt, locale)
+                    DebtPayoffCard(debt, currencySymbol, locale)
                 }
             }
         }
@@ -65,22 +66,21 @@ fun DebtPayoffScreen(viewModel: FinanceViewModel) {
 }
 
 @Composable
-private fun DebtPayoffCard(debt: Debt, locale: Locale) {
+private fun DebtPayoffCard(debt: Debt, currencySymbol: String, locale: Locale) {
     val interest    = InterestEngine.calcIntAccrued(debt.amount, debt.rate, debt.date, debt.intType, debt.due, debt.paid)
     val outstanding = (debt.amount + interest - debt.paid).coerceAtLeast(0.0)
     val monthlyRate = debt.rate / 100.0 / 12.0
 
-    // Estimate months remaining based on average monthly payment so far
     val today = java.time.LocalDate.now()
     val loanDate = runCatching { java.time.LocalDate.parse(debt.date, java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd")) }.getOrDefault(today)
-    val monthsElapsed = ((java.time.temporal.ChronoUnit.DAYS.between(loanDate, today)) / 30.0).coerceAtLeast(1.0)
+    val daysBetween = java.time.temporal.ChronoUnit.DAYS.between(loanDate, today).toDouble().coerceAtLeast(1.0)
+    val monthsElapsed = daysBetween / 30.0
     val avgMonthlyPayment = if (monthsElapsed > 0) debt.paid / monthsElapsed else 0.0
 
     val monthsRemaining = when {
         avgMonthlyPayment <= 0 -> null
         monthlyRate == 0.0     -> ceil(outstanding / avgMonthlyPayment).toInt()
         else -> {
-            // n = -log(1 - (r * P) / EMI) / log(1 + r)
             val ratio = monthlyRate * outstanding / avgMonthlyPayment
             if (ratio >= 1.0) null
             else ceil(-Math.log(1.0 - ratio) / Math.log(1.0 + monthlyRate)).toInt()
@@ -94,7 +94,7 @@ private fun DebtPayoffCard(debt: Debt, locale: Locale) {
             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
                 Text(debt.name, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
                 Surface(color = Color(0xFFFFEBEE), shape = RoundedCornerShape(8.dp)) {
-                    Text("₹ ${String.format(locale, "%,.0f", outstanding)}",
+                    Text("$currencySymbol ${String.format(locale, "%,.0f", outstanding)}",
                         style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                         color = Color(0xFFEF4444), modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
                 }
@@ -106,16 +106,16 @@ private fun DebtPayoffCard(debt: Debt, locale: Locale) {
             Spacer(Modifier.height(4.dp))
             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
                 Text("${(progress * 100).toInt()}% paid", style = MaterialTheme.typography.labelSmall, color = Color(0xFF059669))
-                Text("₹ ${String.format(locale, "%,.0f", debt.paid)} paid", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("$currencySymbol ${String.format(locale, "%,.0f", debt.paid)} paid", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Spacer(Modifier.height(8.dp))
             Row(Modifier.fillMaxWidth(), Arrangement.spacedBy(12.dp)) {
                 InfoPill("Rate", "${debt.rate}%", Modifier.weight(1f))
-                InfoPill("Interest", "₹${String.format(locale, "%,.0f", interest)}", Modifier.weight(1f))
+                InfoPill("Interest", "$currencySymbol${String.format(locale, "%,.0f", interest)}", Modifier.weight(1f))
                 if (monthsRemaining != null) {
                     InfoPill("Est. Payoff", "$monthsRemaining mo", Modifier.weight(1f))
                 } else {
-                    InfoPill("Avg/Month", if (avgMonthlyPayment > 0) "₹${String.format(locale, "%,.0f", avgMonthlyPayment)}" else "No payments yet", Modifier.weight(1f))
+                    InfoPill("Avg/Month", if (avgMonthlyPayment > 0) "$currencySymbol${String.format(locale, "%,.0f", avgMonthlyPayment)}" else "No payments yet", Modifier.weight(1f))
                 }
             }
         }
@@ -131,11 +131,3 @@ private fun InfoPill(label: String, value: String, modifier: Modifier) {
         }
     }
 }
-
-
-
-
-
-
-
-

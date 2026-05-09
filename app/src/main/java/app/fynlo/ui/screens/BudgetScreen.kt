@@ -25,10 +25,11 @@ import java.util.Locale
 fun BudgetScreen(viewModel: FinanceViewModel) {
     val budgets  by viewModel.budgets.collectAsState()
     val expenses by viewModel.expenseAnalytics.collectAsState()
+    val currentProject by viewModel.currentProject.collectAsState()
+    val currencySymbol = app.fynlo.logic.CurrencyUtils.symbolFor(currentProject?.currency ?: "INR")
     val locale   = remember { Locale.getDefault() }
     var showAddDialog by remember { mutableStateOf(false) }
 
-    // Days remaining in current month
     val today         = LocalDate.now()
     val daysInMonth   = today.lengthOfMonth()
     val daysRemaining = daysInMonth - today.dayOfMonth
@@ -36,6 +37,7 @@ fun BudgetScreen(viewModel: FinanceViewModel) {
 
     if (showAddDialog) {
         AddBudgetDialog(
+            currencySymbol = currencySymbol,
             onDismiss = { showAddDialog = false },
             onConfirm = { budget ->
                 viewModel.addBudget(budget)
@@ -60,7 +62,6 @@ fun BudgetScreen(viewModel: FinanceViewModel) {
                 }
             }
 
-            // Overall summary
             if (budgets.isNotEmpty()) {
                 item {
                     val totalLimit   = budgets.sumOf { it.limitAmount }
@@ -73,15 +74,15 @@ fun BudgetScreen(viewModel: FinanceViewModel) {
                     }
 
                     Card(Modifier.fillMaxWidth(), RoundedCornerShape(16.dp),
-                        CardDefaults.cardColors(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f))) {
+                        CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f))) {
                         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Text("This Month's Overview", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold))
                             Row(Modifier.fillMaxWidth(), Arrangement.spacedBy(8.dp)) {
-                                OverviewChip("Total Budget", "₹${String.format(locale, "%,.0f", totalLimit)}",
+                                OverviewChip("Total Budget", "$currencySymbol${String.format(locale, "%,.0f", totalLimit)}",
                                     MaterialTheme.colorScheme.primary, Modifier.weight(1f))
-                                OverviewChip("Spent", "₹${String.format(locale, "%,.0f", totalSpent)}",
+                                OverviewChip("Spent", "$currencySymbol${String.format(locale, "%,.0f", totalSpent)}",
                                     if (totalSpent > totalLimit) Color(0xFFEF4444) else Color(0xFF059669), Modifier.weight(1f))
-                                OverviewChip("Remaining", "₹${String.format(locale, "%,.0f", totalRemain)}",
+                                OverviewChip("Remaining", "$currencySymbol${String.format(locale, "%,.0f", totalRemain)}",
                                     if (totalRemain < 0) Color(0xFFEF4444) else MaterialTheme.colorScheme.primary, Modifier.weight(1f))
                             }
                             if (overBudget > 0 || nearLimit > 0) {
@@ -125,14 +126,13 @@ fun BudgetScreen(viewModel: FinanceViewModel) {
                     }
                 }
             } else {
-                // Sort: exceeded first, then near limit, then under budget
                 val sorted = budgets.sortedByDescending { b ->
                     val pct = (expenses[b.category] ?: 0.0) / b.limitAmount
                     pct
                 }
                 items(sorted) { budget ->
                     val actualSpent = expenses[budget.category] ?: 0.0
-                    BudgetCard(budget, actualSpent, daysRemaining, daysPassed, locale,
+                    BudgetCard(budget, actualSpent, daysRemaining, daysPassed, currencySymbol, locale,
                         onDelete = { viewModel.deleteBudget(budget) })
                 }
             }
@@ -154,6 +154,7 @@ fun BudgetCard(
     actualSpent: Double,
     daysRemaining: Int,
     daysPassed: Int,
+    currencySymbol: String,
     locale: Locale,
     onDelete: () -> Unit
 ) {
@@ -173,14 +174,10 @@ fun BudgetCard(
         else        -> MaterialTheme.colorScheme.primary
     }
 
-    Card(Modifier.fillMaxWidth(), RoundedCornerShape(16.dp),
-        ) {
+    Card(Modifier.fillMaxWidth(), RoundedCornerShape(16.dp)) {
         Column(Modifier.padding(16.dp)) {
-
-            // Header row
             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    // Alert badge
                     if (isExceeded) {
                         Surface(shape = RoundedCornerShape(8.dp), color = Color(0xFFEF4444).copy(alpha = 0.15f)) {
                             Text("EXCEEDED", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
@@ -201,7 +198,6 @@ fun BudgetCard(
 
             Spacer(Modifier.height(8.dp))
 
-            // Progress bar
             LinearProgressIndicator(
                 progress = { progress },
                 modifier = Modifier.fillMaxWidth().height(10.dp),
@@ -211,35 +207,32 @@ fun BudgetCard(
 
             Spacer(Modifier.height(6.dp))
 
-            // Spent / Limit
             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
-                Text("₹${String.format(locale, "%,.0f", actualSpent)} spent",
+                Text("$currencySymbol${String.format(locale, "%,.0f", actualSpent)} spent",
                     style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold))
-                Text("$pct% of ₹${String.format(locale, "%,.0f", budget.limitAmount)}",
+                Text("$pct% of $currencySymbol${String.format(locale, "%,.0f", budget.limitAmount)}",
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
 
             Spacer(Modifier.height(8.dp))
 
-            // Info strip
             Surface(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f), shape = RoundedCornerShape(8.dp)) {
                 Row(Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 6.dp), Arrangement.SpaceBetween) {
-                    InfoItem("Remaining", if (isExceeded) "-₹${String.format(locale, "%,.0f", -remaining)}"
-                        else "₹${String.format(locale, "%,.0f", remaining)}",
+                    InfoItem("Remaining", if (isExceeded) "-$currencySymbol${String.format(locale, "%,.0f", -remaining)}"
+                        else "$currencySymbol${String.format(locale, "%,.0f", remaining)}",
                         if (isExceeded) Color(0xFFEF4444) else Color(0xFF059669))
-                    InfoItem("Daily Budget", "₹${String.format(locale, "%,.0f", dailyBudget)}",
+                    InfoItem("Daily Budget", "$currencySymbol${String.format(locale, "%,.0f", dailyBudget)}",
                         MaterialTheme.colorScheme.onSurfaceVariant)
-                    InfoItem("Daily Spent", "₹${String.format(locale, "%,.0f", dailySpent)}",
+                    InfoItem("Daily Spent", "$currencySymbol${String.format(locale, "%,.0f", dailySpent)}",
                         if (dailySpent > dailyBudget) Color(0xFFEF4444) else MaterialTheme.colorScheme.onSurfaceVariant)
-                    InfoItem("Projected", "₹${String.format(locale, "%,.0f", projectedEnd)}",
+                    InfoItem("Projected", "$currencySymbol${String.format(locale, "%,.0f", projectedEnd)}",
                         if (projectedEnd > budget.limitAmount) Color(0xFFEF4444) else Color(0xFF059669))
                 }
             }
 
-            // Projected overspend warning
             if (projectedEnd > budget.limitAmount && !isExceeded) {
                 Spacer(Modifier.height(4.dp))
-                Text("⚠ At this rate you'll exceed by ₹${String.format(locale, "%,.0f", projectedEnd - budget.limitAmount)} this month",
+                Text("⚠ At this rate you'll exceed by $currencySymbol${String.format(locale, "%,.0f", projectedEnd - budget.limitAmount)} this month",
                     style = MaterialTheme.typography.labelSmall, color = Color(0xFFF59E0B))
             }
         }
@@ -265,19 +258,17 @@ private fun OverviewChip(label: String, value: String, color: Color, modifier: M
 }
 
 @Composable
-fun AddBudgetDialog(onDismiss: () -> Unit, onConfirm: (Budget) -> Unit) {
+fun AddBudgetDialog(currencySymbol: String, onDismiss: () -> Unit, onConfirm: (Budget) -> Unit) {
     var category by remember { mutableStateOf("") }
     var limit    by remember { mutableStateOf("") }
     val categories = listOf("Food", "Fuel", "Shopping", "Bills", "Entertainment",
         "Health", "Education", "Transport", "Rent", "Other")
-    var expanded by remember { mutableStateOf(false) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Set Category Limit") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                // Category quick-select
                 androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     items(categories.size) { i ->
                         FilterChip(selected = category == categories[i], onClick = { category = categories[i] },
@@ -289,7 +280,7 @@ fun AddBudgetDialog(onDismiss: () -> Unit, onConfirm: (Budget) -> Unit) {
                     modifier = androidx.compose.ui.Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp))
                 OutlinedTextField(value = limit, onValueChange = { limit = it },
-                    label = { Text("Monthly Limit (₹)") }, singleLine = true,
+                    label = { Text("Monthly Limit ($currencySymbol)") }, singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     modifier = androidx.compose.ui.Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp))
@@ -304,12 +295,3 @@ fun AddBudgetDialog(onDismiss: () -> Unit, onConfirm: (Budget) -> Unit) {
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
     )
 }
-
-
-
-
-
-
-
-
-

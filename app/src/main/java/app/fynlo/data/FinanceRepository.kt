@@ -114,6 +114,25 @@ class FinanceRepository(
                     dao.updateAccountBalance(new.toAcct,    new.amount)
                 }
             }
+
+            // 3. Sync Borrower/Debt paid amounts if it's a repayment edit
+            if (old.category == "Loan Repayment" && old.ref.isNotBlank()) {
+                dao.updateBorrowerPaidAmount(old.ref, -old.amount)
+            }
+            if (new.category == "Loan Repayment" && new.ref.isNotBlank()) {
+                dao.updateBorrowerPaidAmount(new.ref, new.amount)
+                val b = dao.getBorrowerById(new.ref)
+                sync { b?.let { setBorrower(it) } }
+            }
+            if (old.category == "Debt Repayment" && old.ref.isNotBlank()) {
+                dao.updateDebtPaidAmount(old.ref, -old.amount)
+            }
+            if (new.category == "Debt Repayment" && new.ref.isNotBlank()) {
+                dao.updateDebtPaidAmount(new.ref, new.amount)
+                val d = dao.getDebtById(new.ref)
+                sync { d?.let { setDebt(it) } }
+            }
+
             dao.insertTransaction(new)
             sync { setTransaction(new) }
         }
@@ -133,6 +152,18 @@ class FinanceRepository(
                 "income"   -> dao.updateAccountBalance(transaction.toAcct,   -transaction.amount)
                 "transfer" -> { dao.updateAccountBalance(transaction.fromAcct, transaction.amount); dao.updateAccountBalance(transaction.toAcct, -transaction.amount) }
             }
+
+            // Handle payment reversals if transaction belongs to a loan/debt
+            if (transaction.category == "Loan Repayment" && transaction.ref.isNotBlank()) {
+                dao.updateBorrowerPaidAmount(transaction.ref, -transaction.amount)
+                val b = dao.getBorrowerById(transaction.ref)
+                sync { b?.let { setBorrower(it) } }
+            } else if (transaction.category == "Debt Repayment" && transaction.ref.isNotBlank()) {
+                dao.updateDebtPaidAmount(transaction.ref, -transaction.amount)
+                val d = dao.getDebtById(transaction.ref)
+                sync { d?.let { setDebt(it) } }
+            }
+
             dao.deleteTransaction(transaction)
         }
         // Sync reversed account balances AFTER withTransaction commits
@@ -297,6 +328,115 @@ class FinanceRepository(
         sync { setInvestment(updated) }
     }
 
+    suspend fun executeLinkedInvestment(
+        investment: Investment,
+        fundingSourceType: String, // "Account", "Debt", "Already Settled"
+        sourceName: String,
+        debtDetails: Debt? = null
+    ) {
+        db.withTransaction {
+            val pid = investment.projectId
+            
+            // 1. Record Investment Asset
+            dao.insertInvestment(investment)
+            
+            // 2. Handle Funding Source
+            when (fundingSourceType) {
+                "Account" -> {
+                    // Deduct from existing bank/cash
+                    dao.updateAccountBalance(sourceName, -investment.invested)
+                    val t = Transaction(
+                        id = java.util.UUID.randomUUID().toString(),
+                        date = investment.date,
+                        type = "Expense",
+                        amount = investment.invested,
+                        fromAcct = sourceName,
+                        category = "Investment",
+                        desc = "Invested in ${investment.name}",
+                        ref = investment.id,
+                        projectId = pid,
+                        updatedAt = System.currentTimeMillis()
+                    )
+                    dao.insertTransaction(t)
+                    sync { setTransaction(t) }
+                    syncAccountByName(sourceName)
+                }
+                "Debt" -> {
+                    // Record a new Debt liability
+                    debtDetails?.let {
+                        val d = it.copy(updatedAt = System.currentTimeMillis())
+                        dao.insertDebt(d)
+                        val t = Transaction(
+                            id = java.util.UUID.randomUUID().toString(),
+                            date = investment.date,
+                            type = "Transfer", // Debt -> Investment is a balance sheet move
+                            amount = investment.invested,
+                            fromAcct = "Loan: ${d.name}",
+                            toAcct = "Investment: ${investment.name}",
+                            category = "Debt",
+                            desc = "Investment funded by loan from ${d.name}",
+                            ref = d.id,
+                            projectId = pid,
+                            updatedAt = System.currentTimeMillis()
+                        )
+                        dao.insertTransaction(t)
+                        sync { 
+                            setDebt(d)
+                            setTransaction(t) 
+                        }
+                    }
+                }
+                "Already Settled" -> {
+                    // Historical entry - just a journal record for traceability
+                    val t = Transaction(
+                        id = java.util.UUID.randomUUID().toString(),
+                        date = investment.date,
+                        type = "Info", 
+                        amount = investment.invested,
+                        category = "Historical Record",
+                        desc = "Asset established long back",
+                        ref = investment.id,
+                        projectId = pid,
+                        updatedAt = System.currentTimeMillis()
+                    )
+                    dao.insertTransaction(t)
+                    sync { setTransaction(t) }
+                }
+            }
+            
+            // 3. Initial Valuation
+            val v = InvestmentValuation(
+                id = java.util.UUID.randomUUID().toString(),
+                investmentId = investment.id,
+                date = investment.date,
+                value = investment.invested,
+                notes = "Initial purchase"
+            )
+            dao.insertValuation(v)
+            
+            sync { 
+                setInvestment(investment)
+                setValuation(v)
+            }
+        }
+    }
+
+    suspend fun addValuation(v: InvestmentValuation) {
+        db.withTransaction {
+            dao.insertValuation(v)
+            // Update investment currentVal for fast dashboard access
+            val inv = dao.getAllInvestments().first().find { it.id == v.investmentId }
+            inv?.let {
+                val updated = it.copy(currentVal = v.value, updatedAt = System.currentTimeMillis())
+                dao.insertInvestment(updated)
+                sync { setInvestment(updated) }
+            }
+            sync { setValuation(v) }
+        }
+    }
+
+    fun getValuationsForInvestment(invId: String) = dao.getValuationsForInvestment(invId)
+
     suspend fun deleteInvestment(investment: Investment) {
         // Legacy shim — use deleteInvestmentOnly, deleteInvestmentAndReverseAccount,
         // or deleteInvestmentAndLinkedLoan from the ViewModel based on user choice.
@@ -323,9 +463,28 @@ class FinanceRepository(
             dao.insertPayment(p)
             dao.updateAccountBalance(destinationAccount, payment.amount)
             dao.updateBorrowerPaidAmount(payment.loanId, payment.amount)
-            val t = Transaction(java.util.UUID.randomUUID().toString(), payment.date, "Income", payment.amount, toAcct = destinationAccount, category = "Loan Repayment", desc = "Received from ${payment.name}", notes = payment.notes, projectId = projectId, updatedAt = System.currentTimeMillis())
+            val t = Transaction(
+                id = java.util.UUID.randomUUID().toString(),
+                date = payment.date,
+                type = "Income",
+                amount = payment.amount,
+                toAcct = destinationAccount,
+                category = "Loan Repayment",
+                desc = "Received from ${payment.name}",
+                ref = payment.loanId, // link to borrower
+                notes = payment.notes,
+                projectId = projectId,
+                updatedAt = System.currentTimeMillis()
+            )
             dao.insertTransaction(t)
-            sync { setPayment(p); setTransaction(t) }
+            
+            // Sync the updated borrower too!
+            val updatedBorrower = dao.getBorrowerById(payment.loanId)
+            sync { 
+                setPayment(p)
+                setTransaction(t)
+                updatedBorrower?.let { setBorrower(it) }
+            }
         }
         syncAccountByName(destinationAccount)
     }
@@ -335,9 +494,28 @@ class FinanceRepository(
             dao.insertDebtPayment(p)
             dao.updateAccountBalance(sourceAccount, -payment.amount)
             dao.updateDebtPaidAmount(payment.debtId, payment.amount)
-            val t = Transaction(java.util.UUID.randomUUID().toString(), payment.date, "Expense", payment.amount, fromAcct = sourceAccount, category = "Debt Repayment", desc = "Paid for ${payment.name}", notes = payment.notes, projectId = projectId, updatedAt = System.currentTimeMillis())
+            val t = Transaction(
+                id = java.util.UUID.randomUUID().toString(),
+                date = payment.date,
+                type = "Expense",
+                amount = payment.amount,
+                fromAcct = sourceAccount,
+                category = "Debt Repayment",
+                desc = "Paid for ${payment.name}",
+                ref = payment.debtId, // link to debt
+                notes = payment.notes,
+                projectId = projectId,
+                updatedAt = System.currentTimeMillis()
+            )
             dao.insertTransaction(t)
-            sync { setDebtPayment(p); setTransaction(t) }
+            
+            // Sync the updated debt too!
+            val updatedDebt = dao.getDebtById(payment.debtId)
+            sync { 
+                setDebtPayment(p)
+                setTransaction(t)
+                updatedDebt?.let { setDebt(it) }
+            }
         }
         syncAccountByName(sourceAccount)
     }
@@ -472,6 +650,47 @@ class FinanceRepository(
             android.util.Log.e("Backup", "takeBackupIfNeeded failed: ${e.message}", e)
         }
     }
+
+    /**
+     * Permanent Wipe: Deletes ALL data for this user from both Room and Firestore.
+     * This ensures a completely clean state for testing.
+     */
+    suspend fun wipeAllData() {
+        val uid = syncManager.userId
+        if (uid.isBlank()) return
+        val fs = com.google.firebase.firestore.FirebaseFirestore.getInstance()
+        val userDoc = fs.collection("users").document(uid)
+
+        val collections = listOf(
+            "accounts", "transactions", "borrowers", "investments", "debts",
+            "people", "payments", "debt_payments", "budgets", "goals",
+            "projects", "backup_meta", "backups", "net_worth_snapshots"
+        )
+
+        db.withTransaction {
+            // 1. Wipe Room
+            dao.deleteAllAccounts()
+            dao.deleteAllTransactions()
+            dao.deleteAllBorrowers()
+            dao.deleteAllInvestments()
+            dao.deleteAllDebts()
+            dao.deleteAllPeople()
+            dao.deleteAllProjects()
+            dao.deleteAllBudgets()
+            dao.deleteAllGoals()
+        }
+
+        // 2. Wipe Firestore (Collection by Collection)
+        collections.forEach { colName ->
+            try {
+                val snapshot = userDoc.collection(colName).get().await()
+                snapshot.documents.forEach { it.reference.delete().await() }
+            } catch (e: Exception) {
+                android.util.Log.e("Wipe", "Failed to wipe $colName: ${e.message}")
+            }
+        }
+    }
+
     suspend fun getAllDataAsJson(): String {
         val data = BackupData(dao.getAllAccounts().first(), dao.getAllTransactions().first(), dao.getAllBorrowers().first(), dao.getAllInvestments().first(), dao.getAllDebts().first(), dao.getAllPeople().first(), dao.getAllProjects().first())
         return Json.encodeToString(data)
