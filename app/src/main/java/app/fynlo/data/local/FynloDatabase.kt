@@ -162,16 +162,3 @@ val MIGRATION_6_7 = object : Migration(6, 7) {
         """.trimIndent())
     }
 }
-
-/**
- * Migration 7 → 8
- * Adds funding source tracking to the investments table.
- * Every existing investment gets empty strings — safe, no data loss.
- */
-val MIGRATION_7_8 = object : Migration(7, 8) {
-    override fun migrate(db: SupportSQLiteDatabase) {
-        db.execSQL("ALTER TABLE `investments` ADD COLUMN `fundingSource` TEXT NOT NULL DEFAULT ''")
-        db.execSQL("ALTER TABLE `investments` ADD COLUMN `sourceType`    TEXT NOT NULL DEFAULT ''")
-        db.execSQL("ALTER TABLE `investments` ADD COLUMN `linkedDebtId`  TEXT NOT NULL DEFAULT ''")
-    }
-}
