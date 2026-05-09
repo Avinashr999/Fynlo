@@ -102,6 +102,14 @@ class FynloApplication : Application() {
 
         appScope.launch {
             try {
+                // Push all local Room data to Firestore first (catches offline writes)
+                try {
+                    repository.pushAllLocalToFirestore()
+                    Log.d("FynloApp", "Local→Firestore push completed on sign-in")
+                } catch (e: Exception) {
+                    Log.e("FynloApp", "pushAllLocal failed (non-fatal): ${e.message}")
+                }
+
                 // Poll up to 20 seconds for Firestore to populate Room
                 var waited = 0
                 while (database.dao().getAllAccounts().first().isEmpty() && waited < 20000) {
@@ -109,7 +117,7 @@ class FynloApplication : Application() {
                     waited += 500
                 }
 
-                // Only normalize projectIds — never push on startup
+                // Normalize projectIds if needed
                 try {
                     val allProjects = database.dao().getAllProjects().first()
                     val firstProject = allProjects.firstOrNull()

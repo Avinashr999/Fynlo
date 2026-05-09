@@ -42,9 +42,14 @@ class FinanceRepository(
     val allProjects: Flow<List<Project>>         = dao.getAllProjects()
     private val ioScope = CoroutineScope(Dispatchers.IO)
     fun sync(block: suspend FirestoreRepository.() -> Unit) {
+        // Don't attempt Firestore writes without a real authenticated user
+        if (syncManager.userId.isEmpty()) return
         ioScope.launch {
             syncManager.setSyncing()
             runCatching { firestore.block() }
+                .onFailure { e ->
+                    android.util.Log.e("FynloSync", "Firestore write failed: ${e.message}")
+                }
             syncManager.setSynced()
         }
     }
@@ -526,6 +531,45 @@ class FinanceRepository(
     suspend fun insertGoal(goal: Goal) { val g = goal.copy(updatedAt = System.currentTimeMillis()); dao.insertGoal(g); sync { setGoal(g) } }
     suspend fun deleteGoal(goal: Goal) { dao.deleteGoal(goal); sync { deleteGoal(goal.id) } }
     fun getPaymentsForLoan(loanId: String) = dao.getPaymentsForLoan(loanId)
+
+    /**
+     * Pushes ALL local Room data to Firestore.
+     * Called on sign-in to ensure data written offline reaches the cloud.
+     * Safe to call multiple times — Firestore SET is idempotent.
+     */
+    suspend fun pushAllLocalToFirestore() {
+        val uid = syncManager.userId
+        if (uid.isEmpty()) return
+        val fs = firestore
+        android.util.Log.d("FynloSync", "Starting full local→Firestore push for user $uid")
+
+        var pushed = 0
+        var failed = 0
+
+        suspend fun push(label: String, block: suspend () -> Unit) {
+            runCatching { block() }
+                .onSuccess { pushed++ }
+                .onFailure { e ->
+                    failed++
+                    android.util.Log.e("FynloSync", "Push failed [$label]: ${e.message}")
+                }
+        }
+
+        dao.getAllBorrowers().first().forEach    { push("borrower:${it.id}")    { fs.setBorrower(it) } }
+        dao.getAllTransactions().first().forEach { push("txn:${it.id}")         { fs.setTransaction(it) } }
+        dao.getAllAccounts().first().forEach     { push("account:${it.id}")     { fs.setAccount(it) } }
+        dao.getAllInvestments().first().forEach  { push("investment:${it.id}")  { fs.setInvestment(it) } }
+        dao.getAllDebts().first().forEach        { push("debt:${it.id}")        { fs.setDebt(it) } }
+        dao.getAllPayments().first().forEach     { push("payment:${it.id}")     { fs.setPayment(it) } }
+        dao.getAllDebtPayments().first().forEach { push("debtPay:${it.id}")     { fs.setDebtPayment(it) } }
+        dao.getAllPeople().first().forEach       { push("person:${it.id}")      { fs.setPerson(it) } }
+        dao.getAllBudgets().first().forEach      { push("budget:${it.category}") { fs.setBudget(it) } }
+        dao.getAllGoals().first().forEach        { push("goal:${it.id}")        { fs.setGoal(it) } }
+        dao.getAllProjects().first().forEach     { push("project:${it.id}")     { fs.setProject(it) } }
+
+        android.util.Log.d("FynloSync", "Full push complete: $pushed succeeded, $failed failed")
+        if (failed == 0) syncManager.setSynced() else syncManager.setSyncing()
+    }
 
     /**
      * Normalizes all legacy records (empty or "personal" projectId) to the
