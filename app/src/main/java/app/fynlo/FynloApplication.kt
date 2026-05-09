@@ -111,8 +111,28 @@ class FynloApplication : Application() {
 
                 // Only normalize projectIds — never push on startup
                 try {
-                    val firstProject = database.dao().getAllProjects().first().firstOrNull()
-                    if (firstProject != null && firstProject.id != "personal") {
+                    val allProjects = database.dao().getAllProjects().first()
+                    val firstProject = allProjects.firstOrNull()
+
+                    // ── Recovery: if projects table is empty, create one from orphaned data ──
+                    if (allProjects.isEmpty()) {
+                        // Find what projectId is used in existing data
+                        val orphanedPid = database.dao().getAllAccounts().first()
+                            .firstOrNull()?.projectId?.takeIf { it.isNotBlank() && it != "personal" }
+                            ?: database.dao().getAllBorrowers().first()
+                            .firstOrNull()?.projectId?.takeIf { it.isNotBlank() && it != "personal" }
+
+                        val recoveryProject = app.fynlo.data.model.Project(
+                            id        = orphanedPid ?: "personal",
+                            name      = "Personal",
+                            icon      = "person",
+                            color     = "#3b82f6",
+                            currency  = "INR",
+                            createdAt = ""
+                        )
+                        database.dao().insertProject(recoveryProject)
+                        Log.e("FynloApp", "Recovered missing project record: ${recoveryProject.id}")
+                    } else if (firstProject != null && firstProject.id != "personal") {
                         val accounts = database.dao().getAllAccounts().first()
                         if (accounts.isNotEmpty()) {
                             repository.normalizeLegacyProjectIds(firstProject.id)

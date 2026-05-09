@@ -69,12 +69,12 @@ class FinanceViewModel(private val repository: FinanceRepository) : ViewModel() 
 
     val borrowers: StateFlow<List<Borrower>> =
         combine(repository.allBorrowers, _currentProjectId) { list, pid ->
-            list.filter { it.projectId == pid || it.projectId.isEmpty() || it.projectId == "personal" }
+            list.filter { pid.isEmpty() || it.projectId == pid || it.projectId.isEmpty() || it.projectId == "personal" }
         }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     val transactions: StateFlow<List<Transaction>> =
         combine(repository.allTransactions, _currentProjectId) { list, pid ->
-            list.filter { it.projectId == pid || it.projectId.isEmpty() || it.projectId == "personal" }
+            list.filter { pid.isEmpty() || it.projectId == pid || it.projectId.isEmpty() || it.projectId == "personal" }
         }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     val allAccountsUnfiltered: StateFlow<List<Account>> =
@@ -83,17 +83,17 @@ class FinanceViewModel(private val repository: FinanceRepository) : ViewModel() 
 
     val accounts: StateFlow<List<Account>> =
         combine(repository.allAccounts, _currentProjectId) { list, pid ->
-            list.filter { it.projectId == pid || it.projectId.isEmpty() || it.projectId == "personal" }
+            list.filter { pid.isEmpty() || it.projectId == pid || it.projectId.isEmpty() || it.projectId == "personal" }
         }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     val investments: StateFlow<List<Investment>> =
         combine(repository.allInvestments, _currentProjectId) { list, pid ->
-            list.filter { it.projectId == pid || it.projectId.isEmpty() || it.projectId == "personal" }
+            list.filter { pid.isEmpty() || it.projectId == pid || it.projectId.isEmpty() || it.projectId == "personal" }
         }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     val debts: StateFlow<List<Debt>> =
         combine(repository.allDebts, _currentProjectId) { list, pid ->
-            list.filter { it.projectId == pid || it.projectId.isEmpty() || it.projectId == "personal" }
+            list.filter { pid.isEmpty() || it.projectId == pid || it.projectId.isEmpty() || it.projectId == "personal" }
         }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     val payments: StateFlow<List<Payment>> =
@@ -104,17 +104,17 @@ class FinanceViewModel(private val repository: FinanceRepository) : ViewModel() 
 
     val people: StateFlow<List<Person>> =
         combine(repository.allPeople, _currentProjectId) { list, pid ->
-            list.filter { it.projectId == pid || it.projectId.isEmpty() || it.projectId == "personal" }
+            list.filter { pid.isEmpty() || it.projectId == pid || it.projectId.isEmpty() || it.projectId == "personal" }
         }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     val budgets: StateFlow<List<Budget>> =
         combine(repository.allBudgets, _currentProjectId) { list, pid ->
-            list.filter { it.projectId == pid || it.projectId.isEmpty() || it.projectId == "personal" }
+            list.filter { pid.isEmpty() || it.projectId == pid || it.projectId.isEmpty() || it.projectId == "personal" }
         }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     val goals: StateFlow<List<Goal>> =
         combine(repository.allGoals, _currentProjectId) { list, pid ->
-            list.filter { it.projectId == pid || it.projectId.isEmpty() || it.projectId == "personal" }
+            list.filter { pid.isEmpty() || it.projectId == pid || it.projectId.isEmpty() || it.projectId == "personal" }
         }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     private val _searchQuery = MutableStateFlow("")
