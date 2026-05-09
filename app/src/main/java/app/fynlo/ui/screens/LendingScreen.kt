@@ -44,6 +44,7 @@ import java.util.Locale
 @Composable
 fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> Unit = {}) {
     val borrowers     by viewModel.borrowers.collectAsState()
+    val accounts      by viewModel.accounts.collectAsState()
     val people        by viewModel.people.collectAsState()  // for phone lookup
     val currentProject by viewModel.currentProject.collectAsState()
     val currencySymbol = app.fynlo.logic.CurrencyUtils.symbolFor(currentProject?.currency ?: "INR")
@@ -91,6 +92,7 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
     if (collectingForBorrower != null) {
         CollectPaymentDialog(
             borrower  = collectingForBorrower!!,
+            accounts  = accounts,
             onDismiss = { collectingForBorrower = null },
             onConfirm = { payment, dest ->
                 viewModel.collectLoanPayment(payment, dest)

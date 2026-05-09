@@ -32,6 +32,7 @@ import java.util.Locale
 @Composable
 fun DebtScreen(viewModel: FinanceViewModel) {
     val debts by viewModel.debts.collectAsState()
+    val accounts by viewModel.accounts.collectAsState()
     val currentProject by viewModel.currentProject.collectAsState()
     val currencySymbol = app.fynlo.logic.CurrencyUtils.symbolFor(currentProject?.currency ?: "INR")
     var searchQuery by remember { mutableStateOf("") }
@@ -66,6 +67,7 @@ fun DebtScreen(viewModel: FinanceViewModel) {
     if (payingDebt != null) {
         PayDebtDialog(
             debt = payingDebt!!,
+            accounts = accounts,
             onDismiss = { payingDebt = null },
             onConfirm = { payment: DebtPayment, source: String ->
                 viewModel.payDebt(payment, source)

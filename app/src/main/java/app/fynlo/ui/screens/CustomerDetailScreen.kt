@@ -38,6 +38,7 @@ fun CustomerDetailScreen(
     val borrowers by viewModel.borrowers.collectAsState()
     // FIX 1: Use the payments table (loanId FK) instead of filtering transactions by name
     val allPayments by viewModel.payments.collectAsState()
+    val accounts by viewModel.accounts.collectAsState()
 
     val borrower = borrowers.find { it.id == borrowerId }
 
@@ -82,6 +83,7 @@ fun CustomerDetailScreen(
     if (showCollectDialog) {
         CollectPaymentDialog(
             borrower = borrower,
+            accounts = accounts,
             onDismiss = { showCollectDialog = false },
             onConfirm = { payment, dest ->
                 viewModel.collectLoanPayment(payment, dest)
