@@ -36,9 +36,10 @@ fun CustomerDetailScreen(
     onNavigateBack: () -> Unit
 ) {
     val borrowers by viewModel.borrowers.collectAsState()
-    // FIX 1: Use the payments table (loanId FK) instead of filtering transactions by name
     val allPayments by viewModel.payments.collectAsState()
     val accounts by viewModel.accounts.collectAsState()
+    val currentProject by viewModel.currentProject.collectAsState()
+    val currencySymbol = app.fynlo.logic.CurrencyUtils.symbolFor(currentProject?.currency ?: "INR")
 
     val borrower = borrowers.find { it.id == borrowerId }
 
@@ -49,7 +50,6 @@ fun CustomerDetailScreen(
         return
     }
 
-    // Properly filtered payments for this specific loan
     val loanPayments = allPayments
         .filter { it.loanId == borrowerId }
         .sortedByDescending { it.date }
@@ -61,11 +61,8 @@ fun CustomerDetailScreen(
 
     val context = androidx.compose.ui.platform.LocalContext.current
 
-    // FIX 2: Edit dialog state
     var showEditDialog by remember { mutableStateOf(false) }
-    // Collect payment from detail screen
     var showCollectDialog by remember { mutableStateOf(false) }
-    // FIX 3: Delete confirmation state
     var showDeleteConfirm by remember { mutableStateOf(false) }
 
     if (showEditDialog) {
@@ -92,7 +89,6 @@ fun CustomerDetailScreen(
         )
     }
 
-    // FIX 3: Confirmation dialog before delete
     if (showDeleteConfirm) {
         AlertDialog(
             onDismissRequest = { showDeleteConfirm = false },
@@ -129,7 +125,6 @@ fun CustomerDetailScreen(
                     }
                 },
                 actions = {
-                    // FIX 2: Edit button now functional
                     IconButton(onClick = { showEditDialog = true }) {
                         Icon(Icons.Default.Edit, contentDescription = "Edit")
                     }
@@ -156,7 +151,6 @@ fun CustomerDetailScreen(
                     }) {
                         Icon(Icons.Default.PictureAsPdf, contentDescription = "Export PDF")
                     }
-                    // FIX 3: Now shows confirm dialog before deleting
                     IconButton(onClick = { showDeleteConfirm = true }) {
                         Icon(
                             Icons.Default.Delete,
@@ -176,7 +170,6 @@ fun CustomerDetailScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp),
             contentPadding = PaddingValues(vertical = 16.dp)
         ) {
-            // Summary card
             item {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
@@ -188,7 +181,7 @@ fun CustomerDetailScreen(
                     Column(modifier = Modifier.padding(24.dp)) {
                         Text("Current Balance", style = MaterialTheme.typography.labelMedium)
                         Text(
-                            "₹ ${String.format(Locale.getDefault(), "%,.0f", totalOutstanding)}",
+                            "$currencySymbol ${String.format(Locale.getDefault(), "%,.0f", totalOutstanding)}",
                             style = MaterialTheme.typography.headlineLarge.copy(
                                 fontWeight = FontWeight.ExtraBold,
                                 color = if (totalOutstanding > 0) MaterialTheme.colorScheme.error
@@ -200,9 +193,9 @@ fun CustomerDetailScreen(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            DetailItem("Principal", "₹${borrower.amount.toInt()}")
-                            DetailItem("Interest",  "₹${interest.toInt()}")
-                            DetailItem("Paid",      "₹${borrower.paid.toInt()}")
+                            DetailItem("Principal", "$currencySymbol${borrower.amount.toInt()}")
+                            DetailItem("Interest",  "$currencySymbol${interest.toInt()}")
+                            DetailItem("Paid",      "$currencySymbol${borrower.paid.toInt()}")
                         }
                         if (borrower.rate > 0) {
                             Spacer(Modifier.height(8.dp))
@@ -216,7 +209,6 @@ fun CustomerDetailScreen(
                 }
             }
 
-            // Collect payment button (only when outstanding > 0)
             if (totalOutstanding > 0) {
                 item {
                     Button(
@@ -232,7 +224,6 @@ fun CustomerDetailScreen(
                 }
             }
 
-            // Payment history header
             item {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -253,7 +244,6 @@ fun CustomerDetailScreen(
                 }
             }
 
-            // FIX 1: Real payments from the payments table, matched by loanId
             if (loanPayments.isEmpty()) {
                 item {
                     Text(
@@ -264,11 +254,10 @@ fun CustomerDetailScreen(
                 }
             } else {
                 items(loanPayments, key = { it.id }) { payment ->
-                    PaymentItem(payment)
+                    PaymentItem(payment, currencySymbol)
                 }
             }
 
-            // Notes
             if (borrower.notes.isNotBlank()) {
                 item {
                     Text(
@@ -305,7 +294,7 @@ fun CustomerDetailScreen(
 }
 
 @Composable
-fun PaymentItem(payment: Payment) {
+fun PaymentItem(payment: Payment, currencySymbol: String) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
@@ -349,7 +338,7 @@ fun PaymentItem(payment: Payment) {
                 }
             }
             Text(
-                "₹ ${String.format(Locale.getDefault(), "%,.0f", payment.amount)}",
+                "$currencySymbol ${String.format(Locale.getDefault(), "%,.0f", payment.amount)}",
                 style = MaterialTheme.typography.bodyLarge.copy(
                     fontWeight = FontWeight.Bold,
                     color = Color(0xFF059669)

@@ -522,7 +522,7 @@ fun MainNavigation(viewModel: FinanceViewModel) {
                 composable(Screen.FlowWizard.route) {
                     SmartFlowWizardScreen(
                         viewModel = viewModel,
-                        onDone    = { navController.navigateUp() }
+                        onNavigateBack = { navController.navigateUp() }
                     )
                 }
                 

@@ -23,6 +23,7 @@ fun ProfitLossScreen(viewModel: FinanceViewModel) {
     val investments   by viewModel.investments.collectAsState()
     val debts         by viewModel.debts.collectAsState()
     val currentProject by viewModel.currentProject.collectAsState()
+    val currencySymbol = app.fynlo.logic.CurrencyUtils.symbolFor(currentProject?.currency ?: "INR")
     val summary       by viewModel.financialSummary.collectAsState()
     val locale        = remember { Locale.getDefault() }
     val context       = androidx.compose.ui.platform.LocalContext.current
@@ -36,7 +37,7 @@ fun ProfitLossScreen(viewModel: FinanceViewModel) {
     val grossProfit    = totalRevenue - totalExpense
     val netProfit      = grossProfit + investGrowth - debtPayments
 
-    fun fmt(v: Double) = "₹ ${String.format(locale, "%,.2f", v)}"
+    fun fmt(v: Double) = "$currencySymbol ${String.format(locale, "%,.2f", v)}"
     val green = Color(0xFF059669)
     val red   = Color(0xFFEF4444)
 
@@ -89,14 +90,14 @@ fun ProfitLossScreen(viewModel: FinanceViewModel) {
         PLSection("Revenue", listOf(
             "Transaction Income"       to totalIncome,
             "Loan Repayments Received" to lendingIncome
-        ), totalRevenue, green, locale)
+        ), totalRevenue, green, currencySymbol, locale)
 
         Spacer(Modifier.height(12.dp))
 
         PLSection("Expenses", listOf(
             "Total Transactions"   to totalExpense,
             "Debt Payments Made"   to debtPayments
-        ), totalExpense + debtPayments, red, locale)
+        ), totalExpense + debtPayments, red, currencySymbol, locale)
 
         Spacer(Modifier.height(12.dp))
 
@@ -110,7 +111,7 @@ fun ProfitLossScreen(viewModel: FinanceViewModel) {
                     Text("Revenue minus all expenses", style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                Text("Rs ${String.format(locale, "%,.2f", netCash)}",
+                Text("$currencySymbol ${String.format(locale, "%,.2f", netCash)}",
                     style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
                     color = if (netCash >= 0) green else red)
             }
@@ -122,15 +123,15 @@ fun ProfitLossScreen(viewModel: FinanceViewModel) {
             "Invested Amount"      to investments.sumOf { it.invested },
             "Current Market Value" to investments.sumOf { it.currentVal },
             "Unrealised Growth"    to investGrowth
-        ), investGrowth, if (investGrowth >= 0) green else red, locale)
+        ), investGrowth, if (investGrowth >= 0) green else red, currencySymbol, locale)
 
         Spacer(Modifier.height(100.dp))
     }
 }
 
 @Composable
-private fun PLSection(title: String, items: List<Pair<String, Double>>, total: Double, color: Color, locale: Locale) {
-    fun fmt(v: Double) = "₹ ${String.format(locale, "%,.2f", v)}"
+private fun PLSection(title: String, items: List<Pair<String, Double>>, total: Double, color: Color, currencySymbol: String, locale: Locale) {
+    fun fmt(v: Double) = "$currencySymbol ${String.format(locale, "%,.2f", v)}"
     Card(Modifier.fillMaxWidth(), RoundedCornerShape(16.dp)) {
         Column(Modifier.padding(16.dp)) {
             Text(title, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
@@ -149,11 +150,3 @@ private fun PLSection(title: String, items: List<Pair<String, Double>>, total: D
         }
     }
 }
-
-
-
-
-
-
-
-

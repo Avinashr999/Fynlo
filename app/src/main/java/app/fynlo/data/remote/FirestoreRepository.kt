@@ -71,6 +71,10 @@ class FirestoreRepository(private val userId: String) {
     suspend fun setInvestment(i: Investment)       { col("investments").document(i.id).set(i.toFirestoreMap()).await() }
     suspend fun deleteInvestment(id: String)       { col("investments").document(id).delete().await() }
 
+    // ── Investment Valuations ────────────────────────────────────────────────
+
+    suspend fun setValuation(v: InvestmentValuation) { col("investment_valuations").document(v.id).set(v.toFirestoreMap()).await() }
+
     // ── Debts ─────────────────────────────────────────────────────────────────
 
     suspend fun setDebt(d: Debt)           { col("debts").document(d.id).set(d.toFirestoreMap()).await() }

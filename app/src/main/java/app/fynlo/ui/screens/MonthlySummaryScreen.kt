@@ -5,6 +5,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -24,6 +26,8 @@ import java.util.Locale
 @Composable
 fun MonthlySummaryScreen(viewModel: FinanceViewModel) {
     val transactions by viewModel.transactions.collectAsState()
+    val currentProject by viewModel.currentProject.collectAsState()
+    val currencySymbol = app.fynlo.logic.CurrencyUtils.symbolFor(currentProject?.currency ?: "INR")
     val locale       = remember { Locale.getDefault() }
 
     // Build last 6 months data
@@ -43,6 +47,11 @@ fun MonthlySummaryScreen(viewModel: FinanceViewModel) {
     val incomeColor  = Color(0xFF059669)
     val expenseColor = Color(0xFFEF4444)
 
+    val financialSummary by viewModel.financialSummary.collectAsState()
+
+    val idleRatio = if (financialSummary.totalAssets > 0) financialSummary.totalCash / financialSummary.totalAssets else 0.0
+    val isIdle    = idleRatio > 0.6 // Alert if > 60% is in cash
+
     Column(
         modifier = Modifier.fillMaxSize().statusBarsPadding()
             .padding(horizontal = 16.dp).verticalScroll(rememberScrollState())
@@ -50,15 +59,32 @@ fun MonthlySummaryScreen(viewModel: FinanceViewModel) {
         Text("Monthly Summary", style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold),
             modifier = Modifier.padding(vertical = 16.dp))
 
+        if (isIdle) {
+            Card(
+                Modifier.fillMaxWidth().padding(bottom = 16.dp),
+                RoundedCornerShape(12.dp),
+                CardDefaults.cardColors(containerColor = Color(0xFFF59E0B).copy(alpha = 0.12f))
+            ) {
+                Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Icon(Icons.Default.Warning, null, tint = Color(0xFFF59E0B))
+                    Column {
+                        Text("Idle Fund Alert", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold), color = Color(0xFFB45309))
+                        Text("${(idleRatio * 100).toInt()}% of your wealth is sitting idle in cash. Consider investing or lending to grow your value.", 
+                            style = MaterialTheme.typography.labelSmall, color = Color(0xFFB45309).copy(alpha = 0.8f))
+                    }
+                }
+            }
+        }
+
         // 6-month totals
         val totalIncome  = months.sumOf { it.second }
         val totalExpense = months.sumOf { it.third }
         val netSavings   = totalIncome - totalExpense
 
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            SummaryChip("6M Income",  "₹${String.format(locale, "%,.0f", totalIncome)}",  incomeColor,  Modifier.weight(1f))
-            SummaryChip("6M Expense", "₹${String.format(locale, "%,.0f", totalExpense)}", expenseColor, Modifier.weight(1f))
-            SummaryChip("Net Saved",  "₹${String.format(locale, "%,.0f", netSavings)}",
+            SummaryChip("6M Income",  "$currencySymbol${String.format(locale, "%,.0f", totalIncome)}",  incomeColor,  Modifier.weight(1f))
+            SummaryChip("6M Expense", "$currencySymbol${String.format(locale, "%,.0f", totalExpense)}", expenseColor, Modifier.weight(1f))
+            SummaryChip("Net Saved",  "$currencySymbol${String.format(locale, "%,.0f", netSavings)}",
                 if (netSavings >= 0) incomeColor else expenseColor, Modifier.weight(1f))
         }
 
@@ -115,15 +141,15 @@ fun MonthlySummaryScreen(viewModel: FinanceViewModel) {
                     Text(label, style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold), modifier = Modifier.width(48.dp))
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text("Income", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text("₹${String.format(locale, "%,.0f", inc)}", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold), color = incomeColor)
+                        Text("$currencySymbol${String.format(locale, "%,.0f", inc)}", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold), color = incomeColor)
                     }
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text("Expense", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text("₹${String.format(locale, "%,.0f", exp)}", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold), color = expenseColor)
+                        Text("$currencySymbol${String.format(locale, "%,.0f", exp)}", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold), color = expenseColor)
                     }
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text("Saved", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text("₹${String.format(locale, "%,.0f", savings)}",
+                        Text("$currencySymbol${String.format(locale, "%,.0f", savings)}",
                             style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
                             color = if (savings >= 0) incomeColor else expenseColor)
                     }
@@ -143,11 +169,3 @@ private fun SummaryChip(label: String, value: String, color: Color, modifier: Mo
         }
     }
 }
-
-
-
-
-
-
-
-

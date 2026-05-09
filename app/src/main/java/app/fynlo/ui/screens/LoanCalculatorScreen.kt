@@ -7,8 +7,6 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.filled.CalendarMonth
-import androidx.compose.material.icons.filled.Event
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -20,16 +18,20 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import java.util.Locale
 import kotlin.math.pow
+import app.fynlo.FinanceViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun LoanCalculatorScreen() {
+fun LoanCalculatorScreen(viewModel: FinanceViewModel? = null) {
     val locale = remember { Locale.getDefault() }
+    val currentProjectState = viewModel?.currentProject?.collectAsState()
+    val currentProject = currentProjectState?.value
+    val currencySymbol = app.fynlo.logic.CurrencyUtils.symbolFor(currentProject?.currency ?: "INR")
 
     var principal  by remember { mutableStateOf("") }
     var rate       by remember { mutableStateOf("") }
     var tenure     by remember { mutableStateOf("") }
-    var tenureUnit by remember { mutableStateOf("Months") } // Months / Years
+    var tenureUnit by remember { mutableStateOf("Months") }
     var intType    by remember { mutableStateOf("Reducing Balance") }
     var loanDate   by remember { mutableStateOf(java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy"))) }
     var dueDate    by remember { mutableStateOf("") }
@@ -37,7 +39,6 @@ fun LoanCalculatorScreen() {
 
     val intTypes = listOf("Reducing Balance", "Simple Interest", "Compound Interest")
 
-    // Exact days from loan date to today
     val daysElapsed = remember(loanDate) {
         runCatching {
             val fmt = java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy")
@@ -68,12 +69,11 @@ fun LoanCalculatorScreen() {
         if (tenureUnit == "Years") t * 12 else t
     }
 
-    // Results
     data class CalcResult(
         val emi: Double,
         val totalPayment: Double,
         val totalInterest: Double,
-        val schedule: List<Triple<Int, Double, Double>> // month, principal, interest
+        val schedule: List<Triple<Int, Double, Double>>
     )
 
     val result = remember(principal, rate, tenureMonths, intType) {
@@ -125,7 +125,6 @@ fun LoanCalculatorScreen() {
 
         Spacer(Modifier.height(16.dp))
 
-        // Inputs
         Card(
             Modifier.fillMaxWidth(), RoundedCornerShape(16.dp),
             CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
@@ -134,8 +133,7 @@ fun LoanCalculatorScreen() {
 
                 OutlinedTextField(
                     value = principal, onValueChange = { principal = it },
-                    label = { Text("Principal Amount (₹)") },
-                    leadingIcon = { Icon(Icons.Default.CurrencyRupee, null) },
+                    label = { Text("Principal Amount ($currencySymbol)") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp), singleLine = true
                 )
@@ -143,7 +141,6 @@ fun LoanCalculatorScreen() {
                 OutlinedTextField(
                     value = rate, onValueChange = { rate = it },
                     label = { Text("Annual Interest Rate (%)") },
-                    leadingIcon = { Icon(Icons.Default.Percent, null) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp), singleLine = true
                 )
@@ -167,7 +164,6 @@ fun LoanCalculatorScreen() {
                     }
                 }
 
-                // Interest type dropdown
                 ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = !expanded }) {
                     OutlinedTextField(
                         value = intType, onValueChange = {}, readOnly = true,
@@ -190,13 +186,11 @@ fun LoanCalculatorScreen() {
                 OutlinedTextField(
                     value = loanDate, onValueChange = { loanDate = it },
                     label = { Text("Loan Date (DD-MM-YYYY)") },
-                    leadingIcon = { Icon(Icons.Default.CalendarMonth, null) },
                     modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp), singleLine = true
                 )
                 OutlinedTextField(
                     value = dueDate, onValueChange = { dueDate = it },
                     label = { Text("Due Date (DD-MM-YYYY) — optional") },
-                    leadingIcon = { Icon(Icons.Default.Event, null) },
                     modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp), singleLine = true
                 )
                 if (daysElapsed > 0) {
@@ -215,17 +209,15 @@ fun LoanCalculatorScreen() {
 
         Spacer(Modifier.height(16.dp))
 
-        // Results
         if (result != null) {
-            // EMI card
             Card(
                 Modifier.fillMaxWidth(), RoundedCornerShape(20.dp),
-                CardDefaults.cardColors(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+                CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
             ) {
                 Column(Modifier.padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     Text("Monthly EMI", style = MaterialTheme.typography.labelLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text("₹ ${String.format(locale, "%,.2f", result.emi)}",
+                    Text("$currencySymbol ${String.format(locale, "%,.2f", result.emi)}",
                         style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.ExtraBold),
                         color = MaterialTheme.colorScheme.primary)
                 }
@@ -233,17 +225,15 @@ fun LoanCalculatorScreen() {
 
             Spacer(Modifier.height(12.dp))
 
-            // Breakdown
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                ResultCard("Principal", "₹${String.format(locale, "%,.0f", principal.toDoubleOrNull() ?: 0.0)}",
+                ResultCard("Principal", "$currencySymbol${String.format(locale, "%,.0f", principal.toDoubleOrNull() ?: 0.0)}",
                     MaterialTheme.colorScheme.primary, Modifier.weight(1f))
-                ResultCard("Total Interest", "₹${String.format(locale, "%,.0f", result.totalInterest)}",
+                ResultCard("Total Interest", "$currencySymbol${String.format(locale, "%,.0f", result.totalInterest)}",
                     Color(0xFFEF4444), Modifier.weight(1f))
-                ResultCard("Total Payment", "₹${String.format(locale, "%,.0f", result.totalPayment)}",
+                ResultCard("Total Payment", "$currencySymbol${String.format(locale, "%,.0f", result.totalPayment)}",
                     Color(0xFF059669), Modifier.weight(1f))
             }
 
-            // Interest % of principal
             val pct = if ((principal.toDoubleOrNull() ?: 0.0) > 0)
                 result.totalInterest / (principal.toDoubleOrNull() ?: 1.0) * 100 else 0.0
             Spacer(Modifier.height(8.dp))
@@ -257,7 +247,6 @@ fun LoanCalculatorScreen() {
                 }
             }
 
-            // Outstanding balance based on actual dates
             if (daysElapsed > 0 && (principal.toDoubleOrNull() ?: 0.0) > 0) {
                 Spacer(Modifier.height(12.dp))
                 val loanDateFmt = runCatching {
@@ -283,7 +272,7 @@ fun LoanCalculatorScreen() {
                 val perDay = if (daysElapsed > 0) accrued / daysElapsed else 0.0
 
                 Card(Modifier.fillMaxWidth(), RoundedCornerShape(16.dp),
-                    CardDefaults.cardColors(Color(0xFFEF4444).copy(alpha = 0.08f))) {
+                    CardDefaults.cardColors(containerColor = Color(0xFFEF4444).copy(alpha = 0.08f))) {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text("Outstanding as of Today",
                             style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold))
@@ -296,14 +285,14 @@ fun LoanCalculatorScreen() {
                         Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
                             Text("Interest Accrued", style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Text("₹ ${String.format(locale, "%,.2f", accrued)}",
+                            Text("$currencySymbol ${String.format(locale, "%,.2f", accrued)}",
                                 style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
                                 color = Color(0xFFEF4444))
                         }
                         Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
                             Text("Per Day Interest", style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Text("₹ ${String.format(locale, "%,.2f", perDay)}",
+                            Text("$currencySymbol ${String.format(locale, "%,.2f", perDay)}",
                                 style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold))
                         }
                         if (isOverdue) {
@@ -317,7 +306,7 @@ fun LoanCalculatorScreen() {
                         HorizontalDivider()
                         Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
                             Text("Total Outstanding", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold))
-                            Text("₹ ${String.format(locale, "%,.2f", outstanding)}",
+                            Text("$currencySymbol ${String.format(locale, "%,.2f", outstanding)}",
                                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.ExtraBold),
                                 color = Color(0xFFEF4444))
                         }
@@ -325,7 +314,6 @@ fun LoanCalculatorScreen() {
                 }
             }
 
-            // Amortization schedule (reducing balance only)
             if (result.schedule.isNotEmpty()) {
                 Spacer(Modifier.height(16.dp))
                 Text("Amortization Schedule",
@@ -345,13 +333,13 @@ fun LoanCalculatorScreen() {
                             Row(Modifier.fillMaxWidth().padding(vertical = 3.dp), Arrangement.SpaceBetween) {
                                 Text("$month", style = MaterialTheme.typography.bodySmall,
                                     modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
-                                Text("₹${String.format(locale, "%,.0f", prin)}",
+                                Text("$currencySymbol${String.format(locale, "%,.0f", prin)}",
                                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary,
                                     modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
-                                Text("₹${String.format(locale, "%,.0f", interest)}",
+                                Text("$currencySymbol${String.format(locale, "%,.0f", interest)}",
                                     style = MaterialTheme.typography.bodySmall, color = Color(0xFFEF4444),
                                     modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
-                                Text("₹${String.format(locale, "%,.0f", prin + interest)}",
+                                Text("$currencySymbol${String.format(locale, "%,.0f", prin + interest)}",
                                     style = MaterialTheme.typography.bodySmall,
                                     modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
                             }
@@ -373,8 +361,8 @@ fun LoanCalculatorScreen() {
 }
 
 @Composable
-private fun ResultCard(label: String, value: String, color: Color, modifier: Modifier) {
-    Card(modifier, RoundedCornerShape(12.dp), CardDefaults.cardColors(color.copy(alpha = 0.08f))) {
+fun ResultCard(label: String, value: String, color: Color, modifier: Modifier) {
+    Card(modifier, RoundedCornerShape(12.dp), CardDefaults.cardColors(containerColor = color.copy(alpha = 0.08f))) {
         Column(Modifier.padding(10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Text(label, style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
@@ -383,13 +371,3 @@ private fun ResultCard(label: String, value: String, color: Color, modifier: Mod
         }
     }
 }
-
-
-
-
-
-
-
-
-
-

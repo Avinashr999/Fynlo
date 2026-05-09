@@ -357,6 +357,7 @@ fun SettingsScreen(
                 var showSeedConfirm    by remember { mutableStateOf(false) }
                 var showCleanupConfirm by remember { mutableStateOf(false) }
                 var showRestoreConfirm by remember { mutableStateOf(false) }
+                var showWipeConfirm    by remember { mutableStateOf(false) }
 
                 if (showSeedConfirm) AlertDialog(
                     onDismissRequest = { showSeedConfirm = false },
@@ -381,6 +382,15 @@ fun SettingsScreen(
                     confirmButton = { Button(onClick = { viewModel.restoreRealData(); showRestoreConfirm = false }) { Text("Restore") } },
                     dismissButton = { TextButton(onClick = { showRestoreConfirm = false }) { Text("Cancel") } }
                 )
+                if (showWipeConfirm) AlertDialog(
+                    onDismissRequest = { showWipeConfirm = false },
+                    title = { Text("Wipe ALL Data?") },
+                    text  = { Text("âš ï¸ PERMANENT DESTRUCTION: This will delete everything from this phone AND Google Cloud. This cannot be undone.") },
+                    confirmButton = { Button(onClick = { viewModel.wipeAllData(); showWipeConfirm = false },
+                        colors = ButtonDefaults.buttonColors(containerColor = Red)
+                    ) { Text("WIPE EVERYTHING") } },
+                    dismissButton = { TextButton(onClick = { showWipeConfirm = false }) { Text("Cancel") } }
+                )
 
                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     SettingsActionRow(Icons.Default.Science, Amber, "Load Test Data (QA)",
@@ -391,6 +401,9 @@ fun SettingsScreen(
                     SettingsDivider()
                     SettingsActionRow(Icons.Default.Restore, Blue, "Restore Real Data",
                         "Reset to real account balances") { showRestoreConfirm = true }
+                    SettingsDivider()
+                    SettingsActionRow(Icons.Default.DeleteForever, Red, "Wipe ALL Data",
+                        "Delete all local and cloud records") { showWipeConfirm = true }
                 }
             }
         }

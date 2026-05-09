@@ -7,6 +7,7 @@ import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.CloudDone
 import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.Sync
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -53,6 +54,11 @@ fun SyncStatusBadge(status: SyncStatus, modifier: Modifier = Modifier) {
             tint               = MaterialTheme.colorScheme.outlineVariant,
             modifier           = modifier.size(22.dp)
         )
+        is SyncStatus.Error -> Icon(
+            imageVector        = Icons.Default.Warning,
+            contentDescription = "Sync Error",
+            tint               = Color.Red,
+            modifier           = modifier.size(22.dp)
+        )
     }
 }
-

@@ -4,23 +4,26 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Notes
 import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import app.fynlo.FinanceViewModel
 import app.fynlo.data.model.Investment
 import app.fynlo.logic.DateUtils
 import app.fynlo.ui.components.AddInvestmentDialog
-import java.util.Locale
+import java.util.*
 
 @Composable
 fun InvestmentScreen(viewModel: FinanceViewModel) {
@@ -29,6 +32,7 @@ fun InvestmentScreen(viewModel: FinanceViewModel) {
     val currencySymbol = app.fynlo.logic.CurrencyUtils.symbolFor(currentProject?.currency ?: "INR")
     var editingInvest  by remember { mutableStateOf<Investment?>(null) }
     var updatingInvest by remember { mutableStateOf<Investment?>(null) }
+    var viewingHistory by remember { mutableStateOf<Investment?>(null) }
 
     if (editingInvest != null) {
         AddInvestmentDialog(
@@ -50,10 +54,27 @@ fun InvestmentScreen(viewModel: FinanceViewModel) {
             investment = updatingInvest!!,
             currencySymbol = currencySymbol,
             onDismiss  = { updatingInvest = null },
-            onConfirm  = { newVal ->
-                viewModel.updateInvestmentValue(updatingInvest!!, newVal)
+            onConfirm  = { newVal, date, notes ->
+                viewModel.addValuation(
+                    app.fynlo.data.model.InvestmentValuation(
+                        id = UUID.randomUUID().toString(),
+                        investmentId = updatingInvest!!.id,
+                        date = DateUtils.parseInput(date),
+                        value = newVal,
+                        notes = notes
+                    )
+                )
                 updatingInvest = null
             }
+        )
+    }
+
+    if (viewingHistory != null) {
+        ValuationHistoryDialog(
+            investment = viewingHistory!!,
+            currencySymbol = currencySymbol,
+            valuations = viewModel.getValuationsForInvestment(viewingHistory!!.id).collectAsState(initial = emptyList()).value,
+            onDismiss = { viewingHistory = null }
         )
     }
 
@@ -82,7 +103,8 @@ fun InvestmentScreen(viewModel: FinanceViewModel) {
                         currencySymbol = currencySymbol,
                         onDelete = { viewModel.deleteInvestment(invest) },
                         onEdit   = { editingInvest = invest },
-                        onUpdate = { updatingInvest = invest }
+                        onUpdate = { updatingInvest = invest },
+                        onViewHistory = { viewingHistory = invest }
                     )
                 }
             }
@@ -91,7 +113,7 @@ fun InvestmentScreen(viewModel: FinanceViewModel) {
 }
 
 @Composable
-fun InvestmentCard(invest: Investment, currencySymbol: String = "₹", onDelete: () -> Unit, onEdit: () -> Unit, onUpdate: () -> Unit) {
+fun InvestmentCard(invest: Investment, currencySymbol: String = "₹", onDelete: () -> Unit, onEdit: () -> Unit, onUpdate: () -> Unit, onViewHistory: () -> Unit) {
     val growth = invest.currentVal - invest.invested
     val growthPercent = if (invest.invested > 0) (growth / invest.invested) * 100 else 0.0
 
@@ -120,6 +142,9 @@ fun InvestmentCard(invest: Investment, currencySymbol: String = "₹", onDelete:
                     )
                 }
                 Row {
+                    IconButton(onClick = onViewHistory) {
+                        Icon(Icons.Default.History, contentDescription = "History", modifier = Modifier.size(20.dp), tint = Color.Gray)
+                    }
                     IconButton(onClick = onEdit) {
                         Icon(Icons.Default.Edit, contentDescription = "Edit", modifier = Modifier.size(20.dp), tint = Color.Gray)
                     }
@@ -189,53 +214,97 @@ fun UpdateInvestmentValueDialog(
     investment: Investment,
     currencySymbol: String = "₹",
     onDismiss: () -> Unit,
-    onConfirm: (Double) -> Unit
+    onConfirm: (Double, String, String) -> Unit
 ) {
     var newValue by remember { mutableStateOf(investment.currentVal.toBigDecimal().stripTrailingZeros().toPlainString()) }
+    var date by remember { mutableStateOf(java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy"))) }
+    var notes by remember { mutableStateOf("") }
+    
     val parsed   = newValue.toDoubleOrNull()
     val growth   = parsed?.let { it - investment.invested }
     val locale   = java.util.Locale.getDefault()
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Update Market Value") },
+        title = { Text("Log New Valuation") },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(investment.name, style = MaterialTheme.typography.titleSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text("Invested: $currencySymbol ${String.format(locale, "%,.2f", investment.invested)}",
-                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                
                 OutlinedTextField(
                     value = newValue, onValueChange = { newValue = it },
-                    label = { Text("Current Market Value ($currencySymbol)") }, singleLine = true,
-                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
-                        keyboardType = androidx.compose.ui.text.input.KeyboardType.Decimal
-                    ),
-                    modifier = Modifier.fillMaxWidth(), shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp)
+                    label = { Text("New Market Value ($currencySymbol)") }, singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)
                 )
+
+                app.fynlo.ui.components.DatePickerField(value = date, onValueChange = { date = it }, label = "Valuation Date")
+
+                OutlinedTextField(
+                    value = notes, onValueChange = { notes = it },
+                    label = { Text("Notes (optional)") },
+                    modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)
+                )
+
                 if (growth != null) {
                     val pct = if (investment.invested > 0) (growth / investment.invested) * 100 else 0.0
                     Text(
-                        "${if (growth >= 0) "+" else ""}$currencySymbol ${String.format(locale, "%,.2f", growth)} (${String.format(locale, "%.1f", pct)}%)",
-                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.Bold),
+                        "Total Growth: ${if (growth >= 0) "+" else ""}$currencySymbol ${String.format(locale, "%,.0f", growth)} (${String.format(locale, "%.1f", pct)}%)",
+                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                         color = if (growth >= 0) Color(0xFF059669) else Color(0xFFEF4444)
                     )
                 }
             }
         },
         confirmButton = {
-            Button(onClick = { parsed?.let { onConfirm(it) } }, enabled = parsed != null) {
-                Text("Update")
+            Button(onClick = { parsed?.let { onConfirm(it, date, notes) } }, enabled = parsed != null) {
+                Text("Log Valuation")
             }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
     )
 }
 
-
-
-
-
-
-
-
+@Composable
+fun ValuationHistoryDialog(
+    investment: Investment,
+    currencySymbol: String,
+    valuations: List<app.fynlo.data.model.InvestmentValuation>,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Valuation History") },
+        text = {
+            Column(Modifier.fillMaxWidth()) {
+                Text(investment.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.height(12.dp))
+                
+                if (valuations.isEmpty()) {
+                    Text("No records found", style = MaterialTheme.typography.bodySmall)
+                } else {
+                    LazyColumn(modifier = Modifier.heightIn(max = 400.dp)) {
+                        items(valuations) { v ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column {
+                                    Text(DateUtils.formatToDisplay(v.date), style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
+                                    if (v.notes.isNotBlank()) {
+                                        Text(v.notes, style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+                                    }
+                                }
+                                Text("$currencySymbol ${String.format("%,.0f", v.value)}", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.ExtraBold)
+                            }
+                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("Close") } }
+    )
+}

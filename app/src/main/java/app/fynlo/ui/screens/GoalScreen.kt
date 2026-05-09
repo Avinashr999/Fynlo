@@ -22,10 +22,13 @@ import java.util.*
 @Composable
 fun GoalScreen(viewModel: FinanceViewModel) {
     val goals by viewModel.goals.collectAsState()
+    val currentProject by viewModel.currentProject.collectAsState()
+    val currencySymbol = app.fynlo.logic.CurrencyUtils.symbolFor(currentProject?.currency ?: "INR")
     var showAddDialog by remember { mutableStateOf(false) }
 
     if (showAddDialog) {
         AddGoalDialog(
+            currencySymbol = currencySymbol,
             onDismiss = { showAddDialog = false },
             onConfirm = { goal ->
                 viewModel.addGoal(goal)
@@ -52,8 +55,7 @@ fun GoalScreen(viewModel: FinanceViewModel) {
                 Text(
                     "Track your progress towards big purchases or milestones.",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
 
             if (goals.isEmpty()) {
@@ -75,7 +77,7 @@ fun GoalScreen(viewModel: FinanceViewModel) {
                 }
             } else {
                 items(goals) { goal ->
-                    GoalCard(goal, onDelete = { viewModel.deleteGoal(goal) })
+                    GoalCard(goal, currencySymbol, onDelete = { viewModel.deleteGoal(goal) })
                 }
             }
         }
@@ -91,8 +93,8 @@ fun GoalScreen(viewModel: FinanceViewModel) {
 }
 
 @Composable
-fun GoalCard(goal: Goal, onDelete: () -> Unit) {
-    val progress    = (goal.savedAmount / goal.targetAmount).toFloat().coerceIn(0f, 1f)
+fun GoalCard(goal: Goal, currencySymbol: String, onDelete: () -> Unit) {
+    val progress    = if (goal.targetAmount > 0) (goal.savedAmount / goal.targetAmount).toFloat().coerceIn(0f, 1f) else 0f
     val pct         = (progress * 100).toInt()
     val isComplete  = pct >= 100
     val accentColor = if (isComplete) Color(0xFF059669) else MaterialTheme.colorScheme.primary
@@ -136,10 +138,10 @@ fun GoalCard(goal: Goal, onDelete: () -> Unit) {
             Spacer(Modifier.height(8.dp))
 
             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
-                Text("₹${String.format(java.util.Locale.getDefault(), "%,.0f", goal.savedAmount)} saved",
+                Text("$currencySymbol${String.format(java.util.Locale.getDefault(), "%,.0f", goal.savedAmount)} saved",
                     style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
                     color = Color(0xFF059669))
-                Text("₹${String.format(java.util.Locale.getDefault(), "%,.0f", goal.targetAmount)} target • $pct%",
+                Text("$currencySymbol${String.format(java.util.Locale.getDefault(), "%,.0f", goal.targetAmount)} target • $pct%",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
@@ -148,7 +150,7 @@ fun GoalCard(goal: Goal, onDelete: () -> Unit) {
 }
 
 @Composable
-fun AddGoalDialog(onDismiss: () -> Unit, onConfirm: (Goal) -> Unit) {
+fun AddGoalDialog(currencySymbol: String, onDismiss: () -> Unit, onConfirm: (Goal) -> Unit) {
     var name by remember { mutableStateOf("") }
     var target by remember { mutableStateOf("") }
     var saved by remember { mutableStateOf("") }
@@ -159,8 +161,8 @@ fun AddGoalDialog(onDismiss: () -> Unit, onConfirm: (Goal) -> Unit) {
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Goal Name (e.g., New Car)") })
-                OutlinedTextField(value = target, onValueChange = { target = it }, label = { Text("Target Amount (₹)") })
-                OutlinedTextField(value = saved, onValueChange = { saved = it }, label = { Text("Already Saved (₹)") })
+                OutlinedTextField(value = target, onValueChange = { target = it }, label = { Text("Target Amount ($currencySymbol)") })
+                OutlinedTextField(value = saved, onValueChange = { saved = it }, label = { Text("Already Saved ($currencySymbol)") })
             }
         },
         confirmButton = {
@@ -176,12 +178,3 @@ fun AddGoalDialog(onDismiss: () -> Unit, onConfirm: (Goal) -> Unit) {
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
     )
 }
-
-
-
-
-
-
-
-
-
