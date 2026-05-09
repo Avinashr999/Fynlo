@@ -130,6 +130,9 @@ fun InvestmentScreen(viewModel: FinanceViewModel) {
             dismissButton = {
                 TextButton(onClick = { deletingInvest = null }) { Text("Cancel") }
             }
+        )
+    }
+
     if (viewingHistory != null) {
         ValuationHistoryDialog(
             investment = viewingHistory!!,
