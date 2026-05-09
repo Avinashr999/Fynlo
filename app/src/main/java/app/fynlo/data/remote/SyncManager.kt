@@ -5,6 +5,7 @@ import app.fynlo.data.local.FynloDao
 import app.fynlo.data.model.*
 import com.google.firebase.firestore.DocumentChange
 import com.google.firebase.firestore.DocumentSnapshot
+import com.google.firebase.firestore.FirebaseFirestoreException
 import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
@@ -30,6 +31,19 @@ class SyncManager(
     private val _status = MutableStateFlow<SyncStatus>(SyncStatus.Initialising)
     val status: StateFlow<SyncStatus> = _status
 
+    /** Classifies a Firestore listener error — avoids false orange on transient network blips. */
+    private fun handleErr(err: FirebaseFirestoreException?) {
+        if (err == null) return
+        _status.value = when (err.code) {
+            FirebaseFirestoreException.Code.UNAVAILABLE,
+            FirebaseFirestoreException.Code.DEADLINE_EXCEEDED,
+            FirebaseFirestoreException.Code.CANCELLED -> SyncStatus.Offline
+            FirebaseFirestoreException.Code.PERMISSION_DENIED,
+            FirebaseFirestoreException.Code.UNAUTHENTICATED -> SyncStatus.Error("Auth error — please sign in again")
+            else -> SyncStatus.Offline
+        }
+    }
+
     private fun col(name: String) =
         db.collection("users").document(userId).collection(name)
 
@@ -38,7 +52,7 @@ class SyncManager(
         if (userId.isEmpty()) return
 
         listeners += col("borrowers").addSnapshotListener { snap, err ->
-            if (err != null || snap == null) { _status.value = SyncStatus.Offline; return@addSnapshotListener }
+            if (err != null || snap == null) { handleErr(err); return@addSnapshotListener }
             scope.launch {
                 snap.documentChanges.forEach { change ->
                     runCatching {
@@ -70,7 +84,7 @@ class SyncManager(
         }
 
         listeners += col("transactions").addSnapshotListener { snap, err ->
-            if (err != null || snap == null) { _status.value = SyncStatus.Offline; return@addSnapshotListener }
+            if (err != null || snap == null) { handleErr(err); return@addSnapshotListener }
             scope.launch {
                 snap.documentChanges.forEach { change ->
                     runCatching {
@@ -104,7 +118,7 @@ class SyncManager(
         }
 
         listeners += col("accounts").addSnapshotListener { snap, err ->
-            if (err != null || snap == null) { _status.value = SyncStatus.Offline; return@addSnapshotListener }
+            if (err != null || snap == null) { handleErr(err); return@addSnapshotListener }
             scope.launch {
                 snap.documentChanges.forEach { change ->
                     runCatching {
@@ -127,7 +141,7 @@ class SyncManager(
         }
 
         listeners += col("investments").addSnapshotListener { snap, err ->
-            if (err != null || snap == null) { _status.value = SyncStatus.Offline; return@addSnapshotListener }
+            if (err != null || snap == null) { handleErr(err); return@addSnapshotListener }
             scope.launch {
                 snap.documentChanges.forEach { change ->
                     runCatching {
@@ -146,7 +160,10 @@ class SyncManager(
                             withdrawn    = doc.dbl("withdrawn"),
                             notes        = doc.str("notes"),
                             projectId    = doc.str("projectId"),
-                            updatedAt    = doc.lng("updatedAt")
+                            updatedAt    = doc.lng("updatedAt"),
+                            fundingSource = doc.str("fundingSource"),
+                            sourceType    = doc.str("sourceType"),
+                            linkedDebtId  = doc.str("linkedDebtId")
                         ))
                     }
                 }
@@ -155,7 +172,7 @@ class SyncManager(
         }
 
         listeners += col("investment_valuations").addSnapshotListener { snap, err ->
-            if (err != null || snap == null) { _status.value = SyncStatus.Offline; return@addSnapshotListener }
+            if (err != null || snap == null) { handleErr(err); return@addSnapshotListener }
             scope.launch {
                 snap.documentChanges.forEach { change ->
                     runCatching {
@@ -180,7 +197,7 @@ class SyncManager(
         }
 
         listeners += col("debts").addSnapshotListener { snap, err ->
-            if (err != null || snap == null) { _status.value = SyncStatus.Offline; return@addSnapshotListener }
+            if (err != null || snap == null) { handleErr(err); return@addSnapshotListener }
             scope.launch {
                 snap.documentChanges.forEach { change ->
                     runCatching {
@@ -210,7 +227,7 @@ class SyncManager(
         }
 
         listeners += col("people").addSnapshotListener { snap, err ->
-            if (err != null || snap == null) { _status.value = SyncStatus.Offline; return@addSnapshotListener }
+            if (err != null || snap == null) { handleErr(err); return@addSnapshotListener }
             scope.launch {
                 snap.documentChanges.forEach { change ->
                     runCatching {
@@ -231,7 +248,7 @@ class SyncManager(
         }
 
         listeners += col("projects").addSnapshotListener { snap, err ->
-            if (err != null || snap == null) { _status.value = SyncStatus.Offline; return@addSnapshotListener }
+            if (err != null || snap == null) { handleErr(err); return@addSnapshotListener }
             scope.launch {
                 snap.documentChanges.forEach { change ->
                     runCatching {

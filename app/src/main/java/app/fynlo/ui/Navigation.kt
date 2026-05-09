@@ -194,9 +194,10 @@ fun MainNavigation(viewModel: FinanceViewModel) {
         )
     }
 
+    val navAccounts by viewModel.accounts.collectAsState()
+    val navDebts    by viewModel.debts.collectAsState()
+
     if (showInvestmentDialog) {
-        val navAccounts by viewModel.accounts.collectAsState()
-        val navDebts    by viewModel.debts.collectAsState()
         AddInvestmentDialog(
             accounts  = navAccounts,
             debts     = navDebts,
