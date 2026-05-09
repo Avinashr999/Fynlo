@@ -35,12 +35,8 @@ class SyncManager(
     private fun handleErr(err: FirebaseFirestoreException?) {
         if (err == null) return
         _status.value = when (err.code) {
-            FirebaseFirestoreException.Code.UNAVAILABLE,
-            FirebaseFirestoreException.Code.DEADLINE_EXCEEDED,
-            FirebaseFirestoreException.Code.CANCELLED -> SyncStatus.Offline
-            FirebaseFirestoreException.Code.PERMISSION_DENIED,
-            FirebaseFirestoreException.Code.UNAUTHENTICATED -> SyncStatus.Error("Auth error — please sign in again")
-            else -> SyncStatus.Offline
+            FirebaseFirestoreException.Code.UNAUTHENTICATED -> SyncStatus.Error("Sign in required")
+            else -> SyncStatus.Offline  // network, permissions, timeouts all show offline
         }
     }
 

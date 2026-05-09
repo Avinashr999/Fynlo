@@ -25,7 +25,7 @@ import app.fynlo.data.model.FlowTemplate
         NetWorthSnapshot::class,
         InvestmentValuation::class
     ],
-    version = 8,
+    version = 9,
     exportSchema = false
 )
 abstract class FynloDatabase : RoomDatabase() {
@@ -45,6 +45,19 @@ val MIGRATION_7_8 = object : Migration(7, 8) {
                 PRIMARY KEY(`id`)
             )
         """.trimIndent())
+    }
+}
+
+/**
+ * Migration 8 → 9
+ * Adds funding-source tracking columns to investments table.
+ * All existing investments default to empty strings — no data loss.
+ */
+val MIGRATION_8_9 = object : Migration(8, 9) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE `investments` ADD COLUMN `fundingSource` TEXT NOT NULL DEFAULT ''")
+        db.execSQL("ALTER TABLE `investments` ADD COLUMN `sourceType`    TEXT NOT NULL DEFAULT ''")
+        db.execSQL("ALTER TABLE `investments` ADD COLUMN `linkedDebtId`  TEXT NOT NULL DEFAULT ''")
     }
 }
 
