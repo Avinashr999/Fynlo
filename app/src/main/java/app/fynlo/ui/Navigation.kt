@@ -68,6 +68,7 @@ sealed class Screen(val route: String, val label: String, val icon: ImageVector)
     object Reports     : Screen("reports_hub",   "Reports",          Icons.Default.Assessment)
     object GlobalSearch: Screen("global_search",  "Search",           Icons.Default.Search)
     object Calendar    : Screen("collection_calendar", "Collection Calendar", Icons.Default.CalendarMonth)
+    object InterestIncome : Screen("interest_income", "Interest Income", Icons.AutoMirrored.Filled.TrendingUp)
 }
 
 val bottomNavItems = listOf(
@@ -538,10 +539,17 @@ fun MainNavigation(viewModel: FinanceViewModel) {
                 composable(Screen.GlobalSearch.route) { GlobalSearchScreen(viewModel, onNavigateBack = { navController.popBackStack() }) }
                 composable(Screen.Reports.route) {
                     ReportsHubScreen(
-                        viewModel           = viewModel,
-                        onNavigateToPL      = { navController.navigate(Screen.ProfitLoss.route) },
-                        onNavigateToNetWorth = { navController.navigate(Screen.NetWorthH.route) },
-                        onNavigateToMoneyFlow = { navController.navigate(Screen.MoneyFlow.route) }
+                        viewModel             = viewModel,
+                        onNavigateToPL        = { navController.navigate(Screen.ProfitLoss.route) },
+                        onNavigateToNetWorth  = { navController.navigate(Screen.NetWorthH.route) },
+                        onNavigateToMoneyFlow = { navController.navigate(Screen.MoneyFlow.route) },
+                        onNavigateToInterest  = { navController.navigate(Screen.InterestIncome.route) }
+                    )
+                }
+                composable(Screen.InterestIncome.route) {
+                    InterestIncomeScreen(
+                        viewModel      = viewModel,
+                        onNavigateBack = { navController.navigateUp() }
                     )
                 }
                 composable(Screen.FlowWizard.route) {

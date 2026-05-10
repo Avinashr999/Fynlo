@@ -42,7 +42,8 @@ fun ReportsHubScreen(
     viewModel: FinanceViewModel,
     onNavigateToPL: () -> Unit = {},
     onNavigateToNetWorth: () -> Unit = {},
-    onNavigateToMoneyFlow: () -> Unit = {}
+    onNavigateToMoneyFlow: () -> Unit = {},
+    onNavigateToInterest: () -> Unit = {}
 ) {
     val transactions  by viewModel.transactions.collectAsState()
     val summary       by viewModel.financialSummary.collectAsState()
@@ -351,6 +352,10 @@ fun ReportsHubScreen(
             ReportLinkCard("P&L Statement", Icons.Default.List, green, Modifier.weight(1f), onNavigateToPL)
             ReportLinkCard("Net Worth", Icons.AutoMirrored.Filled.TrendingUp, blue, Modifier.weight(1f), onNavigateToNetWorth)
             ReportLinkCard("Money Flow", Icons.Default.SwapHoriz, Carbon500, Modifier.weight(1f), onNavigateToMoneyFlow)
+        }
+        Spacer(Modifier.height(8.dp))
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            ReportLinkCard("Interest Income", Icons.Default.AccountBalance, green, Modifier.weight(1f), onNavigateToInterest)
         }
 
         Spacer(Modifier.height(100.dp))
