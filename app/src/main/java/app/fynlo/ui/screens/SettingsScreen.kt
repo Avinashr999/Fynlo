@@ -283,6 +283,71 @@ fun SettingsScreen(
 
         Spacer(Modifier.height(16.dp))
 
+        // ── Biometric unlock ─────────────────────────────────────────────────
+        val bioStatus = remember { app.fynlo.ui.screens.biometricStatus(context) }
+        val bioHardwareAvailable = bioStatus != androidx.biometric.BiometricManager.BIOMETRIC_ERROR_NO_HARDWARE &&
+                                   bioStatus != androidx.biometric.BiometricManager.BIOMETRIC_ERROR_HW_UNAVAILABLE &&
+                                   bioStatus != androidx.biometric.BiometricManager.BIOMETRIC_ERROR_SECURITY_UPDATE_REQUIRED
+        var biometricEnabled by remember { mutableStateOf(pinManager.isBiometricEnabled) }
+
+        if (pinSet && bioHardwareAvailable) {
+            Card(Modifier.fillMaxWidth().padding(top = 8.dp), RoundedCornerShape(16.dp)) {
+                Row(
+                    modifier = Modifier.padding(16.dp).fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
+                    Box(
+                        Modifier.size(40.dp).clip(CircleShape).background(
+                            if (biometricEnabled) MaterialTheme.colorScheme.primaryContainer
+                            else MaterialTheme.colorScheme.surfaceVariant
+                        ),
+                        Alignment.Center
+                    ) {
+                        Icon(Icons.Default.Fingerprint, null, Modifier.size(20.dp),
+                            tint = if (biometricEnabled) MaterialTheme.colorScheme.primary
+                                   else MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    Column(Modifier.weight(1f)) {
+                        Text("Biometric Unlock",
+                            style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold))
+                        Text(
+                            when (bioStatus) {
+                                androidx.biometric.BiometricManager.BIOMETRIC_SUCCESS             -> "Tap to unlock with fingerprint or face"
+                                androidx.biometric.BiometricManager.BIOMETRIC_ERROR_NONE_ENROLLED -> "No biometrics enrolled — tap toggle to set up"
+                                else                                                               -> "Biometric available"
+                            },
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Switch(
+                        checked  = biometricEnabled,
+                        onCheckedChange = { enabled ->
+                            if (bioStatus == androidx.biometric.BiometricManager.BIOMETRIC_ERROR_NONE_ENROLLED) {
+                                val intent = android.content.Intent(android.provider.Settings.ACTION_BIOMETRIC_ENROLL).apply {
+                                    putExtra(android.provider.Settings.EXTRA_BIOMETRIC_AUTHENTICATORS_ALLOWED,
+                                        androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_STRONG or
+                                        androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_WEAK)
+                                }
+                                try { context.startActivity(intent) } catch (e: Exception) {
+                                    context.startActivity(android.content.Intent(android.provider.Settings.ACTION_SECURITY_SETTINGS))
+                                }
+                            } else {
+                                pinManager.isBiometricEnabled = enabled
+                                biometricEnabled = enabled
+                            }
+                        },
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = MaterialTheme.colorScheme.primary,
+                            checkedTrackColor = MaterialTheme.colorScheme.primaryContainer
+                        )
+                    )
+                }
+            }
+        }
+
+
         // â”€â”€ App Info â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         SettingsSectionLabel("App Info")
         SettingsCard {
