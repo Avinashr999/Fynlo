@@ -286,37 +286,49 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
             }
 
             // Active loans
-            if (activeLoans.isEmpty() && settledLoans.isEmpty() && defaultedLoans.isEmpty()) {
+            val hasAnyLoans = interestLoans.isNotEmpty() || handLoans.isNotEmpty() || settledLoans.isNotEmpty() || defaultedLoans.isNotEmpty()
+
+            if (!hasAnyLoans) {
                 item { EmptyLendingState(onAdd = { showAddDialog = true }) }
             } else {
-                if (activeLoans.isNotEmpty()) {
-                    item {
-                        Text("Active Loans", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                            modifier = Modifier.padding(top = 4.dp))
-                    }
-
-            item {
-                TabRow(selectedTabIndex = selectedTab, modifier = Modifier.fillMaxWidth(),
-                    containerColor = MaterialTheme.colorScheme.surface) {
-                    Tab(selected = selectedTab == 0, onClick = { selectedTab = 0 }) {
-                        Column(Modifier.padding(vertical = 10.dp),
-                            horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally) {
-                            Text("Interest Loans", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold))
-                            Text("${interestLoans.size}", style = MaterialTheme.typography.labelSmall,
-                                color = if (selectedTab == 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
+                // Always show tabs whenever any loans exist
+                item {
+                    TabRow(selectedTabIndex = selectedTab, modifier = Modifier.fillMaxWidth(),
+                        containerColor = MaterialTheme.colorScheme.surface) {
+                        Tab(selected = selectedTab == 0, onClick = { selectedTab = 0 }) {
+                            Column(Modifier.padding(vertical = 10.dp),
+                                horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally) {
+                                Text("Interest Loans", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold))
+                                Text("${interestLoans.size}", style = MaterialTheme.typography.labelSmall,
+                                    color = if (selectedTab == 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
                         }
-                    }
-                    Tab(selected = selectedTab == 1, onClick = { selectedTab = 1 }) {
-                        Column(Modifier.padding(vertical = 10.dp),
-                            horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally) {
-                            Text("Hand Loans", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold))
-                            Text("${handLoans.size}", style = MaterialTheme.typography.labelSmall,
-                                color = if (selectedTab == 1) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
+                        Tab(selected = selectedTab == 1, onClick = { selectedTab = 1 }) {
+                            Column(Modifier.padding(vertical = 10.dp),
+                                horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally) {
+                                Text("Hand Loans", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold))
+                                Text("${handLoans.size}", style = MaterialTheme.typography.labelSmall,
+                                    color = if (selectedTab == 1) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
                         }
                     }
                 }
-            }
 
+                if (activeLoans.isEmpty()) {
+                    // Current tab is empty — show friendly message
+                    item {
+                        androidx.compose.foundation.layout.Box(
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp),
+                            contentAlignment = androidx.compose.ui.Alignment.Center
+                        ) {
+                            Text(
+                                if (selectedTab == 0) "No interest loans" else "No hand loans",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                } else {
                     items(activeLoans) { borrower ->
                         LendingCard(
                             borrower  = borrower,
