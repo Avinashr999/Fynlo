@@ -104,7 +104,12 @@ fun AccountStatementScreen(
             } else {
                 LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     items(accountTransactions) { txn ->
-                        TransactionItem(txn, currencySymbol = currencySymbol)
+                        TransactionItem(
+                            txn            = txn,
+                            currencySymbol = currencySymbol,
+                            onDelete       = { viewModel.deleteTransaction(txn) },
+                            onEdit         = { viewModel.editTransaction(txn, it) }
+                        )
                     }
                 }
             }
