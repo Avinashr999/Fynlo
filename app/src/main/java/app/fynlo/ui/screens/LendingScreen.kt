@@ -118,12 +118,14 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        // Sort
                         Box {
-                            OutlinedButton(onClick = { showSortMenu = true }, shape = RoundedCornerShape(12.dp)) {
+                            OutlinedButton(onClick = { showSortMenu = true }, shape = RoundedCornerShape(12.dp),
+                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)) {
                                 Icon(Icons.Default.Sort, null, Modifier.size(16.dp))
                                 Spacer(Modifier.width(4.dp))
-                                Text(sortBy)
+                                Text(sortBy, style = MaterialTheme.typography.labelMedium)
                             }
                             DropdownMenu(expanded = showSortMenu, onDismissRequest = { showSortMenu = false }) {
                                 listOf("Overdue", "Amount", "Name", "Date").forEach { opt ->
@@ -131,13 +133,15 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
                                 }
                             }
                         }
-                        OutlinedButton(onClick = { showEmiCalc = true }, shape = RoundedCornerShape(12.dp)) {
-                            Text("EMI")
+                        // EMI calculator
+                        OutlinedButton(onClick = { showEmiCalc = true }, shape = RoundedCornerShape(12.dp),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)) {
+                            Text("EMI", style = MaterialTheme.typography.labelMedium)
                         }
-                        OutlinedButton(onClick = onNavigateToCalendar, shape = RoundedCornerShape(12.dp)) {
-                            Icon(Icons.Default.CalendarMonth, null, Modifier.size(16.dp))
-                            Spacer(Modifier.width(4.dp))
-                            Text("Calendar")
+                        // Calendar — icon only to save space
+                        OutlinedButton(onClick = onNavigateToCalendar, shape = RoundedCornerShape(12.dp),
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp)) {
+                            Icon(Icons.Default.CalendarMonth, contentDescription = "Collection Calendar", Modifier.size(18.dp))
                         }
                     }
                 }
