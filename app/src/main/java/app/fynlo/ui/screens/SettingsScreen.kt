@@ -286,9 +286,9 @@ fun SettingsScreen(
         // ── Biometric unlock ─────────────────────────────────────────────────
         // ── Biometric unlock ─────────────────────────────────────────────────
         val bioStatus = remember { app.fynlo.ui.screens.biometricStatus(context) }
-        val bioHardwareAvailable = bioStatus != androidx.biometric.BiometricManager.BIOMETRIC_ERROR_NO_HARDWARE &&
-                                   bioStatus != androidx.biometric.BiometricManager.BIOMETRIC_ERROR_HW_UNAVAILABLE &&
-                                   bioStatus != androidx.biometric.BiometricManager.BIOMETRIC_ERROR_SECURITY_UPDATE_REQUIRED
+        // Hardware is available if status is SUCCESS or NONE_ENROLLED (has hardware, just no biometrics added yet)
+        val bioHardwareAvailable = bioStatus == androidx.biometric.BiometricManager.BIOMETRIC_SUCCESS ||
+                                   bioStatus == androidx.biometric.BiometricManager.BIOMETRIC_ERROR_NONE_ENROLLED
         var biometricEnabled by remember { mutableStateOf(pinManager.isBiometricEnabled) }
 
         if (bioHardwareAvailable) {

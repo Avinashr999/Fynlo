@@ -30,12 +30,18 @@ import app.fynlo.ui.theme.*
 
 enum class PinMode { ENTER, SET, CONFIRM }
 
-/** Returns the BiometricManager availability code. */
-fun biometricStatus(context: android.content.Context): Int =
-    BiometricManager.from(context).canAuthenticate(
-        BiometricManager.Authenticators.BIOMETRIC_STRONG or
-        BiometricManager.Authenticators.BIOMETRIC_WEAK
-    )
+/** Returns the BiometricManager availability code using WEAK authenticators.
+ *  OPPO/Realme optical fingerprints are classified as BIOMETRIC_WEAK, not STRONG.
+ *  Checking STRONG causes BIOMETRIC_ERROR_NONE_ENROLLED on these devices. */
+fun biometricStatus(context: android.content.Context): Int {
+    val mgr = BiometricManager.from(context)
+    // Try WEAK first (covers optical fingerprint, face on most devices)
+    val weak = mgr.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_WEAK)
+    if (weak == BiometricManager.BIOMETRIC_SUCCESS ||
+        weak == BiometricManager.BIOMETRIC_ERROR_NONE_ENROLLED) return weak
+    // Fall back to STRONG (covers secure fingerprint / iris on some OEMs)
+    return mgr.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG)
+}
 
 @Composable
 fun PinScreen(
@@ -56,7 +62,7 @@ fun PinScreen(
     // Only show biometric button when:
     // 1. We're in ENTER mode (not setting a new PIN)
     // 2. User has explicitly enabled biometric in settings
-    // 3. Device actually supports and has enrolled biometrics
+    // 3. Device has biometric hardware with enrolled biometrics
     val bioStatus = remember { biometricStatus(context) }
     val canUseBiometric = remember(mode) {
         mode == PinMode.ENTER &&
@@ -93,8 +99,11 @@ fun PinScreen(
             BiometricPrompt.PromptInfo.Builder()
                 .setTitle("Unlock Fynlo")
                 .setSubtitle("Use fingerprint or face unlock")
+                .setAllowedAuthenticators(
+                    BiometricManager.Authenticators.BIOMETRIC_WEAK
+                )
                 .setNegativeButtonText("Use PIN instead")
-                .setConfirmationRequired(false)   // face unlock doesn't need extra tap
+                .setConfirmationRequired(false)
                 .build()
         )
     }
