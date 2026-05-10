@@ -284,14 +284,15 @@ fun SettingsScreen(
         Spacer(Modifier.height(16.dp))
 
         // ── Biometric unlock ─────────────────────────────────────────────────
+        // ── Biometric unlock ─────────────────────────────────────────────────
         val bioStatus = remember { app.fynlo.ui.screens.biometricStatus(context) }
         val bioHardwareAvailable = bioStatus != androidx.biometric.BiometricManager.BIOMETRIC_ERROR_NO_HARDWARE &&
                                    bioStatus != androidx.biometric.BiometricManager.BIOMETRIC_ERROR_HW_UNAVAILABLE &&
                                    bioStatus != androidx.biometric.BiometricManager.BIOMETRIC_ERROR_SECURITY_UPDATE_REQUIRED
         var biometricEnabled by remember { mutableStateOf(pinManager.isBiometricEnabled) }
 
-        if (pinSet && bioHardwareAvailable) {
-            Card(Modifier.fillMaxWidth().padding(top = 8.dp), RoundedCornerShape(16.dp)) {
+        if (bioHardwareAvailable) {
+            Card(Modifier.fillMaxWidth(), RoundedCornerShape(16.dp)) {
                 Row(
                     modifier = Modifier.padding(16.dp).fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
@@ -312,33 +313,43 @@ fun SettingsScreen(
                         Text("Biometric Unlock",
                             style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold))
                         Text(
-                            when (bioStatus) {
-                                androidx.biometric.BiometricManager.BIOMETRIC_SUCCESS             -> "Tap to unlock with fingerprint or face"
-                                androidx.biometric.BiometricManager.BIOMETRIC_ERROR_NONE_ENROLLED -> "No biometrics enrolled — tap toggle to set up"
-                                else                                                               -> "Biometric available"
+                            when {
+                                !pinSet -> "Set a PIN first to enable biometric"
+                                bioStatus == androidx.biometric.BiometricManager.BIOMETRIC_ERROR_NONE_ENROLLED ->
+                                    "No biometrics enrolled — tap toggle to set up"
+                                bioStatus == androidx.biometric.BiometricManager.BIOMETRIC_SUCCESS ->
+                                    if (biometricEnabled) "Fingerprint / face unlock active"
+                                    else "Use fingerprint or face to unlock"
+                                else -> "Biometric available"
                             },
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = if (!pinSet) MaterialTheme.colorScheme.error.copy(alpha = 0.7f)
+                                    else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                     Switch(
                         checked  = biometricEnabled,
                         onCheckedChange = { enabled ->
-                            if (bioStatus == androidx.biometric.BiometricManager.BIOMETRIC_ERROR_NONE_ENROLLED) {
-                                val intent = android.content.Intent(android.provider.Settings.ACTION_BIOMETRIC_ENROLL).apply {
-                                    putExtra(android.provider.Settings.EXTRA_BIOMETRIC_AUTHENTICATORS_ALLOWED,
-                                        androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_STRONG or
-                                        androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_WEAK)
+                            when {
+                                !pinSet -> { showPinSetup = true }  // guide to set PIN first
+                                bioStatus == androidx.biometric.BiometricManager.BIOMETRIC_ERROR_NONE_ENROLLED -> {
+                                    val intent = android.content.Intent(android.provider.Settings.ACTION_BIOMETRIC_ENROLL).apply {
+                                        putExtra(android.provider.Settings.EXTRA_BIOMETRIC_AUTHENTICATORS_ALLOWED,
+                                            androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_STRONG or
+                                            androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_WEAK)
+                                    }
+                                    try { context.startActivity(intent) } catch (e: Exception) {
+                                        context.startActivity(android.content.Intent(android.provider.Settings.ACTION_SECURITY_SETTINGS))
+                                    }
                                 }
-                                try { context.startActivity(intent) } catch (e: Exception) {
-                                    context.startActivity(android.content.Intent(android.provider.Settings.ACTION_SECURITY_SETTINGS))
+                                else -> {
+                                    pinManager.isBiometricEnabled = enabled
+                                    biometricEnabled = enabled
                                 }
-                            } else {
-                                pinManager.isBiometricEnabled = enabled
-                                biometricEnabled = enabled
                             }
                         },
-                        colors = SwitchDefaults.colors(
+                        enabled = true,
+                        colors  = SwitchDefaults.colors(
                             checkedThumbColor = MaterialTheme.colorScheme.primary,
                             checkedTrackColor = MaterialTheme.colorScheme.primaryContainer
                         )
