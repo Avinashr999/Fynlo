@@ -63,6 +63,21 @@ interface FynloDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertDebtPayment(payment: DebtPayment)
 
+    @Delete
+    suspend fun deletePayment(payment: Payment)
+
+    @Delete
+    suspend fun deleteDebtPayment(payment: DebtPayment)
+
+    @Query("SELECT * FROM payments WHERE loanId = :loanId")
+    suspend fun getPaymentsForLoanOnce(loanId: String): List<Payment>
+
+    @Query("SELECT * FROM debt_payments WHERE debtId = :debtId")
+    suspend fun getDebtPaymentsForDebtOnce(debtId: String): List<DebtPayment>
+
+    @Query("SELECT * FROM transactions WHERE ref = :ref")
+    suspend fun getTransactionsByRef(ref: String): List<Transaction>
+
     // ─── Accounts ─────────────────────────────────────────────────────────────
 
     @Query("DELETE FROM accounts WHERE id = :id")

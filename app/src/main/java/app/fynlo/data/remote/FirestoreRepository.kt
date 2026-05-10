@@ -48,6 +48,8 @@ class FirestoreRepository(private val userId: String) {
 
     suspend fun setBorrower(b: Borrower)   { col("borrowers").document(b.id).set(b.toFirestoreMap()).await() }
     suspend fun deleteBorrower(id: String) { col("borrowers").document(id).delete().await() }
+    suspend fun deletePayment(id: String)  { col("payments").document(id).delete().await() }
+    suspend fun deleteDebtPayment(id: String) { col("debt_payments").document(id).delete().await() }
 
     // ── Payments ──────────────────────────────────────────────────────────────
 

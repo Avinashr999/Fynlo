@@ -204,8 +204,28 @@ class FinanceRepository(
         syncAccountByName(sourceAccount)
     }
     suspend fun deleteBorrower(borrower: Borrower) {
-        db.withTransaction { dao.updateAccountBalance("Cash in Hand", borrower.amount); dao.deleteBorrower(borrower) }
+        // Collect account names BEFORE deleting transactions
+        val linkedTxns = dao.getTransactionsByRef(borrower.id)
+        db.withTransaction {
+            // Reverse every transaction linked to this borrower
+            linkedTxns.forEach { txn ->
+                when (txn.type.lowercase()) {
+                    "expense"  -> dao.updateAccountBalance(txn.fromAcct,  txn.amount)
+                    "income"   -> dao.updateAccountBalance(txn.toAcct,   -txn.amount)
+                    "transfer" -> { dao.updateAccountBalance(txn.fromAcct, txn.amount); dao.updateAccountBalance(txn.toAcct, -txn.amount) }
+                }
+                dao.deleteTransaction(txn)
+            }
+            // Delete payment records
+            dao.getPaymentsForLoanOnce(borrower.id).forEach { p -> dao.deletePayment(p) }
+            dao.deleteBorrower(borrower)
+        }
+        // Sync Firestore
+        linkedTxns.forEach { sync { deleteTransaction(it.id) } }
         sync { deleteBorrower(borrower.id) }
+        // Sync affected account balances
+        linkedTxns.map { it.fromAcct }.filter { it.isNotBlank() }.distinct().forEach { syncAccountByName(it) }
+        linkedTxns.map { it.toAcct }.filter { it.isNotBlank() }.distinct().forEach { syncAccountByName(it) }
     }
     /** Directly set account balance (for corrections). Creates a balancing transaction. */
     suspend fun quickEditBalance(accountName: String, newBalance: Double, oldBalance: Double) {
@@ -288,7 +308,16 @@ class FinanceRepository(
 
     // ─── Delete — record only, no balance reversal ─────────────────────────────
     suspend fun deleteInvestmentOnly(investment: Investment) {
-        dao.deleteInvestment(investment)
+        db.withTransaction {
+            // Remove the investment transaction that moved money out of an account
+            val invTxn = dao.getTransactionsByRef(investment.id)
+                .firstOrNull { it.category == "Investment" }
+            if (invTxn != null) {
+                dao.deleteTransaction(invTxn)
+                sync { deleteTransaction(invTxn.id) }
+            }
+            dao.deleteInvestment(investment)
+        }
         sync { deleteInvestment(investment.id) }
     }
 
@@ -305,7 +334,25 @@ class FinanceRepository(
     // ─── Delete — record + delete the linked loan that was auto-created ────────
     suspend fun deleteInvestmentAndLinkedLoan(investment: Investment) {
         db.withTransaction {
+            // Delete the investment transaction
+            val invTxn = dao.getTransactionsByRef(investment.id)
+                .firstOrNull { it.category == "Investment" }
+            if (invTxn != null) {
+                dao.deleteTransaction(invTxn)
+                sync { deleteTransaction(invTxn.id) }
+            }
+            // Delete the linked debt and its transactions
             if (investment.linkedDebtId.isNotEmpty()) {
+                val linkedDebt = dao.getDebtById(investment.linkedDebtId)
+                if (linkedDebt != null) {
+                    val debtTxn = dao.getTransactionsByRef(investment.linkedDebtId)
+                        .firstOrNull { it.type.equals("Income", ignoreCase = true) }
+                    if (debtTxn != null) {
+                        dao.updateAccountBalance(debtTxn.toAcct, -linkedDebt.amount)
+                        dao.deleteTransaction(debtTxn)
+                        sync { deleteTransaction(debtTxn.id) }
+                    }
+                }
                 dao.deleteDebtById(investment.linkedDebtId)
             }
             dao.deleteInvestment(investment)
@@ -459,8 +506,23 @@ class FinanceRepository(
         syncAccountByName(destinationAccount)
     }
     suspend fun deleteDebt(debt: Debt) {
-        db.withTransaction { dao.updateAccountBalance("HDFC Bank", -debt.amount); dao.deleteDebt(debt) }
+        val linkedTxns = dao.getTransactionsByRef(debt.id)
+        db.withTransaction {
+            linkedTxns.forEach { txn ->
+                when (txn.type.lowercase()) {
+                    "expense"  -> dao.updateAccountBalance(txn.fromAcct,  txn.amount)
+                    "income"   -> dao.updateAccountBalance(txn.toAcct,   -txn.amount)
+                    "transfer" -> { dao.updateAccountBalance(txn.fromAcct, txn.amount); dao.updateAccountBalance(txn.toAcct, -txn.amount) }
+                }
+                dao.deleteTransaction(txn)
+            }
+            dao.getDebtPaymentsForDebtOnce(debt.id).forEach { p -> dao.deleteDebtPayment(p) }
+            dao.deleteDebt(debt)
+        }
+        linkedTxns.forEach { sync { deleteTransaction(it.id) } }
         sync { deleteDebt(debt.id) }
+        linkedTxns.map { it.fromAcct }.filter { it.isNotBlank() }.distinct().forEach { syncAccountByName(it) }
+        linkedTxns.map { it.toAcct }.filter { it.isNotBlank() }.distinct().forEach { syncAccountByName(it) }
     }
     suspend fun insertPaymentWithDest(payment: Payment, destinationAccount: String, projectId: String = payment.projectId) {
         db.withTransaction {
@@ -530,7 +592,7 @@ class FinanceRepository(
     suspend fun deleteBudget(budget: Budget) { dao.deleteBudget(budget); sync { deleteBudget(budget.category) } }
     suspend fun insertGoal(goal: Goal) { val g = goal.copy(updatedAt = System.currentTimeMillis()); dao.insertGoal(g); sync { setGoal(g) } }
     suspend fun deleteGoal(goal: Goal) { dao.deleteGoal(goal); sync { deleteGoal(goal.id) } }
-    fun getPaymentsForLoan(loanId: String) = dao.getPaymentsForLoan(loanId)
+    fun getPaymentsForLoan(loanId: String) = dao.getPaymentsForLoanOnce(loanId)
 
     /**
      * Pushes ALL local Room data to Firestore.
