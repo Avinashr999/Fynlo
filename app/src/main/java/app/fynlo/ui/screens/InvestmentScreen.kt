@@ -156,7 +156,7 @@ fun InvestmentScreen(viewModel: FinanceViewModel) {
         )
 
         if (investments.isEmpty()) {
-            EmptyInvestState()
+            EmptyInvestState(onAdd = { editingInvest = Investment(id = "", name = "", type = "", invested = 0.0, currentVal = 0.0, date = "", notes = "", projectId = "") })
         } else {
             LazyColumn(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -263,15 +263,12 @@ fun InvestmentCard(invest: Investment, currencySymbol: String = "₹", onDelete:
 }
 
 @Composable
-fun EmptyInvestState() {
-    Column(
-        modifier = Modifier.fillMaxSize().padding(top = 64.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Icon(Icons.Default.TrendingUp, contentDescription = null, modifier = Modifier.size(64.dp), tint = Color.LightGray)
-        Spacer(Modifier.height(16.dp))
-        Text("No investments yet", style = MaterialTheme.typography.titleMedium, color = Color.Gray)
-    }
+fun EmptyInvestState(onAdd: () -> Unit = {}) {
+    app.fynlo.ui.components.EmptyStateIllustration(
+        type        = app.fynlo.ui.components.EmptyStateType.INVESTMENTS,
+        onAction    = onAdd,
+        actionLabel = "Add First Investment"
+    )
 }
 
 @Composable

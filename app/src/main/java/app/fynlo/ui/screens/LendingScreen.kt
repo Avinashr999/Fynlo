@@ -586,26 +586,11 @@ fun LendingCard(borrower: Borrower, people: List<app.fynlo.data.model.Person> = 
 
 @Composable
 fun EmptyLendingState(onAdd: () -> Unit = {}) {
-    Column(
-        modifier = Modifier.fillMaxWidth().padding(top = 64.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Icon(Icons.Default.Person, contentDescription = null,
-            modifier = Modifier.size(64.dp),
-            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f))
-        Spacer(Modifier.height(16.dp))
-        Text("No active loans", style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text("Track money you've lent to friends or family.",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f))
-        Spacer(Modifier.height(20.dp))
-        Button(onClick = onAdd, shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp)) {
-            Icon(Icons.Default.Add, null, Modifier.size(16.dp))
-            Spacer(Modifier.width(6.dp))
-            Text("Add First Loan")
-        }
-    }
+    app.fynlo.ui.components.EmptyStateIllustration(
+        type        = app.fynlo.ui.components.EmptyStateType.LENDING,
+        onAction    = onAdd,
+        actionLabel = "Add First Loan"
+    )
 }
 // ── EMI Calculator Dialog ─────────────────────────────────────────────────────
 

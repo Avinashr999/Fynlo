@@ -208,18 +208,11 @@ fun SpendScreen(viewModel: FinanceViewModel) {
                             color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
                     }
                 } else {
-                    Box(Modifier.fillMaxWidth().padding(vertical = 40.dp), Alignment.Center) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Icon(Icons.Default.Receipt, null, Modifier.size(48.dp),
-                                tint = MaterialTheme.colorScheme.outlineVariant)
-                            Text("No expenses in ${selectedMonth.format(monthFmt)}",
-                                color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            if (isCurrentMonth) {
-                                FilledTonalButton(onClick = { showDialog = true }) { Text("Add First Expense") }
-                            }
-                        }
-                    }
+                    app.fynlo.ui.components.EmptyStateIllustration(
+                        type        = app.fynlo.ui.components.EmptyStateType.SPENDING,
+                        onAction    = if (isCurrentMonth) { { showDialog = true } } else null,
+                        actionLabel = "Add First Expense"
+                    )
                 }
                 Spacer(Modifier.height(100.dp))
             }
