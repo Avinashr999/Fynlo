@@ -1,4 +1,4 @@
-﻿package app.fynlo.logic
+package app.fynlo.logic
 
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -99,11 +99,30 @@ object InterestEngine {
         }
     }
 
+    /**
+     * Total outstanding the borrower owes RIGHT NOW.
+     *
+     * Formula: (principal - paidPrincipal) + max(0, accruedInterest - paidInterest)
+     *
+     * paidPrincipal  — only principal repayments (reduces the loan base)
+     * paidInterest   — interest already collected (reduces interest outstanding)
+     * accruedInterest — interest earned so far (calculated on original principal)
+     *
+     * Legacy overload (single totalPaid) treats all paid as reducing principal.
+     */
     fun calcOutstanding(
         principal: Double,
         accruedInterest: Double,
-        totalPaid: Double
+        paidPrincipal: Double,
+        paidInterest: Double = 0.0
     ): Double {
+        val principalOutstanding = (principal - paidPrincipal).coerceAtLeast(0.0)
+        val interestOutstanding  = (accruedInterest - paidInterest).coerceAtLeast(0.0)
+        return principalOutstanding + interestOutstanding
+    }
+
+    // Legacy overload — used by old code paths that only have totalPaid
+    fun calcOutstanding(principal: Double, accruedInterest: Double, totalPaid: Double): Double {
         return (principal + accruedInterest - totalPaid).coerceAtLeast(0.0)
     }
 

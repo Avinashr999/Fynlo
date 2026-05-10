@@ -1,4 +1,4 @@
-﻿package app.fynlo.data.local
+package app.fynlo.data.local
 
 import androidx.room.Dao
 import androidx.room.Delete
@@ -31,6 +31,15 @@ interface FynloDao {
 
     @Query("UPDATE borrowers SET paid = paid + :amount WHERE id = :borrowerId")
     suspend fun updateBorrowerPaidAmount(borrowerId: String, amount: Double)
+
+    @Query("UPDATE borrowers SET paidPrincipal = paidPrincipal + :amount, paid = paid + :amount WHERE id = :borrowerId")
+    suspend fun updateBorrowerPaidPrincipal(borrowerId: String, amount: Double)
+
+    @Query("UPDATE borrowers SET paidInterest = paidInterest + :amount, paid = paid + :amount WHERE id = :borrowerId")
+    suspend fun updateBorrowerPaidInterest(borrowerId: String, amount: Double)
+
+    @Query("UPDATE borrowers SET status = :status, defaultDate = :defaultDate, frozenInterest = :frozenInterest WHERE id = :id")
+    suspend fun updateBorrowerDefaultStatus(id: String, status: String, defaultDate: String, frozenInterest: Double)
 
     @Query("SELECT * FROM borrowers WHERE id = :id LIMIT 1")
     suspend fun getBorrowerById(id: String): Borrower?
@@ -139,6 +148,12 @@ interface FynloDao {
 
     @Query("UPDATE debts SET paid = paid + :amount WHERE id = :debtId")
     suspend fun updateDebtPaidAmount(debtId: String, amount: Double)
+
+    @Query("UPDATE debts SET paidPrincipal = paidPrincipal + :amount, paid = paid + :amount WHERE id = :debtId")
+    suspend fun updateDebtPaidPrincipal(debtId: String, amount: Double)
+
+    @Query("UPDATE debts SET paidInterest = paidInterest + :amount, paid = paid + :amount WHERE id = :debtId")
+    suspend fun updateDebtPaidInterest(debtId: String, amount: Double)
 
     @Query("SELECT * FROM debts WHERE id = :id LIMIT 1")
     suspend fun getDebtById(id: String): Debt?

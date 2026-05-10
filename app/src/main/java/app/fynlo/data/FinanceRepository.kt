@@ -1,4 +1,4 @@
-﻿package app.fynlo.data
+package app.fynlo.data
 
 import app.fynlo.data.local.FynloDao
 import app.fynlo.data.local.FynloDatabase
@@ -310,8 +310,8 @@ class FinanceRepository(
             dao.updateAccountBalance(accountName, -investment.invested)
             val t = Transaction(java.util.UUID.randomUUID().toString(), investment.date, "Expense", investment.invested,
                 fromAcct = accountName, category = "Investment",
-                desc = "Invested in ${investment.name}", notes = investment.notes,
-                projectId = projectId, updatedAt = System.currentTimeMillis())
+                desc = "Invested in ${investment.name}", ref = i.id,
+                notes = investment.notes, projectId = projectId, updatedAt = System.currentTimeMillis())
             dao.insertTransaction(t)
             sync { setInvestment(i); setTransaction(t) }
         }
@@ -371,7 +371,17 @@ class FinanceRepository(
     // ─── Delete — record + reverse source account balance ─────────────────────
     suspend fun deleteInvestmentAndReverseAccount(investment: Investment) {
         db.withTransaction {
+            // Restore account balance
             dao.updateAccountBalance(investment.fundingSource, investment.invested)
+            // Also delete the Investment expense transaction (find by ref or desc)
+            val invTxn = dao.getTransactionsByRef(investment.id)
+                .firstOrNull { it.category == "Investment" }
+                ?: dao.getTransactionsByDesc("Invested in ${investment.name}")
+                    .firstOrNull { it.category == "Investment" && it.ref.isBlank() }
+            if (invTxn != null) {
+                dao.deleteTransaction(invTxn)
+                sync { deleteTransaction(invTxn.id) }
+            }
             dao.deleteInvestment(investment)
         }
         sync { deleteInvestment(investment.id) }
@@ -546,7 +556,7 @@ class FinanceRepository(
             val d = debt.copy(projectId = projectId, updatedAt = System.currentTimeMillis())
             dao.insertDebt(d)
             dao.updateAccountBalance(destinationAccount, debt.amount)
-            val t = Transaction(java.util.UUID.randomUUID().toString(), debt.date, "Income", debt.amount, toAcct = destinationAccount, category = "Debt", desc = "Loan from ${debt.name}", notes = debt.notes, projectId = projectId, updatedAt = System.currentTimeMillis())
+            val t = Transaction(java.util.UUID.randomUUID().toString(), debt.date, "Income", debt.amount, toAcct = destinationAccount, category = "Debt Received", desc = "Loan received from ${debt.name}", ref = d.id, notes = debt.notes, projectId = projectId, updatedAt = System.currentTimeMillis())
             dao.insertTransaction(t)
             sync { setDebt(d); setTransaction(t) }
         }
@@ -575,8 +585,19 @@ class FinanceRepository(
         db.withTransaction {
             val p = payment.copy(projectId = projectId, updatedAt = System.currentTimeMillis())
             dao.insertPayment(p)
+
+            // Credit the destination account with full payment amount
             dao.updateAccountBalance(destinationAccount, payment.amount)
+
+            // Update principal and interest separately on the borrower
+            val principalPaid = payment.principal.coerceAtLeast(0.0)
+            val interestPaid  = payment.interest.coerceAtLeast(0.0)
+            if (principalPaid > 0) dao.updateBorrowerPaidPrincipal(payment.loanId, principalPaid)
+            if (interestPaid  > 0) dao.updateBorrowerPaidInterest(payment.loanId, interestPaid)
+            // Also update total paid for backward compat
             dao.updateBorrowerPaidAmount(payment.loanId, payment.amount)
+
+            // Main repayment transaction (full amount received)
             val t = Transaction(
                 id = java.util.UUID.randomUUID().toString(),
                 date = payment.date,
@@ -585,16 +606,16 @@ class FinanceRepository(
                 toAcct = destinationAccount,
                 category = "Loan Repayment",
                 desc = "Received from ${payment.name}",
-                ref = payment.loanId, // link to borrower
+                ref = payment.loanId,
                 notes = payment.notes,
                 projectId = projectId,
                 updatedAt = System.currentTimeMillis()
             )
             dao.insertTransaction(t)
-            
-            // Sync the updated borrower too!
+
+            // Sync the updated borrower too
             val updatedBorrower = dao.getBorrowerById(payment.loanId)
-            sync { 
+            sync {
                 setPayment(p)
                 setTransaction(t)
                 updatedBorrower?.let { setBorrower(it) }
@@ -606,8 +627,18 @@ class FinanceRepository(
         db.withTransaction {
             val p = payment.copy(projectId = projectId, updatedAt = System.currentTimeMillis())
             dao.insertDebtPayment(p)
+
+            // Debit source account with full payment amount
             dao.updateAccountBalance(sourceAccount, -payment.amount)
+
+            // Update principal and interest separately on the debt
+            val principalPaid = payment.principal.coerceAtLeast(0.0)
+            val interestPaid  = payment.interest.coerceAtLeast(0.0)
+            if (principalPaid > 0) dao.updateDebtPaidPrincipal(payment.debtId, principalPaid)
+            if (interestPaid  > 0) dao.updateDebtPaidInterest(payment.debtId, interestPaid)
             dao.updateDebtPaidAmount(payment.debtId, payment.amount)
+
+            // Main repayment transaction (full amount paid)
             val t = Transaction(
                 id = java.util.UUID.randomUUID().toString(),
                 date = payment.date,
@@ -615,17 +646,41 @@ class FinanceRepository(
                 amount = payment.amount,
                 fromAcct = sourceAccount,
                 category = "Debt Repayment",
-                desc = "Paid for ${payment.name}",
-                ref = payment.debtId, // link to debt
+                desc = "EMI/payment for ${payment.name}",
+                ref = payment.debtId,
                 notes = payment.notes,
                 projectId = projectId,
                 updatedAt = System.currentTimeMillis()
             )
             dao.insertTransaction(t)
-            
-            // Sync the updated debt too!
+
+            // If there's an interest portion, also create a separate "Interest Expense" entry
+            // so it shows in P&L as cost of borrowing
+            if (interestPaid > 0.01) {
+                val intTxn = Transaction(
+                    id = java.util.UUID.randomUUID().toString(),
+                    date = payment.date,
+                    type = "Expense",
+                    amount = interestPaid,
+                    fromAcct = sourceAccount,
+                    category = "Interest Expense",
+                    desc = "Interest paid on ${payment.name}",
+                    ref = payment.debtId,
+                    notes = "Auto-split from debt payment",
+                    projectId = projectId,
+                    updatedAt = System.currentTimeMillis()
+                )
+                // Note: we do NOT double-deduct account balance here —
+                // the account was already debited by the full payment amount above.
+                // This is a JOURNAL ENTRY for P&L tracking only, not a cash movement.
+                // We mark it with a special tag so it's excluded from cash calculations.
+                val journalTxn = intTxn.copy(tags = "journal_only")
+                dao.insertTransaction(journalTxn)
+                sync { setTransaction(journalTxn) }
+            }
+
             val updatedDebt = dao.getDebtById(payment.debtId)
-            sync { 
+            sync {
                 setDebtPayment(p)
                 setTransaction(t)
                 updatedDebt?.let { setDebt(it) }
@@ -639,6 +694,110 @@ class FinanceRepository(
     suspend fun deleteBudget(budget: Budget) { dao.deleteBudget(budget); sync { deleteBudget(budget.category) } }
     suspend fun insertGoal(goal: Goal) { val g = goal.copy(updatedAt = System.currentTimeMillis()); dao.insertGoal(g); sync { setGoal(g) } }
     suspend fun deleteGoal(goal: Goal) { dao.deleteGoal(goal); sync { deleteGoal(goal.id) } }
+
+    // ─── Investment Withdrawal Engine ──────────────────────────────────────────
+    // Called when an FD matures, stocks sold, MF redeemed etc.
+    // withdrawAmount: how much to withdraw (can be partial)
+    // toAccount: bank account that receives the money
+    // Returns the realized gain/loss for this withdrawal
+    suspend fun withdrawFromInvestment(investment: Investment, withdrawAmount: Double, toAccount: String): Double {
+        val proportionWithdrawn = if (investment.currentVal > 0)
+            (withdrawAmount / investment.currentVal).coerceIn(0.0, 1.0) else 0.0
+        val costBasis   = investment.invested * proportionWithdrawn  // what we paid for this portion
+        val gainLoss    = withdrawAmount - costBasis                  // profit or loss
+
+        db.withTransaction {
+            // Update investment: reduce currentVal and track withdrawn amount
+            val newCurrentVal  = (investment.currentVal  - withdrawAmount).coerceAtLeast(0.0)
+            val newWithdrawn   = investment.withdrawn + withdrawAmount
+            val newRealized    = investment.realized + gainLoss
+            val updated = investment.copy(
+                currentVal = newCurrentVal,
+                withdrawn  = newWithdrawn,
+                realized   = newRealized,
+                updatedAt  = System.currentTimeMillis()
+            )
+            dao.insertInvestment(updated)
+
+            // Credit destination account
+            dao.updateAccountBalance(toAccount, withdrawAmount)
+
+            // Create Income transaction for the full withdrawal
+            val t = Transaction(
+                id        = java.util.UUID.randomUUID().toString(),
+                date      = java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd")),
+                type      = "Income",
+                amount    = withdrawAmount,
+                toAcct    = toAccount,
+                category  = "Investment Returns",
+                desc      = "Withdrawal from ${investment.name}",
+                ref       = investment.id,
+                notes     = if (gainLoss >= 0) "Gain: ₹${String.format("%.0f", gainLoss)}"
+                            else "Loss: ₹${String.format("%.0f", -gainLoss)}",
+                projectId = investment.projectId,
+                updatedAt = System.currentTimeMillis()
+            )
+            dao.insertTransaction(t)
+            sync { setInvestment(updated); setTransaction(t) }
+        }
+        syncAccountByName(toAccount)
+        return gainLoss
+    }
+
+    // ─── Mark Borrower as Defaulted ────────────────────────────────────────────
+    // Freezes accrued interest at the default date — stops accumulating phantom interest
+    suspend fun markBorrowerDefaulted(borrower: Borrower) {
+        val today = java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd"))
+        val frozenInterest = app.fynlo.logic.InterestEngine.calcIntAccrued(
+            borrower.amount, borrower.rate, borrower.date, borrower.type,
+            borrower.due, totalPaid = borrower.paidPrincipal, asOf = today
+        )
+        val updated = borrower.copy(
+            status        = "Defaulted",
+            defaultDate   = today,
+            frozenInterest = frozenInterest,
+            updatedAt     = System.currentTimeMillis()
+        )
+        dao.updateBorrowerDefaultStatus(borrower.id, "Defaulted", today, frozenInterest)
+        sync { setBorrower(updated) }
+    }
+
+    // ─── Write Off Bad Debt ─────────────────────────────────────────────────────
+    // Creates a Bad Debt Expense transaction so it hits your P&L
+    suspend fun writeOffBorrower(borrower: Borrower, fromAccount: String = "Cash in Hand") {
+        val outstanding = if (borrower.status == "Defaulted" && borrower.frozenInterest > 0) {
+            // Use frozen interest for defaulted borrowers
+            (borrower.amount - borrower.paidPrincipal) + maxOf(0.0, borrower.frozenInterest - borrower.paidInterest)
+        } else {
+            val interest = app.fynlo.logic.InterestEngine.calcIntAccrued(
+                borrower.amount, borrower.rate, borrower.date, borrower.type, borrower.due, borrower.paidPrincipal
+            )
+            (borrower.amount - borrower.paidPrincipal) + maxOf(0.0, interest - borrower.paidInterest)
+        }
+
+        db.withTransaction {
+            val updated = borrower.copy(status = "WrittenOff", updatedAt = System.currentTimeMillis())
+            dao.insertBorrower(updated)
+
+            // Bad Debt Expense — shows in P&L (journal entry, no cash movement)
+            val t = Transaction(
+                id        = java.util.UUID.randomUUID().toString(),
+                date      = java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd")),
+                type      = "Expense",
+                amount    = outstanding,
+                fromAcct  = "", // no actual cash movement
+                category  = "Bad Debt",
+                desc      = "Write-off: ${borrower.name} — outstanding ₹${String.format("%.0f", outstanding)}",
+                ref       = borrower.id,
+                tags      = "journal_only", // exclude from cash flow
+                projectId = borrower.projectId,
+                updatedAt = System.currentTimeMillis()
+            )
+            dao.insertTransaction(t)
+            sync { setBorrower(updated); setTransaction(t) }
+        }
+    }
+
     fun getPaymentsForLoan(loanId: String) = dao.getPaymentsForLoan(loanId)
 
     /**

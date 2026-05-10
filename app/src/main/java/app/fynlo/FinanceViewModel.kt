@@ -1,4 +1,4 @@
-﻿package app.fynlo
+package app.fynlo
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -144,33 +144,44 @@ class FinanceViewModel(private val repository: FinanceRepository) : ViewModel() 
     ) { trans, accts, invs, brws, dbts ->
         val totalCash        = accts.sumOf { it.balance }
         val totalInvestments = invs.sumOf { it.currentVal }
-        val totalReceivables = brws.sumOf { b ->
-            val accrued = app.fynlo.logic.InterestEngine.calcIntAccrued(
-                b.amount, b.rate, b.date, b.type, b.due, totalPaid = b.paid
+        // Exclude written-off borrowers from receivables (they're bad debt)
+        val activeBrws = brws.filter { it.status != "WrittenOff" }
+
+        val totalReceivables = activeBrws.sumOf { b ->
+            val accrued = if (b.status == "Defaulted" && b.frozenInterest > 0)
+                b.frozenInterest  // frozen at default date — no further accrual
+            else
+                app.fynlo.logic.InterestEngine.calcIntAccrued(
+                    b.amount, b.rate, b.date, b.type, b.due,
+                    totalPaid = b.paidPrincipal  // only principal reduces interest base
+                )
+            app.fynlo.logic.InterestEngine.calcOutstanding(
+                b.amount, accrued, b.paidPrincipal, b.paidInterest
             )
-            b.amount + accrued - b.paid
         }
-        
-        val totalInterestLoans = brws.filter { it.rate > 0 }.sumOf { b ->
-            val accrued = app.fynlo.logic.InterestEngine.calcIntAccrued(
-                b.amount, b.rate, b.date, b.type, b.due, totalPaid = b.paid
+
+        val totalInterestLoans = activeBrws.filter { it.rate > 0 }.sumOf { b ->
+            val accrued = if (b.status == "Defaulted" && b.frozenInterest > 0) b.frozenInterest
+            else app.fynlo.logic.InterestEngine.calcIntAccrued(
+                b.amount, b.rate, b.date, b.type, b.due, totalPaid = b.paidPrincipal
             )
-            b.amount + accrued - b.paid
+            app.fynlo.logic.InterestEngine.calcOutstanding(b.amount, accrued, b.paidPrincipal, b.paidInterest)
         }
-        val totalHandLoans = brws.filter { it.rate <= 0 }.sumOf { it.amount - it.paid }
+        val totalHandLoans = activeBrws.filter { it.rate <= 0 }.sumOf { (it.amount - it.paidPrincipal).coerceAtLeast(0.0) }
 
         val invTypeMap = invs.groupBy { it.type }
             .mapValues { it.value.sumOf { inv -> inv.currentVal } }
 
-        val interestBrwMap = brws.filter { it.rate > 0 }.associate { b ->
-            val accrued = app.fynlo.logic.InterestEngine.calcIntAccrued(
-                b.amount, b.rate, b.date, b.type, b.due, totalPaid = b.paid
+        val interestBrwMap = activeBrws.filter { it.rate > 0 }.associate { b ->
+            val accrued = if (b.status == "Defaulted" && b.frozenInterest > 0) b.frozenInterest
+            else app.fynlo.logic.InterestEngine.calcIntAccrued(
+                b.amount, b.rate, b.date, b.type, b.due, totalPaid = b.paidPrincipal
             )
-            b.name to (b.amount + accrued - b.paid)
+            b.name to app.fynlo.logic.InterestEngine.calcOutstanding(b.amount, accrued, b.paidPrincipal, b.paidInterest)
         }
 
-        val handBrwMap = brws.filter { it.rate <= 0 }.associate { b ->
-            b.name to (b.amount - b.paid)
+        val handBrwMap = activeBrws.filter { it.rate <= 0 }.associate { b ->
+            b.name to (b.amount - b.paidPrincipal).coerceAtLeast(0.0)
         }
 
         val totalAssets       = totalCash + totalInvestments + totalReceivables
@@ -180,8 +191,15 @@ class FinanceViewModel(private val repository: FinanceRepository) : ViewModel() 
                 d.amount, d.rate, d.date, d.intType, d.due, totalPaid = d.paid
             )
         }
-        val totalExpenses  = trans.filter { it.type.lowercase() == "expense" }.sumOf { it.amount }
-        val totalIncome    = trans.filter { it.type.lowercase() == "income"  }.sumOf { it.amount }
+        // Exclude journal_only entries (Bad Debt write-offs, Interest Expense P&L entries)
+        // from cash flow totals — they are accounting entries, not actual cash movements
+        val cashTrans     = trans.filter { it.tags != "journal_only" }
+        val totalExpenses = cashTrans.filter { it.type.lowercase() == "expense" }.sumOf { it.amount }
+        val totalIncome   = cashTrans.filter { it.type.lowercase() == "income"  }.sumOf { it.amount }
+        // P&L includes journal entries (bad debts + interest expense are real economic costs)
+        val totalBadDebtWriteOffs = trans.filter { it.category == "Bad Debt" }.sumOf { it.amount }
+        val totalInterestExpense  = trans.filter { it.category == "Interest Expense" }.sumOf { it.amount }
+        val totalInterestIncome   = trans.filter { it.category == "Loan Repayment" }.sumOf { it.amount }
         val invGrowth      = invs.sumOf { it.currentVal - it.invested }
         val avgYield       = if (brws.isNotEmpty()) brws.map { it.rate }.average() else 0.0
         val net            = totalAssets - (totalDebtPrincipal + totalDebtInterest)
@@ -197,30 +215,46 @@ class FinanceViewModel(private val repository: FinanceRepository) : ViewModel() 
         }
 
         FinancialSummary(
-            totalCash          = totalCash,
-            totalInvestments   = totalInvestments,
-            totalReceivables   = totalReceivables,
-            totalAssets        = totalAssets,
-            totalDebtPrincipal = totalDebtPrincipal,
-            totalDebtInterest  = totalDebtInterest,
-            totalExpenses      = totalExpenses,
-            totalIncome        = totalIncome,
-            netWorth           = net,
-            investmentGrowth   = invGrowth,
-            lendingYield       = avgYield,
-            debtBurden         = if (net != 0.0) ((totalDebtPrincipal + totalDebtInterest) / net) * 100 else 0.0,
-            totalInterestLoans = totalInterestLoans,
-            totalHandLoans     = totalHandLoans,
-            investmentTypeBreakdown = invTypeMap,
+            totalCash              = totalCash,
+            totalInvestments       = totalInvestments,
+            totalReceivables       = totalReceivables,
+            totalAssets            = totalAssets,
+            totalDebtPrincipal     = totalDebtPrincipal,
+            totalDebtInterest      = totalDebtInterest,
+            totalExpenses          = totalExpenses,
+            totalIncome            = totalIncome,
+            totalInterestIncome    = totalInterestIncome,
+            totalInterestExpense   = totalInterestExpense,
+            totalBadDebtWriteOffs  = totalBadDebtWriteOffs,
+            netWorth               = net,
+            investmentGrowth       = invGrowth,
+            lendingYield           = avgYield,
+            debtBurden             = if (net != 0.0) ((totalDebtPrincipal + totalDebtInterest) / net) * 100 else 0.0,
+            totalInterestLoans     = totalInterestLoans,
+            totalHandLoans         = totalHandLoans,
+            investmentTypeBreakdown  = invTypeMap,
             interestLendingBreakdown = interestBrwMap,
             handLendingBreakdown     = handBrwMap,
-            accountBreakdown   = accountsMap,
-            accountGrowthMap   = growthMap
+            accountBreakdown       = accountsMap,
+            accountGrowthMap       = growthMap
         )
     }.stateIn(viewModelScope, SharingStarted.Eagerly, FinancialSummary())
 
     private val today get() = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
     private val pid   get() = _currentProjectId.value.ifEmpty { "personal" }
+
+    fun withdrawFromInvestment(investment: app.fynlo.data.model.Investment, amount: Double, toAccount: String) {
+        viewModelScope.launch { repository.withdrawFromInvestment(investment, amount, toAccount) }
+    }
+    fun markBorrowerDefaulted(borrower: app.fynlo.data.model.Borrower) {
+        viewModelScope.launch { repository.markBorrowerDefaulted(borrower) }
+    }
+    fun writeOffBorrower(borrower: app.fynlo.data.model.Borrower) {
+        viewModelScope.launch { repository.writeOffBorrower(borrower) }
+    }
+    fun recalculateAllBalances() {
+        viewModelScope.launch { repository.recalculateAllBalances() }
+    }
 
     fun addBorrowerWithSource(borrower: Borrower, source: String) {
         viewModelScope.launch {

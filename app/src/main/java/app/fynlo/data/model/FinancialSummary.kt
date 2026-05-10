@@ -1,26 +1,44 @@
-﻿package app.fynlo.data.model
+package app.fynlo.data.model
 
 data class FinancialSummary(
-    val totalCash: Double = 0.0,
-    val totalInvestments: Double = 0.0,
-    val totalReceivables: Double = 0.0,
-    val totalAssets: Double = 0.0,
-    val totalDebtPrincipal: Double = 0.0,
-    val totalDebtInterest: Double = 0.0,
-    val totalExpenses: Double = 0.0,
-    val totalIncome: Double = 0.0,
-    val netWorth: Double = 0.0,
-    val investmentGrowth: Double = 0.0,
-    val lendingYield: Double = 0.0,
+    // ── Balance Sheet ──────────────────────────────────────────────────────────
+    val totalCash: Double = 0.0,              // sum of all account balances
+    val totalInvestments: Double = 0.0,       // sum of investment currentVal
+    val totalReceivables: Double = 0.0,       // (principal - paidPrincipal) + (interest - paidInterest)
+    val totalAssets: Double = 0.0,            // cash + investments + receivables
+    val totalDebtPrincipal: Double = 0.0,     // outstanding principal on all debts
+    val totalDebtInterest: Double = 0.0,      // accrued interest on all debts
+    val netWorth: Double = 0.0,               // assets - (debt principal + debt interest)
+
+    // ── P&L (cash basis) ───────────────────────────────────────────────────────
+    val totalIncome: Double = 0.0,            // actual cash income (excluding journal entries)
+    val totalExpenses: Double = 0.0,          // actual cash expenses (excluding journal entries)
+    val totalInterestIncome: Double = 0.0,    // interest collected from borrowers
+    val totalInterestExpense: Double = 0.0,   // interest paid on own debts (P&L cost)
+    val totalBadDebtWriteOffs: Double = 0.0,  // bad debt write-offs (economic loss)
+
+    // ── Investment ─────────────────────────────────────────────────────────────
+    val investmentGrowth: Double = 0.0,       // sum(currentVal - invested)
+    val investmentTypeBreakdown: Map<String, Double> = emptyMap(),
+
+    // ── Lending ────────────────────────────────────────────────────────────────
+    val totalInterestLoans: Double = 0.0,     // total outstanding from interest-bearing loans
+    val totalHandLoans: Double = 0.0,         // total outstanding from hand loans (0%)
+    val lendingYield: Double = 0.0,           // average interest rate across active loans
+    val interestLendingBreakdown: Map<String, Double> = emptyMap(),
+    val handLendingBreakdown: Map<String, Double> = emptyMap(),
+
+    // ── Misc ───────────────────────────────────────────────────────────────────
     val debtBurden: Double = 0.0,
     val accountBreakdown: Map<String, Double> = emptyMap(),
-    val accountGrowthMap: Map<String, Double> = emptyMap(),
-    val totalInterestLoans: Double = 0.0,
-    val totalHandLoans: Double = 0.0,
-    val investmentTypeBreakdown: Map<String, Double> = emptyMap(), // type -> currentVal
-    val interestLendingBreakdown: Map<String, Double> = emptyMap(), // person -> outstanding
-    val handLendingBreakdown: Map<String, Double> = emptyMap() // person -> balance
+    val accountGrowthMap: Map<String, Double> = emptyMap()
 ) {
     val savingsRate: Double
         get() = if (totalIncome > 0) ((totalIncome - totalExpenses) / totalIncome) * 100 else 0.0
+
+    val netProfitFromLending: Double
+        get() = totalInterestIncome - totalBadDebtWriteOffs
+
+    val costOfDebt: Double
+        get() = totalInterestExpense
 }

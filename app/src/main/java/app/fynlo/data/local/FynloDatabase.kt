@@ -1,4 +1,4 @@
-﻿package app.fynlo.data.local
+package app.fynlo.data.local
 
 import androidx.room.Database
 import androidx.room.RoomDatabase
@@ -25,7 +25,7 @@ import app.fynlo.data.model.FlowTemplate
         NetWorthSnapshot::class,
         InvestmentValuation::class
     ],
-    version = 9,
+    version = 10,
     exportSchema = false
 )
 abstract class FynloDatabase : RoomDatabase() {
@@ -67,6 +67,24 @@ val MIGRATION_8_9 = object : Migration(8, 9) {
  * Creates the new `projects` table.
  * Safe for existing users — all rows default to projectId = "personal".
  */
+
+val MIGRATION_9_10 = object : Migration(9, 10) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        // Borrower: split paid into paidPrincipal + paidInterest, add defaulter fields
+        db.execSQL("ALTER TABLE `borrowers` ADD COLUMN `paidPrincipal`  REAL NOT NULL DEFAULT 0.0")
+        db.execSQL("ALTER TABLE `borrowers` ADD COLUMN `paidInterest`   REAL NOT NULL DEFAULT 0.0")
+        db.execSQL("ALTER TABLE `borrowers` ADD COLUMN `defaultDate`    TEXT NOT NULL DEFAULT ''")
+        db.execSQL("ALTER TABLE `borrowers` ADD COLUMN `frozenInterest` REAL NOT NULL DEFAULT 0.0")
+        // Debt: split paid into paidPrincipal + paidInterest
+        db.execSQL("ALTER TABLE `debts` ADD COLUMN `paidPrincipal` REAL NOT NULL DEFAULT 0.0")
+        db.execSQL("ALTER TABLE `debts` ADD COLUMN `paidInterest`  REAL NOT NULL DEFAULT 0.0")
+        // Seed paidPrincipal = paid for all existing borrowers/debts
+        // This preserves old behaviour: existing paid amount treated as all-principal
+        db.execSQL("UPDATE `borrowers` SET `paidPrincipal` = `paid`")
+        db.execSQL("UPDATE `debts`     SET `paidPrincipal` = `paid`")
+    }
+}
+
 val MIGRATION_3_4 = object : Migration(3, 4) {
     override fun migrate(db: SupportSQLiteDatabase) {
         val tables = listOf(
