@@ -67,6 +67,7 @@ sealed class Screen(val route: String, val label: String, val icon: ImageVector)
     object LoanCalc   : Screen("loan_calc",      "Loan Calculator",  Icons.Default.Calculate)
     object Reports     : Screen("reports_hub",   "Reports",          Icons.Default.Assessment)
     object GlobalSearch: Screen("global_search",  "Search",           Icons.Default.Search)
+    object Calendar    : Screen("collection_calendar", "Collection Calendar", Icons.Default.CalendarMonth)
 }
 
 val bottomNavItems = listOf(
@@ -315,6 +316,11 @@ fun MainNavigation(viewModel: FinanceViewModel) {
                         navController.navigate(Screen.LoanCalc.route)
                         scope.launch { drawerState.close() }
                     }
+                    DrawerItem(Icons.Default.CalendarMonth, "Collection Calendar",
+                        currentRoute == Screen.Calendar.route) {
+                        navController.navigate(Screen.Calendar.route)
+                        scope.launch { drawerState.close() }
+                    }
 
                     DrawerDivider()
 
@@ -496,7 +502,8 @@ fun MainNavigation(viewModel: FinanceViewModel) {
                 composable(Screen.Lending.route) { 
                     LendingScreen(
                         viewModel = viewModel,
-                        onNavigateToDetail = { id -> navController.navigate("customer/$id") }
+                        onNavigateToDetail = { id -> navController.navigate("customer/$id") },
+                        onNavigateToCalendar = { navController.navigate(Screen.Calendar.route) }
                     ) 
                 }
                 composable(Screen.Debts.route) { DebtScreen(viewModel) }
@@ -521,6 +528,13 @@ fun MainNavigation(viewModel: FinanceViewModel) {
                 composable(Screen.NetWorthH.route)  { NetWorthHistoryScreen(viewModel) }
                 composable(Screen.MoneyFlow.route)   { MoneyFlowScreen(viewModel) }
                 composable(Screen.LoanCalc.route)    { LoanCalculatorScreen() }
+                composable(Screen.Calendar.route) {
+                    CollectionCalendarScreen(
+                        viewModel = viewModel,
+                        onNavigateBack = { navController.navigateUp() },
+                        onNavigateToBorrower = { id -> navController.navigate("customer/$id") }
+                    )
+                }
                 composable(Screen.GlobalSearch.route) { GlobalSearchScreen(viewModel, onNavigateBack = { navController.popBackStack() }) }
                 composable(Screen.Reports.route) {
                     ReportsHubScreen(

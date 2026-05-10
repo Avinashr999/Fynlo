@@ -10,6 +10,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Sort
+import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
@@ -43,7 +44,7 @@ import app.fynlo.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> Unit = {}) {
+fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> Unit = {}, onNavigateToCalendar: () -> Unit = {}) {
     val borrowers     by viewModel.borrowers.collectAsState()
     val accounts      by viewModel.accounts.collectAsState()
     val people        by viewModel.people.collectAsState()  // for phone lookup
@@ -132,6 +133,11 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
                         }
                         OutlinedButton(onClick = { showEmiCalc = true }, shape = RoundedCornerShape(12.dp)) {
                             Text("EMI")
+                        }
+                        OutlinedButton(onClick = onNavigateToCalendar, shape = RoundedCornerShape(12.dp)) {
+                            Icon(Icons.Default.CalendarMonth, null, Modifier.size(16.dp))
+                            Spacer(Modifier.width(4.dp))
+                            Text("Calendar")
                         }
                     }
                 }
