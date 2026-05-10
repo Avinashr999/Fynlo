@@ -47,6 +47,18 @@ interface FynloDao {
     @Query("UPDATE borrowers SET paid = paidPrincipal + paidInterest")
     suspend fun recalculateBorrowerPaid()
 
+    @Query("""UPDATE borrowers SET
+        paid          = COALESCE((SELECT SUM(amount)   FROM payments WHERE loanId = borrowers.id), 0),
+        paidPrincipal = COALESCE((SELECT SUM(CASE WHEN principal > 0 THEN principal ELSE amount END) FROM payments WHERE loanId = borrowers.id), 0),
+        paidInterest  = COALESCE((SELECT SUM(interest) FROM payments WHERE loanId = borrowers.id), 0)""")
+    suspend fun rebuildBorrowerPaidFromPayments()
+
+    @Query("""UPDATE debts SET
+        paid          = COALESCE((SELECT SUM(amount)   FROM debt_payments WHERE debtId = debts.id), 0),
+        paidPrincipal = COALESCE((SELECT SUM(CASE WHEN principal > 0 THEN principal ELSE amount END) FROM debt_payments WHERE debtId = debts.id), 0),
+        paidInterest  = COALESCE((SELECT SUM(interest) FROM debt_payments WHERE debtId = debts.id), 0)""")
+    suspend fun rebuildDebtPaidFromDebtPayments()
+
     @Query("UPDATE debts SET paid = paidPrincipal + paidInterest")
     suspend fun recalculateDebtPaid()
 

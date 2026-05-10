@@ -25,7 +25,7 @@ import app.fynlo.data.model.FlowTemplate
         NetWorthSnapshot::class,
         InvestmentValuation::class
     ],
-    version = 12,
+    version = 13,
     exportSchema = false
 )
 abstract class FynloDatabase : RoomDatabase() {
@@ -118,6 +118,35 @@ val MIGRATION_11_12 = object : Migration(11, 12) {
         """.trimIndent())
         db.execSQL("UPDATE `borrowers` SET `paid` = `paidPrincipal` + `paidInterest`")
         db.execSQL("UPDATE `debts`     SET `paid` = `paidPrincipal` + `paidInterest`")
+    }
+}
+
+val MIGRATION_12_13 = object : Migration(12, 13) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        // Migrations 10→11 and 11→12 had a flaw: they recomputed paid from paidPrincipal
+        // but for payments recorded via the old single-amount dialog (principal=0, interest=0),
+        // paidPrincipal was never updated — so those payments were silently wiped.
+        //
+        // Nuclear fix: rebuild paid, paidPrincipal, paidInterest directly from the
+        // payments table (the true source of record), not from the denormalized fields.
+
+        // Rebuild borrower paid amounts from payments table
+        db.execSQL("""
+            UPDATE borrowers SET
+              paid         = COALESCE((SELECT SUM(amount)   FROM payments WHERE loanId = borrowers.id), 0),
+              paidPrincipal= COALESCE((SELECT SUM(CASE WHEN principal > 0 THEN principal ELSE amount END)
+                                       FROM payments WHERE loanId = borrowers.id), 0),
+              paidInterest = COALESCE((SELECT SUM(interest) FROM payments WHERE loanId = borrowers.id), 0)
+        """.trimIndent())
+
+        // Rebuild debt paid amounts from debt_payments table
+        db.execSQL("""
+            UPDATE debts SET
+              paid         = COALESCE((SELECT SUM(amount)   FROM debt_payments WHERE debtId = debts.id), 0),
+              paidPrincipal= COALESCE((SELECT SUM(CASE WHEN principal > 0 THEN principal ELSE amount END)
+                                       FROM debt_payments WHERE debtId = debts.id), 0),
+              paidInterest = COALESCE((SELECT SUM(interest) FROM debt_payments WHERE debtId = debts.id), 0)
+        """.trimIndent())
     }
 }
 

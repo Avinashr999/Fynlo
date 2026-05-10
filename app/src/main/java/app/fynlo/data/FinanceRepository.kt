@@ -245,14 +245,11 @@ class FinanceRepository(
      */
     // ─── Fix double-counted paid field (safe to run on every startup) ────────
     suspend fun fixPaidDoubleCount() {
-        // Step 1: Re-seed paidPrincipal for old-style payments where the split fields
-        // were never populated (paidPrincipal=0, paidInterest=0, but paid > 0).
-        // These are hand loans or pre-split-dialog payments. Treat all paid as principal.
-        dao.seedPaidPrincipalFromPaid()
-        dao.seedDebtPaidPrincipalFromPaid()
-        // Step 2: Recalculate paid = paidPrincipal + paidInterest to fix any double-count
-        dao.recalculateBorrowerPaid()
-        dao.recalculateDebtPaid()
+        // Rebuild paid, paidPrincipal, paidInterest from the payments table (source of truth).
+        // This fixes any corruption from previous migrations that used the wrong
+        // denormalized fields as the source.
+        dao.rebuildBorrowerPaidFromPayments()
+        dao.rebuildDebtPaidFromDebtPayments()
     }
 
     suspend fun recalculateAllBalances() {
