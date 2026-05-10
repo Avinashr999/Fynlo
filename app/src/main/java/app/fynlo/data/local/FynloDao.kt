@@ -246,6 +246,12 @@ interface FynloDao {
     @Query("DELETE FROM borrowers")
     suspend fun deleteAllBorrowers()
 
+    @Query("DELETE FROM payments")
+    suspend fun deleteAllPayments()
+
+    @Query("DELETE FROM debt_payments")
+    suspend fun deleteAllDebtPayments()
+
     @Query("DELETE FROM investments")
     suspend fun deleteAllInvestments()
 

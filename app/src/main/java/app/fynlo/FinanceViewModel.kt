@@ -170,7 +170,11 @@ class FinanceViewModel(private val repository: FinanceRepository) : ViewModel() 
             )
             app.fynlo.logic.InterestEngine.calcOutstanding(b.amount, accrued, b.paidPrincipal, b.paidInterest)
         }
-        val totalHandLoans = activeBrws.filter { it.rate <= 0 }.sumOf { (it.amount - it.paidPrincipal).coerceAtLeast(0.0) }
+        // Hand loans: use 'paid' (mirrors isActive check for hand loans)
+        // Interest loans are not counted here (they have a separate totalInterestLoans)
+        val totalHandLoans = activeBrws.filter { it.rate <= 0 }.sumOf { b ->
+            (b.amount - b.paid).coerceAtLeast(0.0)  // consistent with isActive: paid < amount
+        }
 
         val invTypeMap = invs.groupBy { it.type }
             .mapValues { it.value.sumOf { inv -> inv.currentVal } }

@@ -1037,12 +1037,14 @@ class FinanceRepository(
         )
 
         db.withTransaction {
-            // 1. Wipe Room
+            // 1. Wipe Room — including payments and debt_payments which were previously missed
             dao.deleteAllAccounts()
             dao.deleteAllTransactions()
             dao.deleteAllBorrowers()
+            dao.deleteAllPayments()          // ← was missing!
             dao.deleteAllInvestments()
             dao.deleteAllDebts()
+            dao.deleteAllDebtPayments()      // ← was missing!
             dao.deleteAllPeople()
             dao.deleteAllProjects()
             dao.deleteAllBudgets()
