@@ -25,7 +25,7 @@ import app.fynlo.data.model.FlowTemplate
         NetWorthSnapshot::class,
         InvestmentValuation::class
     ],
-    version = 11,
+    version = 12,
     exportSchema = false
 )
 abstract class FynloDatabase : RoomDatabase() {
@@ -92,6 +92,30 @@ val MIGRATION_10_11 = object : Migration(10, 11) {
         // Recompute paid = paidPrincipal + paidInterest for all borrowers and debts.
         // Safe: migration 9→10 already seeded paidPrincipal = paid for old records,
         // so this formula is always correct.
+        db.execSQL("UPDATE `borrowers` SET `paid` = `paidPrincipal` + `paidInterest`")
+        db.execSQL("UPDATE `debts`     SET `paid` = `paidPrincipal` + `paidInterest`")
+    }
+}
+
+val MIGRATION_11_12 = object : Migration(11, 12) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        // Migration 10→11 had a destructive flaw: it ran SET paid = paidPrincipal + paidInterest
+        // but for hand loans paid via the old single-amount dialog (after v10 install),
+        // paidPrincipal was 0 and the migration wiped the payment entirely.
+        //
+        // Fix: first re-seed paidPrincipal = paid for any record where
+        // split fields are both 0 but paid > 0 (old-style payment).
+        // Then recalculate paid = paidPrincipal + paidInterest.
+        db.execSQL("""
+            UPDATE `borrowers`
+            SET    `paidPrincipal` = `paid`
+            WHERE  `paidPrincipal` = 0 AND `paidInterest` = 0 AND `paid` > 0
+        """.trimIndent())
+        db.execSQL("""
+            UPDATE `debts`
+            SET    `paidPrincipal` = `paid`
+            WHERE  `paidPrincipal` = 0 AND `paidInterest` = 0 AND `paid` > 0
+        """.trimIndent())
         db.execSQL("UPDATE `borrowers` SET `paid` = `paidPrincipal` + `paidInterest`")
         db.execSQL("UPDATE `debts`     SET `paid` = `paidPrincipal` + `paidInterest`")
     }

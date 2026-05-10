@@ -4,6 +4,7 @@ import android.app.Application
 import android.util.Log
 import androidx.room.Room
 import app.fynlo.data.local.MIGRATION_10_11
+import app.fynlo.data.local.MIGRATION_11_12
 import app.fynlo.data.AuthManager
 import app.fynlo.data.FinanceRepository
 import app.fynlo.data.local.FynloDatabase
@@ -29,7 +30,7 @@ class FynloApplication : Application() {
 
     val database: FynloDatabase by lazy {
         Room.databaseBuilder(this, FynloDatabase::class.java, "Fynlo_database")
-            .addMigrations(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11)
+            .addMigrations(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12)
 
             .fallbackToDestructiveMigrationOnDowngrade() // safety
             .build()
