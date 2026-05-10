@@ -20,6 +20,7 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Event
 import androidx.compose.material.icons.filled.Message
+import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.Sms
 import androidx.compose.material.icons.filled.PhoneEnabled
 import androidx.compose.material.icons.filled.Share
