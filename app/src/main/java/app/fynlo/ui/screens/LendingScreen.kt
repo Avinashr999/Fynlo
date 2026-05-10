@@ -15,6 +15,7 @@ import androidx.compose.material.icons.filled.Sort
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.MonetizationOn
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Add
@@ -626,10 +627,7 @@ fun LendingCard(borrower: Borrower, people: List<app.fynlo.data.model.Person> = 
                                 tint = SemanticAmber.copy(alpha = 0.7f))
                         }
                     }
-                    Button(onClick = onCollect, contentPadding = PaddingValues(horizontal = 12.dp),
-                        modifier = Modifier.height(28.dp)) {
-                        Text("Collect", style = MaterialTheme.typography.labelSmall, maxLines = 1)
-                    }
+
                 }
             }
             
@@ -713,6 +711,19 @@ fun LendingCard(borrower: Borrower, people: List<app.fynlo.data.model.Person> = 
                         style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.error)
                     )
                 }
+            }
+
+            // Collect Payment button — full-width, always visible at bottom
+            Spacer(Modifier.height(12.dp))
+            Button(
+                onClick = onCollect,
+                modifier = Modifier.fillMaxWidth().height(40.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Emerald500),
+                shape = RoundedCornerShape(10.dp)
+            ) {
+                Icon(Icons.Default.MonetizationOn, null, Modifier.size(16.dp))
+                Spacer(Modifier.width(6.dp))
+                Text("Collect Payment", style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold))
             }
 
             if (borrower.notes.isNotEmpty()) {
