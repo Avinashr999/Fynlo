@@ -592,7 +592,7 @@ class FinanceRepository(
     suspend fun deleteBudget(budget: Budget) { dao.deleteBudget(budget); sync { deleteBudget(budget.category) } }
     suspend fun insertGoal(goal: Goal) { val g = goal.copy(updatedAt = System.currentTimeMillis()); dao.insertGoal(g); sync { setGoal(g) } }
     suspend fun deleteGoal(goal: Goal) { dao.deleteGoal(goal); sync { deleteGoal(goal.id) } }
-    fun getPaymentsForLoan(loanId: String) = dao.getPaymentsForLoanOnce(loanId)
+    fun getPaymentsForLoan(loanId: String) = dao.getPaymentsForLoan(loanId)
 
     /**
      * Pushes ALL local Room data to Firestore.
