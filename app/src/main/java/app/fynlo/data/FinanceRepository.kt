@@ -152,11 +152,20 @@ class FinanceRepository(
 
     suspend fun deleteTransaction(transaction: Transaction) {
         db.withTransaction {
+            // Guard: only reverse balance if account name is non-blank
             when (transaction.type.lowercase()) {
-                "expense"  -> dao.updateAccountBalance(transaction.fromAcct,  transaction.amount)
-                "income"   -> dao.updateAccountBalance(transaction.toAcct,   -transaction.amount)
-                "transfer" -> { dao.updateAccountBalance(transaction.fromAcct, transaction.amount); dao.updateAccountBalance(transaction.toAcct, -transaction.amount) }
+                "expense"  -> if (transaction.fromAcct.isNotBlank())
+                                  dao.updateAccountBalance(transaction.fromAcct,  transaction.amount)
+                "income"   -> if (transaction.toAcct.isNotBlank())
+                                  dao.updateAccountBalance(transaction.toAcct,   -transaction.amount)
+                "transfer" -> {
+                    if (transaction.fromAcct.isNotBlank()) dao.updateAccountBalance(transaction.fromAcct,  transaction.amount)
+                    if (transaction.toAcct.isNotBlank())   dao.updateAccountBalance(transaction.toAcct,   -transaction.amount)
+                }
             }
+            android.util.Log.d("FynloDelete", "deleteTransaction: type=${transaction.type} " +
+                "from='${transaction.fromAcct}' to='${transaction.toAcct}' " +
+                "cat=${transaction.category} amount=${transaction.amount}")
 
             // Handle payment reversals if transaction belongs to a loan/debt
             if (transaction.category == "Loan Repayment" && transaction.ref.isNotBlank()) {
@@ -173,9 +182,12 @@ class FinanceRepository(
         }
         // Sync reversed account balances AFTER withTransaction commits
         when (transaction.type.lowercase()) {
-            "expense"  -> syncAccountByName(transaction.fromAcct)
-            "income"   -> syncAccountByName(transaction.toAcct)
-            "transfer" -> { syncAccountByName(transaction.fromAcct); syncAccountByName(transaction.toAcct) }
+            "expense"  -> if (transaction.fromAcct.isNotBlank()) syncAccountByName(transaction.fromAcct)
+            "income"   -> if (transaction.toAcct.isNotBlank())   syncAccountByName(transaction.toAcct)
+            "transfer" -> {
+                if (transaction.fromAcct.isNotBlank()) syncAccountByName(transaction.fromAcct)
+                if (transaction.toAcct.isNotBlank())   syncAccountByName(transaction.toAcct)
+            }
         }
         sync { deleteTransaction(transaction.id) }
     }
