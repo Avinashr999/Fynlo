@@ -316,9 +316,76 @@ fun LendingCard(borrower: Borrower, people: List<app.fynlo.data.model.Person> = 
                     val context = LocalContext.current
                     if (phone.isNotBlank()) {
                         val outstanding = InterestEngine.calcOutstanding(borrower.amount, interest, borrower.paid)
-                        val dueStr = if (borrower.due.isNotBlank()) " due on ${borrower.due}" else ""
-                        val waMsg  = "Hi ${borrower.name}, this is a friendly reminder that your outstanding loan balance is $currencySymbol${String.format(locale, "%,.0f", outstanding)}$dueStr. Kindly arrange repayment at your earliest convenience. Thank you! - Fynlo"
-                        val smsMsg = "Hi ${borrower.name}, outstanding: $currencySymbol${String.format(locale, "%,.0f", outstanding)}$dueStr. Please repay. -Fynlo"
+                        val today       = java.time.LocalDate.now()
+                        val todayStr    = today.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd"))
+
+                        // ── Days overdue (only if due date passed) ──────────────────
+                        val daysOverdue: Long = if (borrower.due.isNotBlank() && borrower.due < todayStr) {
+                            InterestEngine.daysBetween(borrower.due, todayStr)
+                        } else 0L
+
+                        // ── Days since loan started ─────────────────────────────────
+                        val daysSince = InterestEngine.daysBetween(borrower.date, todayStr)
+
+                        // ── Build smart WhatsApp message ────────────────────────────
+                        val waMsg = buildString {
+                            appendLine("Hi ${borrower.name},")
+                            appendLine()
+
+                            if (daysOverdue > 0) {
+                                // Overdue path — more urgent, shows exact days late
+                                appendLine("This is a reminder that your loan repayment is *${daysOverdue} day${if (daysOverdue != 1L) "s" else ""} overdue*.")
+                                appendLine()
+                                appendLine("*Loan Summary:*")
+                                appendLine("• Principal: ${currencySymbol}${String.format(locale, "%,.0f", borrower.amount)}")
+                                if (borrower.rate > 0) {
+                                    appendLine("• Interest accrued (${borrower.rate}% ${borrower.type}): ${currencySymbol}${String.format(locale, "%,.0f", interest)}")
+                                }
+                                if (borrower.paid > 0) {
+                                    appendLine("• Amount paid so far: ${currencySymbol}${String.format(locale, "%,.0f", borrower.paid)}")
+                                }
+                                appendLine("• *Total outstanding: ${currencySymbol}${String.format(locale, "%,.0f", outstanding)}*")
+                                appendLine()
+                                append("Please arrange payment at your earliest. ")
+                                if (borrower.rate > 0) {
+                                    val dailyRate = borrower.amount * borrower.rate / 36500.0
+                                    append("Interest is adding ~${currencySymbol}${String.format(locale, "%.0f", dailyRate)}/day.")
+                                }
+                            } else {
+                                // Not overdue — friendly reminder
+                                val dueInfo = if (borrower.due.isNotBlank()) {
+                                    val daysLeft = InterestEngine.daysBetween(todayStr, borrower.due)
+                                    " (due in ${daysLeft} day${if (daysLeft != 1L) "s" else ""})"
+                                } else ""
+                                appendLine("This is a friendly reminder about your outstanding loan${dueInfo}.")
+                                appendLine()
+                                appendLine("*Loan Summary:*")
+                                appendLine("• Principal: ${currencySymbol}${String.format(locale, "%,.0f", borrower.amount)}")
+                                if (borrower.rate > 0) {
+                                    appendLine("• Interest so far (${daysSince} days @ ${borrower.rate}%): ${currencySymbol}${String.format(locale, "%,.0f", interest)}")
+                                }
+                                if (borrower.paid > 0) {
+                                    appendLine("• Paid: ${currencySymbol}${String.format(locale, "%,.0f", borrower.paid)}")
+                                }
+                                appendLine("• *Outstanding: ${currencySymbol}${String.format(locale, "%,.0f", outstanding)}*")
+                                appendLine()
+                                append("Kindly arrange repayment at your convenience. Thank you!")
+                            }
+                            appendLine()
+                            append("— Fynlo")
+                        }.trimEnd()
+
+                        // SMS is shorter — just the essentials
+                        val smsMsg = buildString {
+                            if (daysOverdue > 0) {
+                                append("Hi ${borrower.name}, your loan of ${currencySymbol}${String.format(locale, "%,.0f", borrower.amount)} is ${daysOverdue} days overdue. ")
+                            } else {
+                                append("Hi ${borrower.name}, loan reminder: ")
+                            }
+                            append("Outstanding: ${currencySymbol}${String.format(locale, "%,.0f", outstanding)}")
+                            if (borrower.rate > 0) append(" (incl. interest)")
+                            append(". Please repay soon. -Fynlo")
+                        }
 
                         IconButton(onClick = {
                             val uri = android.net.Uri.parse("https://wa.me/$intlPhone?text=${android.net.Uri.encode(waMsg)}")
