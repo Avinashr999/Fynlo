@@ -6,6 +6,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.background
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
@@ -114,27 +116,38 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
         )
     }
 
-    // Mark as Defaulted confirmation
+    // Mark as Defaulted / Restore to Active dialog (same dialog, toggles based on current status)
     if (defaultingBorrower != null) {
         val b = defaultingBorrower!!
+        val isCurrentlyDefaulted = b.status == "Defaulted"
         AlertDialog(
             onDismissRequest = { defaultingBorrower = null },
-            title = { Text("Mark as Defaulted?") },
+            title = { Text(if (isCurrentlyDefaulted) "Restore to Performing?" else "Mark as Defaulted?") },
             text  = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("${b.name}  •  ₹${String.format(java.util.Locale.getDefault(), "%,.0f", b.amount)}")
-                    Text("Interest will be frozen at today's value. The borrower will be marked as a Non-Performing Asset.",
+                    Text(
+                        if (isCurrentlyDefaulted)
+                            "This will mark the borrower as Active again and unfreeze interest accrual from today."
+                        else
+                            "Interest will be frozen at today's value. The borrower will be marked NPA.",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             },
             confirmButton = {
-                Button(onClick = {
-                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                    viewModel.markBorrowerDefaulted(b)
-                    defaultingBorrower = null
-                }, colors = ButtonDefaults.buttonColors(containerColor = SemanticAmber)) {
-                    Text("Mark Defaulted")
+                Button(
+                    onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        if (isCurrentlyDefaulted) viewModel.restoreBorrowerToActive(b)
+                        else viewModel.markBorrowerDefaulted(b)
+                        defaultingBorrower = null
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (isCurrentlyDefaulted) Emerald500 else SemanticAmber)
+                ) {
+                    Text(if (isCurrentlyDefaulted) "Restore to Active" else "Mark as NPA")
                 }
             },
             dismissButton = { TextButton(onClick = { defaultingBorrower = null }) { Text("Cancel") } }
@@ -166,6 +179,11 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
             },
             dismissButton = { TextButton(onClick = { writeOffBorrower = null }) { Text("Cancel") } }
         )
+    }
+
+    // Back gesture: if on Hand Loans tab, go back to Interest Loans tab first
+    androidx.activity.compose.BackHandler(enabled = selectedTab != 0) {
+        selectedTab = 0
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -296,7 +314,7 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
                             onEdit    = { editingBorrower = borrower },
                             onCollect = { collectingForBorrower = borrower },
                             onClick   = { onNavigateToDetail(borrower.id) },
-                            onDefault = { if (borrower.status != "Defaulted") defaultingBorrower = borrower },
+                            onDefault = { defaultingBorrower = borrower },
                             onWriteOff = { writeOffBorrower = borrower }
                         )
                     }
@@ -498,7 +516,14 @@ fun LendingCard(borrower: Borrower, people: List<app.fynlo.data.model.Person> = 
                                 ))
                             }
                         }) {
-                            Icon(Icons.Default.Message, "WhatsApp", Modifier.size(22.dp), tint = Color(0xFF25D366))
+                            // WhatsApp branded button — green bubble with phone icon
+                            androidx.compose.foundation.layout.Box(
+                                modifier = Modifier.size(22.dp)
+                                    .background(Color(0xFF25D366), androidx.compose.foundation.shape.RoundedCornerShape(6.dp)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(Icons.Default.Call, null, Modifier.size(13.dp), tint = Color.White)
+                            }
                         }
                         IconButton(onClick = {
                             context.startActivity(
@@ -547,7 +572,7 @@ fun LendingCard(borrower: Borrower, people: List<app.fynlo.data.model.Person> = 
                             }, "Share Loan Summary"
                         ))
                     }) {
-                        Icon(Icons.Default.Share, "Share", Modifier.size(20.dp),
+                        Icon(Icons.Default.Sms, "SMS", Modifier.size(20.dp),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     IconButton(onClick = onEdit) {
@@ -556,13 +581,19 @@ fun LendingCard(borrower: Borrower, people: List<app.fynlo.data.model.Person> = 
                     IconButton(onClick = onDelete) {
                         Icon(Icons.Default.Delete, "Delete", Modifier.size(20.dp), tint = Color.Red.copy(alpha = 0.6f))
                     }
-                    // Defaulted badge or default button
+                    // NPA badge with restore tap, or default warning button
                     if (borrower.status == "Defaulted") {
-                        Surface(shape = androidx.compose.foundation.shape.RoundedCornerShape(6.dp),
-                            color = SemanticAmber.copy(alpha = 0.15f)) {
-                            Text("NPA", Modifier.padding(horizontal = 6.dp, vertical = 3.dp),
-                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                                color = SemanticAmber)
+                        Surface(
+                            shape = androidx.compose.foundation.shape.RoundedCornerShape(6.dp),
+                            color = SemanticAmber.copy(alpha = 0.15f),
+                            modifier = Modifier.clickable { onDefault() }
+                        ) {
+                            Row(Modifier.padding(horizontal = 6.dp, vertical = 3.dp),
+                                verticalAlignment = Alignment.CenterVertically) {
+                                Text("NPA",
+                                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                    color = SemanticAmber)
+                            }
                         }
                     } else {
                         IconButton(onClick = onDefault, modifier = Modifier.size(32.dp)) {

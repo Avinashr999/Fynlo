@@ -1,4 +1,4 @@
-﻿package app.fynlo.ui.components
+package app.fynlo.ui.components
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -12,6 +12,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import app.fynlo.FinanceViewModel
+import app.fynlo.data.model.Account
 import app.fynlo.data.model.Borrower
 import app.fynlo.data.model.Person
 import app.fynlo.logic.DateUtils
@@ -38,10 +39,11 @@ fun AddLendingDialog(
     var expandedType by remember { mutableStateOf(false) }
     var selectedType by remember { mutableStateOf(initialBorrower?.type ?: "Simple Interest") }
     
+    val accounts by viewModel.accounts.collectAsState()
     var expandedSource by remember { mutableStateOf(false) }
-    val sources = listOf("Cash", "Bank", "Investment", "Debts", "Other Receivables")
-    var selectedSource by remember { mutableStateOf(sources[0]) }
-    var sourceEntityName by remember { mutableStateOf("") }
+    val accountOptions = if (accounts.isNotEmpty()) accounts
+    else listOf(app.fynlo.data.model.Account(id="cash", name="Cash in Hand", type="Cash", balance=0.0))
+    var selectedAccount by remember { mutableStateOf(accountOptions.first()) }
 
     val interestTypes = listOf("Simple Interest", "Reducing Balance", "Compound Interest", "Both")
 
@@ -93,40 +95,46 @@ fun AddLendingDialog(
                 )
 
                 if (initialBorrower == null) {
+                    // Account dropdown — actual accounts so balance is correctly updated
                     ExposedDropdownMenuBox(
                         expanded = expandedSource,
                         onExpandedChange = { expandedSource = !expandedSource }
                     ) {
                         OutlinedTextField(
-                            value = selectedSource,
+                            value = selectedAccount.name,
                             onValueChange = {},
                             readOnly = true,
-                            label = { Text("Source of Money") },
+                            label = { Text("Lend from Account") },
+                            supportingText = {
+                                Text("${selectedAccount.type}  •  Balance: ₹${String.format("%,.0f", selectedAccount.balance)}",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.primary)
+                            },
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedSource) },
                             modifier = Modifier.menuAnchor(androidx.compose.material3.ExposedDropdownMenuAnchorType.PrimaryNotEditable, true).fillMaxWidth()
                         )
                         ExposedDropdownMenu(expanded = expandedSource, onDismissRequest = { expandedSource = false }) {
-                            sources.forEach { src ->
-                                DropdownMenuItem(text = { Text(src) }, onClick = { selectedSource = src; expandedSource = false })
+                            accountOptions.forEach { acct ->
+                                DropdownMenuItem(
+                                    text = {
+                                        androidx.compose.foundation.layout.Row(
+                                            Modifier.fillMaxWidth(),
+                                            horizontalArrangement = androidx.compose.foundation.layout.Arrangement.SpaceBetween
+                                        ) {
+                                            androidx.compose.foundation.layout.Column {
+                                                Text(acct.name, style = MaterialTheme.typography.bodyMedium)
+                                                Text(acct.type, style = MaterialTheme.typography.labelSmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                            }
+                                            Text("₹${String.format("%,.0f", acct.balance)}",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = app.fynlo.ui.theme.Emerald500)
+                                        }
+                                    },
+                                    onClick = { selectedAccount = acct; expandedSource = false }
+                                )
                             }
                         }
-                    }
-                    
-                    val labelText = when (selectedSource) {
-                        "Bank" -> "Which Bank?"
-                        "Investment" -> "Which Investment?"
-                        "Debts" -> "Which Debt / Loan?"
-                        "Other Receivables" -> "Who owed you this?"
-                        else -> ""
-                    }
-
-                    if (labelText.isNotEmpty()) {
-                        OutlinedTextField(
-                            value = sourceEntityName,
-                            onValueChange = { sourceEntityName = it },
-                            label = { Text(labelText) },
-                            modifier = Modifier.fillMaxWidth()
-                        )
                     }
                 }
 
@@ -171,10 +179,8 @@ fun AddLendingDialog(
                     Spacer(Modifier.width(8.dp))
                     Button(
                         onClick = {
-                            val finalSource = when (selectedSource) {
-                                "Cash" -> "Cash in Hand"
-                                else -> sourceEntityName.ifEmpty { selectedSource }
-                            }
+                            val finalSource = if (initialBorrower != null) "Cash in Hand"
+                                else selectedAccount.name
                             val rawId = initialBorrower?.id ?: ""
                             val borrower = Borrower(
                                 id     = if (rawId.isBlank()) UUID.randomUUID().toString() else rawId,

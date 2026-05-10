@@ -589,13 +589,18 @@ class FinanceRepository(
             // Credit the destination account with full payment amount
             dao.updateAccountBalance(destinationAccount, payment.amount)
 
-            // Update principal and interest separately on the borrower
+            // Update principal and interest separately on the borrower.
+            // NOTE: updateBorrowerPaidPrincipal and updateBorrowerPaidInterest both already
+            // increment the `paid` column, so we do NOT call updateBorrowerPaidAmount here.
             val principalPaid = payment.principal.coerceAtLeast(0.0)
             val interestPaid  = payment.interest.coerceAtLeast(0.0)
-            if (principalPaid > 0) dao.updateBorrowerPaidPrincipal(payment.loanId, principalPaid)
-            if (interestPaid  > 0) dao.updateBorrowerPaidInterest(payment.loanId, interestPaid)
-            // Also update total paid for backward compat
-            dao.updateBorrowerPaidAmount(payment.loanId, payment.amount)
+            // If both are 0 (legacy payment with no split), fall back to total amount
+            if (principalPaid == 0.0 && interestPaid == 0.0) {
+                dao.updateBorrowerPaidAmount(payment.loanId, payment.amount)
+            } else {
+                if (principalPaid > 0) dao.updateBorrowerPaidPrincipal(payment.loanId, principalPaid)
+                if (interestPaid  > 0) dao.updateBorrowerPaidInterest(payment.loanId, interestPaid)
+            }
 
             // Main repayment transaction (full amount received)
             val t = Transaction(
@@ -631,12 +636,17 @@ class FinanceRepository(
             // Debit source account with full payment amount
             dao.updateAccountBalance(sourceAccount, -payment.amount)
 
-            // Update principal and interest separately on the debt
+            // Update principal and interest separately on the debt.
+            // updateDebtPaidPrincipal and updateDebtPaidInterest already increment paid,
+            // so we must NOT also call updateDebtPaidAmount to avoid double-counting.
             val principalPaid = payment.principal.coerceAtLeast(0.0)
             val interestPaid  = payment.interest.coerceAtLeast(0.0)
-            if (principalPaid > 0) dao.updateDebtPaidPrincipal(payment.debtId, principalPaid)
-            if (interestPaid  > 0) dao.updateDebtPaidInterest(payment.debtId, interestPaid)
-            dao.updateDebtPaidAmount(payment.debtId, payment.amount)
+            if (principalPaid == 0.0 && interestPaid == 0.0) {
+                dao.updateDebtPaidAmount(payment.debtId, payment.amount)
+            } else {
+                if (principalPaid > 0) dao.updateDebtPaidPrincipal(payment.debtId, principalPaid)
+                if (interestPaid  > 0) dao.updateDebtPaidInterest(payment.debtId, interestPaid)
+            }
 
             // Main repayment transaction (full amount paid)
             val t = Transaction(
@@ -742,6 +752,19 @@ class FinanceRepository(
         }
         syncAccountByName(toAccount)
         return gainLoss
+    }
+
+
+    // ─── Restore Defaulted Borrower back to Active ────────────────────────────
+    suspend fun restoreBorrowerToActive(borrower: Borrower) {
+        val updated = borrower.copy(
+            status        = "Active",
+            defaultDate   = "",
+            frozenInterest = 0.0,
+            updatedAt     = System.currentTimeMillis()
+        )
+        dao.insertBorrower(updated)
+        sync { setBorrower(updated) }
     }
 
     // ─── Mark Borrower as Defaulted ────────────────────────────────────────────

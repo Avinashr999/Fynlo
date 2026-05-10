@@ -1,4 +1,4 @@
-﻿package app.fynlo
+package app.fynlo
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -246,7 +246,10 @@ class FinanceViewModel(private val repository: FinanceRepository) : ViewModel() 
     fun withdrawFromInvestment(investment: app.fynlo.data.model.Investment, amount: Double, toAccount: String) {
         viewModelScope.launch { repository.withdrawFromInvestment(investment, amount, toAccount) }
     }
-    fun markBorrowerDefaulted(borrower: app.fynlo.data.model.Borrower) {
+    fun restoreBorrowerToActive(borrower: app.fynlo.data.model.Borrower) {
+        viewModelScope.launch { repository.restoreBorrowerToActive(borrower) }
+    }
+        fun markBorrowerDefaulted(borrower: app.fynlo.data.model.Borrower) {
         viewModelScope.launch { repository.markBorrowerDefaulted(borrower) }
     }
     fun writeOffBorrower(borrower: app.fynlo.data.model.Borrower) {
