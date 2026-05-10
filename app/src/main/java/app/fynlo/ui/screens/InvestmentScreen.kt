@@ -58,10 +58,10 @@ val currentProject by viewModel.currentProject.collectAsState()
                     viewModel.updateInvestment(req.investment)
                 } else {
                     when (req.sourceType) {
-                        "account"       -> haptic.performHapticFeedback(HapticFeedbackType.LongPress); viewModel.addInvestmentFundedByAccount(req.investment, req.sourceAccountName)
-                        "existing_debt" -> req.sourceDebt?.let { viewModel.addInvestmentFundedByExistingDebt(req.investment, it) }
-                        "new_loan"      -> req.newLoan?.let { viewModel.addInvestmentFundedByNewLoan(req.investment, it) }
-                        else            -> viewModel.addInvestmentWithSource(req.investment, req.sourceAccountName)
+                        "account"       -> { haptic.performHapticFeedback(HapticFeedbackType.LongPress); viewModel.addInvestmentFundedByAccount(req.investment, req.sourceAccountName) }
+                        "existing_debt" -> { haptic.performHapticFeedback(HapticFeedbackType.LongPress); req.sourceDebt?.let { viewModel.addInvestmentFundedByExistingDebt(req.investment, it) } }
+                        "new_loan"      -> { haptic.performHapticFeedback(HapticFeedbackType.LongPress); req.newLoan?.let { viewModel.addInvestmentFundedByNewLoan(req.investment, it) } }
+                        else            -> { haptic.performHapticFeedback(HapticFeedbackType.LongPress); viewModel.addInvestmentWithSource(req.investment, req.sourceAccountName) }
                     }
                 }
                 editingInvest = null
