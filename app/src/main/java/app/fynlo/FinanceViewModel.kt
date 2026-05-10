@@ -168,7 +168,10 @@ class FinanceViewModel(private val repository: FinanceRepository) : ViewModel() 
             else app.fynlo.logic.InterestEngine.calcIntAccrued(
                 b.amount, b.rate, b.date, b.type, b.due, totalPaid = b.paidPrincipal
             )
-            app.fynlo.logic.InterestEngine.calcOutstanding(b.amount, accrued, b.paidPrincipal, b.paidInterest)
+            // Derive paidInterest from (paid - paidPrincipal) — more reliable than paidInterest field
+            // which can get out of sync when rebuild queries run
+            val derivedPaidInterest = (b.paid - b.paidPrincipal).coerceAtLeast(0.0)
+            app.fynlo.logic.InterestEngine.calcOutstanding(b.amount, accrued, b.paidPrincipal, derivedPaidInterest)
         }
         // Hand loans: use 'paid' (mirrors isActive check for hand loans)
         // Interest loans are not counted here (they have a separate totalInterestLoans)
