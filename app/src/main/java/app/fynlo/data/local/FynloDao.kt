@@ -78,6 +78,9 @@ interface FynloDao {
     @Query("SELECT * FROM transactions WHERE ref = :ref")
     suspend fun getTransactionsByRef(ref: String): List<Transaction>
 
+    @Query("SELECT * FROM transactions WHERE desc = :desc")
+    suspend fun getTransactionsByDesc(desc: String): List<Transaction>
+
     // ─── Accounts ─────────────────────────────────────────────────────────────
 
     @Query("DELETE FROM accounts WHERE id = :id")

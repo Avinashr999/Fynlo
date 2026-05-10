@@ -197,17 +197,20 @@ class FinanceRepository(
             val b = borrower.copy(projectId = projectId, updatedAt = System.currentTimeMillis())
             dao.insertBorrower(b)
             dao.updateAccountBalance(sourceAccount, -borrower.amount)
-            val t = Transaction(java.util.UUID.randomUUID().toString(), borrower.date, "Expense", borrower.amount, fromAcct = sourceAccount, category = "Lending", desc = "Lent to ${borrower.name}", notes = borrower.notes, projectId = projectId, updatedAt = System.currentTimeMillis())
+            val t = Transaction(java.util.UUID.randomUUID().toString(), borrower.date, "Expense", borrower.amount, fromAcct = sourceAccount, category = "Lending", desc = "Lent to ${borrower.name}", ref = borrower.id, notes = borrower.notes, projectId = projectId, updatedAt = System.currentTimeMillis())
             dao.insertTransaction(t)
             sync { setBorrower(b); setTransaction(t) }
         }
         syncAccountByName(sourceAccount)
     }
     suspend fun deleteBorrower(borrower: Borrower) {
-        // Collect account names BEFORE deleting transactions
-        val linkedTxns = dao.getTransactionsByRef(borrower.id)
+        // Find linked transactions — try by ref first, fall back to desc for legacy records
+        val byRef  = dao.getTransactionsByRef(borrower.id)
+        val byDesc = dao.getTransactionsByDesc("Lent to ${borrower.name}")
+            .filter { it.ref.isBlank() && it.category == "Lending" }
+        val linkedTxns = (byRef + byDesc).distinctBy { it.id }
+
         db.withTransaction {
-            // Reverse every transaction linked to this borrower
             linkedTxns.forEach { txn ->
                 when (txn.type.lowercase()) {
                     "expense"  -> dao.updateAccountBalance(txn.fromAcct,  txn.amount)
@@ -216,16 +219,13 @@ class FinanceRepository(
                 }
                 dao.deleteTransaction(txn)
             }
-            // Delete payment records
             dao.getPaymentsForLoanOnce(borrower.id).forEach { p -> dao.deletePayment(p) }
             dao.deleteBorrower(borrower)
         }
-        // Sync Firestore
         linkedTxns.forEach { sync { deleteTransaction(it.id) } }
         sync { deleteBorrower(borrower.id) }
-        // Sync affected account balances
         linkedTxns.map { it.fromAcct }.filter { it.isNotBlank() }.distinct().forEach { syncAccountByName(it) }
-        linkedTxns.map { it.toAcct }.filter { it.isNotBlank() }.distinct().forEach { syncAccountByName(it) }
+        linkedTxns.map { it.toAcct   }.filter { it.isNotBlank() }.distinct().forEach { syncAccountByName(it) }
     }
     /** Directly set account balance (for corrections). Creates a balancing transaction. */
     suspend fun quickEditBalance(accountName: String, newBalance: Double, oldBalance: Double) {
