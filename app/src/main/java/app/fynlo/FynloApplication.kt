@@ -3,6 +3,7 @@ package app.fynlo
 import android.app.Application
 import android.util.Log
 import androidx.room.Room
+import app.fynlo.data.local.MIGRATION_10_11
 import app.fynlo.data.AuthManager
 import app.fynlo.data.FinanceRepository
 import app.fynlo.data.local.FynloDatabase
