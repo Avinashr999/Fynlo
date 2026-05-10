@@ -191,7 +191,9 @@ class FinanceViewModel(private val repository: FinanceRepository) : ViewModel() 
             b.name to (b.amount - b.paidPrincipal).coerceAtLeast(0.0)
         }
 
-        val totalAssets       = totalCash + totalInvestments + totalReceivables
+        // Use totalInterestLoans + totalHandLoans (both correctly use paid/paidPrincipal per type)
+        // totalReceivables uses paidPrincipal for all loans which is wrong for hand loans
+        val totalAssets       = totalCash + totalInvestments + totalInterestLoans + totalHandLoans
         val totalDebtPrincipal = dbts.sumOf { it.amount - it.paid }
         val totalDebtInterest  = dbts.sumOf { d ->
             app.fynlo.logic.InterestEngine.calcIntAccrued(
