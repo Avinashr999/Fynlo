@@ -228,6 +228,7 @@ fun SettingsScreen(
         SettingsSectionLabel("Security")
         val pinManager = remember { app.fynlo.data.PinManager(context) }
         var pinSet      by remember { mutableStateOf(pinManager.isPinSet) }
+        var biometricEnabled by remember { mutableStateOf(pinManager.isBiometricEnabled) }
         var showPinSetup by remember { mutableStateOf(false) }
         if (showPinSetup) {
             PinScreen(
@@ -236,47 +237,87 @@ fun SettingsScreen(
                 onSkip    = { showPinSetup = false }
             )
         }
+        var showRemovePinConfirm by remember { mutableStateOf(false) }
+
+        // Remove PIN confirmation dialog
+        if (showRemovePinConfirm) {
+            AlertDialog(
+                onDismissRequest = { showRemovePinConfirm = false },
+                title = { Text("Remove PIN?") },
+                text  = { Text("The app will no longer be locked when you switch away. Biometric unlock will also be disabled.") },
+                confirmButton = {
+                    TextButton(onClick = {
+                        pinManager.clearPin()
+                        pinSet = false
+                        biometricEnabled = false
+                        showRemovePinConfirm = false
+                    }, colors = ButtonDefaults.textButtonColors(contentColor = Red)) {
+                        Text("Remove")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showRemovePinConfirm = false }) { Text("Cancel") }
+                }
+            )
+        }
+
         Card(Modifier.fillMaxWidth(), RoundedCornerShape(16.dp)) {
-            Column(Modifier.padding(16.dp)) {
-                // Status row
-                Row(Modifier.fillMaxWidth(), Arrangement.spacedBy(14.dp),
-                    Alignment.CenterVertically) {
-                    Box(Modifier.size(40.dp).clip(CircleShape)
-                        .background(if (pinSet) Green.copy(0.12f) else MaterialTheme.colorScheme.surfaceVariant),
-                        Alignment.Center) {
+            Column {
+                // Main toggle row — tap anywhere to toggle PIN on/off
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            if (pinSet) showRemovePinConfirm = true
+                            else showPinSetup = true
+                        }
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
+                    Box(
+                        Modifier.size(40.dp).clip(CircleShape).background(
+                            if (pinSet) MaterialTheme.colorScheme.primaryContainer
+                            else MaterialTheme.colorScheme.surfaceVariant
+                        ), Alignment.Center
+                    ) {
                         Icon(Icons.Default.Lock, null, Modifier.size(20.dp),
-                            tint = if (pinSet) Green else MaterialTheme.colorScheme.onSurfaceVariant)
+                            tint = if (pinSet) MaterialTheme.colorScheme.primary
+                                   else MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     Column(Modifier.weight(1f)) {
-                        Text(if (pinSet) "PIN Lock Enabled" else "PIN Lock Disabled",
-                            style = MaterialTheme.typography.bodyLarge.copy(
-                                fontWeight = FontWeight.SemiBold,
-                                color = if (pinSet) Green else MaterialTheme.colorScheme.onSurface
-                            ))
+                        Text(
+                            if (pinSet) "PIN Lock" else "PIN Lock",
+                            style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold)
+                        )
                         Text(
                             if (pinSet) "App locks when you switch away"
-                            else "Tap Set PIN to secure the app",
+                            else "Tap to set a 4-digit PIN",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
+                    // Visual-only Switch
+                    Switch(
+                        checked = pinSet,
+                        onCheckedChange = null,
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = MaterialTheme.colorScheme.primary,
+                            checkedTrackColor = MaterialTheme.colorScheme.primaryContainer
+                        )
+                    )
                 }
-                // Buttons row below
-                Spacer(Modifier.height(12.dp))
-                Row(Modifier.fillMaxWidth(), Arrangement.spacedBy(8.dp)) {
-                    if (pinSet) {
-                        OutlinedButton(
-                            onClick = { pinManager.clearPin(); pinSet = false },
-                            modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(10.dp),
-                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Red)
-                        ) { Text("Remove PIN") }
-                    }
-                    Button(
+                // Change PIN — secondary action, only visible when PIN is set
+                if (pinSet) {
+                    HorizontalDivider(Modifier.padding(horizontal = 16.dp))
+                    TextButton(
                         onClick = { showPinSetup = true },
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(10.dp)
-                    ) { Text(if (pinSet) "Change PIN" else "Set PIN") }
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp)
+                    ) {
+                        Icon(Icons.Default.Edit, null, Modifier.size(16.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text("Change PIN")
+                    }
                 }
             }
         }
@@ -288,7 +329,6 @@ fun SettingsScreen(
         // Hardware is available if status is SUCCESS or NONE_ENROLLED (has hardware, just no biometrics added yet)
         val bioHardwareAvailable = bioStatus == androidx.biometric.BiometricManager.BIOMETRIC_SUCCESS ||
                                    bioStatus == androidx.biometric.BiometricManager.BIOMETRIC_ERROR_NONE_ENROLLED
-        var biometricEnabled by remember { mutableStateOf(pinManager.isBiometricEnabled) }
 
         if (bioHardwareAvailable) {
             // Use clickable Row + visual-only Switch — avoids LazyColumn touch interception on OPPO
