@@ -1,4 +1,4 @@
-﻿package app.fynlo.ui.screens
+package app.fynlo.ui.screens
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -18,6 +18,7 @@ import androidx.compose.ui.unit.dp
 import app.fynlo.FinanceViewModel
 import app.fynlo.data.model.Goal
 import java.util.*
+import app.fynlo.ui.theme.*
 
 @Composable
 fun GoalScreen(viewModel: FinanceViewModel) {
@@ -97,7 +98,7 @@ fun GoalCard(goal: Goal, currencySymbol: String, onDelete: () -> Unit) {
     val progress    = if (goal.targetAmount > 0) (goal.savedAmount / goal.targetAmount).toFloat().coerceIn(0f, 1f) else 0f
     val pct         = (progress * 100).toInt()
     val isComplete  = pct >= 100
-    val accentColor = if (isComplete) Color(0xFF059669) else MaterialTheme.colorScheme.primary
+    val accentColor = if (isComplete) Emerald500 else MaterialTheme.colorScheme.primary
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -110,18 +111,18 @@ fun GoalCard(goal: Goal, currencySymbol: String, onDelete: () -> Unit) {
             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
                 Row(verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Icon(Icons.Default.Star, null, Modifier.size(20.dp), tint = Color(0xFFF59E0B))
+                    Icon(Icons.Default.Star, null, Modifier.size(20.dp), tint = SemanticAmber)
                     Text(goal.name, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
                     if (isComplete) {
-                        Surface(color = Color(0xFF059669).copy(alpha = 0.12f), shape = RoundedCornerShape(6.dp)) {
+                        Surface(color = Emerald500.copy(alpha = 0.12f), shape = RoundedCornerShape(6.dp)) {
                             Text("COMPLETE", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                                color = Color(0xFF059669),
+                                color = Emerald500,
                                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
                         }
                     }
                 }
                 IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
-                    Icon(Icons.Default.Delete, null, Modifier.size(18.dp), tint = Color(0xFFEF4444).copy(alpha = 0.6f))
+                    Icon(Icons.Default.Delete, null, Modifier.size(18.dp), tint = SemanticRed.copy(alpha = 0.6f))
                 }
             }
 
@@ -130,7 +131,7 @@ fun GoalCard(goal: Goal, currencySymbol: String, onDelete: () -> Unit) {
             LinearProgressIndicator(
                 progress     = { progress },
                 modifier     = Modifier.fillMaxWidth().height(8.dp),
-                color        = if (isComplete) Color(0xFF059669) else MaterialTheme.colorScheme.primary,
+                color        = if (isComplete) Emerald500 else MaterialTheme.colorScheme.primary,
                 trackColor   = accentColor.copy(alpha = 0.15f),
                 strokeCap    = androidx.compose.ui.graphics.StrokeCap.Round
             )
@@ -140,7 +141,7 @@ fun GoalCard(goal: Goal, currencySymbol: String, onDelete: () -> Unit) {
             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
                 Text("$currencySymbol${String.format(java.util.Locale.getDefault(), "%,.0f", goal.savedAmount)} saved",
                     style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
-                    color = Color(0xFF059669))
+                    color = Emerald500)
                 Text("$currencySymbol${String.format(java.util.Locale.getDefault(), "%,.0f", goal.targetAmount)} target • $pct%",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)

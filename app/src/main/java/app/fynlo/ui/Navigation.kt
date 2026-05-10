@@ -1,4 +1,4 @@
-﻿@file:Suppress(
+@file:Suppress(
     "ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE",
     "UNUSED_VARIABLE",
     "LocalVariableName",
@@ -41,6 +41,7 @@ import app.fynlo.ui.components.*
 import app.fynlo.data.SyncStatus
 import app.fynlo.data.PinManager
 import kotlinx.coroutines.launch
+import app.fynlo.ui.theme.*
 
 sealed class Screen(val route: String, val label: String, val icon: ImageVector) {
     object Home : Screen("home", "Dashboard", Icons.Default.Home)
@@ -230,7 +231,7 @@ fun MainNavigation(viewModel: FinanceViewModel) {
                         modifier = Modifier.fillMaxWidth()
                             .background(
                                 Brush.verticalGradient(
-                                    listOf(Color(0xFF059669), Color(0xFF047857))
+                                    listOf(Emerald500, Emerald600)
                                 )
                             )
                             .padding(start = 20.dp, end = 20.dp, top = 48.dp, bottom = 24.dp)
@@ -365,9 +366,9 @@ fun MainNavigation(viewModel: FinanceViewModel) {
                     // â”€â”€ Logout â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                     NavigationDrawerItem(
                         icon     = { Icon(Icons.AutoMirrored.Filled.Logout, null,
-                            tint = Color(0xFFEF4444)) },
+                            tint = SemanticRed) },
                         label    = { Text("Logout & Lock",
-                            color = Color(0xFFEF4444),
+                            color = SemanticRed,
                             fontWeight = FontWeight.SemiBold) },
                         selected = false,
                         onClick  = { isLoggedIn = false; scope.launch { drawerState.close() } },
@@ -636,7 +637,7 @@ fun DrawerSectionLabel(title: String) {
             letterSpacing = androidx.compose.ui.unit.TextUnit(1.5f,
                 androidx.compose.ui.unit.TextUnitType.Sp)
         ),
-        color    = Color(0xFF059669),
+        color    = Emerald500,
         modifier = Modifier.padding(start = 20.dp, top = 12.dp, bottom = 4.dp)
     )
 }
@@ -654,7 +655,7 @@ fun DrawerItem(
                 imageVector        = icon,
                 contentDescription = null,
                 modifier           = Modifier.size(20.dp),
-                tint               = if (selected) Color(0xFF059669)
+                tint               = if (selected) Emerald500
                                      else MaterialTheme.colorScheme.onSurfaceVariant
             )
         },
@@ -664,14 +665,14 @@ fun DrawerItem(
                 style      = MaterialTheme.typography.bodyMedium.copy(
                     fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal
                 ),
-                color      = if (selected) Color(0xFF059669)
+                color      = if (selected) Emerald500
                              else MaterialTheme.colorScheme.onSurface
             )
         },
         selected = selected,
         onClick  = onClick,
         colors   = NavigationDrawerItemDefaults.colors(
-            selectedContainerColor   = Color(0xFF059669).copy(alpha = 0.1f),
+            selectedContainerColor   = Emerald500.copy(alpha = 0.1f),
             unselectedContainerColor = Color.Transparent
         ),
         modifier = Modifier.padding(horizontal = 12.dp, vertical = 1.dp).height(48.dp)

@@ -1,4 +1,4 @@
-﻿package app.fynlo.ui.screens
+package app.fynlo.ui.screens
 
 import android.content.Intent
 import androidx.core.content.FileProvider
@@ -28,6 +28,7 @@ import app.fynlo.data.model.Borrower
 import app.fynlo.data.model.Debt
 import app.fynlo.data.model.Transaction
 import java.util.Locale
+import app.fynlo.ui.theme.*
 
 data class FlowEntry(
     val from: String,
@@ -239,13 +240,13 @@ fun MoneyFlowScreen(viewModel: FinanceViewModel) {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text("Flow Summary", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold))
                         HorizontalDivider()
-                        FlowSummaryRow("Total Inflow",   "$currencySymbol${String.format(locale, "%,.0f", totalIn)}",  Color(0xFF059669))
-                        FlowSummaryRow("Total Outflow",  "$currencySymbol${String.format(locale, "%,.0f", totalOut)}", Color(0xFFEF4444))
-                        FlowSummaryRow("Lent Out",       "$currencySymbol${String.format(locale, "%,.0f", lentOut)}",  Color(0xFFF59E0B))
+                        FlowSummaryRow("Total Inflow",   "$currencySymbol${String.format(locale, "%,.0f", totalIn)}",  Emerald500)
+                        FlowSummaryRow("Total Outflow",  "$currencySymbol${String.format(locale, "%,.0f", totalOut)}", SemanticRed)
+                        FlowSummaryRow("Lent Out",       "$currencySymbol${String.format(locale, "%,.0f", lentOut)}",  SemanticAmber)
                         HorizontalDivider()
                         FlowSummaryRow("Net Flow",
                             "$currencySymbol${String.format(locale, "%,.0f", totalIn - totalOut)}",
-                            if (totalIn >= totalOut) Color(0xFF059669) else Color(0xFFEF4444),
+                            if (totalIn >= totalOut) Emerald500 else SemanticRed,
                             bold = true)
                     }
                 }
@@ -294,12 +295,12 @@ private fun AccountFlowCard(name: String, inflow: Double, outflow: Double, curre
                     maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text("Net: $currencySymbol${String.format(locale, "%,.0f", net)}",
                     style = MaterialTheme.typography.labelSmall,
-                    color = if (net >= 0) Color(0xFF059669) else Color(0xFFEF4444))
+                    color = if (net >= 0) Emerald500 else SemanticRed)
             }
             Spacer(Modifier.width(8.dp))
             Column(horizontalAlignment = Alignment.End) {
-                Text("▲ $currencySymbol${String.format(locale, "%,.0f", inflow)}", fontSize = 11.sp, color = Color(0xFF059669))
-                Text("▼ $currencySymbol${String.format(locale, "%,.0f", outflow)}", fontSize = 11.sp, color = Color(0xFFEF4444))
+                Text("▲ $currencySymbol${String.format(locale, "%,.0f", inflow)}", fontSize = 11.sp, color = Emerald500)
+                Text("▼ $currencySymbol${String.format(locale, "%,.0f", outflow)}", fontSize = 11.sp, color = SemanticRed)
             }
         }
     }
@@ -308,12 +309,12 @@ private fun AccountFlowCard(name: String, inflow: Double, outflow: Double, curre
 @Composable
 private fun FlowEntryCard(flow: FlowEntry, currencySymbol: String, locale: Locale) {
     val (bgColor, arrowColor, icon) = when (flow.flowType) {
-        FlowType.INCOME        -> Triple(Color(0xFF059669).copy(0.08f), Color(0xFF059669), Icons.Default.ArrowDownward)
-        FlowType.EXPENSE       -> Triple(Color(0xFFEF4444).copy(0.08f), Color(0xFFEF4444), Icons.Default.ArrowUpward)
-        FlowType.TRANSFER      -> Triple(Color(0xFF3B82F6).copy(0.08f), Color(0xFF3B82F6), Icons.AutoMirrored.Filled.ArrowForward)
-        FlowType.LENDING       -> Triple(Color(0xFFF59E0B).copy(0.08f), Color(0xFFF59E0B), Icons.Default.Person)
-        FlowType.DEBT_RECEIVED -> Triple(Color(0xFF6B7280).copy(0.08f), Color(0xFF6B7280), Icons.Default.CreditCard)
-        FlowType.DEBT_REPAY    -> Triple(Color(0xFFEF4444).copy(0.08f), Color(0xFFEF4444), Icons.Default.CreditCard)
+        FlowType.INCOME        -> Triple(Emerald500.copy(0.08f), Emerald500, Icons.Default.ArrowDownward)
+        FlowType.EXPENSE       -> Triple(SemanticRed.copy(0.08f), SemanticRed, Icons.Default.ArrowUpward)
+        FlowType.TRANSFER      -> Triple(SemanticBlue.copy(0.08f), SemanticBlue, Icons.AutoMirrored.Filled.ArrowForward)
+        FlowType.LENDING       -> Triple(SemanticAmber.copy(0.08f), SemanticAmber, Icons.Default.Person)
+        FlowType.DEBT_RECEIVED -> Triple(Carbon500.copy(0.08f), Carbon500, Icons.Default.CreditCard)
+        FlowType.DEBT_REPAY    -> Triple(SemanticRed.copy(0.08f), SemanticRed, Icons.Default.CreditCard)
         FlowType.INVESTMENT    -> Triple(Color(0xFF06B6D4).copy(0.08f), Color(0xFF06B6D4), Icons.Default.TrendingUp)
     }
 

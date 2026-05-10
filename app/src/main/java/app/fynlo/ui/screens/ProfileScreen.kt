@@ -1,4 +1,4 @@
-﻿package app.fynlo.ui.screens
+package app.fynlo.ui.screens
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import app.fynlo.FynloApplication
 import app.fynlo.data.PinManager
 import app.fynlo.ui.screens.PinMode
+import app.fynlo.ui.theme.*
 
 @Composable
 fun ProfileScreen(onLogout: () -> Unit, onSignOut: () -> Unit = {}) {
@@ -61,7 +62,7 @@ fun ProfileScreen(onLogout: () -> Unit, onSignOut: () -> Unit = {}) {
             shape    = RoundedCornerShape(16.dp),
             colors   = CardDefaults.cardColors(
                 containerColor = if (isGoogle)
-                    Color(0xFF3B82F6).copy(alpha = 0.1f)
+                    SemanticBlue.copy(alpha = 0.1f)
                 else
                     MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
             )
@@ -71,7 +72,7 @@ fun ProfileScreen(onLogout: () -> Unit, onSignOut: () -> Unit = {}) {
                     Icon(
                         if (isGoogle) Icons.Default.AccountCircle else Icons.Default.Person,
                         contentDescription = null,
-                        tint     = if (isGoogle) Color(0xFF3B82F6) else MaterialTheme.colorScheme.primary,
+                        tint     = if (isGoogle) SemanticBlue else MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(28.dp)
                     )
                     Spacer(Modifier.width(12.dp))

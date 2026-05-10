@@ -1,4 +1,4 @@
-﻿package app.fynlo.ui.screens
+package app.fynlo.ui.screens
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -27,6 +27,7 @@ import app.fynlo.ui.components.AddInvestmentDialog
 import app.fynlo.ui.components.InvestmentSaveRequest
 import java.util.Locale
 import java.util.*
+import app.fynlo.ui.theme.*
 
 @Composable
 fun InvestmentScreen(viewModel: FinanceViewModel) {
@@ -196,7 +197,7 @@ fun InvestmentCard(invest: Investment, currencySymbol: String = "₹", onDelete:
                     Icon(
                         Icons.Default.TrendingUp,
                         contentDescription = null, 
-                        tint = Color(0xFF059669),
+                        tint = Emerald500,
                         modifier = Modifier.size(20.dp)
                     )
                     Spacer(Modifier.width(8.dp))
@@ -221,8 +222,8 @@ fun InvestmentCard(invest: Investment, currencySymbol: String = "₹", onDelete:
                         modifier = Modifier.height(28.dp)
                     ) { Text("Update", style = MaterialTheme.typography.labelSmall) }
                     Badge(
-                        containerColor = if (growth >= 0) Color(0xFFE8F5E9) else Color(0xFFFFEBEE),
-                        contentColor = if (growth >= 0) Color(0xFF059669) else Color.Red
+                        containerColor = if (growth >= 0) Emerald50 else Color(0xFFFFEBEE),
+                        contentColor = if (growth >= 0) Emerald500 else Color.Red
                     ) {
                         Text("${String.format(Locale.getDefault(), "%.1f", growthPercent)}%", style = MaterialTheme.typography.labelSmall)
                     }
@@ -239,7 +240,7 @@ fun InvestmentCard(invest: Investment, currencySymbol: String = "₹", onDelete:
                 }
                 Column(horizontalAlignment = Alignment.End) {
                     Text("Current Value", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text("$currencySymbol ${String.format(Locale.getDefault(), "%,.0f", invest.currentVal)}", style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold, color = Color(0xFF059669)))
+                    Text("$currencySymbol ${String.format(Locale.getDefault(), "%,.0f", invest.currentVal)}", style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold, color = Emerald500))
                     Text("Type: ${invest.type}", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
                 }
             }
@@ -316,7 +317,7 @@ fun UpdateInvestmentValueDialog(
                     Text(
                         "Total Growth: ${if (growth >= 0) "+" else ""}$currencySymbol ${String.format(locale, "%,.0f", growth)} (${String.format(locale, "%.1f", pct)}%)",
                         style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
-                        color = if (growth >= 0) Color(0xFF059669) else Color(0xFFEF4444)
+                        color = if (growth >= 0) Emerald500 else SemanticRed
                     )
                 }
             }

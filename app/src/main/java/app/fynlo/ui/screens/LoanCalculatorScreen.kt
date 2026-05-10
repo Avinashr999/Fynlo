@@ -1,4 +1,4 @@
-﻿package app.fynlo.ui.screens
+package app.fynlo.ui.screens
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.dp
 import java.util.Locale
 import kotlin.math.pow
 import app.fynlo.FinanceViewModel
+import app.fynlo.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -200,7 +201,7 @@ fun LoanCalculatorScreen(viewModel: FinanceViewModel? = null) {
                             Text("Days elapsed: $daysElapsed", style = MaterialTheme.typography.bodySmall)
                             if (isOverdue) Text("Overdue: $daysOverdue days",
                                 style = MaterialTheme.typography.bodySmall,
-                                color = Color(0xFFEF4444))
+                                color = SemanticRed)
                         }
                     }
                 }
@@ -229,9 +230,9 @@ fun LoanCalculatorScreen(viewModel: FinanceViewModel? = null) {
                 ResultCard("Principal", "$currencySymbol${String.format(locale, "%,.0f", principal.toDoubleOrNull() ?: 0.0)}",
                     MaterialTheme.colorScheme.primary, Modifier.weight(1f))
                 ResultCard("Total Interest", "$currencySymbol${String.format(locale, "%,.0f", result.totalInterest)}",
-                    Color(0xFFEF4444), Modifier.weight(1f))
+                    SemanticRed, Modifier.weight(1f))
                 ResultCard("Total Payment", "$currencySymbol${String.format(locale, "%,.0f", result.totalPayment)}",
-                    Color(0xFF059669), Modifier.weight(1f))
+                    Emerald500, Modifier.weight(1f))
             }
 
             val pct = if ((principal.toDoubleOrNull() ?: 0.0) > 0)
@@ -272,7 +273,7 @@ fun LoanCalculatorScreen(viewModel: FinanceViewModel? = null) {
                 val perDay = if (daysElapsed > 0) accrued / daysElapsed else 0.0
 
                 Card(Modifier.fillMaxWidth(), RoundedCornerShape(16.dp),
-                    CardDefaults.cardColors(containerColor = Color(0xFFEF4444).copy(alpha = 0.08f))) {
+                    CardDefaults.cardColors(containerColor = SemanticRed.copy(alpha = 0.08f))) {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text("Outstanding as of Today",
                             style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold))
@@ -287,7 +288,7 @@ fun LoanCalculatorScreen(viewModel: FinanceViewModel? = null) {
                                 color = MaterialTheme.colorScheme.onSurfaceVariant)
                             Text("$currencySymbol ${String.format(locale, "%,.2f", accrued)}",
                                 style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
-                                color = Color(0xFFEF4444))
+                                color = SemanticRed)
                         }
                         Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
                             Text("Per Day Interest", style = MaterialTheme.typography.bodySmall,
@@ -296,10 +297,10 @@ fun LoanCalculatorScreen(viewModel: FinanceViewModel? = null) {
                                 style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold))
                         }
                         if (isOverdue) {
-                            Surface(color = Color(0xFFEF4444).copy(alpha = 0.1f), shape = RoundedCornerShape(8.dp)) {
+                            Surface(color = SemanticRed.copy(alpha = 0.1f), shape = RoundedCornerShape(8.dp)) {
                                 Text("Overdue by $daysOverdue days",
                                     style = MaterialTheme.typography.labelSmall,
-                                    color = Color(0xFFEF4444),
+                                    color = SemanticRed,
                                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
                             }
                         }
@@ -308,7 +309,7 @@ fun LoanCalculatorScreen(viewModel: FinanceViewModel? = null) {
                             Text("Total Outstanding", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold))
                             Text("$currencySymbol ${String.format(locale, "%,.2f", outstanding)}",
                                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.ExtraBold),
-                                color = Color(0xFFEF4444))
+                                color = SemanticRed)
                         }
                     }
                 }
@@ -337,7 +338,7 @@ fun LoanCalculatorScreen(viewModel: FinanceViewModel? = null) {
                                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary,
                                     modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
                                 Text("$currencySymbol${String.format(locale, "%,.0f", interest)}",
-                                    style = MaterialTheme.typography.bodySmall, color = Color(0xFFEF4444),
+                                    style = MaterialTheme.typography.bodySmall, color = SemanticRed,
                                     modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
                                 Text("$currencySymbol${String.format(locale, "%,.0f", prin + interest)}",
                                     style = MaterialTheme.typography.bodySmall,

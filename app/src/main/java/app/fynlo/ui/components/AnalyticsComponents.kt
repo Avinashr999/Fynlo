@@ -1,4 +1,4 @@
-﻿package app.fynlo.ui.components
+package app.fynlo.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -10,6 +10,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import app.fynlo.ui.theme.*
 
 @Composable
 fun SpendingAnalyticsCard(data: Map<String, Double>, currencySymbol: String = "₹") {
@@ -17,8 +18,8 @@ fun SpendingAnalyticsCard(data: Map<String, Double>, currencySymbol: String = "�
 
     val total = data.values.sum()
     val colors = listOf(
-        Color(0xFF3B82F6), Color(0xFF43A047), Color(0xFFFFB300), 
-        Color(0xFFEF4444), Color(0xFF8E24AA), Color(0xFF00ACC1)
+        SemanticBlue, Color(0xFF43A047), SemanticAmber, 
+        SemanticRed, Color(0xFF8E24AA), Color(0xFF00ACC1)
     )
 
     Card(

@@ -1,4 +1,4 @@
-﻿package app.fynlo.ui.screens
+package app.fynlo.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -23,6 +23,7 @@ import app.fynlo.FinanceViewModel
 import app.fynlo.data.model.Transaction
 import app.fynlo.logic.DateUtils
 import java.util.Locale
+import app.fynlo.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -87,7 +88,7 @@ fun TransactionHistoryScreen(viewModel: FinanceViewModel) {
                             selectionMode = false
                             showBulkDeleteConfirm = false
                         },
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF4444))
+                        colors = ButtonDefaults.buttonColors(containerColor = SemanticRed)
                     ) { Text("Delete All") }
                 },
                 dismissButton = { TextButton(onClick = { showBulkDeleteConfirm = false }) { Text("Cancel") } }
@@ -107,7 +108,7 @@ fun TransactionHistoryScreen(viewModel: FinanceViewModel) {
                     Button(
                         onClick = { if (selectedIds.isNotEmpty()) showBulkDeleteConfirm = true },
                         enabled = selectedIds.isNotEmpty(),
-                        colors  = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF4444))
+                        colors  = ButtonDefaults.buttonColors(containerColor = SemanticRed)
                     ) { Text("Delete (${selectedIds.size})") }
                 }
             }
@@ -214,10 +215,10 @@ fun TransactionHistoryScreen(viewModel: FinanceViewModel) {
                                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                                     Text("+${currencySymbol}${String.format(locale, "%,.0f", monthIncome)}",
                                         style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-                                        color = Color(0xFF059669))
+                                        color = Emerald500)
                                     Text("-${currencySymbol}${String.format(locale, "%,.0f", monthExpense)}",
                                         style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-                                        color = Color(0xFFEF4444))
+                                        color = SemanticRed)
                                 }
                             }
                         }
@@ -270,9 +271,9 @@ fun TransactionItem(
     val isIncome   = txn.type.lowercase() == "income"
     val isTransfer = txn.type.lowercase() == "transfer"
     val rowColor   = when {
-        isIncome   -> Color(0xFF059669)
-        isExpense  -> Color(0xFFEF4444)
-        else       -> Color(0xFF3B82F6)
+        isIncome   -> Emerald500
+        isExpense  -> SemanticRed
+        else       -> SemanticBlue
     }
     val amountPrefix = when {
         isIncome   -> "+"
@@ -290,7 +291,7 @@ fun TransactionItem(
             text  = { Text("Delete $currencySymbol${String.format(java.util.Locale.getDefault(), "%,.0f", txn.amount)} ${txn.category}? This will reverse the account balance.") },
             confirmButton = {
                 Button(onClick = { onDelete(); showDeleteConfirm = false },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF4444))) { Text("Delete") }
+                    colors = ButtonDefaults.buttonColors(containerColor = SemanticRed)) { Text("Delete") }
             },
             dismissButton = { TextButton(onClick = { showDeleteConfirm = false }) { Text("Cancel") } }
         )
@@ -370,7 +371,7 @@ fun TransactionItem(
                     }
                     IconButton(onClick = { showDeleteConfirm = true }, modifier = Modifier.size(32.dp)) {
                         Icon(Icons.Default.Delete, null, Modifier.size(16.dp),
-                            tint = Color(0xFFEF4444).copy(alpha = 0.7f))
+                            tint = SemanticRed.copy(alpha = 0.7f))
                     }
                 }
 

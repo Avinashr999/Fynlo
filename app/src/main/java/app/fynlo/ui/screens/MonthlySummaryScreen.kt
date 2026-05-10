@@ -1,4 +1,4 @@
-﻿package app.fynlo.ui.screens
+package app.fynlo.ui.screens
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.*
@@ -22,6 +22,7 @@ import app.fynlo.FinanceViewModel
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import app.fynlo.ui.theme.*
 
 @Composable
 fun MonthlySummaryScreen(viewModel: FinanceViewModel) {
@@ -44,8 +45,8 @@ fun MonthlySummaryScreen(viewModel: FinanceViewModel) {
     }
 
     val maxVal = remember(months) { months.flatMap { listOf(it.second, it.third) }.maxOrNull()?.takeIf { it > 0 } ?: 1.0 }
-    val incomeColor  = Color(0xFF059669)
-    val expenseColor = Color(0xFFEF4444)
+    val incomeColor  = Emerald500
+    val expenseColor = SemanticRed
 
     val financialSummary by viewModel.financialSummary.collectAsState()
 
@@ -63,14 +64,14 @@ fun MonthlySummaryScreen(viewModel: FinanceViewModel) {
             Card(
                 Modifier.fillMaxWidth().padding(bottom = 16.dp),
                 RoundedCornerShape(12.dp),
-                CardDefaults.cardColors(containerColor = Color(0xFFF59E0B).copy(alpha = 0.12f))
+                CardDefaults.cardColors(containerColor = SemanticAmber.copy(alpha = 0.12f))
             ) {
                 Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Icon(Icons.Default.Warning, null, tint = Color(0xFFF59E0B))
+                    Icon(Icons.Default.Warning, null, tint = SemanticAmber)
                     Column {
-                        Text("Idle Fund Alert", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold), color = Color(0xFFB45309))
+                        Text("Idle Fund Alert", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold), color = SemanticAmber)
                         Text("${(idleRatio * 100).toInt()}% of your wealth is sitting idle in cash. Consider investing or lending to grow your value.", 
-                            style = MaterialTheme.typography.labelSmall, color = Color(0xFFB45309).copy(alpha = 0.8f))
+                            style = MaterialTheme.typography.labelSmall, color = SemanticAmber.copy(alpha = 0.8f))
                     }
                 }
             }

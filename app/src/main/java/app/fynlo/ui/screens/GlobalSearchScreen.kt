@@ -1,4 +1,4 @@
-﻿package app.fynlo.ui.screens
+package app.fynlo.ui.screens
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -18,6 +18,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.fynlo.FinanceViewModel
 import java.util.Locale
+import app.fynlo.ui.theme.*
 
 data class SearchResult(
     val title: String,
@@ -50,13 +51,13 @@ fun GlobalSearchScreen(
                 it.name.lowercase().contains(q) || it.notes.lowercase().contains(q) || it.phone.contains(q)
             }.forEach {
                 add(SearchResult(it.name, "Loan â€¢ ${it.date} â€¢ ${if (it.paid >= it.amount) "Settled" else "Active"}",
-                    it.amount, "Loan", Icons.Default.Person, Color(0xFF3B82F6)))
+                    it.amount, "Loan", Icons.Default.Person, SemanticBlue))
             }
             debts.filter {
                 it.name.lowercase().contains(q) || it.notes.lowercase().contains(q)
             }.forEach {
                 add(SearchResult(it.name, "Debt â€¢ ${it.date} â€¢ ${if (it.paid >= it.amount) "Settled" else "Active"}",
-                    it.amount, "Debt", Icons.Default.CreditCard, Color(0xFFEF4444)))
+                    it.amount, "Debt", Icons.Default.CreditCard, SemanticRed))
             }
             transactions.filter {
                 it.desc.lowercase().contains(q) || it.category.lowercase().contains(q) ||
@@ -68,14 +69,14 @@ fun GlobalSearchScreen(
                     "${it.type} â€¢ ${it.date} â€¢ ${it.category}",
                     it.amount, "Transaction",
                     if (it.type.lowercase() == "income") Icons.Default.ArrowDownward else Icons.Default.ArrowUpward,
-                    if (it.type.lowercase() == "income") Color(0xFF059669) else Color(0xFFEF4444)
+                    if (it.type.lowercase() == "income") Emerald500 else SemanticRed
                 ))
             }
             investments.filter {
                 it.name.lowercase().contains(q) || it.type.lowercase().contains(q)
             }.forEach {
                 add(SearchResult(it.name, "Investment â€¢ ${it.type} â€¢ ${it.date}",
-                    it.currentVal, "Investment", Icons.Default.TrendingUp, Color(0xFFF59E0B)))
+                    it.currentVal, "Investment", Icons.Default.TrendingUp, SemanticAmber))
             }
         }
     }

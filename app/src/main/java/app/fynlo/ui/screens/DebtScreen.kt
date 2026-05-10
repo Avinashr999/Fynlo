@@ -1,4 +1,4 @@
-﻿package app.fynlo.ui.screens
+package app.fynlo.ui.screens
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -27,6 +27,7 @@ import app.fynlo.logic.InterestEngine
 import app.fynlo.ui.components.AddDebtDialog
 import app.fynlo.ui.components.PayDebtDialog
 import java.util.Locale
+import app.fynlo.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -92,23 +93,23 @@ fun DebtScreen(viewModel: FinanceViewModel) {
             val totalPrincipal = debts.sumOf { maxOf(0.0, it.amount - it.paid) }
             val overdueCount   = debts.count { it.due.isNotBlank() && it.due < today && it.paid < it.amount }
             Card(Modifier.fillMaxWidth().padding(bottom = 12.dp), RoundedCornerShape(16.dp),
-                CardDefaults.cardColors(Color(0xFFEF4444).copy(alpha = 0.08f))) {
+                CardDefaults.cardColors(SemanticRed.copy(alpha = 0.08f))) {
                 Row(Modifier.padding(16.dp).fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
                     Column {
                         Text("Total Outstanding", style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Text("$currencySymbol${String.format(java.util.Locale.getDefault(), "%,.0f", totalPrincipal)}",
                             style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-                            color = Color(0xFFEF4444))
+                            color = SemanticRed)
                         Text("${debts.size} debt${if (debts.size != 1) "s" else ""}",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     if (overdueCount > 0) {
-                        Surface(color = Color(0xFFEF4444).copy(alpha = 0.15f), shape = RoundedCornerShape(8.dp)) {
+                        Surface(color = SemanticRed.copy(alpha = 0.15f), shape = RoundedCornerShape(8.dp)) {
                             Text("$overdueCount OVERDUE",
                                 style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-                                color = Color(0xFFEF4444),
+                                color = SemanticRed,
                                 modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp))
                         }
                     }
@@ -199,7 +200,7 @@ fun DebtCard(debt: Debt, currencySymbol: String = "₹", onEdit: () -> Unit, onD
                     Icon(
                         Icons.Default.CreditCard, 
                         contentDescription = null, 
-                        tint = Color(0xFFEF4444),
+                        tint = SemanticRed,
                         modifier = Modifier.size(20.dp)
                     )
                     Spacer(Modifier.width(8.dp))
@@ -219,11 +220,11 @@ fun DebtCard(debt: Debt, currencySymbol: String = "₹", onEdit: () -> Unit, onD
                         onClick = onPay,
                         contentPadding = PaddingValues(horizontal = 8.dp),
                         modifier = Modifier.height(28.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF4444))
+                        colors = ButtonDefaults.buttonColors(containerColor = SemanticRed)
                     ) {
                         Text("Pay", style = MaterialTheme.typography.labelSmall)
                     }
-                    Badge(containerColor = Color(0xFFFFEBEE), contentColor = Color(0xFFEF4444)) {
+                    Badge(containerColor = Color(0xFFFFEBEE), contentColor = SemanticRed) {
                         Text(debt.status, style = MaterialTheme.typography.labelSmall)
                     }
                 }
@@ -239,7 +240,7 @@ fun DebtCard(debt: Debt, currencySymbol: String = "₹", onEdit: () -> Unit, onD
                 }
                 Column(horizontalAlignment = Alignment.End) {
                     Text("Interest (${debt.rate}%)", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text("$currencySymbol ${String.format(locale, "%,.0f", interestAccrued)}", style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold, color = Color(0xFFEF4444)))
+                    Text("$currencySymbol ${String.format(locale, "%,.0f", interestAccrued)}", style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold, color = SemanticRed))
                     Text("Type: ${debt.intType}", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
                 }
             }
@@ -254,8 +255,8 @@ fun DebtCard(debt: Debt, currencySymbol: String = "₹", onEdit: () -> Unit, onD
                             Text("$currencySymbol ${String.format(locale, "%,.0f", bothPortions.first)}", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold))
                         }
                         Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
-                            Text("➔ CI (after due date)", style = MaterialTheme.typography.labelSmall, color = Color(0xFFEF4444))
-                            Text("$currencySymbol ${String.format(locale, "%,.0f", bothPortions.second)}", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold), color = Color(0xFFEF4444))
+                            Text("➔ CI (after due date)", style = MaterialTheme.typography.labelSmall, color = SemanticRed)
+                            Text("$currencySymbol ${String.format(locale, "%,.0f", bothPortions.second)}", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold), color = SemanticRed)
                         }
                     }
                 }
@@ -277,7 +278,7 @@ fun DebtCard(debt: Debt, currencySymbol: String = "₹", onEdit: () -> Unit, onD
                     }
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text("Per Day Interest", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text("$currencySymbol ${String.format(locale, "%,.2f", perDayInterest)}", style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold), color = Color(0xFFEF4444))
+                        Text("$currencySymbol ${String.format(locale, "%,.2f", perDayInterest)}", style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold), color = SemanticRed)
                     }
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text("Paid So Far", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)

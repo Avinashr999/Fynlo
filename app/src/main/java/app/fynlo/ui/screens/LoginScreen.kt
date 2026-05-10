@@ -1,4 +1,4 @@
-﻿package app.fynlo.ui.screens
+package app.fynlo.ui.screens
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -28,6 +28,7 @@ import app.fynlo.data.GoogleSignInHelper
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.common.api.ApiException
 import kotlinx.coroutines.launch
+import app.fynlo.ui.theme.*
 
 @Composable
 fun LoginScreen(onSignedIn: () -> Unit) {
@@ -73,7 +74,7 @@ fun LoginScreen(onSignedIn: () -> Unit) {
             .fillMaxSize()
             .background(
                 Brush.verticalGradient(
-                    colors = listOf(Color(0xFF3B82F6), Color(0xFF0D47A1), Color(0xFF01579B))
+                    colors = listOf(SemanticBlue, Color(0xFF0D47A1), Color(0xFF01579B))
                 )
             ),
         contentAlignment = Alignment.Center
@@ -89,7 +90,7 @@ fun LoginScreen(onSignedIn: () -> Unit) {
                         .clip(RoundedCornerShape(20.dp))
                         .background(
                             Brush.linearGradient(
-                                listOf(Color(0xFF0EA5E9), Color(0xFF1D4ED8))
+                                listOf(SemanticBlue, SemanticBlue)
                             )
                         ),
                     contentAlignment = Alignment.Center
@@ -132,13 +133,13 @@ fun LoginScreen(onSignedIn: () -> Unit) {
                 shape  = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = Color.White,
-                    contentColor   = Color(0xFF1A1A1A)
+                    contentColor   = Carbon900
                 )
             ) {
                 if (loading) {
                     CircularProgressIndicator(
                         modifier  = Modifier.size(22.dp),
-                        color     = Color(0xFF3B82F6),
+                        color     = SemanticBlue,
                         strokeWidth = 2.5.dp
                     )
                 } else {
@@ -147,7 +148,7 @@ fun LoginScreen(onSignedIn: () -> Unit) {
                         modifier         = Modifier
                             .size(22.dp)
                             .clip(CircleShape)
-                            .background(Color(0xFF4285F4)),
+                            .background(SemanticBlue),
                         contentAlignment = Alignment.Center
                     ) {
                         Text("G", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)

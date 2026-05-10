@@ -1,4 +1,4 @@
-﻿package app.fynlo.ui.screens
+package app.fynlo.ui.screens
 
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
@@ -27,6 +27,7 @@ import androidx.biometric.BiometricPrompt
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
 import app.fynlo.data.PinManager
+import app.fynlo.ui.theme.*
 
 enum class PinMode { ENTER, SET, CONFIRM }
 
@@ -188,7 +189,7 @@ fun PinScreen(
                                         onClick = { triggerBiometric() },
                                         modifier = Modifier.size(72.dp),
                                         shape = RoundedCornerShape(16.dp)
-                                    ) { Icon(Icons.Default.Fingerprint, null, Modifier.size(32.dp), tint = Color(0xFF059669)) }
+                                    ) { Icon(Icons.Default.Fingerprint, null, Modifier.size(32.dp), tint = Emerald500) }
                                 } else Box(Modifier.size(72.dp))
                                 "<" -> FilledTonalIconButton(
                                     onClick = {

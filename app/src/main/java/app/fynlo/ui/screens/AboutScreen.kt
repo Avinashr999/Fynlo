@@ -1,4 +1,4 @@
-﻿package app.fynlo.ui.screens
+package app.fynlo.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -18,10 +18,11 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.fynlo.BuildConfig
+import app.fynlo.ui.theme.*
 
 @Composable
 fun AboutScreen() {
-    val green = Color(0xFF059669)
+    val green = Emerald500
 
     Column(
         modifier = Modifier
@@ -112,7 +113,7 @@ fun AboutScreen() {
             icon  = Icons.Default.Shield,
             title = "Privacy & Security",
             body  = "Your data stays on your device and your personal Google Firestore. We do not collect, sell, or share your financial information with any third parties.",
-            color = Color(0xFF3B82F6)
+            color = SemanticBlue
         )
 
         Spacer(Modifier.height(12.dp))
@@ -122,7 +123,7 @@ fun AboutScreen() {
             icon  = Icons.Default.Gavel,
             title = "Legal Disclaimer",
             body  = "Fynlo is a manual-entry personal finance ledger for personal use only. It is NOT a banking, lending, or investment advisory service. Always verify your data with official bank statements. The developer is not responsible for any financial decisions made using this app.",
-            color = Color(0xFFEF4444)
+            color = SemanticRed
         )
 
         Spacer(Modifier.height(20.dp))
@@ -137,7 +138,7 @@ fun AboutScreen() {
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                Icon(Icons.Default.Favorite, null, Modifier.size(20.dp), tint = Color(0xFFEF4444))
+                Icon(Icons.Default.Favorite, null, Modifier.size(20.dp), tint = SemanticRed)
                 Text("Made with care for personal finance",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)

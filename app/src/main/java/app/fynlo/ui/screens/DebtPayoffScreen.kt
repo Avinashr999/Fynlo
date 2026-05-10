@@ -1,4 +1,4 @@
-﻿package app.fynlo.ui.screens
+package app.fynlo.ui.screens
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -16,6 +16,7 @@ import app.fynlo.data.model.Debt
 import app.fynlo.logic.InterestEngine
 import java.util.Locale
 import kotlin.math.ceil
+import app.fynlo.ui.theme.*
 
 @Composable
 fun DebtPayoffScreen(viewModel: FinanceViewModel) {
@@ -34,7 +35,7 @@ fun DebtPayoffScreen(viewModel: FinanceViewModel) {
         if (activeDebts.isEmpty()) {
             Box(Modifier.fillMaxSize(), Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("No active debts!", style = MaterialTheme.typography.titleLarge, color = Color(0xFF059669))
+                    Text("No active debts!", style = MaterialTheme.typography.titleLarge, color = Emerald500)
                     Text("You are debt-free.", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
@@ -49,7 +50,7 @@ fun DebtPayoffScreen(viewModel: FinanceViewModel) {
                     Text("Total Remaining", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text("$currencySymbol ${String.format(locale, "%,.2f", totalOwed)}",
                         style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold),
-                        color = Color(0xFFEF4444))
+                        color = SemanticRed)
                     Text("Across ${activeDebts.size} active debt(s)", style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
@@ -96,16 +97,16 @@ private fun DebtPayoffCard(debt: Debt, currencySymbol: String, locale: Locale) {
                 Surface(color = Color(0xFFFFEBEE), shape = RoundedCornerShape(8.dp)) {
                     Text("$currencySymbol ${String.format(locale, "%,.0f", outstanding)}",
                         style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
-                        color = Color(0xFFEF4444), modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
+                        color = SemanticRed, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
                 }
             }
             Spacer(Modifier.height(8.dp))
             LinearProgressIndicator(progress = { progress }, modifier = Modifier.fillMaxWidth().height(6.dp),
                 trackColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
-                color = Color(0xFF059669))
+                color = Emerald500)
             Spacer(Modifier.height(4.dp))
             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
-                Text("${(progress * 100).toInt()}% paid", style = MaterialTheme.typography.labelSmall, color = Color(0xFF059669))
+                Text("${(progress * 100).toInt()}% paid", style = MaterialTheme.typography.labelSmall, color = Emerald500)
                 Text("$currencySymbol ${String.format(locale, "%,.0f", debt.paid)} paid", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Spacer(Modifier.height(8.dp))

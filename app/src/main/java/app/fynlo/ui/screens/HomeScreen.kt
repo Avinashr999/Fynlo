@@ -1,4 +1,4 @@
-﻿package app.fynlo.ui.screens
+package app.fynlo.ui.screens
 
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
@@ -28,6 +28,7 @@ import app.fynlo.ui.components.WealthDistributionBar
 import app.fynlo.ui.components.ProjectSwitcherChip
 import app.fynlo.ui.components.AddTransactionDialog
 import app.fynlo.ui.components.PortfolioBreakdownSheet
+import app.fynlo.ui.theme.*
 
 @Composable
 fun HomeScreen(viewModel: FinanceViewModel, onNavigateToScreen: (String) -> Unit = {}) {
@@ -65,9 +66,9 @@ fun HomeScreen(viewModel: FinanceViewModel, onNavigateToScreen: (String) -> Unit
             else -> Icons.Default.Info
         }
         val sheetColor = when(activeBreakdownType) {
-            BreakdownType.IDLE_CASH -> Color(0xFF3B82F6)
-            BreakdownType.GROWING_ASSETS -> Color(0xFFF59E0B)
-            BreakdownType.HAND_LOANS -> Color(0xFF64748B)
+            BreakdownType.IDLE_CASH -> SemanticBlue
+            BreakdownType.GROWING_ASSETS -> SemanticAmber
+            BreakdownType.HAND_LOANS -> Carbon500
             else -> Color.Gray
         }
         val sheetData = when(activeBreakdownType) {
@@ -96,7 +97,7 @@ fun HomeScreen(viewModel: FinanceViewModel, onNavigateToScreen: (String) -> Unit
     if (!isSyncReady) {
         Box(Modifier.fillMaxSize().statusBarsPadding(), Alignment.Center) {
             Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                CircularProgressIndicator(color = Color(0xFF059669))
+                CircularProgressIndicator(color = Emerald500)
                 Text("Syncing your data...", style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
@@ -178,8 +179,8 @@ fun HomeScreen(viewModel: FinanceViewModel, onNavigateToScreen: (String) -> Unit
                 ) {
                     Row(Modifier.padding(16.dp).fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            Box(Modifier.size(40.dp).clip(CircleShape).background(Color(0xFF059669).copy(alpha = 0.12f)), Alignment.Center) {
-                                Icon(Icons.Default.AccountBalance, null, Modifier.size(20.dp), tint = Color(0xFF059669))
+                            Box(Modifier.size(40.dp).clip(CircleShape).background(Emerald500.copy(alpha = 0.12f)), Alignment.Center) {
+                                Icon(Icons.Default.AccountBalance, null, Modifier.size(20.dp), tint = Emerald500)
                             }
                             Column {
                                 Text(name, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold))
@@ -197,10 +198,10 @@ fun HomeScreen(viewModel: FinanceViewModel, onNavigateToScreen: (String) -> Unit
 
         // 4. Quick Actions
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            QuickAction("Expense", Icons.Default.Remove, Color(0xFFEF4444), Modifier.weight(1f)) { showAddTxn = true }
-            QuickAction("Income", Icons.Default.Add, Color(0xFF10B981), Modifier.weight(1f)) { showAddTxn = true }
-            QuickAction("Lend", Icons.Default.Handshake, Color(0xFF3B82F6), Modifier.weight(1f)) { onNavigateToScreen("lending") }
-            QuickAction("History", Icons.Default.History, Color(0xFF64748B), Modifier.weight(1f)) { onNavigateToScreen("history") }
+            QuickAction("Expense", Icons.Default.Remove, SemanticRed, Modifier.weight(1f)) { showAddTxn = true }
+            QuickAction("Income", Icons.Default.Add, Emerald400, Modifier.weight(1f)) { showAddTxn = true }
+            QuickAction("Lend", Icons.Default.Handshake, SemanticBlue, Modifier.weight(1f)) { onNavigateToScreen("lending") }
+            QuickAction("History", Icons.Default.History, Carbon500, Modifier.weight(1f)) { onNavigateToScreen("history") }
         }
 
         Spacer(Modifier.height(24.dp))
@@ -209,13 +210,13 @@ fun HomeScreen(viewModel: FinanceViewModel, onNavigateToScreen: (String) -> Unit
         Text("Portfolio Efficiency", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
         Spacer(Modifier.height(12.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            MetricCard("Idle Cash", "$currencySymbol${String.format(locale, "%,.0f", summary.totalCash)}", Color(0xFF3B82F6), Modifier.weight(1f)) { activeBreakdownType = BreakdownType.IDLE_CASH }
-            MetricCard("Growing Assets", "$currencySymbol${String.format(locale, "%,.0f", summary.totalInvestments + summary.totalInterestLoans)}", Color(0xFFF59E0B), Modifier.weight(1f)) { activeBreakdownType = BreakdownType.GROWING_ASSETS }
+            MetricCard("Idle Cash", "$currencySymbol${String.format(locale, "%,.0f", summary.totalCash)}", SemanticBlue, Modifier.weight(1f)) { activeBreakdownType = BreakdownType.IDLE_CASH }
+            MetricCard("Growing Assets", "$currencySymbol${String.format(locale, "%,.0f", summary.totalInvestments + summary.totalInterestLoans)}", SemanticAmber, Modifier.weight(1f)) { activeBreakdownType = BreakdownType.GROWING_ASSETS }
         }
         Spacer(Modifier.height(10.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            MetricCard("Hand Loans", "$currencySymbol${String.format(locale, "%,.0f", summary.totalHandLoans)}", Color(0xFF64748B), Modifier.weight(1f)) { activeBreakdownType = BreakdownType.HAND_LOANS }
-            MetricCard("Total Owed", "$currencySymbol${String.format(locale, "%,.0f", summary.totalDebtPrincipal + summary.totalDebtInterest)}", Color(0xFFEF4444), Modifier.weight(1f)) { onNavigateToScreen("debts") }
+            MetricCard("Hand Loans", "$currencySymbol${String.format(locale, "%,.0f", summary.totalHandLoans)}", Carbon500, Modifier.weight(1f)) { activeBreakdownType = BreakdownType.HAND_LOANS }
+            MetricCard("Total Owed", "$currencySymbol${String.format(locale, "%,.0f", summary.totalDebtPrincipal + summary.totalDebtInterest)}", SemanticRed, Modifier.weight(1f)) { onNavigateToScreen("debts") }
         }
 
         Spacer(Modifier.height(100.dp))

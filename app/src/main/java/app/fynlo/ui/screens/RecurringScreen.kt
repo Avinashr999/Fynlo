@@ -1,4 +1,4 @@
-﻿package app.fynlo.ui.screens
+package app.fynlo.ui.screens
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -17,6 +17,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import app.fynlo.FinanceViewModel
 import app.fynlo.data.model.RecurringTransaction
+import app.fynlo.ui.theme.*
 
 @Composable
 fun RecurringScreen(viewModel: FinanceViewModel) {
@@ -81,10 +82,10 @@ private fun RecurringCard(r: RecurringTransaction, onDelete: () -> Unit) {
         Row(Modifier.padding(16.dp).fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Surface(Modifier.size(44.dp), RoundedCornerShape(12.dp),
-                    color = if (r.type == "Income") Color(0xFF059669).copy(0.1f) else Color(0xFFEF4444).copy(0.1f)) {
+                    color = if (r.type == "Income") Emerald500.copy(0.1f) else SemanticRed.copy(0.1f)) {
                     Box(contentAlignment = Alignment.Center) {
                         Icon(if (r.type == "Income") Icons.Default.ArrowDownward else Icons.Default.ArrowUpward,
-                            null, tint = if (r.type == "Income") Color(0xFF059669) else Color(0xFFEF4444),
+                            null, tint = if (r.type == "Income") Emerald500 else SemanticRed,
                             modifier = Modifier.size(22.dp))
                     }
                 }

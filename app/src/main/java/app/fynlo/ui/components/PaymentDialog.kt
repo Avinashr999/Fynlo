@@ -25,6 +25,7 @@ import app.fynlo.data.model.DebtPayment
 import app.fynlo.data.model.Payment
 import app.fynlo.logic.DateUtils
 import java.util.*
+import app.fynlo.ui.theme.*
 
 // ─── Collect Loan Repayment ─────────────────────────────────────────────────
 
@@ -132,7 +133,7 @@ fun CollectPaymentDialog(
                                         Text(
                                             "₹${String.format("%,.0f", acct.balance)}",
                                             style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
-                                            color = if (acct.balance >= 0) Color(0xFF059669) else MaterialTheme.colorScheme.error
+                                            color = if (acct.balance >= 0) Emerald500 else MaterialTheme.colorScheme.error
                                         )
                                     }
                                 },
@@ -291,7 +292,7 @@ fun PayDebtDialog(
                                         Text(
                                             "₹${String.format("%,.0f", acct.balance)}",
                                             style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
-                                            color = if (acct.balance >= 0) Color(0xFF059669) else MaterialTheme.colorScheme.error
+                                            color = if (acct.balance >= 0) Emerald500 else MaterialTheme.colorScheme.error
                                         )
                                     }
                                 },

@@ -1,4 +1,4 @@
-﻿package app.fynlo.ui.screens
+package app.fynlo.ui.screens
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -29,10 +29,11 @@ import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import app.fynlo.ui.theme.*
 
 private val CAT_COLORS = listOf(
-    Color(0xFF3B82F6), Color(0xFF059669), Color(0xFFF59E0B),
-    Color(0xFFEF4444), Color(0xFF6B7280), Color(0xFFEC4899),
+    SemanticBlue, Emerald500, SemanticAmber,
+    SemanticRed, Carbon500, Color(0xFFEC4899),
     Color(0xFF06B6D4), Color(0xFF84CC16)
 )
 
@@ -119,13 +120,13 @@ fun SpendScreen(viewModel: FinanceViewModel) {
             Column(Modifier.verticalScroll(rememberScrollState())) {
                 // Total card
                 Card(Modifier.fillMaxWidth(), RoundedCornerShape(20.dp),
-                    CardDefaults.cardColors(Color(0xFFEF4444).copy(alpha = 0.1f))) {
+                    CardDefaults.cardColors(SemanticRed.copy(alpha = 0.1f))) {
                     Column(Modifier.padding(20.dp)) {
                         Text(selectedMonth.format(monthFmt), style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Text("$currencySymbol ${String.format(locale, "%,.0f", total)}",
                             style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold),
-                            color = Color(0xFFEF4444))
+                            color = SemanticRed)
                         Text("${expenses.size} transactions", style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
@@ -162,8 +163,8 @@ fun SpendScreen(viewModel: FinanceViewModel) {
                                                 color = color)
                                             if (budgetPct != null) {
                                                 val pctColor = when {
-                                                    budgetPct >= 100 -> Color(0xFFEF4444)
-                                                    budgetPct >= 80  -> Color(0xFFF59E0B)
+                                                    budgetPct >= 100 -> SemanticRed
+                                                    budgetPct >= 80  -> SemanticAmber
                                                     else             -> MaterialTheme.colorScheme.onSurfaceVariant
                                                 }
                                                 Surface(color = pctColor.copy(alpha = 0.12f),
@@ -180,7 +181,7 @@ fun SpendScreen(viewModel: FinanceViewModel) {
                                         .background(color.copy(alpha = 0.15f))) {
                                         Box(Modifier.fillMaxWidth(anim).fillMaxHeight()
                                             .clip(RoundedCornerShape(4.dp)).background(
-                                                if (budgetPct != null && budgetPct >= 100) Color(0xFFEF4444) else color))
+                                                if (budgetPct != null && budgetPct >= 100) SemanticRed else color))
                                     }
                                     // Budget limit line label
                                     if (budget != null) {
@@ -234,9 +235,9 @@ private fun ExpenseRow(txn: Transaction, currencySymbol: String, locale: Locale)
     Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         Surface(Modifier.size(40.dp), RoundedCornerShape(12.dp),
-            color = Color(0xFFEF4444).copy(alpha = 0.1f)) {
+            color = SemanticRed.copy(alpha = 0.1f)) {
             Box(contentAlignment = Alignment.Center) {
-                Icon(Icons.Default.ShoppingCart, null, tint = Color(0xFFEF4444), modifier = Modifier.size(20.dp))
+                Icon(Icons.Default.ShoppingCart, null, tint = SemanticRed, modifier = Modifier.size(20.dp))
             }
         }
         Column(Modifier.weight(1f)) {
@@ -248,7 +249,7 @@ private fun ExpenseRow(txn: Transaction, currencySymbol: String, locale: Locale)
         Column(horizontalAlignment = Alignment.End) {
             Text("-$currencySymbol ${String.format(locale, "%,.0f", txn.amount)}",
                 style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
-                color = Color(0xFFEF4444))
+                color = SemanticRed)
             Text(txn.date, style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
         }

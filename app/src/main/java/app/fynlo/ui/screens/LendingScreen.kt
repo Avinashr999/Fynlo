@@ -1,4 +1,4 @@
-﻿package app.fynlo.ui.screens
+package app.fynlo.ui.screens
 
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.clickable
@@ -39,6 +39,7 @@ import app.fynlo.logic.InterestEngine
 import app.fynlo.ui.components.AddLendingDialog
 import app.fynlo.ui.components.CollectPaymentDialog
 import java.util.Locale
+import app.fynlo.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -156,20 +157,20 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
                     }
                     val overdueCount = activeLoans.count { it.due.isNotBlank() && it.due < today }
                     Card(Modifier.fillMaxWidth(), RoundedCornerShape(16.dp),
-                        CardDefaults.cardColors(Color(0xFF3B82F6).copy(alpha = 0.1f))) {
+                        CardDefaults.cardColors(SemanticBlue.copy(alpha = 0.1f))) {
                         Row(Modifier.padding(16.dp).fillMaxWidth(), Arrangement.SpaceBetween) {
                             Column {
                                 Text("Total Outstanding", style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 Text("$currencySymbol${String.format(java.util.Locale.getDefault(), "%,.0f", totalOut)}",
                                     style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-                                    color = Color(0xFF3B82F6))
+                                    color = SemanticBlue)
                             }
                             if (overdueCount > 0) {
-                                Surface(color = Color(0xFFEF4444).copy(alpha = 0.15f), shape = RoundedCornerShape(8.dp)) {
+                                Surface(color = SemanticRed.copy(alpha = 0.15f), shape = RoundedCornerShape(8.dp)) {
                                     Text("$overdueCount OVERDUE",
                                         style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-                                        color = Color(0xFFEF4444),
+                                        color = SemanticRed,
                                         modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp))
                                 }
                             }
@@ -295,18 +296,18 @@ fun LendingCard(borrower: Borrower, people: List<app.fynlo.data.model.Person> = 
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Icon(Icons.Default.Person, null,
-                        tint = if (isOverdue) Color(0xFFEF4444) else MaterialTheme.colorScheme.primary,
+                        tint = if (isOverdue) SemanticRed else MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(20.dp))
                     Text(borrower.name,
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
                     if (isOverdue) {
                         Surface(
-                            color = Color(0xFFEF4444).copy(alpha = pulseAlpha * 0.25f),
+                            color = SemanticRed.copy(alpha = pulseAlpha * 0.25f),
                             shape = RoundedCornerShape(4.dp)
                         ) {
                             Text("OVERDUE",
                                 style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                                color = Color(0xFFEF4444),
+                                color = SemanticRed,
                                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
                         }
                     }
@@ -339,7 +340,7 @@ fun LendingCard(borrower: Borrower, people: List<app.fynlo.data.model.Person> = 
                                 ).apply { putExtra("sms_body", smsMsg) }
                             )
                         }) {
-                            Icon(Icons.Default.Sms, "SMS", Modifier.size(22.dp), tint = Color(0xFF3B82F6))
+                            Icon(Icons.Default.Sms, "SMS", Modifier.size(22.dp), tint = SemanticBlue)
                         }
                     } else {
                         // No phone — show clear hint
@@ -414,7 +415,7 @@ fun LendingCard(borrower: Borrower, people: List<app.fynlo.data.model.Person> = 
                 }
                 Column(horizontalAlignment = Alignment.End) {
                     Text("Interest (${borrower.rate}%)", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text("$currencySymbol ${String.format(Locale.getDefault(), "%,.0f", interest)}", style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold, color = Color(0xFF059669)))
+                    Text("$currencySymbol ${String.format(Locale.getDefault(), "%,.0f", interest)}", style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold, color = Emerald500))
                     Text(borrower.type, style = MaterialTheme.typography.labelSmall, color = Color.Gray)
                 }
             }
@@ -425,12 +426,12 @@ fun LendingCard(borrower: Borrower, people: List<app.fynlo.data.model.Person> = 
                 Surface(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f), shape = RoundedCornerShape(8.dp)) {
                     Column(Modifier.fillMaxWidth().padding(10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
-                            Text("➔ SI (until due date)", style = MaterialTheme.typography.labelSmall, color = Color(0xFF059669))
-                            Text("$currencySymbol ${String.format(locale, "%,.0f", bothPortions.first)}", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold), color = Color(0xFF059669))
+                            Text("➔ SI (until due date)", style = MaterialTheme.typography.labelSmall, color = Emerald500)
+                            Text("$currencySymbol ${String.format(locale, "%,.0f", bothPortions.first)}", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold), color = Emerald500)
                         }
                         Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
-                            Text("➔ CI (after due date)", style = MaterialTheme.typography.labelSmall, color = Color(0xFFEF4444))
-                            Text("$currencySymbol ${String.format(locale, "%,.0f", bothPortions.second)}", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold), color = Color(0xFFEF4444))
+                            Text("➔ CI (after due date)", style = MaterialTheme.typography.labelSmall, color = SemanticRed)
+                            Text("$currencySymbol ${String.format(locale, "%,.0f", bothPortions.second)}", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold), color = SemanticRed)
                         }
                     }
                 }
@@ -452,7 +453,7 @@ fun LendingCard(borrower: Borrower, people: List<app.fynlo.data.model.Person> = 
                     }
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text("Per Day Interest", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text("$currencySymbol ${String.format(locale, "%,.2f", perDayInterest)}", style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold), color = Color(0xFF059669))
+                        Text("$currencySymbol ${String.format(locale, "%,.2f", perDayInterest)}", style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold), color = Emerald500)
                     }
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text("Paid So Far", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -647,7 +648,7 @@ fun EmiCalculatorDialog(onDismiss: () -> Unit) {
                         Text(
                             "Loan is overdue — compound interest applies.",
                             style = MaterialTheme.typography.labelSmall,
-                            color = Color(0xFFEF4444)
+                            color = SemanticRed
                         )
                     }
                 }
@@ -670,7 +671,7 @@ fun EmiCalculatorDialog(onDismiss: () -> Unit) {
                             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
                                 Text("Total Interest", style = MaterialTheme.typography.bodyMedium)
                                 Text("₹ ${String.format(locale, "%,.2f", interest!!)}",
-                                    style = MaterialTheme.typography.bodyMedium, color = Color(0xFFEF4444))
+                                    style = MaterialTheme.typography.bodyMedium, color = SemanticRed)
                             }
                         }
                     }

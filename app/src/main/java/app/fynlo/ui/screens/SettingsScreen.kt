@@ -1,4 +1,4 @@
-﻿package app.fynlo.ui.screens
+package app.fynlo.ui.screens
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -28,10 +28,10 @@ import app.fynlo.ui.theme.ThemeController
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
-private val Green = Color(0xFF059669)
-private val Blue  = Color(0xFF3B82F6)
-private val Red   = Color(0xFFEF4444)
-private val Amber = Color(0xFFF59E0B)
+private val Green = Emerald500
+private val Blue  = SemanticBlue
+private val Red   = SemanticRed
+private val Amber = SemanticAmber
 
 @Composable
 fun SettingsScreen(

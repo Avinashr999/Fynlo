@@ -1,4 +1,4 @@
-﻿package app.fynlo.ui.components
+package app.fynlo.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -14,6 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import java.util.Locale
+import app.fynlo.ui.theme.*
 
 @Composable
 fun WealthDistributionBar(
@@ -42,18 +43,18 @@ fun WealthDistributionBar(
                 .height(10.dp)
                 .background(Color.White.copy(alpha = 0.2f), RoundedCornerShape(5.dp))
         ) {
-            if (cashWeight > 0.01) Box(Modifier.fillMaxHeight().weight(cashWeight).background(Color(0xFF3B82F6)))
-            if (growingWeight > 0.01) Box(Modifier.fillMaxHeight().weight(growingWeight).background(Color(0xFFFFCA28)))
-            if (handLoanWeight > 0.01) Box(Modifier.fillMaxHeight().weight(handLoanWeight).background(Color(0xFF94A3B8)))
+            if (cashWeight > 0.01) Box(Modifier.fillMaxHeight().weight(cashWeight).background(SemanticBlue))
+            if (growingWeight > 0.01) Box(Modifier.fillMaxHeight().weight(growingWeight).background(SemanticAmber))
+            if (handLoanWeight > 0.01) Box(Modifier.fillMaxHeight().weight(handLoanWeight).background(Carbon400))
         }
         
         Row(
             modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            LegendItem("Idle Cash", Color(0xFF3B82F6), "${(cashWeight * 100).toInt()}%")
-            LegendItem("Growing Assets", Color(0xFFFFCA28), "${(growingWeight * 100).toInt()}%")
-            LegendItem("Hand Loans", Color(0xFF94A3B8), "${(handLoanWeight * 100).toInt()}%")
+            LegendItem("Idle Cash", SemanticBlue, "${(cashWeight * 100).toInt()}%")
+            LegendItem("Growing Assets", SemanticAmber, "${(growingWeight * 100).toInt()}%")
+            LegendItem("Hand Loans", Carbon400, "${(handLoanWeight * 100).toInt()}%")
         }
     }
 }
@@ -70,8 +71,8 @@ private fun LegendItem(label: String, color: Color, percent: String) {
 @Composable
 fun AccountGrowthIndicator(growth: Double, currencySymbol: String, locale: Locale) {
     val color = when {
-        growth > 0 -> Color(0xFF10B981)
-        growth < 0 -> Color(0xFFEF4444)
+        growth > 0 -> Emerald400
+        growth < 0 -> SemanticRed
         else -> Color.Gray
     }
     val icon = when {

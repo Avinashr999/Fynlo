@@ -1,4 +1,4 @@
-﻿package app.fynlo.ui.components
+package app.fynlo.ui.components
 
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
@@ -16,6 +16,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import app.fynlo.ui.theme.*
 
 @Composable
 fun WizardStepIndicator(currentStep: Int, totalSteps: Int) {
@@ -35,7 +36,7 @@ fun WizardStepIndicator(currentStep: Int, totalSteps: Int) {
                     modifier = Modifier
                         .width(40.dp)
                         .height(2.dp)
-                        .background(if (i < currentStep) Color(0xFF059669) else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                        .background(if (i < currentStep) Emerald500 else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
                 )
             }
         }
@@ -45,7 +46,7 @@ fun WizardStepIndicator(currentStep: Int, totalSteps: Int) {
 @Composable
 private fun StepCircle(step: Int, active: Boolean, completed: Boolean) {
     val bgColor = when {
-        completed -> Color(0xFF059669)
+        completed -> Emerald500
         active -> MaterialTheme.colorScheme.primary
         else -> MaterialTheme.colorScheme.surfaceVariant
     }

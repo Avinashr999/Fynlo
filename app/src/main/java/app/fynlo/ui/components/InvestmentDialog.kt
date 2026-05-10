@@ -26,6 +26,7 @@ import app.fynlo.data.model.Debt
 import app.fynlo.data.model.Investment
 import app.fynlo.logic.DateUtils
 import java.util.*
+import app.fynlo.ui.theme.*
 
 // ─── What the caller receives on confirm ────────────────────────────────────
 
@@ -243,7 +244,7 @@ fun AddInvestmentDialog(
                                                     Text(
                                                         "₹${String.format("%,.0f", acct.balance)}",
                                                         style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
-                                                        color = if (acct.balance >= 0) Color(0xFF059669) else MaterialTheme.colorScheme.error
+                                                        color = if (acct.balance >= 0) Emerald500 else MaterialTheme.colorScheme.error
                                                     )
                                                 }
                                             },

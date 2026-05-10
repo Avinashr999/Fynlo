@@ -1,4 +1,4 @@
-﻿package app.fynlo.ui.screens
+package app.fynlo.ui.screens
 
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
@@ -28,6 +28,7 @@ import app.fynlo.logic.DateUtils
 import app.fynlo.ui.components.DatePickerField
 import app.fynlo.ui.components.WizardStepIndicator
 import java.util.*
+import app.fynlo.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -189,7 +190,7 @@ fun SmartFlowWizardScreen(
                             onNavigateBack()
                         },
                         shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF059669))
+                        colors = ButtonDefaults.buttonColors(containerColor = Emerald500)
                     ) {
                         Icon(Icons.Default.Check, null, Modifier.size(18.dp))
                         Spacer(Modifier.width(8.dp))
@@ -341,10 +342,10 @@ fun StepFundingSource(
                 shape = RoundedCornerShape(12.dp)
             ) {
                 Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Info, null, tint = Color(0xFFD97706))
+                    Icon(Icons.Default.Info, null, tint = SemanticAmber)
                     Spacer(Modifier.width(12.dp))
                     Text("Choosing this will NOT deduct money from your current accounts. Perfect for historical data.", 
-                        style = MaterialTheme.typography.bodySmall, color = Color(0xFF92400E))
+                        style = MaterialTheme.typography.bodySmall, color = SemanticAmber)
                 }
             }
         }
@@ -366,14 +367,14 @@ fun StepVerification(
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
         ) {
             Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                EntryRow("Debit (Asset)", assetName, "+ ₹${String.format("%,.0f", amt)}", Color(0xFF059669))
+                EntryRow("Debit (Asset)", assetName, "+ ₹${String.format("%,.0f", amt)}", Emerald500)
                 
                 val creditLabel = when(source) {
                     "Existing Account" -> "Cash/Bank: $sourceName"
                     "New Bank Loan" -> "Liability: $sourceName"
                     else -> "Equity (Historical)"
                 }
-                EntryRow("Credit (Source)", creditLabel, "- ₹${String.format("%,.0f", amt)}", if (source == "New Bank Loan") Color(0xFFEF4444) else Color(0xFF3B82F6))
+                EntryRow("Credit (Source)", creditLabel, "- ₹${String.format("%,.0f", amt)}", if (source == "New Bank Loan") SemanticRed else SemanticBlue)
                 
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f), modifier = Modifier.padding(vertical = 8.dp))
                 

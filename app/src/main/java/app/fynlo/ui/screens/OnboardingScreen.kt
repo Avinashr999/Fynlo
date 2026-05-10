@@ -24,6 +24,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import app.fynlo.ui.theme.*
 
 data class OnboardingPage(
     val title: String,
@@ -36,7 +37,7 @@ data class OnboardingPage(
 fun IllustrationNetWorth() {
     Canvas(modifier = Modifier.size(200.dp)) {
         val w = size.width; val h = size.height
-        val green = Color(0xFF059669); val light = Color(0xFFD1FAE5)
+        val green = Emerald500; val light = Emerald100
         drawRoundRect(color = light, topLeft = Offset(w*0.1f,h*0.15f),
             size = Size(w*0.8f, h*0.55f), cornerRadius = CornerRadius(24f))
         drawRoundRect(color = green.copy(0.15f), topLeft = Offset(w*0.1f,h*0.15f),
@@ -69,25 +70,25 @@ fun IllustrationNetWorth() {
 fun IllustrationLending() {
     Canvas(modifier = Modifier.size(200.dp)) {
         val w = size.width; val h = size.height
-        val blue = Color(0xFF3B82F6)
+        val blue = SemanticBlue
         listOf(Offset(w*0.3f, h*0.3f), Offset(w*0.7f, h*0.3f)).forEachIndexed { i, c ->
-            drawCircle(if(i==0) blue else Color(0xFF059669), w*0.13f, c)
+            drawCircle(if(i==0) blue else Emerald500, w*0.13f, c)
             drawCircle(Color.White, w*0.07f, c.copy(y = c.y - w*0.02f))
-            drawArc(if(i==0) blue else Color(0xFF059669),
+            drawArc(if(i==0) blue else Emerald500,
                 0f, 180f, false,
                 topLeft = Offset(c.x - w*0.13f, c.y),
                 size = Size(w*0.26f, w*0.2f))
         }
         val arrowY = h*0.32f
-        drawLine(Color(0xFFFBBF24), Offset(w*0.43f, arrowY), Offset(w*0.57f, arrowY), 3f, StrokeCap.Round)
+        drawLine(SemanticAmber, Offset(w*0.43f, arrowY), Offset(w*0.57f, arrowY), 3f, StrokeCap.Round)
         drawPath(Path().apply {
             moveTo(w*0.57f, arrowY)
             lineTo(w*0.52f, arrowY - 8f)
             lineTo(w*0.52f, arrowY + 8f)
-        }, Color(0xFFFBBF24))
+        }, SemanticAmber)
         drawRoundRect(Color(0xFFFEF3C7), topLeft = Offset(w*0.3f, h*0.6f),
             size = Size(w*0.4f, h*0.14f), cornerRadius = CornerRadius(16f))
-        drawRoundRect(Color(0xFFFBBF24), topLeft = Offset(w*0.3f, h*0.6f),
+        drawRoundRect(SemanticAmber, topLeft = Offset(w*0.3f, h*0.6f),
             size = Size(w*0.4f, h*0.14f), cornerRadius = CornerRadius(16f), style = Stroke(2f))
     }
 }
@@ -96,12 +97,12 @@ fun IllustrationLending() {
 fun IllustrationDebt() {
     Canvas(modifier = Modifier.size(200.dp)) {
         val w = size.width; val h = size.height
-        val red = Color(0xFFEF4444); val light = Color(0xFFFEF2F2)
-        drawRoundRect(Brush.linearGradient(listOf(red, Color(0xFFB91C1C)),
+        val red = SemanticRed; val light = Color(0xFFFEF2F2)
+        drawRoundRect(Brush.linearGradient(listOf(red, SemanticRed),
             Offset(w*0.1f, h*0.2f), Offset(w*0.9f, h*0.65f)),
             topLeft = Offset(w*0.1f, h*0.2f), size = Size(w*0.8f, h*0.45f),
             cornerRadius = CornerRadius(24f))
-        drawRoundRect(Color(0xFFFBBF24), topLeft = Offset(w*0.18f, h*0.32f),
+        drawRoundRect(SemanticAmber, topLeft = Offset(w*0.18f, h*0.32f),
             size = Size(w*0.14f, w*0.1f), cornerRadius = CornerRadius(6f))
         drawRoundRect(Color.White.copy(0.4f), topLeft = Offset(w*0.1f, h*0.48f),
             size = Size(w*0.8f, h*0.05f), cornerRadius = CornerRadius(0f))
@@ -116,7 +117,7 @@ fun IllustrationDebt() {
 fun IllustrationInvestment() {
     Canvas(modifier = Modifier.size(200.dp)) {
         val w = size.width; val h = size.height
-        val amber = Color(0xFFF59E0B)
+        val amber = SemanticAmber
         listOf(0f, 0.08f, 0.16f).forEach { offset ->
             drawOval(amber.copy(0.9f - offset*2),
                 topLeft = Offset(w*0.25f, h*(0.55f - offset)),
@@ -128,13 +129,13 @@ fun IllustrationInvestment() {
             lineTo(w*0.55f, h*0.62f)
             lineTo(w*0.78f, h*0.35f)
         }
-        drawPath(path, Color(0xFF059669), style = Stroke(5f, cap = StrokeCap.Round, join = StrokeJoin.Round))
+        drawPath(path, Emerald500, style = Stroke(5f, cap = StrokeCap.Round, join = StrokeJoin.Round))
         drawPath(Path().apply {
             moveTo(w*0.78f, h*0.35f)
             lineTo(w*0.68f, h*0.34f)
             lineTo(w*0.78f, h*0.44f)
             close()
-        }, Color(0xFF059669))
+        }, Emerald500)
         listOf(Offset(w*0.7f, h*0.2f), Offset(w*0.2f, h*0.3f), Offset(w*0.85f, h*0.5f)).forEach {
             drawCircle(amber.copy(0.6f), 5f, it)
             drawLine(amber.copy(0.4f), it.copy(y=it.y-12f), it.copy(y=it.y+12f), 2f)
@@ -147,7 +148,7 @@ fun IllustrationInvestment() {
 fun IllustrationSync() {
     Canvas(modifier = Modifier.size(200.dp)) {
         val w = size.width; val h = size.height
-        val blue = Color(0xFF3B82F6)
+        val blue = SemanticBlue
         val light = Color(0xFFEFF6FF)
         drawCircle(light, w*0.18f, Offset(w*0.38f, h*0.38f))
         drawCircle(light, w*0.14f, Offset(w*0.56f, h*0.40f))
@@ -171,27 +172,27 @@ private val pages = listOf(
     OnboardingPage(
         "Your Finance Command Centre",
         "Track net worth, loans, debts and investments — all synced to the cloud in real time.",
-        Color(0xFF059669), { IllustrationNetWorth() }
+        Emerald500, { IllustrationNetWorth() }
     ),
     OnboardingPage(
         "Manage Lending",
         "Track money you lend to others with exact interest — Simple, Compound, or Reducing Balance.",
-        Color(0xFF3B82F6), { IllustrationLending() }
+        SemanticBlue, { IllustrationLending() }
     ),
     OnboardingPage(
         "Track Your Debts",
         "Know exactly what you owe, interest accrued per day, and estimated payoff at your current rate.",
-        Color(0xFFEF4444), { IllustrationDebt() }
+        SemanticRed, { IllustrationDebt() }
     ),
     OnboardingPage(
         "Monitor Investments",
         "Add gold, stocks, FDs and track their current value and growth over time.",
-        Color(0xFFF59E0B), { IllustrationInvestment() }
+        SemanticAmber, { IllustrationInvestment() }
     ),
     OnboardingPage(
         "Real-Time Cloud Sync",
         "Sign in with Google to sync your data across all your devices instantly.",
-        Color(0xFF3B82F6), { IllustrationSync() }
+        SemanticBlue, { IllustrationSync() }
     )
 )
 

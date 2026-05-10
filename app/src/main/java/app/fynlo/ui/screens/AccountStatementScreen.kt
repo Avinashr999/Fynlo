@@ -1,4 +1,4 @@
-﻿package app.fynlo.ui.screens
+package app.fynlo.ui.screens
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -18,6 +18,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import app.fynlo.FinanceViewModel
 import java.util.Locale
+import app.fynlo.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -87,7 +88,7 @@ fun AccountStatementScreen(
                         Text(
                             "$currencySymbol ${String.format(locale, "%,.2f", account.balance)}",
                             style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold),
-                            color = if (account.balance >= 0) MaterialTheme.colorScheme.primary else Color(0xFFEF4444)
+                            color = if (account.balance >= 0) MaterialTheme.colorScheme.primary else SemanticRed
                         )
                         Text("${accountTransactions.size} transactions",
                             style = MaterialTheme.typography.bodySmall,
@@ -145,7 +146,7 @@ private fun QuickBalanceEditDialog(
                         if (diff >= 0) "+ $currencySymbol${"%.2f".format(diff)} will be added"
                         else "- $currencySymbol${"%.2f".format(-diff)} will be deducted",
                         style = MaterialTheme.typography.bodySmall,
-                        color = if (diff >= 0) Color(0xFF059669) else Color(0xFFEF4444)
+                        color = if (diff >= 0) Emerald500 else SemanticRed
                     )
                 }
             }

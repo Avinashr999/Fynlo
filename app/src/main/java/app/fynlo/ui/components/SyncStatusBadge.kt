@@ -1,4 +1,4 @@
-﻿package app.fynlo.ui.components
+package app.fynlo.ui.components
 
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.layout.size
@@ -17,6 +17,7 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import app.fynlo.data.SyncStatus
+import app.fynlo.ui.theme.*
 
 @Composable
 fun SyncStatusBadge(status: SyncStatus, modifier: Modifier = Modifier) {
@@ -24,7 +25,7 @@ fun SyncStatusBadge(status: SyncStatus, modifier: Modifier = Modifier) {
         is SyncStatus.Synced -> Icon(
             imageVector        = Icons.Default.CloudDone,
             contentDescription = "Synced",
-            tint               = Color(0xFF059669),
+            tint               = Emerald500,
             modifier           = modifier.size(22.dp)
         )
         is SyncStatus.Syncing -> {
@@ -45,7 +46,7 @@ fun SyncStatusBadge(status: SyncStatus, modifier: Modifier = Modifier) {
         is SyncStatus.Offline -> Icon(
             imageVector        = Icons.Default.CloudOff,
             contentDescription = "Offline",
-            tint               = Color(0xFFFF9800),
+            tint               = SemanticAmber,
             modifier           = modifier.size(22.dp)
         )
         is SyncStatus.Initialising -> Icon(

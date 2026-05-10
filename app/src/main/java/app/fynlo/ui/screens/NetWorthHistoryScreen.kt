@@ -1,4 +1,4 @@
-﻿package app.fynlo.ui.screens
+package app.fynlo.ui.screens
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.*
@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import app.fynlo.FinanceViewModel
 import app.fynlo.data.model.NetWorthSnapshot
 import java.util.Locale
+import app.fynlo.ui.theme.*
 
 @Composable
 fun NetWorthHistoryScreen(viewModel: FinanceViewModel) {
@@ -38,7 +39,7 @@ fun NetWorthHistoryScreen(viewModel: FinanceViewModel) {
     val maxNW     = sorted.maxOfOrNull { it.netWorth }?.takeIf { it > 0 } ?: 1.0
     val minNW     = sorted.minOfOrNull { it.netWorth } ?: 0.0
     val range     = (maxNW - minNW).takeIf { it > 0 } ?: 1.0
-    val lineColor = Color(0xFF3B82F6)
+    val lineColor = SemanticBlue
 
     Column(
         modifier = Modifier.fillMaxSize().statusBarsPadding()
@@ -50,13 +51,13 @@ fun NetWorthHistoryScreen(viewModel: FinanceViewModel) {
 
         // Current net worth card
         Card(Modifier.fillMaxWidth(), RoundedCornerShape(20.dp),
-            CardDefaults.cardColors(Color(0xFF3B82F6).copy(alpha = 0.1f))) {
+            CardDefaults.cardColors(SemanticBlue.copy(alpha = 0.1f))) {
             Column(Modifier.padding(20.dp)) {
                 Text("Current Net Worth", style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text("$currencySymbol ${String.format(locale, "%,.2f", summary.netWorth)}",
                     style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold),
-                    color = if (summary.netWorth >= 0) Color(0xFF059669) else Color(0xFFEF4444))
+                    color = if (summary.netWorth >= 0) Emerald500 else SemanticRed)
                 Text("${sorted.size} snapshots recorded", style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
@@ -123,10 +124,10 @@ fun NetWorthHistoryScreen(viewModel: FinanceViewModel) {
             val changePct = if (first != 0.0) (change / Math.abs(first)) * 100 else 0.0
 
             Row(Modifier.fillMaxWidth(), Arrangement.spacedBy(10.dp)) {
-                StatCard("Highest", "$currencySymbol${String.format(locale, "%,.0f", sorted.maxOf { it.netWorth })}", Color(0xFF059669), Modifier.weight(1f))
-                StatCard("Lowest",  "$currencySymbol${String.format(locale, "%,.0f", sorted.minOf { it.netWorth })}", Color(0xFFEF4444), Modifier.weight(1f))
+                StatCard("Highest", "$currencySymbol${String.format(locale, "%,.0f", sorted.maxOf { it.netWorth })}", Emerald500, Modifier.weight(1f))
+                StatCard("Lowest",  "$currencySymbol${String.format(locale, "%,.0f", sorted.minOf { it.netWorth })}", SemanticRed, Modifier.weight(1f))
                 StatCard("Change",  "${if (change >= 0) "+" else ""}${String.format(locale, "%.1f", changePct)}%",
-                    if (change >= 0) Color(0xFF059669) else Color(0xFFEF4444), Modifier.weight(1f))
+                    if (change >= 0) Emerald500 else SemanticRed, Modifier.weight(1f))
             }
 
             Spacer(Modifier.height(16.dp))
@@ -143,7 +144,7 @@ fun NetWorthHistoryScreen(viewModel: FinanceViewModel) {
                         if (prev != null) {
                             Text("${if (diff >= 0) "+" else ""}$currencySymbol${String.format(locale, "%,.0f", diff)}",
                                 style = MaterialTheme.typography.labelSmall,
-                                color = if (diff >= 0) Color(0xFF059669) else Color(0xFFEF4444))
+                                color = if (diff >= 0) Emerald500 else SemanticRed)
                         }
                         Text("$currencySymbol${String.format(locale, "%,.0f", snap.netWorth)}",
                             style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold))

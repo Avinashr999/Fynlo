@@ -1,4 +1,4 @@
-﻿package app.fynlo.ui.screens
+package app.fynlo.ui.screens
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
@@ -35,6 +35,7 @@ import app.fynlo.FinanceViewModel
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import app.fynlo.ui.theme.*
 
 @Composable
 fun ReportsHubScreen(
@@ -88,9 +89,9 @@ fun ReportsHubScreen(
 
     val sortedSnaps = snapshots.sortedBy { it.date }
 
-    val green = Color(0xFF059669)
-    val red   = Color(0xFFEF4444)
-    val blue  = Color(0xFF3B82F6)
+    val green = Emerald500
+    val red   = SemanticRed
+    val blue  = SemanticBlue
 
     fun fmt(v: Double) = "$currencySymbol${String.format(locale, "%,.0f", v)}"
 
@@ -279,7 +280,7 @@ fun ReportsHubScreen(
                 }
             }
             Spacer(Modifier.height(8.dp))
-            val expColors = listOf(Color(0xFFEF4444), Color(0xFFF59E0B), Color(0xFF6B7280),
+            val expColors = listOf(SemanticRed, SemanticAmber, Carbon500,
                 Color(0xFFEC4899), Color(0xFF06B6D4), Color(0xFF84CC16))
             val maxExp = expByCat.firstOrNull()?.value ?: 1.0
             Card(Modifier.fillMaxWidth(), RoundedCornerShape(16.dp),
@@ -323,7 +324,7 @@ fun ReportsHubScreen(
                 }
             }
             Spacer(Modifier.height(8.dp))
-            val incColors = listOf(green, Color(0xFF3B82F6), Color(0xFF059669), Color(0xFF059669))
+            val incColors = listOf(green, SemanticBlue, Emerald500, Emerald500)
             Card(Modifier.fillMaxWidth(), RoundedCornerShape(16.dp),
                 CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -349,7 +350,7 @@ fun ReportsHubScreen(
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             ReportLinkCard("P&L Statement", Icons.Default.List, green, Modifier.weight(1f), onNavigateToPL)
             ReportLinkCard("Net Worth", Icons.AutoMirrored.Filled.TrendingUp, blue, Modifier.weight(1f), onNavigateToNetWorth)
-            ReportLinkCard("Money Flow", Icons.Default.SwapHoriz, Color(0xFF6B7280), Modifier.weight(1f), onNavigateToMoneyFlow)
+            ReportLinkCard("Money Flow", Icons.Default.SwapHoriz, Carbon500, Modifier.weight(1f), onNavigateToMoneyFlow)
         }
 
         Spacer(Modifier.height(100.dp))

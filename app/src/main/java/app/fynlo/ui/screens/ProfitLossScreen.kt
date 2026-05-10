@@ -1,4 +1,4 @@
-﻿package app.fynlo.ui.screens
+package app.fynlo.ui.screens
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -15,6 +15,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.fynlo.FinanceViewModel
 import java.util.Locale
+import app.fynlo.ui.theme.*
 
 @Composable
 fun ProfitLossScreen(viewModel: FinanceViewModel) {
@@ -38,8 +39,8 @@ fun ProfitLossScreen(viewModel: FinanceViewModel) {
     val netProfit      = grossProfit + investGrowth - debtPayments
 
     fun fmt(v: Double) = "$currencySymbol ${String.format(locale, "%,.2f", v)}"
-    val green = Color(0xFF059669)
-    val red   = Color(0xFFEF4444)
+    val green = Emerald500
+    val red   = SemanticRed
 
     Column(
         modifier = Modifier.fillMaxSize().statusBarsPadding()

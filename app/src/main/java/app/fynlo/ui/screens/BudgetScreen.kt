@@ -1,4 +1,4 @@
-﻿package app.fynlo.ui.screens
+package app.fynlo.ui.screens
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -20,6 +20,7 @@ import app.fynlo.FinanceViewModel
 import app.fynlo.data.model.Budget
 import java.time.LocalDate
 import java.util.Locale
+import app.fynlo.ui.theme.*
 
 @Composable
 fun BudgetScreen(viewModel: FinanceViewModel) {
@@ -81,26 +82,26 @@ fun BudgetScreen(viewModel: FinanceViewModel) {
                                 OverviewChip("Total Budget", "$currencySymbol${String.format(locale, "%,.0f", totalLimit)}",
                                     MaterialTheme.colorScheme.primary, Modifier.weight(1f))
                                 OverviewChip("Spent", "$currencySymbol${String.format(locale, "%,.0f", totalSpent)}",
-                                    if (totalSpent > totalLimit) Color(0xFFEF4444) else Color(0xFF059669), Modifier.weight(1f))
+                                    if (totalSpent > totalLimit) SemanticRed else Emerald500, Modifier.weight(1f))
                                 OverviewChip("Remaining", "$currencySymbol${String.format(locale, "%,.0f", totalRemain)}",
-                                    if (totalRemain < 0) Color(0xFFEF4444) else MaterialTheme.colorScheme.primary, Modifier.weight(1f))
+                                    if (totalRemain < 0) SemanticRed else MaterialTheme.colorScheme.primary, Modifier.weight(1f))
                             }
                             if (overBudget > 0 || nearLimit > 0) {
                                 HorizontalDivider()
                                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                     if (overBudget > 0) {
-                                        Surface(shape = RoundedCornerShape(8.dp), color = Color(0xFFEF4444).copy(alpha = 0.1f)) {
+                                        Surface(shape = RoundedCornerShape(8.dp), color = SemanticRed.copy(alpha = 0.1f)) {
                                             Text("⚠ $overBudget exceeded",
                                                 style = MaterialTheme.typography.labelSmall,
-                                                color = Color(0xFFEF4444),
+                                                color = SemanticRed,
                                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
                                         }
                                     }
                                     if (nearLimit > 0) {
-                                        Surface(shape = RoundedCornerShape(8.dp), color = Color(0xFFF59E0B).copy(alpha = 0.1f)) {
+                                        Surface(shape = RoundedCornerShape(8.dp), color = SemanticAmber.copy(alpha = 0.1f)) {
                                             Text("⚡ $nearLimit near limit",
                                                 style = MaterialTheme.typography.labelSmall,
-                                                color = Color(0xFFF59E0B),
+                                                color = SemanticAmber,
                                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
                                         }
                                     }
@@ -168,9 +169,9 @@ fun BudgetCard(
     val projectedEnd = dailySpent * (daysPassed + daysRemaining)
 
     val barColor = when {
-        isExceeded  -> Color(0xFFEF4444)
-        isNearLimit -> Color(0xFFF59E0B)
-        pct >= 50   -> Color(0xFF059669)
+        isExceeded  -> SemanticRed
+        isNearLimit -> SemanticAmber
+        pct >= 50   -> Emerald500
         else        -> MaterialTheme.colorScheme.primary
     }
 
@@ -179,14 +180,14 @@ fun BudgetCard(
             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     if (isExceeded) {
-                        Surface(shape = RoundedCornerShape(8.dp), color = Color(0xFFEF4444).copy(alpha = 0.15f)) {
+                        Surface(shape = RoundedCornerShape(8.dp), color = SemanticRed.copy(alpha = 0.15f)) {
                             Text("EXCEEDED", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                                color = Color(0xFFEF4444), modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+                                color = SemanticRed, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
                         }
                     } else if (isNearLimit) {
-                        Surface(shape = RoundedCornerShape(8.dp), color = Color(0xFFF59E0B).copy(alpha = 0.15f)) {
+                        Surface(shape = RoundedCornerShape(8.dp), color = SemanticAmber.copy(alpha = 0.15f)) {
                             Text("⚡ NEAR LIMIT", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                                color = Color(0xFFF59E0B), modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+                                color = SemanticAmber, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
                         }
                     }
                     Text(budget.category, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
@@ -220,20 +221,20 @@ fun BudgetCard(
                 Row(Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 6.dp), Arrangement.SpaceBetween) {
                     InfoItem("Remaining", if (isExceeded) "-$currencySymbol${String.format(locale, "%,.0f", -remaining)}"
                         else "$currencySymbol${String.format(locale, "%,.0f", remaining)}",
-                        if (isExceeded) Color(0xFFEF4444) else Color(0xFF059669))
+                        if (isExceeded) SemanticRed else Emerald500)
                     InfoItem("Daily Budget", "$currencySymbol${String.format(locale, "%,.0f", dailyBudget)}",
                         MaterialTheme.colorScheme.onSurfaceVariant)
                     InfoItem("Daily Spent", "$currencySymbol${String.format(locale, "%,.0f", dailySpent)}",
-                        if (dailySpent > dailyBudget) Color(0xFFEF4444) else MaterialTheme.colorScheme.onSurfaceVariant)
+                        if (dailySpent > dailyBudget) SemanticRed else MaterialTheme.colorScheme.onSurfaceVariant)
                     InfoItem("Projected", "$currencySymbol${String.format(locale, "%,.0f", projectedEnd)}",
-                        if (projectedEnd > budget.limitAmount) Color(0xFFEF4444) else Color(0xFF059669))
+                        if (projectedEnd > budget.limitAmount) SemanticRed else Emerald500)
                 }
             }
 
             if (projectedEnd > budget.limitAmount && !isExceeded) {
                 Spacer(Modifier.height(4.dp))
                 Text("⚠ At this rate you'll exceed by $currencySymbol${String.format(locale, "%,.0f", projectedEnd - budget.limitAmount)} this month",
-                    style = MaterialTheme.typography.labelSmall, color = Color(0xFFF59E0B))
+                    style = MaterialTheme.typography.labelSmall, color = SemanticAmber)
             }
         }
     }

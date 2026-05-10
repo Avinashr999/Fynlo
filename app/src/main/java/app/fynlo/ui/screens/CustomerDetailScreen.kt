@@ -27,6 +27,7 @@ import app.fynlo.logic.InterestEngine
 import app.fynlo.ui.components.AddLendingDialog
 import app.fynlo.ui.components.CollectPaymentDialog
 import java.util.*
+import app.fynlo.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -185,7 +186,7 @@ fun CustomerDetailScreen(
                             style = MaterialTheme.typography.headlineLarge.copy(
                                 fontWeight = FontWeight.ExtraBold,
                                 color = if (totalOutstanding > 0) MaterialTheme.colorScheme.error
-                                        else Color(0xFF059669)
+                                        else Emerald500
                             )
                         )
                         Spacer(Modifier.height(16.dp))
@@ -215,7 +216,7 @@ fun CustomerDetailScreen(
                         onClick = { showCollectDialog = true },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF059669))
+                        colors = ButtonDefaults.buttonColors(containerColor = Emerald500)
                     ) {
                         Icon(Icons.Default.Payments, null, Modifier.size(18.dp))
                         Spacer(Modifier.width(8.dp))
@@ -306,14 +307,14 @@ fun PaymentItem(payment: Payment, currencySymbol: String) {
         ) {
             Surface(
                 shape = CircleShape,
-                color = Color(0xFFE8F5E9),
+                color = Emerald50,
                 modifier = Modifier.size(40.dp)
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
                         Icons.Default.Payments,
                         contentDescription = null,
-                        tint = Color(0xFF059669),
+                        tint = Emerald500,
                         modifier = Modifier.size(20.dp)
                     )
                 }
@@ -341,7 +342,7 @@ fun PaymentItem(payment: Payment, currencySymbol: String) {
                 "$currencySymbol ${String.format(Locale.getDefault(), "%,.0f", payment.amount)}",
                 style = MaterialTheme.typography.bodyLarge.copy(
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFF059669)
+                    color = Emerald500
                 )
             )
         }
