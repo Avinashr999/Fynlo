@@ -95,42 +95,66 @@ fun InvestmentScreen(viewModel: FinanceViewModel) {
             onDismissRequest = { deletingInvest = null },
             title = { Text("Delete Investment") },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text("${inv.name}  •  ₹${String.format(java.util.Locale.getDefault(), "%,.0f", inv.invested)}")
-                    Spacer(Modifier.height(4.dp))
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(
+                        "${inv.name}  •  ₹${String.format(java.util.Locale.getDefault(), "%,.0f", inv.invested)}",
+                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold)
+                    )
                     when (inv.sourceType) {
-                        "account"  -> Text("This was funded from ${inv.fundingSource}. Do you also want to restore ₹${String.format("%,.0f", inv.invested)} back to that account?", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        "new_loan" -> Text("This investment has a linked loan (${inv.fundingSource}). Do you want to delete the loan record too?", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        else       -> Text("This will permanently remove the investment record.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        "account"  -> Text(
+                            "This was funded from ${inv.fundingSource}. Do you want to restore ₹${String.format("%,.0f", inv.invested)} back to that account?",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        "new_loan" -> Text(
+                            "This investment has a linked loan (${inv.fundingSource}). Do you want to delete the loan record too?",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        else -> Text(
+                            "This will permanently remove the investment record.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
-                }
-            },
-            confirmButton = {
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp), horizontalAlignment = Alignment.End) {
-                    when (inv.sourceType) {
-                        "account" -> {
-                            Button(onClick = { viewModel.deleteInvestmentAndReverseAccount(inv); deletingInvest = null }) {
-                                Text("Delete + Restore to ${inv.fundingSource.take(12)}")
+                    // Action buttons inside text area to avoid overlap
+                    HorizontalDivider()
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        when (inv.sourceType) {
+                            "account" -> Button(
+                                onClick = { viewModel.deleteInvestmentAndReverseAccount(inv); deletingInvest = null },
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(10.dp)
+                            ) {
+                                Text("Delete + Restore ₹${String.format("%,.0f", inv.invested)} to ${inv.fundingSource.take(14)}")
                             }
-                        }
-                        "new_loan" -> {
-                            Button(
+                            "new_loan" -> Button(
                                 onClick = { viewModel.deleteInvestmentAndLinkedLoan(inv); deletingInvest = null },
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(10.dp),
                                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
                             ) {
                                 Text("Delete Investment + Loan")
                             }
                         }
-                        else -> {}
-                    }
-                    OutlinedButton(onClick = { viewModel.deleteInvestment(inv); deletingInvest = null }) {
-                        Text("Delete Record Only")
+                        OutlinedButton(
+                            onClick = { viewModel.deleteInvestment(inv); deletingInvest = null },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(10.dp)
+                        ) {
+                            Text("Delete Record Only")
+                        }
+                        TextButton(
+                            onClick = { deletingInvest = null },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Cancel")
+                        }
                     }
                 }
             },
-            dismissButton = {
-                TextButton(onClick = { deletingInvest = null }) { Text("Cancel") }
-            }
+            confirmButton = {},  // all actions in text area
+            dismissButton = {}
         )
     }
 
