@@ -48,15 +48,17 @@ interface FynloDao {
     suspend fun recalculateBorrowerPaid()
 
     @Query("""UPDATE borrowers SET
-        paid          = COALESCE((SELECT SUM(amount)   FROM payments WHERE loanId = borrowers.id), 0),
-        paidPrincipal = COALESCE((SELECT SUM(CASE WHEN principal > 0 THEN principal ELSE amount END) FROM payments WHERE loanId = borrowers.id), 0),
-        paidInterest  = COALESCE((SELECT SUM(interest) FROM payments WHERE loanId = borrowers.id), 0)""")
+        paid          = (SELECT SUM(amount)   FROM payments WHERE loanId = borrowers.id),
+        paidPrincipal = (SELECT SUM(CASE WHEN type='Interest Only' THEN 0 WHEN principal > 0 THEN principal ELSE amount END) FROM payments WHERE loanId = borrowers.id),
+        paidInterest  = (SELECT SUM(CASE WHEN type='Interest Only' AND interest=0 THEN amount ELSE interest END) FROM payments WHERE loanId = borrowers.id)
+        WHERE EXISTS (SELECT 1 FROM payments WHERE loanId = borrowers.id)""")
     suspend fun rebuildBorrowerPaidFromPayments()
 
     @Query("""UPDATE debts SET
-        paid          = COALESCE((SELECT SUM(amount)   FROM debt_payments WHERE debtId = debts.id), 0),
-        paidPrincipal = COALESCE((SELECT SUM(CASE WHEN principal > 0 THEN principal ELSE amount END) FROM debt_payments WHERE debtId = debts.id), 0),
-        paidInterest  = COALESCE((SELECT SUM(interest) FROM debt_payments WHERE debtId = debts.id), 0)""")
+        paid          = (SELECT SUM(amount)   FROM debt_payments WHERE debtId = debts.id),
+        paidPrincipal = (SELECT SUM(CASE WHEN type='Interest Only' THEN 0 WHEN principal > 0 THEN principal ELSE amount END) FROM debt_payments WHERE debtId = debts.id),
+        paidInterest  = (SELECT SUM(CASE WHEN type='Interest Only' AND interest=0 THEN amount ELSE interest END) FROM debt_payments WHERE debtId = debts.id)
+        WHERE EXISTS (SELECT 1 FROM debt_payments WHERE debtId = debts.id)""")
     suspend fun rebuildDebtPaidFromDebtPayments()
 
     @Query("UPDATE debts SET paid = paidPrincipal + paidInterest")
