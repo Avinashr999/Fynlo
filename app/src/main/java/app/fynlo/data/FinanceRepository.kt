@@ -167,13 +167,35 @@ class FinanceRepository(
                 "from='${transaction.fromAcct}' to='${transaction.toAcct}' " +
                 "cat=${transaction.category} amount=${transaction.amount}")
 
-            // Handle payment reversals if transaction belongs to a loan/debt
+            // Handle payment reversals if transaction belongs to a loan/debt.
+            // IMPORTANT: also delete the Payment record from payments table so that
+            // rebuildBorrowerPaidFromPayments() recalculates correctly on next startup.
             if (transaction.category == "Loan Repayment" && transaction.ref.isNotBlank()) {
-                dao.updateBorrowerPaidAmount(transaction.ref, -transaction.amount)
+                // Find and delete the matching payment record (same loanId, amount, date)
+                val matchingPayment = dao.getPaymentsForLoanOnce(transaction.ref)
+                    .filter { it.amount == transaction.amount && it.date == transaction.date }
+                    .maxByOrNull { it.updatedAt }  // most recent if duplicates
+                if (matchingPayment != null) {
+                    dao.deletePayment(matchingPayment)
+                } else {
+                    // Fallback: reverse paid amount directly (legacy path)
+                    dao.updateBorrowerPaidAmount(transaction.ref, -transaction.amount)
+                }
+                // Rebuild paid fields from remaining payments
+                dao.rebuildBorrowerPaidFromPayments()
                 val b = dao.getBorrowerById(transaction.ref)
                 sync { b?.let { setBorrower(it) } }
             } else if (transaction.category == "Debt Repayment" && transaction.ref.isNotBlank()) {
-                dao.updateDebtPaidAmount(transaction.ref, -transaction.amount)
+                // Find and delete the matching debt payment record
+                val matchingPayment = dao.getDebtPaymentsForDebtOnce(transaction.ref)
+                    .filter { it.amount == transaction.amount && it.date == transaction.date }
+                    .maxByOrNull { it.updatedAt }
+                if (matchingPayment != null) {
+                    dao.deleteDebtPayment(matchingPayment)
+                } else {
+                    dao.updateDebtPaidAmount(transaction.ref, -transaction.amount)
+                }
+                dao.rebuildDebtPaidFromDebtPayments()
                 val d = dao.getDebtById(transaction.ref)
                 sync { d?.let { setDebt(it) } }
             }
