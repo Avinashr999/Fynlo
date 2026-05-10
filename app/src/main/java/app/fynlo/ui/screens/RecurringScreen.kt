@@ -18,9 +18,13 @@ import androidx.compose.ui.unit.dp
 import app.fynlo.FinanceViewModel
 import app.fynlo.data.model.RecurringTransaction
 import app.fynlo.ui.theme.*
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
+
 
 @Composable
 fun RecurringScreen(viewModel: FinanceViewModel) {
+    val haptic = LocalHapticFeedback.current
     val recurringList by viewModel.recurringTransactions.collectAsState()
     var showAddDialog by remember { mutableStateOf(false) }
 
@@ -76,6 +80,7 @@ fun RecurringScreen(viewModel: FinanceViewModel) {
 
 @Composable
 private fun RecurringCard(r: RecurringTransaction, onDelete: () -> Unit) {
+    val haptic = LocalHapticFeedback.current
     Card(Modifier.fillMaxWidth(), RoundedCornerShape(16.dp),
         CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         ) {
@@ -97,7 +102,7 @@ private fun RecurringCard(r: RecurringTransaction, onDelete: () -> Unit) {
                         color = MaterialTheme.colorScheme.outlineVariant)
                 }
             }
-            IconButton(onClick = onDelete) {
+            IconButton(onClick = { haptic.performHapticFeedback(HapticFeedbackType.LongPress); onDelete() }) {
                 Icon(Icons.Default.Delete, null, tint = Color.Red.copy(0.6f), modifier = Modifier.size(20.dp))
             }
         }

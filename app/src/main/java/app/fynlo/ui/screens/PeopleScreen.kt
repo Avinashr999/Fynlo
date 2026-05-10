@@ -25,6 +25,9 @@ import androidx.compose.ui.unit.dp
 import app.fynlo.FinanceViewModel
 import app.fynlo.data.model.Person
 import app.fynlo.ui.theme.*
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
+
 
 // ── Country code data ─────────────────────────────────────────────────────────
 data class CountryCode(val code: String, val flag: String, val name: String) {
@@ -69,6 +72,7 @@ fun parsePhone(saved: String): Pair<CountryCode, String> {
 
 @Composable
 fun PeopleScreen(viewModel: FinanceViewModel) {
+    val haptic = LocalHapticFeedback.current
     val people by viewModel.people.collectAsState()
     var showAddDialog by remember { mutableStateOf(false) }
     var editingPerson by remember { mutableStateOf<Person?>(null) }
@@ -133,6 +137,7 @@ fun PeopleScreen(viewModel: FinanceViewModel) {
 
 @Composable
 fun PersonCard(person: Person, onEdit: () -> Unit, onDelete: () -> Unit) {
+    val haptic = LocalHapticFeedback.current
     // Parse stored phone for clean display
     val (countryCode, localNumber) = remember(person.phone) { parsePhone(person.phone) }
     val displayPhone = when {
@@ -207,7 +212,7 @@ fun PersonCard(person: Person, onEdit: () -> Unit, onDelete: () -> Unit) {
                 IconButton(onClick = onEdit) {
                     Icon(Icons.Default.Edit, "Edit", tint = MaterialTheme.colorScheme.primary)
                 }
-                IconButton(onClick = onDelete) {
+                IconButton(onClick = { haptic.performHapticFeedback(HapticFeedbackType.LongPress); onDelete() }) {
                     Icon(Icons.Default.Delete, "Delete", tint = SemanticRed.copy(alpha = 0.6f))
                 }
             }

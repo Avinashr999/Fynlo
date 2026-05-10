@@ -24,10 +24,14 @@ import app.fynlo.data.model.Transaction
 import app.fynlo.logic.DateUtils
 import java.util.Locale
 import app.fynlo.ui.theme.*
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TransactionHistoryScreen(viewModel: FinanceViewModel) {
+    val haptic = LocalHapticFeedback.current
     val transactions by viewModel.filteredTransactions.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
     val currentProject by viewModel.currentProject.collectAsState()
@@ -83,7 +87,7 @@ fun TransactionHistoryScreen(viewModel: FinanceViewModel) {
                     Button(
                         onClick = {
                             val toDelete = filteredHistory.filter { it.id in selectedIds }
-                            viewModel.deleteTransactions(toDelete)
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress); viewModel.deleteTransactions(toDelete)
                             selectedIds = emptySet()
                             selectionMode = false
                             showBulkDeleteConfirm = false
@@ -267,6 +271,7 @@ fun TransactionItem(
     onLongPress: () -> Unit = {},
     onSelect: () -> Unit = {}
 ) {
+    val haptic    = LocalHapticFeedback.current
     val isExpense  = txn.type.lowercase() == "expense"
     val isIncome   = txn.type.lowercase() == "income"
     val isTransfer = txn.type.lowercase() == "transfer"
@@ -290,7 +295,7 @@ fun TransactionItem(
             title = { Text("Delete Transaction?") },
             text  = { Text("Delete $currencySymbol${String.format(java.util.Locale.getDefault(), "%,.0f", txn.amount)} ${txn.category}? This will reverse the account balance.") },
             confirmButton = {
-                Button(onClick = { onDelete(); showDeleteConfirm = false },
+                Button(onClick = { haptic.performHapticFeedback(HapticFeedbackType.LongPress); onDelete(); showDeleteConfirm = false },
                     colors = ButtonDefaults.buttonColors(containerColor = SemanticRed)) { Text("Delete") }
             },
             dismissButton = { TextButton(onClick = { showDeleteConfirm = false }) { Text("Cancel") } }

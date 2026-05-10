@@ -28,6 +28,9 @@ import app.fynlo.ui.components.AddLendingDialog
 import app.fynlo.ui.components.CollectPaymentDialog
 import java.util.*
 import app.fynlo.ui.theme.*
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -36,7 +39,8 @@ fun CustomerDetailScreen(
     viewModel: FinanceViewModel,
     onNavigateBack: () -> Unit
 ) {
-    val borrowers by viewModel.borrowers.collectAsState()
+        val haptic = LocalHapticFeedback.current
+val borrowers by viewModel.borrowers.collectAsState()
     val allPayments by viewModel.payments.collectAsState()
     val accounts by viewModel.accounts.collectAsState()
     val currentProject by viewModel.currentProject.collectAsState()
@@ -84,6 +88,7 @@ fun CustomerDetailScreen(
             accounts = accounts,
             onDismiss = { showCollectDialog = false },
             onConfirm = { payment, dest ->
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                 viewModel.collectLoanPayment(payment, dest)
                 showCollectDialog = false
             }
@@ -103,6 +108,7 @@ fun CustomerDetailScreen(
             confirmButton = {
                 TextButton(
                     onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                         viewModel.deleteBorrower(borrower)
                         showDeleteConfirm = false
                         onNavigateBack()

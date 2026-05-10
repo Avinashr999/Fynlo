@@ -41,6 +41,9 @@ import app.fynlo.ui.components.AddLendingDialog
 import app.fynlo.ui.components.CollectPaymentDialog
 import java.util.Locale
 import app.fynlo.ui.theme.*
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -86,7 +89,7 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
             onConfirm = { borrower, source ->
                 if (editingBorrower != null) viewModel.updateBorrower(borrower)
                 else viewModel.addBorrowerWithSource(borrower, source)
-                editingBorrower = null; showAddDialog = false
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress); editingBorrower = null; showAddDialog = false
             },
             initialBorrower = editingBorrower
         )
@@ -97,7 +100,7 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
             accounts  = accounts,
             onDismiss = { collectingForBorrower = null },
             onConfirm = { payment, dest ->
-                viewModel.collectLoanPayment(payment, dest)
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress); viewModel.collectLoanPayment(payment, dest)
                 collectingForBorrower = null
             }
         )

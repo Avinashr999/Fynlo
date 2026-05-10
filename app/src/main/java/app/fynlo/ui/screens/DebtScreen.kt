@@ -28,11 +28,15 @@ import app.fynlo.ui.components.AddDebtDialog
 import app.fynlo.ui.components.PayDebtDialog
 import java.util.Locale
 import app.fynlo.ui.theme.*
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DebtScreen(viewModel: FinanceViewModel) {
-    val debts by viewModel.debts.collectAsState()
+        val haptic = LocalHapticFeedback.current
+val debts by viewModel.debts.collectAsState()
     val accounts by viewModel.accounts.collectAsState()
     val currentProject by viewModel.currentProject.collectAsState()
     val currencySymbol = app.fynlo.logic.CurrencyUtils.symbolFor(currentProject?.currency ?: "INR")
@@ -56,7 +60,7 @@ fun DebtScreen(viewModel: FinanceViewModel) {
                 if (editingDebt?.id?.isNotBlank() == true) {
                     viewModel.updateDebt(debt)
                 } else {
-                    viewModel.addDebtWithDestination(debt, dest)
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress); viewModel.addDebtWithDestination(debt, dest)
                 }
                 editingDebt = null
                 showAddDialog = false
@@ -71,7 +75,7 @@ fun DebtScreen(viewModel: FinanceViewModel) {
             accounts = accounts,
             onDismiss = { payingDebt = null },
             onConfirm = { payment: DebtPayment, source: String ->
-                viewModel.payDebt(payment, source)
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress); viewModel.payDebt(payment, source)
                 payingDebt = null
             }
         )

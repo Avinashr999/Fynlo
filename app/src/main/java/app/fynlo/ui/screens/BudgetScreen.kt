@@ -21,9 +21,13 @@ import app.fynlo.data.model.Budget
 import java.time.LocalDate
 import java.util.Locale
 import app.fynlo.ui.theme.*
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
+
 
 @Composable
 fun BudgetScreen(viewModel: FinanceViewModel) {
+    val haptic = LocalHapticFeedback.current
     val budgets  by viewModel.budgets.collectAsState()
     val expenses by viewModel.expenseAnalytics.collectAsState()
     val currentProject by viewModel.currentProject.collectAsState()
@@ -159,6 +163,7 @@ fun BudgetCard(
     locale: Locale,
     onDelete: () -> Unit
 ) {
+    val haptic = LocalHapticFeedback.current
     val progress     = (actualSpent / budget.limitAmount).toFloat().coerceIn(0f, 1f)
     val pct          = (progress * 100).toInt()
     val remaining    = budget.limitAmount - actualSpent
@@ -192,7 +197,7 @@ fun BudgetCard(
                     }
                     Text(budget.category, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
                 }
-                IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
+                IconButton(onClick = { haptic.performHapticFeedback(HapticFeedbackType.LongPress); onDelete() }, modifier = Modifier.size(32.dp)) {
                     Icon(Icons.Default.Delete, null, Modifier.size(18.dp), tint = Color.Red.copy(alpha = 0.5f))
                 }
             }

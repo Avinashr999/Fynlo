@@ -30,6 +30,9 @@ import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import app.fynlo.ui.theme.*
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
+
 
 private val CAT_COLORS = listOf(
     SemanticBlue, Emerald500, SemanticAmber,
@@ -39,7 +42,8 @@ private val CAT_COLORS = listOf(
 
 @Composable
 fun SpendScreen(viewModel: FinanceViewModel) {
-    val transactions by viewModel.transactions.collectAsState()
+        val haptic = LocalHapticFeedback.current
+val transactions by viewModel.transactions.collectAsState()
     val budgets      by viewModel.budgets.collectAsState()
     val currentProject by viewModel.currentProject.collectAsState()
     val currencySymbol = app.fynlo.logic.CurrencyUtils.symbolFor(currentProject?.currency ?: "INR")
@@ -70,7 +74,7 @@ fun SpendScreen(viewModel: FinanceViewModel) {
     if (showDialog) {
         AddTransactionDialog(
             onDismiss = { showDialog = false },
-            onConfirm = { txn -> viewModel.addTransaction(txn); showDialog = false }
+            onConfirm = { txn -> haptic.performHapticFeedback(HapticFeedbackType.LongPress); viewModel.addTransaction(txn); showDialog = false }
         )
     }
 
@@ -234,6 +238,7 @@ private fun ExpenseRow(
     onDelete: () -> Unit = {},
     onEdit: (app.fynlo.data.model.Transaction) -> Unit = {}
 ) {
+    val haptic = LocalHapticFeedback.current
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var showEditDialog    by remember { mutableStateOf(false) }
 
@@ -243,7 +248,7 @@ private fun ExpenseRow(
             title = { Text("Delete Expense?") },
             text  = { Text("Delete $currencySymbol${String.format(locale, "%,.0f", txn.amount)} ${txn.category}? This will reverse the account balance.") },
             confirmButton = {
-                Button(onClick = { onDelete(); showDeleteConfirm = false },
+                Button(onClick = { haptic.performHapticFeedback(HapticFeedbackType.LongPress); onDelete(); showDeleteConfirm = false },
                     colors = ButtonDefaults.buttonColors(containerColor = SemanticRed)) { Text("Delete") }
             },
             dismissButton = { TextButton(onClick = { showDeleteConfirm = false }) { Text("Cancel") } }

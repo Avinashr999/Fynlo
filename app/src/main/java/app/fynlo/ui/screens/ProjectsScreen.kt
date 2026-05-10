@@ -1,4 +1,4 @@
-﻿package app.fynlo.ui.screens
+package app.fynlo.ui.screens
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -19,9 +19,13 @@ import app.fynlo.data.model.Project
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.UUID
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
+
 
 @Composable
 fun ProjectsScreen(viewModel: FinanceViewModel) {
+    val haptic = LocalHapticFeedback.current
     val projects       by viewModel.projects.collectAsState()
     val currentPid     by viewModel.currentProjectId.collectAsState()
     var showAddDialog  by remember { mutableStateOf(false) }
@@ -45,7 +49,7 @@ fun ProjectsScreen(viewModel: FinanceViewModel) {
             text  = { Text("All data tagged to \"${proj.name}\" will remain but won't be visible in any project. This cannot be undone.") },
             confirmButton = {
                 TextButton(onClick = {
-                    viewModel.deleteProject(proj)
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress); viewModel.deleteProject(proj)
                     deleteTarget = null
                 }) { Text("Delete", color = MaterialTheme.colorScheme.error) }
             },

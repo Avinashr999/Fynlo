@@ -48,7 +48,7 @@ fun HomeScreen(viewModel: FinanceViewModel, onNavigateToScreen: (String) -> Unit
     if (showAddTxn) {
         AddTransactionDialog(
             onDismiss = { showAddTxn = false },
-            onConfirm = { txn -> viewModel.addTransaction(txn); showAddTxn = false }
+            onConfirm = { txn -> haptic.performHapticFeedback(HapticFeedbackType.LongPress); viewModel.addTransaction(txn); showAddTxn = false }
         )
     }
 

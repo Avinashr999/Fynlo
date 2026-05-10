@@ -28,13 +28,17 @@ import app.fynlo.ui.components.InvestmentSaveRequest
 import java.util.Locale
 import java.util.*
 import app.fynlo.ui.theme.*
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
+
 
 @Composable
 fun InvestmentScreen(viewModel: FinanceViewModel) {
     val investments    by viewModel.investments.collectAsState()
     val accounts       by viewModel.accounts.collectAsState()
     val debts          by viewModel.debts.collectAsState()
-    val currentProject by viewModel.currentProject.collectAsState()
+        val haptic = LocalHapticFeedback.current
+val currentProject by viewModel.currentProject.collectAsState()
     val currencySymbol = app.fynlo.logic.CurrencyUtils.symbolFor(currentProject?.currency ?: "INR")
 
     var editingInvest  by remember { mutableStateOf<Investment?>(null) }
@@ -54,7 +58,7 @@ fun InvestmentScreen(viewModel: FinanceViewModel) {
                     viewModel.updateInvestment(req.investment)
                 } else {
                     when (req.sourceType) {
-                        "account"       -> viewModel.addInvestmentFundedByAccount(req.investment, req.sourceAccountName)
+                        "account"       -> haptic.performHapticFeedback(HapticFeedbackType.LongPress); viewModel.addInvestmentFundedByAccount(req.investment, req.sourceAccountName)
                         "existing_debt" -> req.sourceDebt?.let { viewModel.addInvestmentFundedByExistingDebt(req.investment, it) }
                         "new_loan"      -> req.newLoan?.let { viewModel.addInvestmentFundedByNewLoan(req.investment, it) }
                         else            -> viewModel.addInvestmentWithSource(req.investment, req.sourceAccountName)
@@ -122,14 +126,14 @@ fun InvestmentScreen(viewModel: FinanceViewModel) {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         when (inv.sourceType) {
                             "account" -> Button(
-                                onClick = { viewModel.deleteInvestmentAndReverseAccount(inv); deletingInvest = null },
+                                onClick = { haptic.performHapticFeedback(HapticFeedbackType.LongPress); viewModel.deleteInvestmentAndReverseAccount(inv); deletingInvest = null },
                                 modifier = Modifier.fillMaxWidth(),
                                 shape = RoundedCornerShape(10.dp)
                             ) {
                                 Text("Delete + Restore ₹${String.format("%,.0f", inv.invested)} to ${inv.fundingSource.take(14)}")
                             }
                             "new_loan" -> Button(
-                                onClick = { viewModel.deleteInvestmentAndLinkedLoan(inv); deletingInvest = null },
+                                onClick = { haptic.performHapticFeedback(HapticFeedbackType.LongPress); viewModel.deleteInvestmentAndLinkedLoan(inv); deletingInvest = null },
                                 modifier = Modifier.fillMaxWidth(),
                                 shape = RoundedCornerShape(10.dp),
                                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
@@ -138,7 +142,7 @@ fun InvestmentScreen(viewModel: FinanceViewModel) {
                             }
                         }
                         OutlinedButton(
-                            onClick = { viewModel.deleteInvestment(inv); deletingInvest = null },
+                            onClick = { haptic.performHapticFeedback(HapticFeedbackType.LongPress); viewModel.deleteInvestment(inv); deletingInvest = null },
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(10.dp)
                         ) {
