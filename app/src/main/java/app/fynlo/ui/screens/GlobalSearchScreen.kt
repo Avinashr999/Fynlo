@@ -21,6 +21,7 @@ import java.util.Locale
 import app.fynlo.ui.theme.*
 
 data class SearchResult(
+    val id: String,         // borrower.id / debt.id / transaction.id / investment.id
     val title: String,
     val subtitle: String,
     val amount: Double,
@@ -33,12 +34,16 @@ data class SearchResult(
 @Composable
 fun GlobalSearchScreen(
     viewModel: FinanceViewModel,
-    onNavigateBack: () -> Unit
+    onNavigateBack: () -> Unit = {},
+    onNavigateToBorrower: (String) -> Unit = {},
+    onNavigateToCustomerDetail: (String) -> Unit = {}
 ) {
     val borrowers    by viewModel.borrowers.collectAsState()
     val debts        by viewModel.debts.collectAsState()
     val transactions by viewModel.transactions.collectAsState()
     val investments  by viewModel.investments.collectAsState()
+    val currentProject by viewModel.currentProject.collectAsState()
+    val currencySymbol = app.fynlo.logic.CurrencyUtils.symbolFor(currentProject?.currency ?: "INR")
 
     var query by remember { mutableStateOf("") }
     val locale = remember { Locale.getDefault() }
@@ -50,14 +55,28 @@ fun GlobalSearchScreen(
             borrowers.filter {
                 it.name.lowercase().contains(q) || it.notes.lowercase().contains(q) || it.phone.contains(q)
             }.forEach {
-                add(SearchResult(it.name, "Loan â€¢ ${it.date} â€¢ ${if (it.paid >= it.amount) "Settled" else "Active"}",
-                    it.amount, "Loan", Icons.Default.Person, SemanticBlue))
+                add(SearchResult(
+                    id       = it.id,
+                    title    = it.name,
+                    subtitle = "Loan • ${it.date} • ${if (it.paid >= it.amount) "Settled" else "Active"}",
+                    amount   = it.amount,
+                    type     = "Loan",
+                    icon     = Icons.Default.Person,
+                    color    = SemanticBlue
+                ))
             }
             debts.filter {
                 it.name.lowercase().contains(q) || it.notes.lowercase().contains(q)
             }.forEach {
-                add(SearchResult(it.name, "Debt â€¢ ${it.date} â€¢ ${if (it.paid >= it.amount) "Settled" else "Active"}",
-                    it.amount, "Debt", Icons.Default.CreditCard, SemanticRed))
+                add(SearchResult(
+                    id       = it.id,
+                    title    = it.name,
+                    subtitle = "Debt • ${it.date} • ${if (it.paid >= it.amount) "Settled" else "Active"}",
+                    amount   = it.amount,
+                    type     = "Debt",
+                    icon     = Icons.Default.CreditCard,
+                    color    = SemanticRed
+                ))
             }
             transactions.filter {
                 it.desc.lowercase().contains(q) || it.category.lowercase().contains(q) ||
@@ -65,18 +84,28 @@ fun GlobalSearchScreen(
                 it.notes.lowercase().contains(q)
             }.take(30).forEach {
                 add(SearchResult(
-                    it.desc.ifBlank { it.category },
-                    "${it.type} â€¢ ${it.date} â€¢ ${it.category}",
-                    it.amount, "Transaction",
-                    if (it.type.lowercase() == "income") Icons.Default.ArrowDownward else Icons.Default.ArrowUpward,
-                    if (it.type.lowercase() == "income") Emerald500 else SemanticRed
+                    id       = it.id,
+                    title    = it.desc.ifBlank { it.category },
+                    subtitle = "${it.type} • ${it.date} • ${it.category}",
+                    amount   = it.amount,
+                    type     = "Transaction",
+                    icon     = if (it.type.lowercase() == "income") Icons.Default.ArrowDownward
+                               else Icons.Default.ArrowUpward,
+                    color    = if (it.type.lowercase() == "income") Emerald500 else SemanticRed
                 ))
             }
             investments.filter {
                 it.name.lowercase().contains(q) || it.type.lowercase().contains(q)
             }.forEach {
-                add(SearchResult(it.name, "Investment â€¢ ${it.type} â€¢ ${it.date}",
-                    it.currentVal, "Investment", Icons.Default.TrendingUp, SemanticAmber))
+                add(SearchResult(
+                    id       = it.id,
+                    title    = it.name,
+                    subtitle = "Investment • ${it.type} • ${it.date}",
+                    amount   = it.currentVal,
+                    type     = "Investment",
+                    icon     = Icons.Default.TrendingUp,
+                    color    = SemanticAmber
+                ))
             }
         }
     }
@@ -149,19 +178,27 @@ fun GlobalSearchScreen(
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                items(results) { result ->
+                items(results, key = { it.type + it.id }) { result ->
                     Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape    = RoundedCornerShape(12.dp)
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                // Navigate to the actual record
+                                when (result.type) {
+                                    "Loan" -> onNavigateToCustomerDetail(result.id)
+                                    else   -> { /* Debt/Transaction/Investment — back for now */ }
+                                }
+                            },
+                        shape = RoundedCornerShape(12.dp)
                     ) {
                         Row(
-                            modifier            = Modifier.padding(16.dp),
-                            verticalAlignment   = Alignment.CenterVertically,
+                            modifier              = Modifier.padding(16.dp),
+                            verticalAlignment     = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             Surface(
-                                shape = RoundedCornerShape(8.dp),
-                                color = result.color.copy(alpha = 0.12f),
+                                shape    = RoundedCornerShape(8.dp),
+                                color    = result.color.copy(alpha = 0.12f),
                                 modifier = Modifier.size(42.dp)
                             ) {
                                 Box(contentAlignment = Alignment.Center) {
@@ -177,7 +214,7 @@ fun GlobalSearchScreen(
                                     color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                             Column(horizontalAlignment = Alignment.End) {
-                                Text("â‚¹ ${String.format(locale, "%,.0f", result.amount)}",
+                                Text("$currencySymbol ${String.format(locale, "%,.0f", result.amount)}",
                                     style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                                     color = result.color)
                                 Surface(
@@ -197,12 +234,3 @@ fun GlobalSearchScreen(
         }
     }
 }
-
-
-
-
-
-
-
-
-

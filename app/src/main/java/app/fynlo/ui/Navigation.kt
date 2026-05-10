@@ -536,7 +536,13 @@ fun MainNavigation(viewModel: FinanceViewModel) {
                         onNavigateToBorrower = { id -> navController.navigate("customer/$id") }
                     )
                 }
-                composable(Screen.GlobalSearch.route) { GlobalSearchScreen(viewModel, onNavigateBack = { navController.popBackStack() }) }
+                composable(Screen.GlobalSearch.route) {
+                    GlobalSearchScreen(
+                        viewModel                = viewModel,
+                        onNavigateBack           = { navController.popBackStack() },
+                        onNavigateToCustomerDetail = { id -> navController.navigate("customer/$id") }
+                    )
+                }
                 composable(Screen.Reports.route) {
                     ReportsHubScreen(
                         viewModel             = viewModel,

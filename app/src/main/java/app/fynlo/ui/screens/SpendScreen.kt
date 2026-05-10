@@ -203,7 +203,10 @@ fun SpendScreen(viewModel: FinanceViewModel) {
                     }
                     Spacer(Modifier.height(8.dp))
                     expenses.sortedByDescending { it.date }.take(15).forEach { txn ->
-                        ExpenseRow(txn, currencySymbol, locale)
+                        ExpenseRow(txn, currencySymbol, locale,
+                            onDelete = { viewModel.deleteTransaction(txn) },
+                            onEdit   = { viewModel.editTransaction(txn, it) }
+                        )
                         HorizontalDivider(Modifier.padding(vertical = 2.dp),
                             color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
                     }
@@ -224,9 +227,41 @@ fun SpendScreen(viewModel: FinanceViewModel) {
 }
 
 @Composable
-private fun ExpenseRow(txn: Transaction, currencySymbol: String, locale: Locale) {
-    Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+private fun ExpenseRow(
+    txn: Transaction,
+    currencySymbol: String,
+    locale: Locale,
+    onDelete: () -> Unit = {},
+    onEdit: (app.fynlo.data.model.Transaction) -> Unit = {}
+) {
+    var showDeleteConfirm by remember { mutableStateOf(false) }
+    var showEditDialog    by remember { mutableStateOf(false) }
+
+    if (showDeleteConfirm) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirm = false },
+            title = { Text("Delete Expense?") },
+            text  = { Text("Delete $currencySymbol${String.format(locale, "%,.0f", txn.amount)} ${txn.category}? This will reverse the account balance.") },
+            confirmButton = {
+                Button(onClick = { onDelete(); showDeleteConfirm = false },
+                    colors = ButtonDefaults.buttonColors(containerColor = SemanticRed)) { Text("Delete") }
+            },
+            dismissButton = { TextButton(onClick = { showDeleteConfirm = false }) { Text("Cancel") } }
+        )
+    }
+    if (showEditDialog) {
+        app.fynlo.ui.components.EditTransactionDialog(
+            transaction = txn,
+            onDismiss   = { showEditDialog = false },
+            onConfirm   = { updated -> onEdit(updated); showEditDialog = false }
+        )
+    }
+
+    Row(
+        Modifier.fillMaxWidth().padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
         Surface(Modifier.size(40.dp), RoundedCornerShape(12.dp),
             color = SemanticRed.copy(alpha = 0.1f)) {
             Box(contentAlignment = Alignment.Center) {
@@ -245,6 +280,14 @@ private fun ExpenseRow(txn: Transaction, currencySymbol: String, locale: Locale)
                 color = SemanticRed)
             Text(txn.date, style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        IconButton(onClick = { showEditDialog = true }, modifier = Modifier.size(32.dp)) {
+            Icon(Icons.Default.Edit, null, Modifier.size(16.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        IconButton(onClick = { showDeleteConfirm = true }, modifier = Modifier.size(32.dp)) {
+            Icon(Icons.Default.Delete, null, Modifier.size(16.dp),
+                tint = SemanticRed.copy(alpha = 0.7f))
         }
     }
 }
