@@ -48,6 +48,7 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> Unit = {}, onNavigateToCalendar: () -> Unit = {}) {
+    val haptic        = LocalHapticFeedback.current
     val borrowers     by viewModel.borrowers.collectAsState()
     val accounts      by viewModel.accounts.collectAsState()
     val people        by viewModel.people.collectAsState()  // for phone lookup
