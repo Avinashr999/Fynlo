@@ -16,6 +16,7 @@ import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.MonetizationOn
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Add
@@ -607,26 +608,7 @@ fun LendingCard(borrower: Borrower, people: List<app.fynlo.data.model.Person> = 
                     IconButton(onClick = onDelete) {
                         Icon(Icons.Default.Delete, "Delete", Modifier.size(20.dp), tint = Color.Red.copy(alpha = 0.6f))
                     }
-                    // NPA badge with restore tap, or default warning button
-                    if (borrower.status == "Defaulted") {
-                        Surface(
-                            shape = androidx.compose.foundation.shape.RoundedCornerShape(6.dp),
-                            color = SemanticAmber.copy(alpha = 0.15f),
-                            modifier = Modifier.clickable { onDefault() }
-                        ) {
-                            Row(Modifier.padding(horizontal = 6.dp, vertical = 3.dp),
-                                verticalAlignment = Alignment.CenterVertically) {
-                                Text("NPA",
-                                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                                    color = SemanticAmber)
-                            }
-                        }
-                    } else {
-                        IconButton(onClick = onDefault, modifier = Modifier.size(32.dp)) {
-                            Icon(Icons.Default.Warning, "Mark Defaulted", Modifier.size(16.dp),
-                                tint = SemanticAmber.copy(alpha = 0.7f))
-                        }
-                    }
+
 
                 }
             }
@@ -713,7 +695,7 @@ fun LendingCard(borrower: Borrower, people: List<app.fynlo.data.model.Person> = 
                 }
             }
 
-            // Collect Payment button — full-width, always visible at bottom
+            // Collect Payment button + NPA toggle row
             Spacer(Modifier.height(12.dp))
             Button(
                 onClick = onCollect,
@@ -724,6 +706,34 @@ fun LendingCard(borrower: Borrower, people: List<app.fynlo.data.model.Person> = 
                 Icon(Icons.Default.MonetizationOn, null, Modifier.size(16.dp))
                 Spacer(Modifier.width(6.dp))
                 Text("Collect Payment", style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold))
+            }
+            Spacer(Modifier.height(4.dp))
+            // NPA toggle button
+            if (borrower.status == "Defaulted") {
+                OutlinedButton(
+                    onClick = onDefault,
+                    modifier = Modifier.fillMaxWidth().height(32.dp),
+                    shape = RoundedCornerShape(8.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Emerald500),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Emerald500.copy(alpha = 0.5f)),
+                    contentPadding = PaddingValues(horizontal = 8.dp)
+                ) {
+                    Icon(Icons.Default.CheckCircle, null, Modifier.size(14.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text("NPA — Tap to Restore Active", style = MaterialTheme.typography.labelSmall)
+                }
+            } else {
+                TextButton(
+                    onClick = onDefault,
+                    modifier = Modifier.fillMaxWidth().height(32.dp),
+                    contentPadding = PaddingValues(horizontal = 8.dp)
+                ) {
+                    Icon(Icons.Default.Warning, null, Modifier.size(14.dp), tint = SemanticAmber)
+                    Spacer(Modifier.width(4.dp))
+                    Text("Mark as Defaulted / NPA",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = SemanticAmber)
+                }
             }
 
             if (borrower.notes.isNotEmpty()) {
