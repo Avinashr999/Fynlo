@@ -128,6 +128,12 @@ interface FynloDao {
     suspend fun insertAccount(account: Account)
 
     @Query("SELECT * FROM accounts WHERE name = :name LIMIT 1")
+    @Query("SELECT * FROM transactions WHERE id = :id LIMIT 1")
+    suspend fun getTransactionById(id: String): Transaction?
+
+    @Query("SELECT * FROM accounts WHERE id = :id LIMIT 1")
+    suspend fun getAccountById(id: String): Account?
+
     suspend fun getAccountByName(name: String): Account?
 
     @Query("UPDATE accounts SET balance = balance + :amount WHERE name = :name")

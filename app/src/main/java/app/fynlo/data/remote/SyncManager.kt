@@ -1,4 +1,4 @@
-﻿package app.fynlo.data.remote
+package app.fynlo.data.remote
 
 import app.fynlo.data.SyncStatus
 import app.fynlo.data.local.FynloDao
@@ -72,7 +72,11 @@ class SyncManager(
                             projectId = doc.str("projectId"),
                             updatedAt = doc.lng("updatedAt")
                         )
-                        dao.insertBorrower(remote)
+                        // Only overwrite local if remote is newer (last-write-wins)
+                        val local = dao.getBorrowerById(doc.id)
+                        if (local == null || remote.updatedAt >= local.updatedAt) {
+                            dao.insertBorrower(remote)
+                        }
                     }
                 }
                 _status.value = SyncStatus.Synced
@@ -106,7 +110,11 @@ class SyncManager(
                             projectId = doc.str("projectId"),
                             updatedAt = doc.lng("updatedAt")
                         )
-                        dao.insertTransaction(remote)
+                        // LWW: only overwrite if remote is newer
+                        val localTxn = dao.getTransactionById(remote.id)
+                        if (localTxn == null || remote.updatedAt >= localTxn.updatedAt) {
+                            dao.insertTransaction(remote)
+                        }
                     }
                 }
                 _status.value = SyncStatus.Synced
@@ -119,7 +127,7 @@ class SyncManager(
                 snap.documentChanges.forEach { change ->
                     runCatching {
                         val doc = change.document
-                        dao.insertAccount(Account(
+                        val remoteAcct = Account(
                             id        = doc.id,
                             name      = doc.str("name"),
                             type      = doc.str("type"),
@@ -129,7 +137,11 @@ class SyncManager(
                             notes     = doc.str("notes"),
                             projectId = doc.str("projectId"),
                             updatedAt = doc.lng("updatedAt")
-                        ))
+                        )
+                        val localAcct = dao.getAccountById(doc.id)
+                        if (localAcct == null || remoteAcct.updatedAt >= localAcct.updatedAt) {
+                            dao.insertAccount(remoteAcct)
+                        }
                     }
                 }
                 _status.value = SyncStatus.Synced
