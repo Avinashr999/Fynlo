@@ -32,6 +32,7 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun InvestmentScreen(viewModel: FinanceViewModel) {
     val investments    by viewModel.investments.collectAsState()
