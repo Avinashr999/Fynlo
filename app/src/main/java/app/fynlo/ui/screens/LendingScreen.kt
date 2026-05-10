@@ -86,19 +86,21 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
         }
         list
     }
-    // Active = not settled, not written off, principal not fully recovered
-    // Use paidPrincipal (not paid) — paying interest alone should NOT remove from active tabs
+    // Active = not settled, not written off, still has outstanding balance
+    // Hand loans (rate=0): use `paid` because old payments only updated paid, not paidPrincipal
+    // Interest loans (rate>0): use `paidPrincipal` so interest-only payments don't close the loan
     val isActive: (app.fynlo.data.model.Borrower) -> Boolean = { b ->
-        b.status !in listOf("Settled", "WrittenOff") && b.paidPrincipal < b.amount
+        b.status !in listOf("Settled", "WrittenOff") && (
+            if (b.rate <= 0) b.paid < b.amount          // hand loan: fully collected = settled
+            else b.paidPrincipal < b.amount              // interest loan: principal not yet recovered
+        )
     }
     val interestLoans  = processed.filter { it.rate > 0  && isActive(it) }
     val handLoans      = processed.filter { it.rate <= 0 && isActive(it) }
     val defaultedLoans = processed.filter { it.status == "Defaulted" }
-    // Settled = principal fully recovered, OR marked Settled/WrittenOff
-    // Exclude Defaulted ones (they stay in their own NPA section at bottom)
-    val settledLoans   = processed.filter {
-        (it.status in listOf("Settled", "WrittenOff") || it.paidPrincipal >= it.amount)
-        && it.status != "Defaulted"
+    // Settled = marked Settled/WrittenOff, OR fully paid (using same logic as isActive)
+    val settledLoans   = processed.filter { b ->
+        !isActive(b) && b.status !in listOf("Defaulted", "WrittenOff")
     }
     val activeLoans    = if (selectedTab == 0) interestLoans else handLoans
 
