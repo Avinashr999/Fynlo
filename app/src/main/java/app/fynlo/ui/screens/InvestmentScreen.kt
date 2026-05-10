@@ -44,7 +44,8 @@ val currentProject by viewModel.currentProject.collectAsState()
     var editingInvest  by remember { mutableStateOf<Investment?>(null) }
     var updatingInvest by remember { mutableStateOf<Investment?>(null) }
 
-    var deletingInvest by remember { mutableStateOf<Investment?>(null) }
+    var deletingInvest  by remember { mutableStateOf<Investment?>(null) }
+    var withdrawingInvest by remember { mutableStateOf<Investment?>(null) }
     var viewingHistory by remember { mutableStateOf<Investment?>(null) }
 
     // ── Edit dialog ────────────────────────────────────────────────────────────
@@ -93,6 +94,84 @@ val currentProject by viewModel.currentProject.collectAsState()
 
 
     // ── Smart delete confirmation — shows options based on sourceType ──────────
+    // ── Withdraw Dialog ─────────────────────────────────────────────────────
+    if (withdrawingInvest != null) {
+        val inv = withdrawingInvest!!
+        var withdrawAmt by remember { mutableStateOf("") }
+        var withdrawExpanded by remember { mutableStateOf(false) }
+        val withdrawAccountOptions = if (accounts.isNotEmpty()) accounts
+        else listOf(app.fynlo.data.model.Account(id = "cash", name = "Cash in Hand", type = "Cash", balance = 0.0))
+        var withdrawAccount by remember { mutableStateOf(withdrawAccountOptions.first()) }
+
+        androidx.compose.ui.window.Dialog(
+            onDismissRequest = { withdrawingInvest = null },
+            properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)
+        ) {
+            Surface(
+                modifier = Modifier.fillMaxWidth(0.9f),
+                shape = MaterialTheme.shapes.extraLarge,
+                tonalElevation = 6.dp
+            ) {
+                Column(Modifier.padding(24.dp)) {
+                    Text("Withdraw from Investment", style = MaterialTheme.typography.headlineSmall)
+                    Text("${inv.name}  •  Current Value: ₹${String.format("%,.0f", inv.currentVal)}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Spacer(Modifier.height(16.dp))
+                    OutlinedTextField(
+                        value = withdrawAmt, onValueChange = { withdrawAmt = it },
+                        label = { Text("Withdrawal Amount") }, prefix = { Text("₹") },
+                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                            keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(Modifier.height(10.dp))
+                    ExposedDropdownMenuBox(expanded = withdrawExpanded, onExpandedChange = { withdrawExpanded = !withdrawExpanded }) {
+                        OutlinedTextField(
+                            value = withdrawAccount.name, onValueChange = {}, readOnly = true,
+                            label = { Text("Credit to account") },
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = withdrawExpanded) },
+                            modifier = Modifier.menuAnchor(androidx.compose.material3.ExposedDropdownMenuAnchorType.PrimaryNotEditable, true).fillMaxWidth()
+                        )
+                        ExposedDropdownMenu(expanded = withdrawExpanded, onDismissRequest = { withdrawExpanded = false }) {
+                            withdrawAccountOptions.forEach { acct ->
+                                DropdownMenuItem(
+                                    text = {
+                                        androidx.compose.foundation.layout.Row(
+                                            Modifier.fillMaxWidth(),
+                                            androidx.compose.foundation.layout.Arrangement.SpaceBetween
+                                        ) {
+                                            Text(acct.name)
+                                            Text("₹${String.format("%,.0f", acct.balance)}",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = app.fynlo.ui.theme.Emerald500)
+                                        }
+                                    },
+                                    onClick = { withdrawAccount = acct; withdrawExpanded = false })
+                            }
+                        }
+                    }
+                    Spacer(Modifier.height(20.dp))
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                        TextButton(onClick = { withdrawingInvest = null }) { Text("Cancel") }
+                        Spacer(Modifier.width(8.dp))
+                        Button(
+                            onClick = {
+                                val amt = withdrawAmt.toDoubleOrNull() ?: 0.0
+                                if (amt > 0) {
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    viewModel.withdrawFromInvestment(inv, amt, withdrawAccount.name)
+                                    withdrawingInvest = null
+                                }
+                            },
+                            enabled = withdrawAmt.toDoubleOrNull().let { it != null && it > 0.0 }
+                        ) { Text("Withdraw") }
+                    }
+                }
+            }
+        }
+    }
+
     if (deletingInvest != null) {
         val inv = deletingInvest!!
         AlertDialog(
@@ -194,7 +273,8 @@ val currentProject by viewModel.currentProject.collectAsState()
                     InvestmentCard(
                         invest   = invest,
                         currencySymbol = currencySymbol,
-                        onDelete = { deletingInvest = invest },
+                        onDelete    = { deletingInvest = invest },
+                        onWithdraw  = { withdrawingInvest = invest },
                         onEdit   = { editingInvest = invest },
                         onUpdate = { updatingInvest = invest },
                         onViewHistory = { viewingHistory = invest }
@@ -206,7 +286,7 @@ val currentProject by viewModel.currentProject.collectAsState()
 }
 
 @Composable
-fun InvestmentCard(invest: Investment, currencySymbol: String = "₹", onDelete: () -> Unit, onEdit: () -> Unit, onUpdate: () -> Unit, onViewHistory: () -> Unit) {
+fun InvestmentCard(invest: Investment, currencySymbol: String = "₹", onDelete: () -> Unit, onEdit: () -> Unit, onUpdate: () -> Unit, onViewHistory: () -> Unit, onWithdraw: () -> Unit = {}) {
     val growth = invest.currentVal - invest.invested
     val growthPercent = if (invest.invested > 0) (growth / invest.invested) * 100 else 0.0
 
@@ -243,6 +323,17 @@ fun InvestmentCard(invest: Investment, currencySymbol: String = "₹", onDelete:
                     }
                     IconButton(onClick = onDelete) {
                         Icon(Icons.Default.Delete, contentDescription = "Delete", modifier = Modifier.size(20.dp), tint = Color.Red.copy(alpha = 0.6f))
+                    }
+                    if (invest.currentVal > 0) {
+                        FilledTonalButton(
+                            onClick = onWithdraw,
+                            contentPadding = PaddingValues(horizontal = 8.dp),
+                            modifier = Modifier.height(28.dp),
+                            colors = ButtonDefaults.filledTonalButtonColors(
+                                containerColor = Emerald500.copy(alpha = 0.15f),
+                                contentColor   = Emerald500
+                            )
+                        ) { Text("Withdraw", style = MaterialTheme.typography.labelSmall) }
                     }
                     FilledTonalButton(
                         onClick = onUpdate,

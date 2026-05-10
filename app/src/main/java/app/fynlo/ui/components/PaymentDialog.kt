@@ -1,11 +1,14 @@
 package app.fynlo.ui.components
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountBalance
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.MonetizationOn
 import androidx.compose.material.icons.filled.Wallet
 import androidx.compose.material3.*
@@ -24,6 +27,7 @@ import app.fynlo.data.model.Debt
 import app.fynlo.data.model.DebtPayment
 import app.fynlo.data.model.Payment
 import app.fynlo.logic.DateUtils
+import app.fynlo.logic.InterestEngine
 import java.util.*
 import app.fynlo.ui.theme.*
 
@@ -33,67 +37,183 @@ import app.fynlo.ui.theme.*
 @Composable
 fun CollectPaymentDialog(
     borrower: Borrower,
-    accounts: List<Account>,          // real accounts from ViewModel
+    accounts: List<Account>,
     onDismiss: () -> Unit,
     onConfirm: (Payment, String) -> Unit
 ) {
-    var amount   by remember { mutableStateOf("") }
-    var date     by remember { mutableStateOf(java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy"))) }
-    var notes    by remember { mutableStateOf("") }
+    val today = java.time.LocalDate.now()
+
+    // Calculate accrued interest and outstanding using new split fields
+    val accruedInterest = remember(borrower) {
+        if (borrower.status == "Defaulted" && borrower.frozenInterest > 0) borrower.frozenInterest
+        else InterestEngine.calcIntAccrued(
+            borrower.amount, borrower.rate, borrower.date,
+            borrower.type, borrower.due, totalPaid = borrower.paidPrincipal
+        )
+    }
+    val interestOutstanding = remember(accruedInterest, borrower) {
+        (accruedInterest - borrower.paidInterest).coerceAtLeast(0.0)
+    }
+    val principalOutstanding = remember(borrower) {
+        (borrower.amount - borrower.paidPrincipal).coerceAtLeast(0.0)
+    }
+    val totalOutstanding = interestOutstanding + principalOutstanding
+
+    // Payment fields
+    var principalStr by remember { mutableStateOf("") }
+    var interestStr  by remember { mutableStateOf("") }
+    var date by remember { mutableStateOf(today.format(java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy"))) }
+    var notes by remember { mutableStateOf("") }
     var expanded by remember { mutableStateOf(false) }
 
-    // Build the full list: real accounts first, then "Cash in Hand" as fallback
-    val accountOptions: List<Account> = if (accounts.isNotEmpty()) accounts
+    val accountOptions = if (accounts.isNotEmpty()) accounts
     else listOf(Account(id = "cash", name = "Cash in Hand", type = "Cash", balance = 0.0))
-
     var selectedAccount by remember { mutableStateOf(accountOptions.first()) }
 
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false)
-    ) {
+    val principalVal = principalStr.toDoubleOrNull() ?: 0.0
+    val interestVal  = interestStr.toDoubleOrNull()  ?: 0.0
+    val totalAmount  = principalVal + interestVal
+    val isValid      = totalAmount > 0.0
+
+    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Surface(
-            modifier = Modifier.fillMaxWidth(0.95f).padding(vertical = 24.dp).imePadding(),
-            shape = MaterialTheme.shapes.extraLarge,
-            color = MaterialTheme.colorScheme.surface,
+            modifier = Modifier.fillMaxWidth(0.95f).padding(vertical = 16.dp).imePadding(),
+            shape    = MaterialTheme.shapes.extraLarge,
+            color    = MaterialTheme.colorScheme.surface,
             tonalElevation = 6.dp
         ) {
             Column(modifier = Modifier.padding(24.dp).verticalScroll(rememberScrollState())) {
 
                 Text("Collect Repayment", style = MaterialTheme.typography.headlineSmall)
-                Text(
-                    "From: ${borrower.name}",
+                Text("From: ${borrower.name}",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                Spacer(Modifier.height(20.dp))
-
-                // Amount
-                OutlinedTextField(
-                    value = amount,
-                    onValueChange = { amount = it },
-                    label = { Text("Amount Received (₹)") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    modifier = Modifier.fillMaxWidth()
-                )
+                    color = MaterialTheme.colorScheme.primary)
                 Spacer(Modifier.height(12.dp))
 
-                // Deposit destination — real accounts dropdown
-                ExposedDropdownMenuBox(
-                    expanded = expanded,
-                    onExpandedChange = { expanded = !expanded }
+                // ── Outstanding summary ──────────────────────────────────────
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
                 ) {
+                    Column(Modifier.padding(12.dp)) {
+                        Text("Outstanding", style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Spacer(Modifier.height(6.dp))
+                        Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
+                            Text("Principal", style = MaterialTheme.typography.bodySmall)
+                            Text("₹${String.format("%,.0f", principalOutstanding)}",
+                                style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
+                                color = SemanticRed)
+                        }
+                        if (borrower.rate > 0) {
+                            Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
+                                Text("Interest (${borrower.rate}% ${borrower.type})",
+                                    style = MaterialTheme.typography.bodySmall)
+                                Text("₹${String.format("%,.0f", interestOutstanding)}",
+                                    style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
+                                    color = SemanticAmber)
+                            }
+                        }
+                        HorizontalDivider(Modifier.padding(vertical = 4.dp))
+                        Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
+                            Text("Total Due", style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold))
+                            Text("₹${String.format("%,.0f", totalOutstanding)}",
+                                style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
+                                color = MaterialTheme.colorScheme.onSurface)
+                        }
+                    }
+                }
+                Spacer(Modifier.height(16.dp))
+
+                // ── Auto-suggest button ──────────────────────────────────────
+                if (borrower.rate > 0 && interestOutstanding > 0) {
+                    FilledTonalButton(
+                        onClick = {
+                            interestStr  = String.format("%.0f", interestOutstanding)
+                            principalStr = ""
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape    = RoundedCornerShape(10.dp)
+                    ) {
+                        Icon(Icons.Default.AutoAwesome, null, Modifier.size(16.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text("Interest Only — ₹${String.format("%,.0f", interestOutstanding)}")
+                    }
+                    Spacer(Modifier.height(4.dp))
+                    FilledTonalButton(
+                        onClick = {
+                            interestStr  = String.format("%.0f", interestOutstanding)
+                            principalStr = String.format("%.0f", principalOutstanding)
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape    = RoundedCornerShape(10.dp)
+                    ) {
+                        Icon(Icons.Default.AutoAwesome, null, Modifier.size(16.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text("Full Settlement — ₹${String.format("%,.0f", totalOutstanding)}")
+                    }
+                    Spacer(Modifier.height(12.dp))
+                }
+
+                // ── Split entry fields ───────────────────────────────────────
+                Text("Payment Breakdown", style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Spacer(Modifier.height(8.dp))
+
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = principalStr,
+                        onValueChange = { principalStr = it },
+                        label = { Text("Principal") },
+                        placeholder = { Text("0") },
+                        prefix = { Text("₹") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.weight(1f),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = SemanticRed,
+                            focusedLabelColor  = SemanticRed
+                        )
+                    )
+                    OutlinedTextField(
+                        value = interestStr,
+                        onValueChange = { interestStr = it },
+                        label = { Text("Interest") },
+                        placeholder = { Text("0") },
+                        prefix = { Text("₹") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.weight(1f),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = SemanticAmber,
+                            focusedLabelColor  = SemanticAmber
+                        )
+                    )
+                }
+
+                // ── Total ────────────────────────────────────────────────────
+                if (totalAmount > 0) {
+                    Spacer(Modifier.height(8.dp))
+                    Row(Modifier.fillMaxWidth(), Arrangement.End) {
+                        Text("Total collecting: ",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("₹${String.format("%,.0f", totalAmount)}",
+                            style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
+                            color = Emerald500)
+                    }
+                }
+                Spacer(Modifier.height(12.dp))
+
+                // ── Destination account ──────────────────────────────────────
+                ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = !expanded }) {
                     OutlinedTextField(
                         value = selectedAccount.name,
                         onValueChange = {},
                         readOnly = true,
-                        label = { Text("Deposit into which account?") },
+                        label = { Text("Deposit into account") },
                         supportingText = {
-                            Text(
-                                "${selectedAccount.type}  •  Balance: ₹${String.format("%,.0f", selectedAccount.balance)}",
+                            Text("${selectedAccount.type}  •  Balance: ₹${String.format("%,.0f", selectedAccount.balance)}",
                                 style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.primary
-                            )
+                                color = MaterialTheme.colorScheme.primary)
                         },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
                         modifier = Modifier
@@ -104,37 +224,23 @@ fun CollectPaymentDialog(
                         accountOptions.forEach { acct ->
                             DropdownMenuItem(
                                 text = {
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.SpaceBetween
-                                    ) {
+                                    Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
                                         Row(verticalAlignment = Alignment.CenterVertically) {
-                                            Icon(
-                                                imageVector = when (acct.type.lowercase()) {
-                                                    "cash"  -> Icons.Default.Wallet
-                                                    "upi"   -> Icons.Default.MonetizationOn
-                                                    else    -> Icons.Default.AccountBalance
-                                                },
-                                                contentDescription = null,
-                                                modifier = Modifier.size(18.dp),
-                                                tint = MaterialTheme.colorScheme.primary
-                                            )
+                                            Icon(when (acct.type.lowercase()) {
+                                                "cash" -> Icons.Default.Wallet
+                                                "upi"  -> Icons.Default.MonetizationOn
+                                                else   -> Icons.Default.AccountBalance
+                                            }, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
                                             Spacer(Modifier.width(10.dp))
                                             Column {
                                                 Text(acct.name, fontWeight = FontWeight.Medium)
-                                                Text(
-                                                    acct.type,
-                                                    style = MaterialTheme.typography.labelSmall,
-                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                                )
+                                                Text(acct.type, style = MaterialTheme.typography.labelSmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant)
                                             }
                                         }
-                                        Text(
-                                            "₹${String.format("%,.0f", acct.balance)}",
+                                        Text("₹${String.format("%,.0f", acct.balance)}",
                                             style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
-                                            color = if (acct.balance >= 0) Emerald500 else MaterialTheme.colorScheme.error
-                                        )
+                                            color = if (acct.balance >= 0) Emerald500 else MaterialTheme.colorScheme.error)
                                     }
                                 },
                                 onClick = { selectedAccount = acct; expanded = false }
@@ -144,44 +250,44 @@ fun CollectPaymentDialog(
                 }
                 Spacer(Modifier.height(12.dp))
 
-                // Date
                 OutlinedTextField(
-                    value = date,
-                    onValueChange = { date = it },
+                    value = date, onValueChange = { date = it },
                     label = { Text("Payment Date (DD-MM-YYYY)") },
                     modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(Modifier.height(12.dp))
 
-                // Notes
                 OutlinedTextField(
-                    value = notes,
-                    onValueChange = { notes = it },
+                    value = notes, onValueChange = { notes = it },
                     label = { Text("Notes") },
                     modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(Modifier.height(24.dp))
 
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                Row(Modifier.fillMaxWidth(), Arrangement.End) {
                     TextButton(onClick = onDismiss) { Text("Cancel") }
                     Spacer(Modifier.width(8.dp))
                     Button(
                         onClick = {
                             val payment = Payment(
-                                id      = UUID.randomUUID().toString(),
-                                loanId  = borrower.id,
-                                name    = borrower.name,
-                                date    = DateUtils.parseInput(date),
-                                type    = "Repayment",
-                                amount  = amount.toDoubleOrNull() ?: 0.0,
-                                notes   = notes
+                                id        = UUID.randomUUID().toString(),
+                                loanId    = borrower.id,
+                                name      = borrower.name,
+                                date      = DateUtils.parseInput(date),
+                                type      = when {
+                                    principalVal > 0 && interestVal > 0 -> "Both"
+                                    principalVal > 0 -> "Principal Only"
+                                    else             -> "Interest Only"
+                                },
+                                amount    = totalAmount,
+                                principal = principalVal,
+                                interest  = interestVal,
+                                notes     = notes
                             )
                             onConfirm(payment, selectedAccount.name)
                         },
-                        enabled = amount.toDoubleOrNull() != null && amount.isNotBlank()
-                    ) {
-                        Text("Confirm")
-                    }
+                        enabled = isValid
+                    ) { Text("Confirm ₹${String.format("%,.0f", totalAmount)}") }
                 }
             }
         }
@@ -194,151 +300,195 @@ fun CollectPaymentDialog(
 @Composable
 fun PayDebtDialog(
     debt: Debt,
-    accounts: List<Account>,          // real accounts from ViewModel
+    accounts: List<Account>,
     onDismiss: () -> Unit,
     onConfirm: (DebtPayment, String) -> Unit
 ) {
-    var amount   by remember { mutableStateOf("") }
-    var date     by remember { mutableStateOf(java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy"))) }
+    val accruedInterest = remember(debt) {
+        InterestEngine.calcIntAccrued(
+            debt.amount, debt.rate, debt.date, debt.intType, debt.due,
+            totalPaid = debt.paidPrincipal
+        )
+    }
+    val interestOutstanding  = (accruedInterest - debt.paidInterest).coerceAtLeast(0.0)
+    val principalOutstanding = (debt.amount - debt.paidPrincipal).coerceAtLeast(0.0)
+    val totalOutstanding     = interestOutstanding + principalOutstanding
+
+    var principalStr by remember { mutableStateOf("") }
+    var interestStr  by remember { mutableStateOf("") }
+    var date by remember { mutableStateOf(java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy"))) }
     var notes    by remember { mutableStateOf("") }
     var expanded by remember { mutableStateOf(false) }
 
-    val accountOptions: List<Account> = if (accounts.isNotEmpty()) accounts
+    val accountOptions = if (accounts.isNotEmpty()) accounts
     else listOf(Account(id = "cash", name = "Cash in Hand", type = "Cash", balance = 0.0))
-
     var selectedAccount by remember { mutableStateOf(accountOptions.first()) }
 
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false)
-    ) {
+    val principalVal = principalStr.toDoubleOrNull() ?: 0.0
+    val interestVal  = interestStr.toDoubleOrNull()  ?: 0.0
+    val totalAmount  = principalVal + interestVal
+    val isValid      = totalAmount > 0.0
+
+    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Surface(
-            modifier = Modifier.fillMaxWidth(0.95f).padding(vertical = 24.dp).imePadding(),
-            shape = MaterialTheme.shapes.extraLarge,
-            color = MaterialTheme.colorScheme.surface,
+            modifier = Modifier.fillMaxWidth(0.95f).padding(vertical = 16.dp).imePadding(),
+            shape    = MaterialTheme.shapes.extraLarge,
+            color    = MaterialTheme.colorScheme.surface,
             tonalElevation = 6.dp
         ) {
             Column(modifier = Modifier.padding(24.dp).verticalScroll(rememberScrollState())) {
-
                 Text("Pay Debt", style = MaterialTheme.typography.headlineSmall)
-                Text(
-                    "To: ${debt.name}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.error
-                )
-                Spacer(Modifier.height(20.dp))
-
-                OutlinedTextField(
-                    value = amount,
-                    onValueChange = { amount = it },
-                    label = { Text("Amount Paid (₹)") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    modifier = Modifier.fillMaxWidth()
-                )
+                Text("To: ${debt.name}", style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.error)
                 Spacer(Modifier.height(12.dp))
 
-                // Source account — real accounts dropdown
-                ExposedDropdownMenuBox(
-                    expanded = expanded,
-                    onExpandedChange = { expanded = !expanded }
-                ) {
-                    OutlinedTextField(
-                        value = selectedAccount.name,
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("Pay from which account?") },
-                        supportingText = {
-                            Text(
-                                "${selectedAccount.type}  •  Balance: ₹${String.format("%,.0f", selectedAccount.balance)}",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                        },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                        modifier = Modifier
-                            .menuAnchor(androidx.compose.material3.ExposedDropdownMenuAnchorType.PrimaryNotEditable, true)
-                            .fillMaxWidth()
-                    )
-                    ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-                        accountOptions.forEach { acct ->
-                            DropdownMenuItem(
-                                text = {
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.SpaceBetween
-                                    ) {
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
-                                            Icon(
-                                                imageVector = when (acct.type.lowercase()) {
-                                                    "cash"  -> Icons.Default.Wallet
-                                                    "upi"   -> Icons.Default.MonetizationOn
-                                                    else    -> Icons.Default.AccountBalance
-                                                },
-                                                contentDescription = null,
-                                                modifier = Modifier.size(18.dp),
-                                                tint = MaterialTheme.colorScheme.primary
-                                            )
-                                            Spacer(Modifier.width(10.dp))
-                                            Column {
-                                                Text(acct.name, fontWeight = FontWeight.Medium)
-                                                Text(
-                                                    acct.type,
-                                                    style = MaterialTheme.typography.labelSmall,
-                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                                )
-                                            }
-                                        }
-                                        Text(
-                                            "₹${String.format("%,.0f", acct.balance)}",
-                                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
-                                            color = if (acct.balance >= 0) Emerald500 else MaterialTheme.colorScheme.error
-                                        )
-                                    }
-                                },
-                                onClick = { selectedAccount = acct; expanded = false }
-                            )
+                // Outstanding summary
+                Surface(shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)) {
+                    Column(Modifier.padding(12.dp)) {
+                        Text("You Owe", style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Spacer(Modifier.height(6.dp))
+                        Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
+                            Text("Principal", style = MaterialTheme.typography.bodySmall)
+                            Text("₹${String.format("%,.0f", principalOutstanding)}",
+                                style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold))
+                        }
+                        if (debt.rate > 0) {
+                            Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
+                                Text("Interest (${debt.rate}%)", style = MaterialTheme.typography.bodySmall)
+                                Text("₹${String.format("%,.0f", interestOutstanding)}",
+                                    style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
+                                    color = MaterialTheme.colorScheme.error)
+                            }
+                        }
+                        HorizontalDivider(Modifier.padding(vertical = 4.dp))
+                        Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
+                            Text("Total Due", style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold))
+                            Text("₹${String.format("%,.0f", totalOutstanding)}",
+                                style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold))
                         }
                     }
                 }
                 Spacer(Modifier.height(12.dp))
 
-                OutlinedTextField(
-                    value = date,
-                    onValueChange = { date = it },
-                    label = { Text("Payment Date (DD-MM-YYYY)") },
-                    modifier = Modifier.fillMaxWidth()
-                )
+                // Auto-suggest buttons
+                if (debt.rate > 0 && interestOutstanding > 0) {
+                    FilledTonalButton(onClick = {
+                        interestStr = String.format("%.0f", interestOutstanding); principalStr = ""
+                    }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(10.dp)) {
+                        Icon(Icons.Default.AutoAwesome, null, Modifier.size(16.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text("Interest Only — ₹${String.format("%,.0f", interestOutstanding)}")
+                    }
+                    Spacer(Modifier.height(4.dp))
+                }
+
+                Spacer(Modifier.height(4.dp))
+                Text("Payment Breakdown", style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Spacer(Modifier.height(8.dp))
+
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(value = principalStr, onValueChange = { principalStr = it },
+                        label = { Text("Principal") }, placeholder = { Text("0") }, prefix = { Text("₹") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.weight(1f))
+                    OutlinedTextField(value = interestStr, onValueChange = { interestStr = it },
+                        label = { Text("Interest") }, placeholder = { Text("0") }, prefix = { Text("₹") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.weight(1f),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = MaterialTheme.colorScheme.error,
+                            focusedLabelColor  = MaterialTheme.colorScheme.error))
+                }
+
+                if (totalAmount > 0) {
+                    Spacer(Modifier.height(6.dp))
+                    Row(Modifier.fillMaxWidth(), Arrangement.End) {
+                        Text("Total paying: ", style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("₹${String.format("%,.0f", totalAmount)}",
+                            style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
+                            color = MaterialTheme.colorScheme.error)
+                    }
+                }
                 Spacer(Modifier.height(12.dp))
 
-                OutlinedTextField(
-                    value = notes,
-                    onValueChange = { notes = it },
-                    label = { Text("Notes") },
-                    modifier = Modifier.fillMaxWidth()
-                )
+                ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = !expanded }) {
+                    OutlinedTextField(value = selectedAccount.name, onValueChange = {}, readOnly = true,
+                        label = { Text("Pay from account") },
+                        supportingText = {
+                            Text("${selectedAccount.type}  •  Balance: ₹${String.format("%,.0f", selectedAccount.balance)}",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.primary)
+                        },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                        modifier = Modifier
+                            .menuAnchor(androidx.compose.material3.ExposedDropdownMenuAnchorType.PrimaryNotEditable, true)
+                            .fillMaxWidth())
+                    ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                        accountOptions.forEach { acct ->
+                            DropdownMenuItem(
+                                text = {
+                                    Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Icon(when (acct.type.lowercase()) {
+                                                "cash" -> Icons.Default.Wallet
+                                                "upi"  -> Icons.Default.MonetizationOn
+                                                else   -> Icons.Default.AccountBalance
+                                            }, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
+                                            Spacer(Modifier.width(10.dp))
+                                            Column {
+                                                Text(acct.name, fontWeight = FontWeight.Medium)
+                                                Text(acct.type, style = MaterialTheme.typography.labelSmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                            }
+                                        }
+                                        Text("₹${String.format("%,.0f", acct.balance)}",
+                                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                                            color = if (acct.balance >= 0) Emerald500 else MaterialTheme.colorScheme.error)
+                                    }
+                                },
+                                onClick = { selectedAccount = acct; expanded = false })
+                        }
+                    }
+                }
+                Spacer(Modifier.height(12.dp))
+
+                OutlinedTextField(value = date, onValueChange = { date = it },
+                    label = { Text("Payment Date (DD-MM-YYYY)") }, modifier = Modifier.fillMaxWidth())
+                Spacer(Modifier.height(12.dp))
+
+                OutlinedTextField(value = notes, onValueChange = { notes = it },
+                    label = { Text("Notes") }, modifier = Modifier.fillMaxWidth())
                 Spacer(Modifier.height(24.dp))
 
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                Row(Modifier.fillMaxWidth(), Arrangement.End) {
                     TextButton(onClick = onDismiss) { Text("Cancel") }
                     Spacer(Modifier.width(8.dp))
                     Button(
                         onClick = {
                             val payment = DebtPayment(
-                                id     = UUID.randomUUID().toString(),
-                                debtId = debt.id,
-                                name   = debt.name,
-                                date   = DateUtils.parseInput(date),
-                                type   = "Debt Repayment",
-                                amount = amount.toDoubleOrNull() ?: 0.0,
-                                notes  = notes
+                                id        = UUID.randomUUID().toString(),
+                                debtId    = debt.id,
+                                name      = debt.name,
+                                date      = DateUtils.parseInput(date),
+                                type      = when {
+                                    principalVal > 0 && interestVal > 0 -> "Both"
+                                    principalVal > 0 -> "Principal Only"
+                                    else             -> "Interest Only"
+                                },
+                                amount    = totalAmount,
+                                principal = principalVal,
+                                interest  = interestVal,
+                                notes     = notes
                             )
                             onConfirm(payment, selectedAccount.name)
                         },
-                        enabled = amount.toDoubleOrNull() != null && amount.isNotBlank()
-                    ) {
-                        Text("Confirm Payment")
-                    }
+                        enabled = isValid,
+                        colors  = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                    ) { Text("Pay ₹${String.format("%,.0f", totalAmount)}") }
                 }
             }
         }

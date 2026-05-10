@@ -19,28 +19,46 @@ import app.fynlo.ui.theme.*
 
 @Composable
 fun ProfitLossScreen(viewModel: FinanceViewModel) {
-    val transactions  by viewModel.transactions.collectAsState()
-    val borrowers     by viewModel.borrowers.collectAsState()
-    val investments   by viewModel.investments.collectAsState()
-    val debts         by viewModel.debts.collectAsState()
+    val transactions   by viewModel.transactions.collectAsState()
+    val borrowers      by viewModel.borrowers.collectAsState()
+    val investments    by viewModel.investments.collectAsState()
+    val debts          by viewModel.debts.collectAsState()
     val currentProject by viewModel.currentProject.collectAsState()
-    val currencySymbol = app.fynlo.logic.CurrencyUtils.symbolFor(currentProject?.currency ?: "INR")
-    val summary       by viewModel.financialSummary.collectAsState()
-    val locale        = remember { Locale.getDefault() }
-    val context       = androidx.compose.ui.platform.LocalContext.current
+    val currencySymbol  = app.fynlo.logic.CurrencyUtils.symbolFor(currentProject?.currency ?: "INR")
+    val summary        by viewModel.financialSummary.collectAsState()
+    val locale          = remember { Locale.getDefault() }
+    val context         = androidx.compose.ui.platform.LocalContext.current
 
-    val totalIncome    = transactions.filter { it.type.equals("income",  ignoreCase = true) }.sumOf { it.amount }
-    val totalExpense   = transactions.filter { it.type.equals("expense", ignoreCase = true) }.sumOf { it.amount }
-    val lendingIncome  = borrowers.sumOf { it.paid }
-    val investGrowth   = investments.sumOf { it.currentVal - it.invested }
-    val debtPayments   = debts.sumOf { it.paid }
-    val totalRevenue   = totalIncome + lendingIncome
-    val grossProfit    = totalRevenue - totalExpense
-    val netProfit      = grossProfit + investGrowth - debtPayments
+    // ── Cash-basis figures (exclude journal_only entries) ───────────────────
+    val cashTxns       = transactions.filter { it.tags != "journal_only" }
+    val totalIncome    = cashTxns.filter { it.type.equals("income",  ignoreCase = true) }.sumOf { it.amount }
+    val totalExpense   = cashTxns.filter { it.type.equals("expense", ignoreCase = true) }.sumOf { it.amount }
 
-    fun fmt(v: Double) = "$currencySymbol ${String.format(locale, "%,.2f", v)}"
+    // ── Interest tracking ───────────────────────────────────────────────────
+    val interestIncome   = transactions.filter { it.category == "Loan Repayment" && it.tags != "journal_only" }.sumOf { it.amount }
+    val interestExpense  = transactions.filter { it.category == "Interest Expense" }.sumOf { it.amount }  // journal entries
+    val badDebtWriteOffs = transactions.filter { it.category == "Bad Debt" }.sumOf { it.amount }          // journal entries
+
+    // ── Other metrics ───────────────────────────────────────────────────────
+    val investGrowth     = investments.sumOf { it.currentVal - it.invested }
+    val investReturns    = transactions.filter { it.category == "Investment Returns" }.sumOf { it.amount }
+    val principalIncome  = totalIncome - interestIncome  // non-interest income
+    val operatingExpense = totalExpense - transactions.filter {
+        it.category in listOf("Debt Repayment", "Lending", "Investment") && it.tags != "journal_only"
+    }.sumOf { it.amount }
+
+    // ── P&L ────────────────────────────────────────────────────────────────
+    val grossRevenue     = totalIncome + investReturns
+    val operatingProfit  = grossRevenue - totalExpense
+    val netProfit        = operatingProfit - interestExpense - badDebtWriteOffs
+
+    fun fmt(v: Double, showSign: Boolean = false): String {
+        val sign = if (showSign && v > 0) "+" else ""
+        return "$sign$currencySymbol ${String.format(locale, "%,.0f", v)}"
+    }
     val green = Emerald500
     val red   = SemanticRed
+    val amber = SemanticAmber
 
     Column(
         modifier = Modifier.fillMaxSize().statusBarsPadding()
@@ -48,6 +66,7 @@ fun ProfitLossScreen(viewModel: FinanceViewModel) {
     ) {
         Text("Profit & Loss", style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold),
             modifier = Modifier.padding(vertical = 16.dp))
+
         Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
             Text("Project: ${currentProject?.name ?: "Personal"}",
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -73,11 +92,12 @@ fun ProfitLossScreen(viewModel: FinanceViewModel) {
 
         Spacer(Modifier.height(12.dp))
 
-        // Net P&L card
+        // ── Net P&L card ─────────────────────────────────────────────────────
         Card(Modifier.fillMaxWidth(), RoundedCornerShape(20.dp),
             CardDefaults.cardColors((if (netProfit >= 0) green else red).copy(alpha = 0.1f))) {
             Column(Modifier.padding(20.dp)) {
-                Text("Net Profit / Loss", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("Net Profit / Loss", style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text(fmt(netProfit),
                     style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold),
                     color = if (netProfit >= 0) green else red)
@@ -88,65 +108,88 @@ fun ProfitLossScreen(viewModel: FinanceViewModel) {
 
         Spacer(Modifier.height(16.dp))
 
+        // ── REVENUE ───────────────────────────────────────────────────────────
         PLSection("Revenue", listOf(
-            "Transaction Income"       to totalIncome,
-            "Loan Repayments Received" to lendingIncome
-        ), totalRevenue, green, currencySymbol, locale)
+            "Interest Income (collected)"  to interestIncome,
+            "Other Income"                 to principalIncome,
+            "Investment Returns"           to investReturns
+        ), grossRevenue, green, currencySymbol, locale)
 
         Spacer(Modifier.height(12.dp))
 
+        // ── EXPENSES ──────────────────────────────────────────────────────────
         PLSection("Expenses", listOf(
-            "Total Transactions"   to totalExpense,
-            "Debt Payments Made"   to debtPayments
-        ), totalExpense + debtPayments, red, currencySymbol, locale)
+            "Business / Personal Expenses" to totalExpense,
+            "Interest Paid (Cost of Debt)" to interestExpense,
+            "Bad Debt Write-offs"          to badDebtWriteOffs
+        ), totalExpense + interestExpense + badDebtWriteOffs, red, currencySymbol, locale)
 
         Spacer(Modifier.height(12.dp))
 
-        // Net Cash Flow card
-        val netCash = totalRevenue - totalExpense - debtPayments
-        Card(Modifier.fillMaxWidth(), RoundedCornerShape(16.dp),
-            CardDefaults.cardColors((if (netCash >= 0) green else red).copy(alpha = 0.08f))) {
-            Row(Modifier.fillMaxWidth().padding(16.dp), Arrangement.SpaceBetween, Alignment.CenterVertically) {
-                Column {
-                    Text("Net Cash Flow", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
-                    Text("Revenue minus all expenses", style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                Text("$currencySymbol ${String.format(locale, "%,.2f", netCash)}",
-                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-                    color = if (netCash >= 0) green else red)
-            }
-        }
+        // ── LENDING PERFORMANCE ───────────────────────────────────────────────
+        val activeBorrowers = borrowers.filter { it.status != "WrittenOff" }
+        val totalLent        = activeBorrowers.sumOf { it.amount }
+        val totalRecovered   = activeBorrowers.sumOf { it.paidPrincipal }
+        val interestCollected = activeBorrowers.sumOf { it.paidInterest }
+        val defaultedAmt     = borrowers.filter { it.status == "Defaulted" || it.status == "WrittenOff" }.sumOf { it.amount - it.paidPrincipal }
+
+        PLSection("Lending Business", listOf(
+            "Total Lent Out"          to totalLent,
+            "Principal Recovered"     to totalRecovered,
+            "Interest Collected"      to interestCollected,
+            "Bad / Defaulted Loans"   to -defaultedAmt
+        ), interestCollected - badDebtWriteOffs, green, currencySymbol, locale)
 
         Spacer(Modifier.height(12.dp))
 
+        // ── INVESTMENTS ───────────────────────────────────────────────────────
         PLSection("Investments", listOf(
-            "Invested Amount"      to investments.sumOf { it.invested },
-            "Current Market Value" to investments.sumOf { it.currentVal },
-            "Unrealised Growth"    to investGrowth
-        ), investGrowth, if (investGrowth >= 0) green else red, currencySymbol, locale)
+            "Total Invested"      to investments.sumOf { it.invested },
+            "Current Value"       to investments.sumOf { it.currentVal },
+            "Realised Returns"    to investReturns,
+            "Unrealised Growth"   to investGrowth
+        ), investGrowth + investReturns, if (investGrowth + investReturns >= 0) green else red, currencySymbol, locale)
 
         Spacer(Modifier.height(100.dp))
     }
 }
 
 @Composable
-private fun PLSection(title: String, items: List<Pair<String, Double>>, total: Double, color: Color, currencySymbol: String, locale: Locale) {
-    fun fmt(v: Double) = "$currencySymbol ${String.format(locale, "%,.2f", v)}"
+private fun PLSection(
+    title: String,
+    items: List<Pair<String, Double>>,
+    total: Double,
+    color: Color,
+    currencySymbol: String,
+    locale: Locale
+) {
+    fun fmt(v: Double) = "$currencySymbol ${String.format(locale, "%,.0f", v)}"
     Card(Modifier.fillMaxWidth(), RoundedCornerShape(16.dp)) {
         Column(Modifier.padding(16.dp)) {
             Text(title, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
             Spacer(Modifier.height(8.dp))
             items.forEach { (label, value) ->
-                Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), Arrangement.SpaceBetween) {
-                    Text(label, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text(fmt(value), style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold))
+                val valueColor = when {
+                    value < 0 -> SemanticRed
+                    label.contains("Interest Income") || label.contains("Collected") -> Emerald500
+                    label.contains("Interest Paid") || label.contains("Bad Debt") -> SemanticRed
+                    else -> MaterialTheme.colorScheme.onSurface
+                }
+                Row(Modifier.fillMaxWidth().padding(vertical = 3.dp), Arrangement.SpaceBetween) {
+                    Text(label, style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.weight(1f))
+                    Text(fmt(value),
+                        style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
+                        color = valueColor)
                 }
             }
             HorizontalDivider(Modifier.padding(vertical = 8.dp))
             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
-                Text("Total", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold))
-                Text(fmt(total), style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold), color = color)
+                Text("Net", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold))
+                Text(fmt(total),
+                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                    color = color)
             }
         }
     }

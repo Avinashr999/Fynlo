@@ -13,6 +13,7 @@ import androidx.compose.material.icons.filled.Sort
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Event
@@ -61,6 +62,9 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
     var showAddDialog by remember { mutableStateOf(false) }
     var editingBorrower by remember { mutableStateOf<Borrower?>(null) }
     var collectingForBorrower by remember { mutableStateOf<Borrower?>(null) }
+    var defaultingBorrower by remember { mutableStateOf<Borrower?>(null) }
+    var writeOffBorrower by remember { mutableStateOf<Borrower?>(null) }
+    var selectedTab by remember { mutableIntStateOf(0) } // 0=Interest Loans 1=Hand Loans
     val today = java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd"))
 
     val processed = remember(borrowers, searchQuery, sortBy) {
@@ -79,8 +83,11 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
         }
         list
     }
-    val activeLoans  = processed.filter { it.status != "Settled" && it.paid < it.amount }
-    val settledLoans = processed.filter { it.status == "Settled" || it.paid >= it.amount }
+    val interestLoans = processed.filter { it.rate > 0  && it.status != "Settled" && it.paidPrincipal < it.amount }
+    val handLoans     = processed.filter { it.rate <= 0 && it.status != "Settled" && it.paidPrincipal < it.amount }
+    val defaultedLoans = processed.filter { it.status == "Defaulted" }
+    val settledLoans  = processed.filter { it.status == "Settled" || (it.status != "Defaulted" && it.paidPrincipal >= it.amount) }
+    val activeLoans   = if (selectedTab == 0) interestLoans else handLoans
 
     if (showEmiCalc) { EmiCalculatorDialog(onDismiss = { showEmiCalc = false }) }
     if (showAddDialog || editingBorrower != null) {
@@ -107,6 +114,60 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
         )
     }
 
+    // Mark as Defaulted confirmation
+    if (defaultingBorrower != null) {
+        val b = defaultingBorrower!!
+        AlertDialog(
+            onDismissRequest = { defaultingBorrower = null },
+            title = { Text("Mark as Defaulted?") },
+            text  = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("${b.name}  •  ₹${String.format(java.util.Locale.getDefault(), "%,.0f", b.amount)}")
+                    Text("Interest will be frozen at today's value. The borrower will be marked as a Non-Performing Asset.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            },
+            confirmButton = {
+                Button(onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    viewModel.markBorrowerDefaulted(b)
+                    defaultingBorrower = null
+                }, colors = ButtonDefaults.buttonColors(containerColor = SemanticAmber)) {
+                    Text("Mark Defaulted")
+                }
+            },
+            dismissButton = { TextButton(onClick = { defaultingBorrower = null }) { Text("Cancel") } }
+        )
+    }
+
+    // Write-off confirmation
+    if (writeOffBorrower != null) {
+        val b = writeOffBorrower!!
+        AlertDialog(
+            onDismissRequest = { writeOffBorrower = null },
+            title = { Text("Write Off Bad Debt?") },
+            text  = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("${b.name}  •  ₹${String.format(java.util.Locale.getDefault(), "%,.0f", b.amount)}")
+                    Text("This will create a Bad Debt expense in your P&L and remove the borrower from receivables. Cannot be undone.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error)
+                }
+            },
+            confirmButton = {
+                Button(onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    viewModel.writeOffBorrower(b)
+                    writeOffBorrower = null
+                }, colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)) {
+                    Text("Write Off")
+                }
+            },
+            dismissButton = { TextButton(onClick = { writeOffBorrower = null }) { Text("Cancel") } }
+        )
+    }
+
     Box(modifier = Modifier.fillMaxSize()) {
         LazyColumn(
             modifier = Modifier.fillMaxSize().statusBarsPadding().padding(horizontal = 16.dp),
@@ -118,7 +179,7 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
                 Row(Modifier.fillMaxWidth().padding(bottom = 4.dp), Arrangement.SpaceBetween, Alignment.CenterVertically) {
                     Column {
                         Text("Lending", style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold))
-                        Text("${activeLoans.size} active • ${settledLoans.size} settled",
+                        Text("${interestLoans.size} interest • ${handLoans.size} hand loans • ${settledLoans.size} settled",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
@@ -202,6 +263,29 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
                         Text("Active Loans", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
                             modifier = Modifier.padding(top = 4.dp))
                     }
+
+            item {
+                TabRow(selectedTabIndex = selectedTab, modifier = Modifier.fillMaxWidth(),
+                    containerColor = MaterialTheme.colorScheme.surface) {
+                    Tab(selected = selectedTab == 0, onClick = { selectedTab = 0 }) {
+                        Column(Modifier.padding(vertical = 10.dp),
+                            horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally) {
+                            Text("Interest Loans", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold))
+                            Text("${interestLoans.size}", style = MaterialTheme.typography.labelSmall,
+                                color = if (selectedTab == 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                    Tab(selected = selectedTab == 1, onClick = { selectedTab = 1 }) {
+                        Column(Modifier.padding(vertical = 10.dp),
+                            horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally) {
+                            Text("Hand Loans", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold))
+                            Text("${handLoans.size}", style = MaterialTheme.typography.labelSmall,
+                                color = if (selectedTab == 1) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                }
+            }
+
                     items(activeLoans) { borrower ->
                         LendingCard(
                             borrower  = borrower,
@@ -211,7 +295,9 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
                             onDelete  = { viewModel.deleteBorrower(borrower) },
                             onEdit    = { editingBorrower = borrower },
                             onCollect = { collectingForBorrower = borrower },
-                            onClick   = { onNavigateToDetail(borrower.id) }
+                            onClick   = { onNavigateToDetail(borrower.id) },
+                            onDefault = { if (borrower.status != "Defaulted") defaultingBorrower = borrower },
+                            onWriteOff = { writeOffBorrower = borrower }
                         )
                     }
                 }
@@ -259,7 +345,7 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
     }
 }
 @Composable
-fun LendingCard(borrower: Borrower, people: List<app.fynlo.data.model.Person> = emptyList(), currencySymbol: String = "₹", isOverdue: Boolean = false, onDelete: () -> Unit, onEdit: () -> Unit, onCollect: () -> Unit, onClick: () -> Unit) {
+fun LendingCard(borrower: Borrower, people: List<app.fynlo.data.model.Person> = emptyList(), currencySymbol: String = "₹", isOverdue: Boolean = false, onDelete: () -> Unit, onEdit: () -> Unit, onCollect: () -> Unit, onClick: () -> Unit, onDefault: () -> Unit = {}, onWriteOff: () -> Unit = {}) {
     // Pulsing animation for overdue
     val infiniteTransition = rememberInfiniteTransition(label = "pulse")
     val pulseAlpha by infiniteTransition.animateFloat(
@@ -469,6 +555,20 @@ fun LendingCard(borrower: Borrower, people: List<app.fynlo.data.model.Person> = 
                     }
                     IconButton(onClick = onDelete) {
                         Icon(Icons.Default.Delete, "Delete", Modifier.size(20.dp), tint = Color.Red.copy(alpha = 0.6f))
+                    }
+                    // Defaulted badge or default button
+                    if (borrower.status == "Defaulted") {
+                        Surface(shape = androidx.compose.foundation.shape.RoundedCornerShape(6.dp),
+                            color = SemanticAmber.copy(alpha = 0.15f)) {
+                            Text("NPA", Modifier.padding(horizontal = 6.dp, vertical = 3.dp),
+                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                color = SemanticAmber)
+                        }
+                    } else {
+                        IconButton(onClick = onDefault, modifier = Modifier.size(32.dp)) {
+                            Icon(Icons.Default.Warning, "Mark Defaulted", Modifier.size(16.dp),
+                                tint = SemanticAmber.copy(alpha = 0.7f))
+                        }
                     }
                     Button(onClick = onCollect, contentPadding = PaddingValues(horizontal = 12.dp),
                         modifier = Modifier.height(28.dp)) {
