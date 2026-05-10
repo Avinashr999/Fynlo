@@ -291,68 +291,72 @@ fun SettingsScreen(
         var biometricEnabled by remember { mutableStateOf(pinManager.isBiometricEnabled) }
 
         if (bioHardwareAvailable) {
-            Card(Modifier.fillMaxWidth(), RoundedCornerShape(16.dp)) {
-                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    // Status row
-                    Row(
-                        Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        Icon(Icons.Default.Fingerprint, null, Modifier.size(24.dp),
-                            tint = if (biometricEnabled) MaterialTheme.colorScheme.primary
-                                   else MaterialTheme.colorScheme.onSurfaceVariant)
-                        Column(Modifier.weight(1f)) {
-                            Text("Biometric Unlock",
-                                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold))
-                            Text(
-                                if (biometricEnabled) "Active — fingerprint/face will unlock the app"
-                                else if (!pinSet) "Set a PIN first, then enable biometric"
-                                else "Tap the button below to enable",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+            // Use clickable Row + visual-only Switch — avoids LazyColumn touch interception on OPPO
+            val onToggleBiometric = {
+                when {
+                    !pinSet -> { showPinSetup = true }
+                    bioStatus == androidx.biometric.BiometricManager.BIOMETRIC_ERROR_NONE_ENROLLED -> {
+                        val intent = android.content.Intent(android.provider.Settings.ACTION_BIOMETRIC_ENROLL).apply {
+                            putExtra(android.provider.Settings.EXTRA_BIOMETRIC_AUTHENTICATORS_ALLOWED,
+                                androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_STRONG or
+                                androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_WEAK)
+                        }
+                        try { context.startActivity(intent) } catch (e: Exception) {
+                            context.startActivity(android.content.Intent(android.provider.Settings.ACTION_SECURITY_SETTINGS))
                         }
                     }
-                    // Action button — full width, easy to tap
-                    Button(
-                        onClick = {
-                            android.util.Log.d("FynloBio", "Button tapped: biometricEnabled=$biometricEnabled pinSet=$pinSet bioStatus=$bioStatus")
-                            when {
-                                !pinSet -> { showPinSetup = true }
-                                bioStatus == androidx.biometric.BiometricManager.BIOMETRIC_ERROR_NONE_ENROLLED -> {
-                                    val intent = android.content.Intent(android.provider.Settings.ACTION_BIOMETRIC_ENROLL).apply {
-                                        putExtra(android.provider.Settings.EXTRA_BIOMETRIC_AUTHENTICATORS_ALLOWED,
-                                            androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_STRONG or
-                                            androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_WEAK)
-                                    }
-                                    try { context.startActivity(intent) } catch (e: Exception) {
-                                        context.startActivity(android.content.Intent(android.provider.Settings.ACTION_SECURITY_SETTINGS))
-                                    }
-                                }
-                                biometricEnabled -> {
-                                    pinManager.isBiometricEnabled = false
-                                    biometricEnabled = false
-                                }
-                                else -> {
-                                    pinManager.isBiometricEnabled = true
-                                    biometricEnabled = true
-                                }
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(10.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = if (biometricEnabled) Red.copy(alpha = 0.12f)
-                                             else MaterialTheme.colorScheme.primary,
-                            contentColor   = if (biometricEnabled) Red
-                                             else MaterialTheme.colorScheme.onPrimary
-                        )
-                    ) {
-                        Icon(Icons.Default.Fingerprint, null, Modifier.size(18.dp))
-                        Spacer(Modifier.width(8.dp))
-                        Text(if (biometricEnabled) "Disable Biometric Unlock" else "Enable Biometric Unlock")
+                    else -> {
+                        val newVal = !biometricEnabled
+                        pinManager.isBiometricEnabled = newVal
+                        biometricEnabled = newVal
                     }
+                }
+            }
+            Card(Modifier.fillMaxWidth(), RoundedCornerShape(16.dp)) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onToggleBiometric() }
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
+                    Box(
+                        Modifier.size(40.dp).clip(CircleShape).background(
+                            if (biometricEnabled) MaterialTheme.colorScheme.primaryContainer
+                            else MaterialTheme.colorScheme.surfaceVariant
+                        ), Alignment.Center
+                    ) {
+                        Icon(Icons.Default.Fingerprint, null, Modifier.size(20.dp),
+                            tint = if (biometricEnabled) MaterialTheme.colorScheme.primary
+                                   else MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    Column(Modifier.weight(1f)) {
+                        Text("Biometric Unlock",
+                            style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold))
+                        Text(
+                            when {
+                                !pinSet -> "Set a PIN first to enable biometric"
+                                bioStatus == androidx.biometric.BiometricManager.BIOMETRIC_ERROR_NONE_ENROLLED ->
+                                    "No biometrics enrolled — tap to set up"
+                                biometricEnabled -> "Fingerprint / face unlock active"
+                                else -> "Tap to enable fingerprint / face unlock"
+                            },
+                            style = MaterialTheme.typography.bodySmall,
+                            color = if (!pinSet) MaterialTheme.colorScheme.error.copy(alpha = 0.7f)
+                                    else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    // Visual-only Switch — touch handled by outer clickable Row
+                    Switch(
+                        checked = biometricEnabled,
+                        onCheckedChange = null,
+                        enabled = bioHardwareAvailable && pinSet,
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = MaterialTheme.colorScheme.primary,
+                            checkedTrackColor = MaterialTheme.colorScheme.primaryContainer
+                        )
+                    )
                 }
             }
         }
