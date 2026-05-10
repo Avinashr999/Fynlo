@@ -509,6 +509,10 @@ class FinanceViewModel(private val repository: FinanceRepository) : ViewModel() 
         }
     }
 
+    fun recalculateAllBalances() {
+        viewModelScope.launch { repository.recalculateAllBalances() }
+    }
+
     fun addGoal(goal: Goal) {
         viewModelScope.launch {
             repository.insertGoal(goal.copy(projectId = pid))

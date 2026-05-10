@@ -103,6 +103,12 @@ interface FynloDao {
     @Query("SELECT * FROM transactions ORDER BY date DESC")
     fun getAllTransactions(): Flow<List<Transaction>>
 
+    @Query("SELECT * FROM transactions")
+    suspend fun getAllTransactionsList(): List<Transaction>
+
+    @Query("SELECT * FROM accounts")
+    suspend fun getAllAccountsList(): List<Account>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertTransaction(transaction: Transaction)
 

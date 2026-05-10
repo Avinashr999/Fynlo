@@ -232,7 +232,7 @@ fun TransactionHistoryScreen(viewModel: FinanceViewModel) {
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.padding(start = 4.dp, top = 4.dp, bottom = 2.dp))
                         }
-                        items(byDate[date] ?: emptyList()) { transaction ->
+                        items(byDate[date] ?: emptyList(), key = { it.id }) { transaction ->
                             TransactionItem(
                                 txn         = transaction,
                                 isSelected  = transaction.id in selectedIds,

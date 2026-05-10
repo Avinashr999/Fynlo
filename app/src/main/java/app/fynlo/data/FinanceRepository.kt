@@ -239,7 +239,42 @@ class FinanceRepository(
         linkedTxns.map { it.fromAcct }.filter { it.isNotBlank() }.distinct().forEach { syncAccountByName(it) }
         linkedTxns.map { it.toAcct   }.filter { it.isNotBlank() }.distinct().forEach { syncAccountByName(it) }
     }
-    /** Directly set account balance (for corrections). Creates a balancing transaction. */
+    /**
+     * Recalculates all account balances from scratch by summing every transaction.
+     * Fixes balances that got out of sync due to failed/partial deletes.
+     */
+    suspend fun recalculateAllBalances() {
+        val accounts     = dao.getAllAccountsList()
+        val transactions = dao.getAllTransactionsList()
+
+        // Build derived balance per account from all transactions
+        val derived = mutableMapOf<String, Double>()
+        accounts.forEach { derived[it.name] = 0.0 }
+
+        transactions.forEach { txn ->
+            when (txn.type.lowercase()) {
+                "expense"  -> derived[txn.fromAcct] = (derived[txn.fromAcct] ?: 0.0) - txn.amount
+                "income"   -> derived[txn.toAcct]   = (derived[txn.toAcct]   ?: 0.0) + txn.amount
+                "transfer" -> {
+                    derived[txn.fromAcct] = (derived[txn.fromAcct] ?: 0.0) - txn.amount
+                    derived[txn.toAcct]   = (derived[txn.toAcct]   ?: 0.0) + txn.amount
+                }
+            }
+        }
+
+        // Write corrected balances back
+        db.withTransaction {
+            accounts.forEach { acct ->
+                val correct = derived[acct.name] ?: acct.balance
+                if (Math.abs(correct - acct.balance) > 0.01) {
+                    dao.insertAccount(acct.copy(balance = correct))
+                }
+            }
+        }
+        accounts.forEach { syncAccountByName(it.name) }
+    }
+
+        /** Directly set account balance (for corrections). Creates a balancing transaction. */
     suspend fun quickEditBalance(accountName: String, newBalance: Double, oldBalance: Double) {
         db.withTransaction {
             val diff = newBalance - oldBalance

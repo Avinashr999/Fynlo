@@ -201,6 +201,18 @@ fun SettingsScreen(
                     title = "Restore from JSON",
                     subtitle = "Import a previously exported backup"
                 ) { importLauncher.launch("application/json") }
+
+                SettingsDivider()
+
+                SettingsActionRow(
+                    icon     = Icons.Default.Calculate,
+                    color    = Amber,
+                    title    = "Recalculate Balances",
+                    subtitle = "Fixes account balances that got out of sync. Run this if Cash in Hand or any account shows a wrong amount."
+                ) {
+                    viewModel.recalculateAllBalances()
+                    android.widget.Toast.makeText(context, "Balances recalculated from transactions ✓", android.widget.Toast.LENGTH_LONG).show()
+                }
             }
         }
 
