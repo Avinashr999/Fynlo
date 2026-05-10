@@ -86,11 +86,16 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
         }
         list
     }
-    val interestLoans = processed.filter { it.rate > 0  && it.status != "Settled" && it.paidPrincipal < it.amount }
-    val handLoans     = processed.filter { it.rate <= 0 && it.status != "Settled" && it.paidPrincipal < it.amount }
+    // Active = not settled, not written off, still has outstanding balance
+    // Use `paid` (not paidPrincipal) for backward compat with pre-v10 records
+    val isActive: (app.fynlo.data.model.Borrower) -> Boolean = { b ->
+        b.status !in listOf("Settled", "WrittenOff") && b.paid < b.amount
+    }
+    val interestLoans  = processed.filter { it.rate > 0  && isActive(it) }
+    val handLoans      = processed.filter { it.rate <= 0 && isActive(it) }
     val defaultedLoans = processed.filter { it.status == "Defaulted" }
-    val settledLoans  = processed.filter { it.status == "Settled" || (it.status != "Defaulted" && it.paidPrincipal >= it.amount) }
-    val activeLoans   = if (selectedTab == 0) interestLoans else handLoans
+    val settledLoans   = processed.filter { !isActive(it) && it.status != "Defaulted" }
+    val activeLoans    = if (selectedTab == 0) interestLoans else handLoans
 
     if (showEmiCalc) { EmiCalculatorDialog(onDismiss = { showEmiCalc = false }) }
     if (showAddDialog || editingBorrower != null) {

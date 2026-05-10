@@ -244,6 +244,9 @@ class FinanceRepository(
      * Fixes balances that got out of sync due to failed/partial deletes.
      */
     suspend fun recalculateAllBalances() {
+        // Fix paid = paidPrincipal + paidInterest for any double-counted records
+        dao.recalculateBorrowerPaid()
+        dao.recalculateDebtPaid()
         val accounts     = dao.getAllAccountsList()
         val transactions = dao.getAllTransactionsList()
 

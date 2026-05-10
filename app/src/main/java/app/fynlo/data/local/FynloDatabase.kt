@@ -25,7 +25,7 @@ import app.fynlo.data.model.FlowTemplate
         NetWorthSnapshot::class,
         InvestmentValuation::class
     ],
-    version = 10,
+    version = 11,
     exportSchema = false
 )
 abstract class FynloDatabase : RoomDatabase() {
@@ -82,6 +82,18 @@ val MIGRATION_9_10 = object : Migration(9, 10) {
         // This preserves old behaviour: existing paid amount treated as all-principal
         db.execSQL("UPDATE `borrowers` SET `paidPrincipal` = `paid`")
         db.execSQL("UPDATE `debts`     SET `paidPrincipal` = `paid`")
+    }
+}
+
+val MIGRATION_10_11 = object : Migration(10, 11) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        // Fix double-counted paid field caused by a bug where both
+        // updateBorrowerPaidPrincipal AND updateBorrowerPaidAmount were called.
+        // Recompute paid = paidPrincipal + paidInterest for all borrowers and debts.
+        // Safe: migration 9→10 already seeded paidPrincipal = paid for old records,
+        // so this formula is always correct.
+        db.execSQL("UPDATE `borrowers` SET `paid` = `paidPrincipal` + `paidInterest`")
+        db.execSQL("UPDATE `debts`     SET `paid` = `paidPrincipal` + `paidInterest`")
     }
 }
 

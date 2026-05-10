@@ -38,6 +38,12 @@ interface FynloDao {
     @Query("UPDATE borrowers SET paidInterest = paidInterest + :amount, paid = paid + :amount WHERE id = :borrowerId")
     suspend fun updateBorrowerPaidInterest(borrowerId: String, amount: Double)
 
+    @Query("UPDATE borrowers SET paid = paidPrincipal + paidInterest")
+    suspend fun recalculateBorrowerPaid()
+
+    @Query("UPDATE debts SET paid = paidPrincipal + paidInterest")
+    suspend fun recalculateDebtPaid()
+
     @Query("UPDATE borrowers SET status = :status, defaultDate = :defaultDate, frozenInterest = :frozenInterest WHERE id = :id")
     suspend fun updateBorrowerDefaultStatus(id: String, status: String, defaultDate: String, frozenInterest: Double)
 
