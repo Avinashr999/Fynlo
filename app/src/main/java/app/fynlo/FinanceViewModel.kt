@@ -32,6 +32,9 @@ class FinanceViewModel(private val repository: FinanceRepository) : ViewModel() 
     val isSyncReady: StateFlow<Boolean> = _isSyncReady.asStateFlow()
 
     init {
+        // Auto-fix: recalculate paid = paidPrincipal + paidInterest on every startup
+        // This corrects any double-counted records from the pre-fix payment engine
+        viewModelScope.launch { repository.fixPaidDoubleCount() }
         viewModelScope.launch {
             projects.collect { list ->
                 if (_currentProjectId.value.isEmpty() && list.isNotEmpty()) {

@@ -243,6 +243,12 @@ class FinanceRepository(
      * Recalculates all account balances from scratch by summing every transaction.
      * Fixes balances that got out of sync due to failed/partial deletes.
      */
+    // ─── Fix double-counted paid field (safe to run on every startup) ────────
+    suspend fun fixPaidDoubleCount() {
+        dao.recalculateBorrowerPaid()   // SET paid = paidPrincipal + paidInterest
+        dao.recalculateDebtPaid()
+    }
+
     suspend fun recalculateAllBalances() {
         // Fix paid = paidPrincipal + paidInterest for any double-counted records
         dao.recalculateBorrowerPaid()
