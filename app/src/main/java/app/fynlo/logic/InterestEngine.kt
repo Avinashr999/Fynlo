@@ -33,69 +33,68 @@ object InterestEngine {
         if (rate == 0.0 || amount == 0.0 || loanDate.isEmpty()) return 0.0
         val totalDays = daysBetween(loanDate, asOf)
         if (totalDays <= 0) return 0.0
-        
-        // Effective principal for interest calculation
-        val effectivePrincipal = (amount - totalPaid).coerceAtLeast(0.0)
-        if (effectivePrincipal <= 0.0) return 0.0
 
         val rAnnual = rate / 100.0
 
-        val isOverdue = dueDate.isNotEmpty() && daysBetween(dueDate, asOf) > 0
+        // For Reducing Balance (EMI), payments reduce the outstanding principal.
+        // For all other types (SI, CI, Both), interest is on the original amount —
+        // payments go toward interest first, then principal. Using (amount - totalPaid)
+        // for SI would undercount interest when borrowers pay interest installments.
+        val principalForInterest = if (intType == "Reducing Balance")
+            (amount - totalPaid).coerceAtLeast(0.0)
+        else
+            amount
 
-        return when {
-            // Reducing Balance — EMI method, always reducing regardless of overdue
-            intType == "Reducing Balance" -> {
+        if (principalForInterest <= 0.0) return 0.0
+
+        return when (intType) {
+            // Reducing Balance — EMI method on remaining principal
+            "Reducing Balance" -> {
                 val rMonthly = rAnnual / 12.0
                 val months   = totalDays / 30
                 if (rMonthly == 0.0 || months == 0L) 0.0
                 else {
                     val n = months.toDouble()
-                    val totalPayable = effectivePrincipal * rMonthly * Math.pow(1 + rMonthly, n) / (Math.pow(1 + rMonthly, n) - 1) * n
-                    Math.round(totalPayable - effectivePrincipal).toDouble()
+                    val totalPayable = principalForInterest * rMonthly * Math.pow(1 + rMonthly, n) /
+                        (Math.pow(1 + rMonthly, n) - 1) * n
+                    Math.round(totalPayable - principalForInterest).toDouble()
                 }
             }
-            // Compound Interest — always compound regardless of overdue
-            intType == "Compound Interest" -> {
-                val fullYears = totalDays / 365
-                val remainingDays = totalDays % 365
-                var currentTotal = effectivePrincipal
+            // Compound Interest on original principal
+            "Compound Interest" -> {
+                val fullYears      = totalDays / 365
+                val remainingDays  = totalDays % 365
+                var currentTotal   = principalForInterest
                 repeat(fullYears.toInt()) { currentTotal += (currentTotal * rAnnual) }
                 val siForPartialYear = (currentTotal * rAnnual * remainingDays.toDouble()) / 365.0
-                Math.round(currentTotal + siForPartialYear - effectivePrincipal).toDouble()
+                Math.round(currentTotal + siForPartialYear - principalForInterest).toDouble()
             }
             // Both — SI from loan date to due date, then CI from due date onwards
-            intType == "Both" -> {
+            "Both" -> {
                 if (dueDate.isEmpty()) {
-                    // No due date set — treat as simple interest
                     val tYears = totalDays.toDouble() / 365.0
-                    Math.round(effectivePrincipal * rAnnual * tYears).toDouble()
+                    Math.round(principalForInterest * rAnnual * tYears).toDouble()
                 } else {
                     val daysTodue   = daysBetween(loanDate, dueDate).coerceAtLeast(0)
                     val daysOverdue = daysBetween(dueDate, asOf).coerceAtLeast(0)
-
-                    // Phase 1: SI from loan date to due date
-                    val siInterest = effectivePrincipal * rAnnual * (daysTodue.toDouble() / 365.0)
-
+                    val siInterest  = principalForInterest * rAnnual * (daysTodue.toDouble() / 365.0)
                     if (daysOverdue <= 0) {
-                        // Not yet overdue — only SI so far
                         Math.round(siInterest).toDouble()
                     } else {
-                        // Phase 2: CI from due date onwards on (principal + SI accrued)
-                        val baseForCI  = effectivePrincipal + siInterest
-                        val fullYears  = daysOverdue / 365
-                        val remDays    = daysOverdue % 365
-                        var ciTotal    = baseForCI
+                        val baseForCI = principalForInterest + siInterest
+                        val fullYears = daysOverdue / 365
+                        val remDays   = daysOverdue % 365
+                        var ciTotal   = baseForCI
                         repeat(fullYears.toInt()) { ciTotal += ciTotal * rAnnual }
                         ciTotal += ciTotal * rAnnual * (remDays.toDouble() / 365.0)
-                        // Total interest = SI portion + CI portion
                         Math.round(siInterest + (ciTotal - baseForCI)).toDouble()
                     }
                 }
             }
-            // Simple Interest (default) — always flat SI, even when overdue
+            // Simple Interest — always on original amount (payments → interest first)
             else -> {
                 val tYears = totalDays.toDouble() / 365.0
-                Math.round(effectivePrincipal * rAnnual * tYears).toDouble()
+                Math.round(principalForInterest * rAnnual * tYears).toDouble()
             }
         }
     }
@@ -120,14 +119,14 @@ object InterestEngine {
         totalPaid: Double = 0.0,
         asOf: String = java.time.LocalDate.now().format(formatter)
     ): Pair<Double, Double> {
-        val effectivePrincipal = (amount - totalPaid).coerceAtLeast(0.0)
-        if (effectivePrincipal <= 0.0 || dueDate.isEmpty()) return Pair(0.0, 0.0)
+        if (amount <= 0.0 || dueDate.isEmpty()) return Pair(0.0, 0.0)
         val rAnnual     = rate / 100.0
         val daysTodue   = daysBetween(loanDate, dueDate).coerceAtLeast(0)
         val daysOverdue = daysBetween(dueDate, asOf).coerceAtLeast(0)
-        val siPortion   = effectivePrincipal * rAnnual * (daysTodue.toDouble() / 365.0)
+        // Use original amount — payments go toward interest first in Both type
+        val siPortion   = amount * rAnnual * (daysTodue.toDouble() / 365.0)
         if (daysOverdue <= 0) return Pair(Math.round(siPortion).toDouble(), 0.0)
-        val baseForCI = effectivePrincipal + siPortion
+        val baseForCI = amount + siPortion
         val fullYears = daysOverdue / 365
         val remDays   = daysOverdue % 365
         var ciTotal   = baseForCI
