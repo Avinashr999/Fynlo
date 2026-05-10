@@ -330,6 +330,7 @@ fun SettingsScreen(
                     Switch(
                         checked  = biometricEnabled,
                         onCheckedChange = { enabled ->
+                            android.util.Log.d("FynloBio", "Toggle: enabled=$enabled pinSet=$pinSet bioStatus=$bioStatus")
                             when {
                                 !pinSet -> { showPinSetup = true }  // guide to set PIN first
                                 bioStatus == androidx.biometric.BiometricManager.BIOMETRIC_ERROR_NONE_ENROLLED -> {

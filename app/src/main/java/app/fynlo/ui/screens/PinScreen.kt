@@ -35,12 +35,16 @@ enum class PinMode { ENTER, SET, CONFIRM }
  *  Checking STRONG causes BIOMETRIC_ERROR_NONE_ENROLLED on these devices. */
 fun biometricStatus(context: android.content.Context): Int {
     val mgr = BiometricManager.from(context)
-    // Try WEAK first (covers optical fingerprint, face on most devices)
-    val weak = mgr.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_WEAK)
+    val weak   = mgr.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_WEAK)
+    val strong = mgr.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG)
+    val both   = mgr.canAuthenticate(
+        BiometricManager.Authenticators.BIOMETRIC_STRONG or
+        BiometricManager.Authenticators.BIOMETRIC_WEAK)
+    android.util.Log.d("FynloBio", "canAuth WEAK=$weak STRONG=$strong BOTH=$both")
+    // BIOMETRIC_SUCCESS=0, NONE_ENROLLED=11, NO_HARDWARE=12, HW_UNAVAILABLE=1
     if (weak == BiometricManager.BIOMETRIC_SUCCESS ||
         weak == BiometricManager.BIOMETRIC_ERROR_NONE_ENROLLED) return weak
-    // Fall back to STRONG (covers secure fingerprint / iris on some OEMs)
-    return mgr.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG)
+    return strong
 }
 
 @Composable
