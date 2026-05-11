@@ -277,56 +277,16 @@ class FinanceRepository(
     }
 
     suspend fun recalculateAllBalances() {
-        // Fix paid = paidPrincipal + paidInterest for any double-counted records
+        // Fix borrower and debt paid fields only.
+        // Account balances are NOT recomputed from transactions because:
+        // 1. Opening balances have no corresponding transaction record
+        // 2. Starting from current balance + replaying transactions = double-counting
+        // Account balances are always kept correct in real-time by individual operations.
         dao.recalculateBorrowerPaid()
         dao.recalculateDebtPaid()
-        val accounts     = dao.getAllAccountsList()
-        val transactions = dao.getAllTransactionsList()
-
-        // Opening balances — find Balance Correction or opening transactions, fall back to 0
-        // We look for the earliest "Balance Correction" or "Opening Balance" transaction per account
-        val openingBalance = mutableMapOf<String, Double>()
-        accounts.forEach { acct ->
-            // Opening balance = any transaction tagged as opening/correction before others
-            val openingTxn = transactions
-                .filter { (it.fromAcct == acct.name || it.toAcct == acct.name) &&
-                    (it.category in listOf("Opening Balance", "Balance Correction", "Initial Balance")) }
-                .maxByOrNull { 0 }  // take any; user should have only one
-            // If no opening transaction found, we cannot safely recalculate from transactions alone
-            // because the initial account balance has no transaction.
-            // So keep the current balance as the base and only adjust by transaction drift.
-            openingBalance[acct.name] = openingTxn?.let {
-                if (it.toAcct == acct.name) it.amount else -it.amount
-            } ?: acct.balance  // ← use current balance as base if no opening txn
-        }
-
-        // Build derived balance: start from opening balance, apply all NON-opening transactions
-        val derived = mutableMapOf<String, Double>()
-        accounts.forEach { derived[it.name] = openingBalance[it.name] ?: 0.0 }
-
-        transactions
-            .filter { it.category !in listOf("Opening Balance", "Balance Correction", "Initial Balance") }
-            .forEach { txn ->
-                when (txn.type.lowercase()) {
-                    "expense"  -> derived[txn.fromAcct] = (derived[txn.fromAcct] ?: 0.0) - txn.amount
-                    "income"   -> derived[txn.toAcct]   = (derived[txn.toAcct]   ?: 0.0) + txn.amount
-                    "transfer" -> {
-                        derived[txn.fromAcct] = (derived[txn.fromAcct] ?: 0.0) - txn.amount
-                        derived[txn.toAcct]   = (derived[txn.toAcct]   ?: 0.0) + txn.amount
-                    }
-                }
-            }
-
-        // Write corrected balances back
-        db.withTransaction {
-            accounts.forEach { acct ->
-                val correct = derived[acct.name] ?: acct.balance
-                if (Math.abs(correct - acct.balance) > 0.01) {
-                    dao.insertAccount(acct.copy(balance = correct))
-                }
-            }
-        }
-        accounts.forEach { syncAccountByName(it.name) }
+        dao.backfillBorrowerSourceAccount()
+        dao.rebuildBorrowerPaidFromPayments()
+        dao.rebuildDebtPaidFromDebtPayments()
     }
 
         /** Directly set account balance (for corrections). Creates a balancing transaction. */
