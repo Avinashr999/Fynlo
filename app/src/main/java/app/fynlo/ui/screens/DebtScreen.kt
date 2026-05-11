@@ -81,6 +81,7 @@ val debts by viewModel.debts.collectAsState()
         )
     }
 
+    Box(modifier = Modifier.fillMaxSize()) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -307,6 +308,24 @@ fun DebtCard(debt: Debt, currencySymbol: String = "₹", onEdit: () -> Unit, onD
         }
     }
 }
+
+    } // end Column
+
+    // Floating Add button — always visible
+    androidx.compose.material3.FloatingActionButton(
+        onClick = { showAddDialog = true },
+        modifier = androidx.compose.ui.Modifier
+            .align(androidx.compose.ui.Alignment.BottomEnd)
+            .padding(24.dp),
+        containerColor = app.fynlo.ui.theme.Emerald500,
+        contentColor   = androidx.compose.ui.graphics.Color.White
+    ) {
+        androidx.compose.material3.Icon(
+            androidx.compose.material.icons.Icons.Default.Add,
+            contentDescription = "Add Debt"
+        )
+    }
+    } // end Box
 
 @Composable
 fun EmptyDebtState(onAdd: () -> Unit = {}) {
