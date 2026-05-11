@@ -81,16 +81,24 @@ val debts by viewModel.debts.collectAsState()
         )
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
     Column(
         modifier = Modifier
             .fillMaxSize()
             .statusBarsPadding()
             .padding(horizontal = 16.dp)
     ) {
-        Text("My Debts",
-            style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold),
-            modifier = Modifier.padding(vertical = 16.dp))
+        Row(Modifier.fillMaxWidth().padding(vertical = 16.dp), Arrangement.SpaceBetween, Alignment.CenterVertically) {
+            Text("My Debts", style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold))
+            FilledTonalButton(
+                onClick = { showAddDialog = true },
+                shape = RoundedCornerShape(12.dp),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+            ) {
+                Icon(Icons.Default.Add, null, Modifier.size(16.dp))
+                Spacer(Modifier.width(4.dp))
+                Text("Add Debt", style = MaterialTheme.typography.labelMedium)
+            }
+        }
 
         // ── Total debt summary card ─────────────────────────────────────────
         if (debts.isNotEmpty()) {
@@ -309,23 +317,7 @@ fun DebtCard(debt: Debt, currencySymbol: String = "₹", onEdit: () -> Unit, onD
     }
 }
 
-    } // end Column
 
-    // Floating Add button — always visible
-    androidx.compose.material3.FloatingActionButton(
-        onClick = { showAddDialog = true },
-        modifier = androidx.compose.ui.Modifier
-            .align(androidx.compose.ui.Alignment.BottomEnd)
-            .padding(24.dp),
-        containerColor = app.fynlo.ui.theme.Emerald500,
-        contentColor   = androidx.compose.ui.graphics.Color.White
-    ) {
-        androidx.compose.material3.Icon(
-            androidx.compose.material.icons.Icons.Default.Add,
-            contentDescription = "Add Debt"
-        )
-    }
-    } // end Box
 
 @Composable
 fun EmptyDebtState(onAdd: () -> Unit = {}) {
