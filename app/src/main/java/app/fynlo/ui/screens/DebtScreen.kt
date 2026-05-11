@@ -10,6 +10,7 @@ import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Payment
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material3.*
@@ -222,23 +223,18 @@ fun DebtCard(debt: Debt, currencySymbol: String = "₹", onEdit: () -> Unit, onD
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
                     )
                 }
-                Row {
-                    IconButton(onClick = onEdit) {
-                        Icon(Icons.Default.Edit, contentDescription = "Edit", modifier = Modifier.size(20.dp), tint = Color.Gray)
-                    }
-                    IconButton(onClick = onDelete) {
-                        Icon(Icons.Default.Delete, contentDescription = "Delete", modifier = Modifier.size(20.dp), tint = Color.Red.copy(alpha = 0.6f))
-                    }
-                    Button(
-                        onClick = onPay,
-                        contentPadding = PaddingValues(horizontal = 8.dp),
-                        modifier = Modifier.height(28.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = SemanticRed)
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Badge(
+                        containerColor = if (debt.status == "Active") Emerald500.copy(alpha = 0.12f) else SemanticRed.copy(alpha = 0.1f),
+                        contentColor   = if (debt.status == "Active") Emerald500 else SemanticRed
                     ) {
-                        Text("Pay", style = MaterialTheme.typography.labelSmall)
+                        Text(debt.status, style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium))
                     }
-                    Badge(containerColor = Color(0xFFFFEBEE), contentColor = SemanticRed) {
-                        Text(debt.status, style = MaterialTheme.typography.labelSmall)
+                    IconButton(onClick = onEdit, Modifier.size(32.dp)) {
+                        Icon(Icons.Default.Edit, "Edit", Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    IconButton(onClick = onDelete, Modifier.size(32.dp)) {
+                        Icon(Icons.Default.Delete, "Delete", Modifier.size(16.dp), tint = SemanticRed.copy(alpha = 0.7f))
                     }
                 }
             }
@@ -300,12 +296,23 @@ fun DebtCard(debt: Debt, currencySymbol: String = "₹", onEdit: () -> Unit, onD
                 }
             }
 
+            // Pay button — full width at bottom
+            Spacer(Modifier.height(12.dp))
+            Button(
+                onClick = onPay,
+                modifier = Modifier.fillMaxWidth().height(40.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Emerald500),
+                shape = RoundedCornerShape(10.dp)
+            ) {
+                Icon(Icons.Default.Payment, null, Modifier.size(16.dp))
+                Spacer(Modifier.width(6.dp))
+                Text("Pay Instalment", style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold))
+            }
+
             if (debt.notes.isNotEmpty()) {
-                Spacer(Modifier.height(12.dp))
+                Spacer(Modifier.height(10.dp))
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 4.dp),
+                    modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(Icons.AutoMirrored.Filled.Notes, contentDescription = null, modifier = Modifier.size(14.dp), tint = Color.Gray)

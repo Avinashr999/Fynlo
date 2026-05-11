@@ -599,14 +599,14 @@ fun LendingCard(borrower: Borrower, people: List<app.fynlo.data.model.Person> = 
                             }, "Share Loan Summary"
                         ))
                     }) {
-                        Icon(Icons.Default.Sms, "SMS", Modifier.size(20.dp),
+                        Icon(Icons.Default.Sms, "SMS", Modifier.size(16.dp),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
-                    IconButton(onClick = onEdit) {
-                        Icon(Icons.Default.Edit, "Edit", Modifier.size(20.dp), tint = Color.Gray)
+                    IconButton(onClick = onEdit, Modifier.size(32.dp)) {
+                        Icon(Icons.Default.Edit, "Edit", Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
-                    IconButton(onClick = onDelete) {
-                        Icon(Icons.Default.Delete, "Delete", Modifier.size(20.dp), tint = Color.Red.copy(alpha = 0.6f))
+                    IconButton(onClick = onDelete, Modifier.size(32.dp)) {
+                        Icon(Icons.Default.Delete, "Delete", Modifier.size(16.dp), tint = SemanticRed.copy(alpha = 0.7f))
                     }
 
 
