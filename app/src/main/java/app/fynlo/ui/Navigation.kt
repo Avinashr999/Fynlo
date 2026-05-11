@@ -392,7 +392,6 @@ fun MainNavigation(viewModel: FinanceViewModel) {
         }  // close drawerContent
     ) {
         Scaffold(
-            contentWindowInsets = androidx.compose.foundation.layout.WindowInsets.safeContent,
             topBar = {
                 CenterAlignedTopAppBar(
                     title = { Text("Fynlo") },
@@ -416,9 +415,7 @@ fun MainNavigation(viewModel: FinanceViewModel) {
                 )
             },
             bottomBar = {
-                NavigationBar(
-                    windowInsets = androidx.compose.foundation.layout.WindowInsets(0)
-                ) {
+                NavigationBar {
                     bottomNavItems.forEach { screen ->
                         NavigationBarItem(
                             icon     = { Icon(screen.icon, contentDescription = screen.label) },
