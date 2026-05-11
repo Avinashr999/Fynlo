@@ -191,8 +191,8 @@ fun PremiumSettingsItem(
                 }
             }
             trailing?.invoke() ?: Icon(
-                androidx.compose.material.icons.Icons.AutoMirrored.Filled.ArrowForwardIos, null,
-                Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                androidx.compose.material.icons.Icons.Default.KeyboardArrowRight, null,
+                Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
             )
         }
     }
