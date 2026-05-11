@@ -116,6 +116,9 @@ fun InterestIncomeScreen(
         topBar = {
             TopAppBar(
                 title = { Text("Interest Income") },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                ),
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")

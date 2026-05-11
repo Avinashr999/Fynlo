@@ -99,10 +99,7 @@ fun PeopleScreen(viewModel: FinanceViewModel) {
             contentPadding = PaddingValues(top = 16.dp, bottom = 100.dp)
         ) {
             item {
-                Text(
-                    "Contact Book",
-                    style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold),
-                    modifier = Modifier.padding(bottom = 4.dp)
+                PremiumScreenHeader("Contact Book")
                 )
                 Text(
                     "Contacts link loans to people and enable WhatsApp / SMS reminders.",

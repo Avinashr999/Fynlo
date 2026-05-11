@@ -57,6 +57,9 @@ fun AccountStatementScreen(
         topBar = {
             TopAppBar(
                 title = { Text("$accountName") },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                ),
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")

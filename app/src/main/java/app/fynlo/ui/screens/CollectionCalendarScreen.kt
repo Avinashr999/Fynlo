@@ -1,3 +1,4 @@
+import app.fynlo.ui.theme.Emerald500
 package app.fynlo.ui.screens
 
 import androidx.compose.foundation.background
@@ -113,12 +114,21 @@ fun CollectionCalendarScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Collection Calendar") },
+                title = {
+                    Column {
+                        Text("Collection Calendar", fontWeight = androidx.compose.ui.text.font.FontWeight.ExtraBold)
+                        Text("Due dates & overdue loans", style = MaterialTheme.typography.labelSmall,
+                            color = Emerald500)
+                    }
+                },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
                     }
-                }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                )
             )
         }
     ) { padding ->

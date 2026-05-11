@@ -556,16 +556,18 @@ fun SettingsScreen(
 
 @Composable
 private fun SettingsSectionLabel(title: String) {
-    Text(
-        title.uppercase(),
-        style    = MaterialTheme.typography.labelSmall.copy(
-            fontWeight    = FontWeight.Bold,
-            letterSpacing = androidx.compose.ui.unit.TextUnit(1.2f,
-                androidx.compose.ui.unit.TextUnitType.Sp)
-        ),
-        color    = Green,
-        modifier = Modifier.padding(start = 4.dp, bottom = 6.dp)
-    )
+    Row(
+        Modifier.padding(start = 2.dp, bottom = 8.dp, top = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        Box(Modifier.size(4.dp).clip(CircleShape).background(Emerald500))
+        Text(
+            title,
+            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+            color = Emerald500
+        )
+    }
 }
 
 @Composable
@@ -573,9 +575,10 @@ private fun SettingsCard(content: @Composable ColumnScope.() -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape    = RoundedCornerShape(16.dp),
-        colors   = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+        colors   = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border   = androidx.compose.foundation.BorderStroke(0.5.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
     ) {
-        Column(Modifier.padding(16.dp), content = content)
+        Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp), content = content)
     }
 }
 
@@ -602,10 +605,10 @@ private fun SettingsActionRow(
         Alignment.CenterVertically
     ) {
         Box(
-            Modifier.size(36.dp).clip(RoundedCornerShape(10.dp)).background(color.copy(0.12f)),
+            Modifier.size(40.dp).clip(RoundedCornerShape(11.dp)).background(color.copy(0.1f)),
             Alignment.Center
         ) {
-            Icon(icon, null, Modifier.size(18.dp), tint = color)
+            Icon(icon, null, Modifier.size(20.dp), tint = color)
         }
         Column(Modifier.weight(1f)) {
             Text(title,

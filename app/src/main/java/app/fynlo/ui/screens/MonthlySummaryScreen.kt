@@ -163,10 +163,18 @@ fun MonthlySummaryScreen(viewModel: FinanceViewModel) {
 
 @Composable
 private fun SummaryChip(label: String, value: String, color: Color, modifier: Modifier) {
-    Card(modifier, RoundedCornerShape(12.dp), CardDefaults.cardColors(color.copy(alpha = 0.1f))) {
-        Column(Modifier.padding(10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
-            Text(value, style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold), color = color, textAlign = TextAlign.Center)
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(14.dp),
+        color = color.copy(alpha = 0.07f),
+        border = androidx.compose.foundation.BorderStroke(0.5.dp, color.copy(alpha = 0.2f))
+    ) {
+        Column(Modifier.padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(label, style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium),
+                color = color, textAlign = TextAlign.Center)
+            Spacer(Modifier.height(4.dp))
+            Text(value, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.ExtraBold),
+                color = MaterialTheme.colorScheme.onSurface, textAlign = TextAlign.Center)
         }
     }
 }

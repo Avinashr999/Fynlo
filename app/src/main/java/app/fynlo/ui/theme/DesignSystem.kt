@@ -1,4 +1,4 @@
-﻿package app.fynlo.ui.theme
+package app.fynlo.ui.theme
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -12,256 +12,204 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import java.util.Locale
 
-// ── Design Tokens ──────────────────────────────────────────────────────────────
+// ── Fynlo Premium Design System ───────────────────────────────────────────────
+// Deep Emerald + Carbon — inspired by premium fintech apps
+// All screens use these shared components for consistency
 
-object AppRadius {
-    val small   = RoundedCornerShape(8.dp)    // chips, badges, tags
-    val medium  = RoundedCornerShape(12.dp)   // buttons, input fields, small cards
-    val large   = RoundedCornerShape(16.dp)   // standard cards
-    val hero    = RoundedCornerShape(20.dp)   // hero/summary cards
-    val circle  = CircleShape
-}
-
-object AppColor {
-    val green = Emerald500
-    val greenLight   = Color(0xFF059669).copy(alpha = 0.1f)
-    val red = SemanticRed
-    val redLight     = Color(0xFFEF4444).copy(alpha = 0.1f)
-    val blue = SemanticBlue
-    val blueLight    = Color(0xFF3B82F6).copy(alpha = 0.1f)
-    val amber = SemanticAmber
-    val amberLight   = Color(0xFFF59E0B).copy(alpha = 0.1f)
-    val purple       = Color(0xFF6B7280)
-    val purpleLight  = Color(0xFF6B7280).copy(alpha = 0.1f)
-    val teal         = Color(0xFF06B6D4)
-}
-
-object AppSpacing {
-    val xs   = 4.dp
-    val sm   = 8.dp
-    val md   = 12.dp
-    val lg   = 16.dp
-    val xl   = 20.dp
-    val xxl  = 24.dp
-    val screenPad = 16.dp
-    val cardPad   = 16.dp
-}
-
-// ── Reusable Composables ───────────────────────────────────────────────────────
-
-/** Standard card used everywhere in the app */
+// ── Screen header — used at top of every screen ───────────────────────────────
 @Composable
-fun AppCard(
+fun PremiumScreenHeader(
+    title: String,
+    subtitle: String = "",
+    action: (@Composable () -> Unit)? = null,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier.fillMaxWidth().padding(top = 10.dp, bottom = 12.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column {
+            Text(
+                title,
+                style = MaterialTheme.typography.headlineMedium.copy(
+                    fontWeight = FontWeight.ExtraBold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            )
+            if (subtitle.isNotBlank()) {
+                Text(
+                    subtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Emerald500
+                )
+            }
+        }
+        action?.invoke()
+    }
+}
+
+// ── Section label — emerald accent with dot ───────────────────────────────────
+@Composable
+fun PremiumSectionLabel(
+    label: String,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier.padding(bottom = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Box(
+            Modifier.size(4.dp).clip(CircleShape).background(Emerald500)
+        )
+        Text(
+            label,
+            style = MaterialTheme.typography.labelLarge.copy(
+                fontWeight = FontWeight.SemiBold,
+                color = Emerald500
+            )
+        )
+        HorizontalDivider(
+            modifier = Modifier.weight(1f),
+            thickness = 0.5.dp,
+            color = Emerald500.copy(alpha = 0.2f)
+        )
+    }
+}
+
+// ── Premium stat card — metric display ────────────────────────────────────────
+@Composable
+fun PremiumStatCard(
+    label: String,
+    value: String,
+    icon: ImageVector? = null,
+    iconTint: Color = Emerald500,
+    valueColor: Color = MaterialTheme.colorScheme.onSurface,
     modifier: Modifier = Modifier,
-    color: Color = MaterialTheme.colorScheme.surface,
-    shape: RoundedCornerShape = AppRadius.large,
+    onClick: (() -> Unit)? = null
+) {
+    val cardMod = if (onClick != null) modifier.then(Modifier.padding(0.dp)) else modifier
+    Surface(
+        modifier = cardMod,
+        shape = RoundedCornerShape(14.dp),
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 0.5.dp,
+        shadowElevation = 0.dp,
+        border = androidx.compose.foundation.BorderStroke(
+            0.5.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)
+        ),
+        onClick = onClick ?: {}
+    ) {
+        Column(Modifier.padding(14.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                if (icon != null) {
+                    Icon(icon, null, Modifier.size(14.dp), tint = iconTint)
+                } else {
+                    Box(Modifier.size(6.dp).clip(CircleShape).background(iconTint))
+                }
+                Text(
+                    label,
+                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Spacer(Modifier.height(6.dp))
+            Text(
+                value,
+                style = MaterialTheme.typography.titleMedium.copy(
+                    fontWeight = FontWeight.Bold,
+                    color = valueColor
+                )
+            )
+        }
+    }
+}
+
+// ── Premium list card — wraps content in consistent card style ─────────────────
+@Composable
+fun PremiumCard(
+    modifier: Modifier = Modifier,
+    borderColor: Color = Color.Transparent,
     content: @Composable ColumnScope.() -> Unit
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
-        shape    = shape,
-        colors   = CardDefaults.cardColors(containerColor = color)
-    ) {
-        Column(
-            modifier = Modifier.padding(AppSpacing.cardPad),
-            content  = content
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        border = androidx.compose.foundation.BorderStroke(
+            0.5.dp,
+            if (borderColor != Color.Transparent) borderColor
+            else MaterialTheme.colorScheme.outline.copy(alpha = 0.12f)
         )
-    }
-}
-
-/** Colored metric/summary card */
-@Composable
-fun MetricCard(
-    label: String,
-    value: String,
-    accentColor: Color,
-    modifier: Modifier = Modifier,
-    onClick: (() -> Unit)? = null
-) {
-    val mod = if (onClick != null) modifier.fillMaxWidth()
-              else modifier.fillMaxWidth()
-    Card(
-        modifier = if (onClick != null) mod.then(Modifier) else mod,
-        shape    = AppRadius.large,
-        colors   = CardDefaults.cardColors(containerColor = accentColor.copy(alpha = 0.08f)),
-        onClick  = onClick ?: {}
     ) {
-        Column(Modifier.padding(AppSpacing.cardPad)) {
-            Text(label,
-                style = MaterialTheme.typography.labelSmall,
-                color = accentColor)
-            Spacer(Modifier.height(AppSpacing.xs))
-            Text(value,
-                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 1)
-        }
+        Column(Modifier.padding(16.dp), content = content)
     }
 }
 
-/** Hero summary card (net worth, totals) */
+// ── Settings item row — for settings screen ───────────────────────────────────
 @Composable
-fun HeroCard(
-    title: String,
-    value: String,
-    subtitle: String? = null,
-    accentColor: Color = AppColor.green,
-    modifier: Modifier = Modifier,
-    onClick: (() -> Unit)? = null
-) {
-    Card(
-        modifier = modifier.fillMaxWidth(),
-        shape    = AppRadius.hero,
-        colors   = CardDefaults.cardColors(containerColor = accentColor.copy(alpha = 0.08f)),
-        onClick  = onClick ?: {}
-    ) {
-        Column(Modifier.padding(AppSpacing.xl)) {
-            Text(title,
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Spacer(Modifier.height(AppSpacing.xs))
-            Text(value,
-                style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
-                color = accentColor)
-            if (subtitle != null) {
-                Spacer(Modifier.height(AppSpacing.xs))
-                Text(subtitle,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-        }
-    }
-}
-
-/** Consistent section header row */
-@Composable
-fun SectionHeader(
-    title: String,
-    modifier: Modifier = Modifier,
-    action: (@Composable () -> Unit)? = null
-) {
-    Row(
-        modifier              = modifier.fillMaxWidth().padding(vertical = AppSpacing.sm),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment     = Alignment.CenterVertically
-    ) {
-        Text(title,
-            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
-        action?.invoke()
-    }
-}
-
-/** Consistent empty state */
-@Composable
-fun AppEmptyState(
+fun PremiumSettingsItem(
     icon: ImageVector,
     title: String,
-    subtitle: String,
-    modifier: Modifier = Modifier,
-    action: (@Composable () -> Unit)? = null
-) {
-    Column(
-        modifier            = modifier.fillMaxWidth().padding(vertical = 48.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(AppSpacing.md)
-    ) {
-        Box(
-            Modifier.size(72.dp).clip(CircleShape)
-                .background(MaterialTheme.colorScheme.surfaceVariant),
-            Alignment.Center
-        ) {
-            Icon(icon, null, Modifier.size(36.dp),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-        Text(title,
-            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
-            color = MaterialTheme.colorScheme.onSurface)
-        Text(subtitle,
-            style     = MaterialTheme.typography.bodySmall,
-            color     = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center,
-            modifier  = Modifier.padding(horizontal = 32.dp))
-        action?.invoke()
-    }
-}
-
-/** Icon+label quick action button */
-@Composable
-fun QuickActionButton(
-    label: String,
-    icon: ImageVector,
-    color: Color,
-    modifier: Modifier = Modifier,
+    subtitle: String = "",
+    iconBg: Color = Emerald500,
+    trailing: (@Composable () -> Unit)? = null,
     onClick: () -> Unit
 ) {
-    Column(
-        modifier            = modifier,
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(AppSpacing.sm)
-    ) {
-        FilledTonalButton(
-            onClick       = onClick,
-            modifier      = Modifier.size(52.dp),
-            shape         = AppRadius.medium,
-            colors        = ButtonDefaults.filledTonalButtonColors(
-                containerColor = color.copy(alpha = 0.12f)
-            ),
-            contentPadding = PaddingValues(0.dp)
-        ) {
-            Icon(icon, null, Modifier.size(24.dp), tint = color)
-        }
-        Text(label,
-            style   = MaterialTheme.typography.labelSmall,
-            color   = MaterialTheme.colorScheme.onSurfaceVariant,
-            maxLines = 1,
-            textAlign = TextAlign.Center)
-    }
-}
-
-/** Status badge (OVERDUE, SETTLED, etc.) */
-@Composable
-fun StatusBadge(
-    text: String,
-    color: Color,
-    modifier: Modifier = Modifier
-) {
     Surface(
-        modifier = modifier,
-        color    = color.copy(alpha = 0.12f),
-        shape    = AppRadius.small
+        modifier = Modifier.fillMaxWidth(),
+        color = Color.Transparent,
+        onClick = onClick
     ) {
-        Text(
-            text     = text,
-            style    = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-            color    = color,
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
-        )
+        Row(
+            Modifier.padding(horizontal = 4.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            Box(
+                Modifier.size(38.dp).clip(RoundedCornerShape(10.dp)).background(iconBg.copy(alpha = 0.12f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(icon, null, Modifier.size(19.dp), tint = iconBg)
+            }
+            Column(Modifier.weight(1f)) {
+                Text(title, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium))
+                if (subtitle.isNotBlank()) {
+                    Text(subtitle, style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+            trailing?.invoke() ?: Icon(
+                androidx.compose.material.icons.Icons.Default.ChevronRight, null,
+                Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+            )
+        }
     }
 }
 
-/** Divider row used in data tables inside cards */
+// ── Section divider with label ─────────────────────────────────────────────────
 @Composable
-fun DataRow(
-    label: String,
-    value: String,
-    valueColor: Color = Color.Unspecified,
-    modifier: Modifier = Modifier
-) {
-    Row(
-        modifier              = modifier.fillMaxWidth().padding(vertical = 4.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment     = Alignment.CenterVertically
-    ) {
-        Text(label,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text(value,
-            style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
-            color = if (valueColor == Color.Unspecified)
-                MaterialTheme.colorScheme.onSurface else valueColor)
-    }
+fun PremiumSectionDivider(modifier: Modifier = Modifier) {
+    HorizontalDivider(
+        modifier = modifier.padding(vertical = 4.dp),
+        thickness = 0.5.dp,
+        color = MaterialTheme.colorScheme.outline.copy(alpha = 0.08f)
+    )
+}
+
+// ── Amount display helper ──────────────────────────────────────────────────────
+fun formatAmount(amount: Double, symbol: String = "₹"): String {
+    val locale = Locale.getDefault()
+    return "$symbol ${String.format(locale, "%,.0f", amount)}"
 }

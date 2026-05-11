@@ -117,9 +117,7 @@ fun LoanCalculatorScreen(viewModel: FinanceViewModel? = null) {
         modifier = Modifier.fillMaxSize().statusBarsPadding()
             .padding(horizontal = 16.dp).verticalScroll(rememberScrollState())
     ) {
-        Text("Loan Calculator",
-            style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold),
-            modifier = Modifier.padding(vertical = 16.dp))
+        PremiumScreenHeader("Loan Calculator"))
         Text("Plan your loan before taking it",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant)

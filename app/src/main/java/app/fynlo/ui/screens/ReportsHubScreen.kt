@@ -165,37 +165,37 @@ fun ReportsHubScreen(
         }
 
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            Card(Modifier.weight(1f), RoundedCornerShape(16.dp),
-                CardDefaults.cardColors(containerColor = green.copy(alpha = 0.08f))) {
+            Surface(Modifier.weight(1f), RoundedCornerShape(16.dp),
+                color = MaterialTheme.colorScheme.surface,
+                border = androidx.compose.foundation.BorderStroke(0.5.dp, green.copy(alpha = 0.25f))) {
                 Column(Modifier.padding(14.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Icon(Icons.AutoMirrored.Filled.TrendingUp, null,
-                            Modifier.size(16.dp), tint = green)
-                        Text("Income", style = MaterialTheme.typography.labelSmall, color = green)
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Box(Modifier.size(6.dp).clip(CircleShape).background(green))
+                        Text("Income", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium), color = green)
                     }
-                    Spacer(Modifier.height(4.dp))
+                    Spacer(Modifier.height(6.dp))
                     AnimatedContent(income, label = "income",
                         transitionSpec = { fadeIn() togetherWith fadeOut() }) { v ->
                         Text(fmt(v), style = MaterialTheme.typography.titleMedium.copy(
-                            fontWeight = FontWeight.Bold), color = green)
+                            fontWeight = FontWeight.ExtraBold), color = MaterialTheme.colorScheme.onSurface)
                     }
                 }
             }
-            Card(Modifier.weight(1f), RoundedCornerShape(16.dp),
-                CardDefaults.cardColors(containerColor = red.copy(alpha = 0.08f))) {
+            Surface(Modifier.weight(1f), RoundedCornerShape(16.dp),
+                color = MaterialTheme.colorScheme.surface,
+                border = androidx.compose.foundation.BorderStroke(0.5.dp, red.copy(alpha = 0.25f))) {
                 Column(Modifier.padding(14.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Icon(Icons.AutoMirrored.Filled.TrendingDown, null,
-                            Modifier.size(16.dp), tint = red)
-                        Text("Expenses", style = MaterialTheme.typography.labelSmall, color = red)
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Box(Modifier.size(6.dp).clip(CircleShape).background(red))
+                        Text("Expenses", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium), color = red)
                     }
-                    Spacer(Modifier.height(4.dp))
+                    Spacer(Modifier.height(6.dp))
                     AnimatedContent(expense, label = "expense",
                         transitionSpec = { fadeIn() togetherWith fadeOut() }) { v ->
                         Text(fmt(v), style = MaterialTheme.typography.titleMedium.copy(
-                            fontWeight = FontWeight.Bold), color = red)
+                            fontWeight = FontWeight.ExtraBold), color = MaterialTheme.colorScheme.onSurface)
                     }
                 }
             }
@@ -204,28 +204,35 @@ fun ReportsHubScreen(
         Spacer(Modifier.height(10.dp))
 
         Card(Modifier.fillMaxWidth(), RoundedCornerShape(16.dp),
-            CardDefaults.cardColors(containerColor = (if (netFlow >= 0) green else red).copy(alpha = 0.08f))) {
-            Row(Modifier.fillMaxWidth().padding(16.dp), Arrangement.SpaceBetween, Alignment.CenterVertically) {
-                Column {
-                    Text("Net Cash Flow", style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text(fmt(netFlow),
-                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-                        color = if (netFlow >= 0) green else red)
-                }
-                Column(horizontalAlignment = Alignment.End) {
-                    Text("Savings Rate", style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text("${String.format(locale, "%.1f", savings.coerceAtLeast(0.0))}%",
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                        color = if (savings >= 0) green else red)
+            CardDefaults.cardColors(containerColor = Emerald700),
+            border = null) {
+            Box {
+                Box(Modifier.size(80.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.06f)).align(Alignment.TopEnd))
+                Row(Modifier.fillMaxWidth().padding(18.dp), Arrangement.SpaceBetween, Alignment.CenterVertically) {
+                    Column {
+                        Text("Net Cash Flow", style = MaterialTheme.typography.labelSmall,
+                            color = Color.White.copy(alpha = 0.7f))
+                        Text(fmt(netFlow),
+                            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold),
+                            color = Color.White)
+                    }
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text("Savings Rate", style = MaterialTheme.typography.labelSmall,
+                            color = Color.White.copy(alpha = 0.7f))
+                        Surface(shape = RoundedCornerShape(8.dp), color = Color.White.copy(alpha = 0.15f)) {
+                            Text("${String.format(locale, "%.1f", savings.coerceAtLeast(0.0))}%",
+                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.ExtraBold),
+                                color = Color.White,
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp))
+                        }
+                    }
                 }
             }
         }
 
         Spacer(Modifier.height(20.dp))
 
-        Text("Net Worth Trend", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
+        PremiumSectionLabel("Net Worth Trend")
         Spacer(Modifier.height(8.dp))
         Card(Modifier.fillMaxWidth(), RoundedCornerShape(16.dp),
             CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))) {

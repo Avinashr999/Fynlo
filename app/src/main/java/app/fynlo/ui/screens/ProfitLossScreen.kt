@@ -1,7 +1,10 @@
 package app.fynlo.ui.screens
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.background
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -98,17 +101,23 @@ fun ProfitLossScreen(viewModel: FinanceViewModel) {
 
         Spacer(Modifier.height(12.dp))
 
-        // ── Net P&L card ─────────────────────────────────────────────────────
+        // ── Net P&L hero card — premium dark emerald ──────────────────────────
         Card(Modifier.fillMaxWidth(), RoundedCornerShape(20.dp),
-            CardDefaults.cardColors((if (netProfit >= 0) green else red).copy(alpha = 0.1f))) {
-            Column(Modifier.padding(20.dp)) {
-                Text("Net Profit / Loss", style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text(fmt(netProfit),
-                    style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold),
-                    color = if (netProfit >= 0) green else red)
-                Text(if (netProfit >= 0) "You are profitable" else "Expenses exceed income",
-                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            CardDefaults.cardColors(if (netProfit >= 0) Emerald700 else red)) {
+            Box {
+                Box(Modifier.size(100.dp).clip(CircleShape)
+                    .background(Color.White.copy(alpha = 0.07f)).align(Alignment.TopEnd))
+                Column(Modifier.padding(22.dp)) {
+                    Text("Net Profit / Loss", style = MaterialTheme.typography.labelMedium,
+                        color = Color.White.copy(alpha = 0.7f))
+                    Spacer(Modifier.height(4.dp))
+                    Text(fmt(netProfit),
+                        style = MaterialTheme.typography.headlineMedium.copy(
+                            fontWeight = FontWeight.ExtraBold, color = Color.White))
+                    Text(if (netProfit >= 0) "You are profitable ↑" else "Expenses exceed income ↓",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.White.copy(alpha = 0.75f))
+                }
             }
         }
 
@@ -170,18 +179,31 @@ private fun PLSection(
     locale: Locale
 ) {
     fun fmt(v: Double) = "$currencySymbol ${String.format(locale, "%,.0f", v)}"
-    Card(Modifier.fillMaxWidth(), RoundedCornerShape(16.dp)) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surface,
+        border = androidx.compose.foundation.BorderStroke(0.5.dp, color.copy(alpha = 0.2f))
+    ) {
         Column(Modifier.padding(16.dp)) {
-            Text(title, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
-            Spacer(Modifier.height(8.dp))
+            // Section header with colored left bar
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Box(
+                    Modifier.width(3.dp).height(18.dp)
+                        .clip(RoundedCornerShape(2.dp))
+                        .background(color)
+                )
+                Text(title, style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold, color = color))
+            }
+            Spacer(Modifier.height(12.dp))
             items.forEach { (label, value) ->
                 val valueColor = when {
                     value < 0 -> SemanticRed
-                    label.contains("Interest Income") || label.contains("Collected") -> Emerald500
-                    label.contains("Interest Paid") || label.contains("Bad Debt") -> SemanticRed
+                    label.contains("Interest Income") || label.contains("Collected") || label.contains("Returned") || label.contains("Growth") -> Emerald500
+                    label.contains("Interest Paid") || label.contains("Bad Debt") || label.contains("Loss") -> SemanticRed
                     else -> MaterialTheme.colorScheme.onSurface
                 }
-                Row(Modifier.fillMaxWidth().padding(vertical = 3.dp), Arrangement.SpaceBetween) {
+                Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), Arrangement.SpaceBetween, Alignment.CenterVertically) {
                     Text(label, style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.weight(1f))
@@ -190,12 +212,14 @@ private fun PLSection(
                         color = valueColor)
                 }
             }
-            HorizontalDivider(Modifier.padding(vertical = 8.dp))
-            Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
+            HorizontalDivider(Modifier.padding(vertical = 8.dp), color = color.copy(alpha = 0.15f))
+            Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
                 Text("Net", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold))
-                Text(fmt(total),
-                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
-                    color = color)
+                Surface(shape = RoundedCornerShape(8.dp), color = color.copy(alpha = 0.1f)) {
+                    Text(fmt(total),
+                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.ExtraBold, color = color),
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp))
+                }
             }
         }
     }

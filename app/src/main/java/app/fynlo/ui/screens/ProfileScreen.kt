@@ -50,22 +50,16 @@ fun ProfileScreen(onLogout: () -> Unit, onSignOut: () -> Unit = {}) {
             .verticalScroll(rememberScrollState()),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text(
-            "Profile & Security",
-            style    = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold),
-            modifier = Modifier.padding(vertical = 16.dp).align(Alignment.Start)
-        )
+        PremiumScreenHeader("Profile & Security", "Account & security settings")
 
         // ── Account card ──────────────────────────────────────────────────────
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape    = RoundedCornerShape(16.dp),
-            colors   = CardDefaults.cardColors(
-                containerColor = if (isGoogle)
-                    SemanticBlue.copy(alpha = 0.1f)
-                else
-                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
-            )
+            colors   = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            border   = androidx.compose.foundation.BorderStroke(
+                0.5.dp, if (isGoogle) SemanticBlue.copy(alpha = 0.3f)
+                else MaterialTheme.colorScheme.outline.copy(alpha = 0.12f))
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
