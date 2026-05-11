@@ -42,7 +42,9 @@ fun GoalScreen(viewModel: FinanceViewModel) {
         )
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    Column(modifier = Modifier.fillMaxSize()) {
+        PremiumScreenHeader("Savings Goals", "Track your financial targets")
+        Box(modifier = Modifier.weight(1f)) {
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
@@ -51,8 +53,7 @@ fun GoalScreen(viewModel: FinanceViewModel) {
             contentPadding = PaddingValues(bottom = 100.dp)
         ) {
             item {
-                PremiumScreenHeader("Savings Goals", "Track your financial targets")
-                Text(
+                                Text(
                     "Track your progress towards big purchases or milestones.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -91,6 +92,7 @@ fun GoalScreen(viewModel: FinanceViewModel) {
         }
     }
 }
+    }
 
 @Composable
 fun GoalCard(goal: Goal, currencySymbol: String, onDelete: () -> Unit) {

@@ -89,7 +89,9 @@ fun PeopleScreen(viewModel: FinanceViewModel) {
         )
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    Column(modifier = Modifier.fillMaxSize()) {
+        PremiumScreenHeader("Contact Book", "Linked to loans & reminders")
+        Box(modifier = Modifier.weight(1f)) {
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
@@ -98,8 +100,7 @@ fun PeopleScreen(viewModel: FinanceViewModel) {
             contentPadding = PaddingValues(bottom = 100.dp)
         ) {
             item {
-                PremiumScreenHeader("Contact Book", "Linked to loans & reminders")
-                Text(
+                                Text(
                     "Contacts link loans to people and enable WhatsApp / SMS reminders.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -129,6 +130,7 @@ fun PeopleScreen(viewModel: FinanceViewModel) {
 }
 
 // ── PersonCard ────────────────────────────────────────────────────────────────
+    }
 
 @Composable
 fun PersonCard(person: Person, onEdit: () -> Unit, onDelete: () -> Unit) {

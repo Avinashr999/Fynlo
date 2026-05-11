@@ -201,21 +201,21 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
         selectedTab = 0
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    Column(modifier = Modifier.fillMaxSize()) {
+        PremiumScreenHeader("Lending", "Interest loans & hand loans")
+        Box(modifier = Modifier.weight(1f)) {
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
             contentPadding = PaddingValues(bottom = 100.dp)
         ) {
             // Header
+            // Sub-header: stats + action buttons (scrolls with content)
             item {
-                Row(Modifier.fillMaxWidth().padding(bottom = 4.dp), Arrangement.SpaceBetween, Alignment.CenterVertically) {
-                    Column {
-                        PremiumScreenHeader("Lending", "Interest loans & hand loans")
-                        Text("${interestLoans.size} interest • ${handLoans.size} hand loans • ${settledLoans.size} settled",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
+                Row(Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 4.dp), Arrangement.SpaceBetween, Alignment.CenterVertically) {
+                    Text("${interestLoans.size} interest • ${handLoans.size} hand loans • ${settledLoans.size} settled",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         // Sort
                         Box {
@@ -928,6 +928,7 @@ fun EmiCalculatorDialog(onDismiss: () -> Unit) {
         },
         confirmButton = { TextButton(onClick = onDismiss) { Text("Close") } }
     )
+    }
 }
 
 
