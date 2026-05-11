@@ -119,14 +119,13 @@ fun PeopleScreen(viewModel: FinanceViewModel) {
                     )
                 }
             }
-        }
-
         FloatingActionButton(
             onClick = { showAddDialog = true },
             modifier = Modifier.align(Alignment.BottomEnd).padding(24.dp),
             containerColor = MaterialTheme.colorScheme.primary
         ) { Icon(Icons.Default.Add, contentDescription = "Add Contact") }
     }
+        }
 }
 
 // ── PersonCard ────────────────────────────────────────────────────────────────

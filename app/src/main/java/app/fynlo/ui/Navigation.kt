@@ -217,9 +217,13 @@ fun MainNavigation(viewModel: FinanceViewModel) {
         )
     }
 
+    val canNavigateBack = currentRoute != Screen.Home.route &&
+        !bottomNavItems.any { it.route == currentRoute }
+
     ModalNavigationDrawer(
-        drawerState   = drawerState,
-        drawerContent = {
+        drawerState     = drawerState,
+        gesturesEnabled = !canNavigateBack,
+        drawerContent   = {
             ModalDrawerSheet(
                 drawerContainerColor = MaterialTheme.colorScheme.surface,
                 modifier = Modifier.width(300.dp)
@@ -388,10 +392,8 @@ fun MainNavigation(viewModel: FinanceViewModel) {
         }  // close drawerContent
     ) {
         Scaffold(
+            contentWindowInsets = androidx.compose.foundation.layout.WindowInsets.safeContent,
             topBar = {
-                val canNavigateBack = currentRoute != Screen.Home.route && 
-                                   !bottomNavItems.any { it.route == currentRoute }
-                
                 CenterAlignedTopAppBar(
                     title = { Text("Fynlo") },
                     actions = {
@@ -414,7 +416,9 @@ fun MainNavigation(viewModel: FinanceViewModel) {
                 )
             },
             bottomBar = {
-                NavigationBar {
+                NavigationBar(
+                    windowInsets = androidx.compose.foundation.layout.WindowInsets(0)
+                ) {
                     bottomNavItems.forEach { screen ->
                         NavigationBarItem(
                             icon     = { Icon(screen.icon, contentDescription = screen.label) },
