@@ -44,7 +44,6 @@ fun GoalScreen(viewModel: FinanceViewModel) {
 
     Column(modifier = Modifier.fillMaxSize()) {
         PremiumScreenHeader("Savings Goals", "Track your financial targets")
-        Box(modifier = Modifier.weight(1f)) {
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()

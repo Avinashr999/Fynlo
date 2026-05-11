@@ -355,6 +355,7 @@ fun LoanCalculatorScreen(viewModel: FinanceViewModel? = null) {
 
         Spacer(Modifier.height(100.dp))
     }
+    }
 }
 
 @Composable

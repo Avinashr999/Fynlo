@@ -151,6 +151,7 @@ fun NetWorthHistoryScreen(viewModel: FinanceViewModel) {
         }
         Spacer(Modifier.height(100.dp))
     }
+    }
 }
 
 @Composable

@@ -91,7 +91,6 @@ fun PeopleScreen(viewModel: FinanceViewModel) {
 
     Column(modifier = Modifier.fillMaxSize()) {
         PremiumScreenHeader("Contact Book", "Linked to loans & reminders")
-        Box(modifier = Modifier.weight(1f)) {
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()

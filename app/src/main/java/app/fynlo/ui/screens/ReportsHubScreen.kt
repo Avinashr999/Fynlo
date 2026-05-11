@@ -370,6 +370,7 @@ fun ReportsHubScreen(
 
         Spacer(Modifier.height(100.dp))
     }
+    }
 }
 
 @Composable

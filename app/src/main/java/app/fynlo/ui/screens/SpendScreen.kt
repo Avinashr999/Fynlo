@@ -228,6 +228,7 @@ val transactions by viewModel.transactions.collectAsState()
             TransactionHistoryScreen(viewModel = viewModel)
         }
     }
+    }
 }
 
 @Composable

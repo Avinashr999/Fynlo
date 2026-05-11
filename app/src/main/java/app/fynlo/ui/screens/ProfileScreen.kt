@@ -166,6 +166,7 @@ fun ProfileScreen(onLogout: () -> Unit, onSignOut: () -> Unit = {}) {
             Text("Logout & Lock App", fontWeight = FontWeight.Bold)
         }
     }
+    }
 }
 
 
