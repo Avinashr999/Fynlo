@@ -389,6 +389,7 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
         ) { Icon(Icons.Default.Add, null) }
     }
 }
+}
 @Composable
 fun LendingCard(borrower: Borrower, people: List<app.fynlo.data.model.Person> = emptyList(), currencySymbol: String = "₹", isOverdue: Boolean = false, onDelete: () -> Unit, onEdit: () -> Unit, onCollect: () -> Unit, onClick: () -> Unit, onDefault: () -> Unit = {}, onWriteOff: () -> Unit = {}) {
     // Pulsing animation for overdue
@@ -929,7 +930,7 @@ fun EmiCalculatorDialog(onDismiss: () -> Unit) {
         confirmButton = { TextButton(onClick = onDismiss) { Text("Close") } }
     )
     }
-}
+
 
 
 
