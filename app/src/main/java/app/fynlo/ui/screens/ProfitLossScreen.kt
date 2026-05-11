@@ -29,8 +29,10 @@ fun ProfitLossScreen(viewModel: FinanceViewModel) {
     val locale          = remember { Locale.getDefault() }
     val context         = androidx.compose.ui.platform.LocalContext.current
 
-    // ── Cash-basis figures (exclude journal_only entries) ───────────────────
-    val cashTxns       = transactions.filter { it.tags != "journal_only" }
+    // ── Cash-basis figures — exclude financing activities (debt/lending/investment)
+    // Debt received = liability (not income), Debt repayment principal = balance sheet (not expense)
+    val financingCategories = listOf("Debt Received", "Debt Repayment", "Lending", "Loan Recovery", "Investment", "Investment Returns")
+    val cashTxns       = transactions.filter { it.tags != "journal_only" && it.category !in financingCategories }
     val totalIncome    = cashTxns.filter { it.type.equals("income",  ignoreCase = true) }.sumOf { it.amount }
     val totalExpense   = cashTxns.filter { it.type.equals("expense", ignoreCase = true) }.sumOf { it.amount }
 
