@@ -25,7 +25,7 @@ import app.fynlo.data.model.FlowTemplate
         NetWorthSnapshot::class,
         InvestmentValuation::class
     ],
-    version = 13,
+    version = 14,
     exportSchema = false
 )
 abstract class FynloDatabase : RoomDatabase() {
@@ -146,6 +146,19 @@ val MIGRATION_12_13 = object : Migration(12, 13) {
               paidPrincipal= COALESCE((SELECT SUM(CASE WHEN principal > 0 THEN principal ELSE amount END)
                                        FROM debt_payments WHERE debtId = debts.id), 0),
               paidInterest = COALESCE((SELECT SUM(interest) FROM debt_payments WHERE debtId = debts.id), 0)
+        """.trimIndent())
+    }
+}
+
+val MIGRATION_13_14 = object : Migration(13, 14) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE borrowers ADD COLUMN sourceAccount TEXT NOT NULL DEFAULT ''")
+        // Backfill from linked expense transactions (lend transactions use fromAcct)
+        db.execSQL("""
+            UPDATE borrowers SET sourceAccount = COALESCE(
+                (SELECT fromAcct FROM transactions
+                 WHERE ref = borrowers.id AND type = 'Expense' AND category = 'Lending'
+                 ORDER BY updatedAt DESC LIMIT 1), '')
         """.trimIndent())
     }
 }

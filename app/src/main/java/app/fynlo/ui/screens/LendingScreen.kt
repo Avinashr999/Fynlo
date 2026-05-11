@@ -619,7 +619,12 @@ fun LendingCard(borrower: Borrower, people: List<app.fynlo.data.model.Person> = 
                 Column {
                     Text("Principal", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text("$currencySymbol ${String.format(Locale.getDefault(), "%,.0f", borrower.amount)}", style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold))
-                    Text("Lent: ${DateUtils.formatToDisplay(borrower.date)}", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("Lent: ${DateUtils.formatToDisplay(borrower.date)}", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+                        if (borrower.sourceAccount.isNotBlank()) {
+                            Text("  •  ${borrower.sourceAccount}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                        }
+                    }
                     
                     if (borrower.due.isNotEmpty()) {
                         Spacer(Modifier.height(4.dp))
