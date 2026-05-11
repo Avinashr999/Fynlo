@@ -52,8 +52,7 @@ fun GoalScreen(viewModel: FinanceViewModel) {
             contentPadding = PaddingValues(top = 16.dp, bottom = 100.dp)
         ) {
             item {
-                PremiumScreenHeader("Savings Goals")
-                )
+                PremiumScreenHeader("Savings Goals", "Track your financial milestones")
                 Text(
                     "Track your progress towards big purchases or milestones.",
                     style = MaterialTheme.typography.bodySmall,
