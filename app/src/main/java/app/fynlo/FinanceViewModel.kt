@@ -706,6 +706,7 @@ class FinanceViewModel(private val repository: FinanceRepository) : ViewModel() 
             val borrower1 = Borrower(
                 "b1", "John Doe", amount = 10000.0, rate = 2.0,
                 date = "2024-01-10", due = "2024-12-31", type = "Simple Interest",
+                sourceAccount = "Cash in Hand",
                 notes = "Personal loan for home renovation.", projectId = pid
             )
             repository.insertBorrowerWithSource(borrower1, "Cash in Hand", pid)

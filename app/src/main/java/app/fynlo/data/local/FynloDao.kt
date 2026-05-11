@@ -46,8 +46,15 @@ interface FynloDao {
 
     @Query("""UPDATE borrowers SET sourceAccount = COALESCE(
         (SELECT fromAcct FROM transactions
-         WHERE ref = borrowers.id AND type = 'Expense' AND category = 'Lending'
-         ORDER BY updatedAt DESC LIMIT 1), sourceAccount)
+         WHERE ref = borrowers.id AND type = 'Expense'
+         AND category IN ('Lending', 'Loan', 'Transfer')
+         AND fromAcct != ''
+         ORDER BY updatedAt ASC LIMIT 1), 
+        (SELECT fromAcct FROM transactions
+         WHERE ref = borrowers.id AND type = 'Expense'
+         AND fromAcct != ''
+         ORDER BY updatedAt ASC LIMIT 1),
+        sourceAccount)
         WHERE sourceAccount = '' """)
     suspend fun backfillBorrowerSourceAccount()
 
