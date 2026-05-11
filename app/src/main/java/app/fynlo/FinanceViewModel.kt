@@ -212,7 +212,7 @@ class FinanceViewModel(private val repository: FinanceRepository) : ViewModel() 
         val totalBadDebtWriteOffs = trans.filter { it.category == "Bad Debt" }.sumOf { it.amount }
         val totalInterestExpense  = trans.filter { it.category == "Interest Expense" }.sumOf { it.amount }
         val totalInterestIncome   = trans.filter { it.category == "Loan Repayment" }.sumOf { it.amount }
-        val invGrowth      = invs.sumOf { it.currentVal - it.invested }
+        val invGrowth      = invs.sumOf { it.currentVal - (it.invested - it.withdrawn) }
         val avgYield       = if (brws.isNotEmpty()) brws.map { it.rate }.average() else 0.0
         val net            = totalAssets - (totalDebtPrincipal + totalDebtInterest)
         val accountsMap    = accts.associate { it.name to it.balance }

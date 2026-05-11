@@ -42,7 +42,9 @@ fun ProfitLossScreen(viewModel: FinanceViewModel) {
     val badDebtWriteOffs = transactions.filter { it.category == "Bad Debt" }.sumOf { it.amount }          // journal entries
 
     // ── Other metrics ───────────────────────────────────────────────────────
-    val investGrowth     = investments.sumOf { it.currentVal - it.invested }
+    // Unrealised growth = current value vs remaining cost basis (invested minus already withdrawn)
+    // If you invest 50k and withdraw 10k: remaining basis = 40k, current = 40k → growth = 0
+    val investGrowth     = investments.sumOf { it.currentVal - (it.invested - it.withdrawn) }
     val investReturns    = transactions.filter { it.category == "Investment Returns" }.sumOf { it.amount }
     val principalIncome  = totalIncome - interestIncome  // non-interest income
     val operatingExpense = totalExpense - transactions.filter {
