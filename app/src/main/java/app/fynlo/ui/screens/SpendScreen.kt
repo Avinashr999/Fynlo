@@ -121,7 +121,7 @@ val transactions by viewModel.transactions.collectAsState()
                 }
             }
 
-            Column(Modifier.verticalScroll(rememberScrollState())) {
+            Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
                 // Total card
                 Card(Modifier.fillMaxWidth(), RoundedCornerShape(20.dp),
                     CardDefaults.cardColors(SemanticRed.copy(alpha = 0.1f))) {

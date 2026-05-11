@@ -55,7 +55,7 @@ fun BudgetScreen(viewModel: FinanceViewModel) {
         PremiumScreenHeader("Budgeting", "Monthly spending limits")
         Box(modifier = Modifier.weight(1f)) {
         LazyColumn(
-            modifier = Modifier.fillMaxSize().statusBarsPadding().padding(horizontal = 16.dp),
+            modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
             contentPadding = PaddingValues(bottom = 100.dp)
         ) {

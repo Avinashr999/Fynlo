@@ -82,13 +82,16 @@ val debts by viewModel.debts.collectAsState()
         )
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(horizontal = 16.dp)
-    ) {
+    Column(modifier = Modifier.fillMaxSize()) {
         PremiumScreenHeader("My Debts", "Loans you owe to others")
-        Row(Modifier.fillMaxWidth().padding(bottom = 4.dp), Arrangement.End, Alignment.CenterVertically) {
+        Box(modifier = Modifier.weight(1f)) {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            contentPadding = PaddingValues(bottom = 100.dp)
+        ) {
+        item {
+        Row(Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 4.dp), Arrangement.End, Alignment.CenterVertically) {
             FilledTonalButton(
                 onClick = { showAddDialog = true },
                 shape = RoundedCornerShape(12.dp),
@@ -160,14 +163,11 @@ val debts by viewModel.debts.collectAsState()
             }
         }
 
+        }
         if (filteredDebts.isEmpty()) {
             EmptyDebtState(onAdd = { showAddDialog = true })
         } else {
-            LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                contentPadding = PaddingValues(bottom = 100.dp)
-            ) {
-                items(filteredDebts) { debt ->
+            items(filteredDebts) { debt ->
                     DebtCard(
                         debt = debt,
                         currencySymbol = currencySymbol,
@@ -181,6 +181,7 @@ val debts by viewModel.debts.collectAsState()
     }
 }
 
+}
 @Composable
 fun DebtCard(debt: Debt, currencySymbol: String = "₹", onEdit: () -> Unit, onDelete: () -> Unit, onPay: () -> Unit) {
     val locale = Locale.getDefault()

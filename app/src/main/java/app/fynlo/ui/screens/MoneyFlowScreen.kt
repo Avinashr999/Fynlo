@@ -169,7 +169,7 @@ fun MoneyFlowScreen(viewModel: FinanceViewModel) {
     Column(modifier = Modifier.fillMaxSize()) {
         PremiumScreenHeader("Money Flow", "Income & expense patterns")
 
-        Column(Modifier.padding(horizontal = 16.dp).padding(bottom = 8.dp)) {
+        Column(Modifier.fillMaxSize().padding(horizontal = 16.dp).padding(bottom = 8.dp)) {
             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
                 Column {
                     Text("Money Flow", style = MaterialTheme.typography.labelSmall)  // placeholder
