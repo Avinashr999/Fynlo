@@ -5,6 +5,7 @@ import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -113,15 +114,7 @@ fun HomeScreen(viewModel: FinanceViewModel, onNavigateToScreen: (String) -> Unit
             .padding(horizontal = 16.dp)
             .verticalScroll(rememberScrollState())
     ) {
-        // 1. Project Switcher
-        ProjectSwitcherChip(
-            projects = projects, currentProjectId = currentProjectId,
-            onSwitch = { viewModel.switchProject(it) },
-            onManageClick = { onNavigateToScreen("projects") }
-        )
-        Spacer(Modifier.height(8.dp))
-
-        // 2. Net Worth Card — deep emerald premium design
+        // 1 + 2. Net Worth Card with integrated project switcher
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(20.dp),
@@ -142,7 +135,43 @@ fun HomeScreen(viewModel: FinanceViewModel, onNavigateToScreen: (String) -> Unit
                         .background(Emerald500.copy(alpha = 0.2f))
                         .align(Alignment.TopEnd)
                 )
-                Column(Modifier.padding(22.dp)) {
+                Column(Modifier.padding(horizontal = 20.dp).padding(top = 14.dp, bottom = 20.dp)) {
+                    // Project switcher row — compact, inside card
+                    Row(
+                        Modifier.fillMaxWidth().padding(bottom = 10.dp),
+                        Arrangement.SpaceBetween, Alignment.CenterVertically
+                    ) {
+                        Row(
+                            modifier = Modifier.horizontalScroll(rememberScrollState()),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            projects.forEach { project ->
+                                val sel = project.id == currentProjectId
+                                Surface(
+                                    onClick = { viewModel.switchProject(project.id) },
+                                    shape = RoundedCornerShape(20.dp),
+                                    color = if (sel) Color.White.copy(alpha = 0.25f) else Color.Transparent,
+                                    border = androidx.compose.foundation.BorderStroke(
+                                        1.dp, Color.White.copy(alpha = if (sel) 0f else 0.3f)
+                                    )
+                                ) {
+                                    Text(
+                                        project.name,
+                                        style = MaterialTheme.typography.labelSmall.copy(
+                                            fontWeight = if (sel) FontWeight.Bold else FontWeight.Normal
+                                        ),
+                                        color = Color.White,
+                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                                    )
+                                }
+                            }
+                        }
+                        TextButton(onClick = { onNavigateToScreen("projects") },
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)) {
+                            Text("Manage", style = MaterialTheme.typography.labelSmall,
+                                color = Emerald200.copy(alpha = 0.8f))
+                        }
+                    }
                     Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.Top) {
                         Column {
                             Text("Total Net Worth", style = MaterialTheme.typography.labelMedium,
