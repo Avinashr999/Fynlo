@@ -262,7 +262,6 @@ val currentProject by viewModel.currentProject.collectAsState()
             .padding(horizontal = 16.dp)
     ) {
         PremiumScreenHeader("My Investments", "Portfolio & returns tracker")
-        )
 
         if (investments.isEmpty()) {
             EmptyInvestState(onAdd = { editingInvest = Investment(id = "", name = "", type = "", invested = 0.0, currentVal = 0.0, date = "", notes = "", projectId = "") })

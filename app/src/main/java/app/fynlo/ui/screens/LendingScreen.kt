@@ -211,7 +211,7 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
             item {
                 Row(Modifier.fillMaxWidth().padding(top = 10.dp, bottom = 4.dp), Arrangement.SpaceBetween, Alignment.CenterVertically) {
                     Column {
-                        PremiumScreenHeader("Lending", "Interest loans & hand loans"))
+                        PremiumScreenHeader("Lending", "Interest loans & hand loans")
                         Text("${interestLoans.size} interest • ${handLoans.size} hand loans • ${settledLoans.size} settled",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
