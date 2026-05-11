@@ -51,8 +51,6 @@ fun ProfileScreen(onLogout: () -> Unit, onSignOut: () -> Unit = {}) {
             .verticalScroll(rememberScrollState()),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        PremiumScreenHeader("Profile & Security", "Account & security settings")
-
         // ── Account card ──────────────────────────────────────────────────────
         Card(
             modifier = Modifier.fillMaxWidth(),
