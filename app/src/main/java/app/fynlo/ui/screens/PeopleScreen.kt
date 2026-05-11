@@ -65,7 +65,6 @@ fun parsePhone(saved: String): Pair<CountryCode, String> {
         Pair(match, clean.removePrefix(match.code).trimStart())
     } else {
         Pair(COUNTRY_CODES.first(), clean)   // default India, keep as-is
-        }
     }
 }
 
@@ -90,18 +89,16 @@ fun PeopleScreen(viewModel: FinanceViewModel) {
         )
     }
 
-    Column(modifier = Modifier.fillMaxSize()) {
-        PremiumScreenHeader("Contact Book", "Linked to loans & reminders")
-        Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+    Box(modifier = Modifier.fillMaxSize()) {
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                
                 .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
             contentPadding = PaddingValues(bottom = 100.dp)
         ) {
             item {
+                PremiumScreenHeader("Contact Book", "Linked to loans & reminders")
                 Text(
                     "Contacts link loans to people and enable WhatsApp / SMS reminders.",
                     style = MaterialTheme.typography.bodySmall,
@@ -129,7 +126,6 @@ fun PeopleScreen(viewModel: FinanceViewModel) {
             containerColor = MaterialTheme.colorScheme.primary
         ) { Icon(Icons.Default.Add, contentDescription = "Add Contact") }
     }
-}
 }
 
 // ── PersonCard ────────────────────────────────────────────────────────────────
@@ -390,4 +386,5 @@ fun EmptyPeopleState(onAdd: () -> Unit = {}) {
             textAlign = androidx.compose.ui.text.style.TextAlign.Center
         )
         Button(onClick = onAdd) { Text("Add First Contact") }
+    }
 }
