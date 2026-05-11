@@ -190,9 +190,9 @@ fun PremiumSettingsItem(
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
-            trailing?.invoke() ?: Icon(
-                androidx.compose.material.icons.Icons.Default.KeyboardArrowRight, null,
-                Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+            trailing?.invoke() ?: Text("›", 
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
             )
         }
     }
