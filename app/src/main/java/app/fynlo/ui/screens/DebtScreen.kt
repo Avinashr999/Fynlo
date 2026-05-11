@@ -88,8 +88,8 @@ val debts by viewModel.debts.collectAsState()
             .statusBarsPadding()
             .padding(horizontal = 16.dp)
     ) {
-        Row(Modifier.fillMaxWidth().padding(vertical = 16.dp), Arrangement.SpaceBetween, Alignment.CenterVertically) {
-            PremiumScreenHeader("My Debts", "Loans you owe to others"), modifier = Modifier.padding(top = 0.dp))
+        PremiumScreenHeader("My Debts", "Loans you owe to others")
+        Row(Modifier.fillMaxWidth().padding(bottom = 4.dp), Arrangement.End, Alignment.CenterVertically) {
             FilledTonalButton(
                 onClick = { showAddDialog = true },
                 shape = RoundedCornerShape(12.dp),
