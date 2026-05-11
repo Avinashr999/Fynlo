@@ -1,20 +1,28 @@
-﻿package app.fynlo.ui.components
+package app.fynlo.ui.components
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountBalance
+import androidx.compose.material.icons.filled.MonetizationOn
+import androidx.compose.material.icons.filled.Wallet
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import app.fynlo.FinanceViewModel
+import app.fynlo.data.model.Account
 import app.fynlo.data.model.Debt
 import app.fynlo.data.model.Person
 import app.fynlo.logic.DateUtils
+import app.fynlo.ui.theme.Emerald500
 import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -25,131 +33,147 @@ fun AddDebtDialog(
     onConfirm: (Debt, String) -> Unit,
     initialDebt: Debt? = null
 ) {
-    val people by viewModel.people.collectAsState()
-    var selectedPerson by remember { mutableStateOf<Person?>(null) }
-    var personExpanded by remember { mutableStateOf(false) }
+    val people   by viewModel.people.collectAsState()
+    val accounts by viewModel.accounts.collectAsState()
 
-    var customName by remember { mutableStateOf(initialDebt?.name ?: "") }
-    var amount by remember { mutableStateOf(initialDebt?.amount?.toString() ?: "") }
-    var rate by remember { mutableStateOf(initialDebt?.rate?.toString() ?: "") }
-    var date by remember { mutableStateOf(initialDebt?.date?.let { DateUtils.formatToDisplay(it) } ?: java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy"))) }
-    var due by remember { mutableStateOf(initialDebt?.due?.let { DateUtils.formatToDisplay(it) } ?: "") }
-    var notes by remember { mutableStateOf(initialDebt?.notes ?: "") }
-    
-    var expandedDest by remember { mutableStateOf(false) }
-    val destinations = listOf("Cash", "Bank", "Investment", "Custom")
-    var selectedDest by remember { mutableStateOf(destinations[0]) }
-    var bankDetailName by remember { mutableStateOf("") }
+    var selectedPerson  by remember { mutableStateOf<Person?>(null) }
+    var personExpanded  by remember { mutableStateOf(false) }
+    var customLenderName by remember { mutableStateOf(initialDebt?.name ?: "") }
+    var useCustomName   by remember { mutableStateOf(false) }
 
-    var expandedIntType by remember { mutableStateOf(false) }
-    val interestTypes = listOf("Simple Interest", "Reducing Balance", "Compound Interest", "Both")
-    var selectedIntType by remember { mutableStateOf(initialDebt?.intType ?: "Simple Interest") }
+    var amount   by remember { mutableStateOf(initialDebt?.amount?.toString() ?: "") }
+    var rate     by remember { mutableStateOf(initialDebt?.rate?.toString() ?: "") }
+    var date     by remember { mutableStateOf(initialDebt?.date?.let { DateUtils.formatToDisplay(it) } ?: java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy"))) }
+    var due      by remember { mutableStateOf(initialDebt?.due?.let { DateUtils.formatToDisplay(it) } ?: "") }
+    var notes    by remember { mutableStateOf(initialDebt?.notes ?: "") }
 
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false)
-    ) {
+    // Actual account dropdown
+    val accountOptions = if (accounts.isNotEmpty()) accounts
+    else listOf(Account(id = "cash", name = "Cash in Hand", type = "Cash", balance = 0.0))
+    var selectedAccount  by remember { mutableStateOf(accountOptions.first()) }
+    var expandedDest     by remember { mutableStateOf(false) }
+
+    var expandedIntType  by remember { mutableStateOf(false) }
+    val interestTypes    = listOf("Simple Interest", "Reducing Balance", "Compound Interest", "Both")
+    var selectedIntType  by remember { mutableStateOf(initialDebt?.intType ?: "Simple Interest") }
+
+    val lenderName = if (useCustomName) customLenderName else selectedPerson?.name ?: ""
+    val isValid    = lenderName.isNotBlank() && amount.isNotEmpty()
+
+    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Surface(
             modifier = Modifier.fillMaxWidth(0.95f).padding(vertical = 24.dp).imePadding(),
-            shape = MaterialTheme.shapes.extraLarge,
-            color = MaterialTheme.colorScheme.surface,
+            shape    = MaterialTheme.shapes.extraLarge,
+            color    = MaterialTheme.colorScheme.surface,
             tonalElevation = 6.dp
         ) {
             Column(modifier = Modifier.padding(24.dp).verticalScroll(rememberScrollState())) {
-                Text(if (initialDebt == null) "Add New Debt" else "Edit Debt", style = MaterialTheme.typography.headlineSmall)
-                Spacer(modifier = Modifier.height(16.dp))
+                Text(if (initialDebt == null) "Add New Debt" else "Edit Debt",
+                    style = MaterialTheme.typography.headlineSmall)
+                Spacer(Modifier.height(16.dp))
 
-                // PERSON SELECTION
-                ExposedDropdownMenuBox(
-                    expanded = personExpanded,
-                    onExpandedChange = { personExpanded = !personExpanded }
-                ) {
-                    OutlinedTextField(
-                        value = selectedPerson?.name ?: initialDebt?.name ?: "Select Lender",
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("Lender (Pick from Contacts)") },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = personExpanded) },
-                        modifier = Modifier.menuAnchor(androidx.compose.material3.ExposedDropdownMenuAnchorType.PrimaryNotEditable, true).fillMaxWidth()
-                    )
-                    ExposedDropdownMenu(expanded = personExpanded, onDismissRequest = { personExpanded = false }) {
-                        people.forEach { person ->
-                            DropdownMenuItem(
-                                text = { Text("${person.name} (${person.id})") },
-                                onClick = { selectedPerson = person; personExpanded = false }
-                            )
-                        }
-                    }
-                }
-                
-                Spacer(Modifier.height(8.dp))
-
-                if (initialDebt == null) {
-                    ExposedDropdownMenuBox(
-                        expanded = expandedDest,
-                        onExpandedChange = { expandedDest = !expandedDest }
-                    ) {
+                // ── Lender selection ─────────────────────────────────────
+                if (!useCustomName) {
+                    ExposedDropdownMenuBox(expanded = personExpanded, onExpandedChange = { personExpanded = !personExpanded }) {
                         OutlinedTextField(
-                            value = selectedDest,
+                            value = selectedPerson?.name ?: "Select from Contacts",
                             onValueChange = {},
                             readOnly = true,
-                            label = { Text("Where did you receive this money?") },
-                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedDest) },
-                            modifier = Modifier.menuAnchor(androidx.compose.material3.ExposedDropdownMenuAnchorType.PrimaryNotEditable, true).fillMaxWidth()
+                            label = { Text("Lender") },
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = personExpanded) },
+                            modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, true).fillMaxWidth()
                         )
-                        ExposedDropdownMenu(expanded = expandedDest, onDismissRequest = { expandedDest = false }) {
-                            destinations.forEach { dest ->
-                                DropdownMenuItem(text = { Text(dest) }, onClick = { selectedDest = dest; expandedDest = false })
+                        ExposedDropdownMenu(expanded = personExpanded, onDismissRequest = { personExpanded = false }) {
+                            people.forEach { person ->
+                                DropdownMenuItem(
+                                    text = { Text(person.name) },
+                                    onClick = { selectedPerson = person; personExpanded = false }
+                                )
                             }
                         }
                     }
-                    
-                    val destLabel = when (selectedDest) {
-                        "Bank" -> "Which Bank?"
-                        "Investment" -> "Which Investment Account?"
-                        "Custom" -> "Custom Account Name"
-                        else -> ""
+                    TextButton(onClick = { useCustomName = true }) {
+                        Text("Type lender name manually instead", style = MaterialTheme.typography.labelSmall)
                     }
-
-                    if (destLabel.isNotEmpty()) {
-                        OutlinedTextField(
-                            value = bankDetailName,
-                            onValueChange = { bankDetailName = it },
-                            label = { Text(destLabel) },
-                            modifier = Modifier.fillMaxWidth()
-                        )
+                } else {
+                    OutlinedTextField(
+                        value = customLenderName,
+                        onValueChange = { customLenderName = it },
+                        label = { Text("Lender Name") },
+                        placeholder = { Text("e.g. SBI Bank, Relative name") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    TextButton(onClick = { useCustomName = false; customLenderName = "" }) {
+                        Text("Pick from Contacts instead", style = MaterialTheme.typography.labelSmall)
                     }
                 }
 
-                OutlinedTextField(
-                    value = amount,
-                    onValueChange = { amount = it },
+                Spacer(Modifier.height(4.dp))
+
+                // ── Deposit to account (actual accounts) ──────────────────
+                if (initialDebt == null) {
+                    ExposedDropdownMenuBox(expanded = expandedDest, onExpandedChange = { expandedDest = !expandedDest }) {
+                        OutlinedTextField(
+                            value = selectedAccount.name,
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text("Received into Account") },
+                            supportingText = {
+                                Text("${selectedAccount.type}  •  Balance: ₹${String.format("%,.0f", selectedAccount.balance)}",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.primary)
+                            },
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedDest) },
+                            modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, true).fillMaxWidth()
+                        )
+                        ExposedDropdownMenu(expanded = expandedDest, onDismissRequest = { expandedDest = false }) {
+                            accountOptions.forEach { acct ->
+                                DropdownMenuItem(
+                                    text = {
+                                        Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
+                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                                Icon(when (acct.type.lowercase()) {
+                                                    "cash" -> Icons.Default.Wallet
+                                                    "upi"  -> Icons.Default.MonetizationOn
+                                                    else   -> Icons.Default.AccountBalance
+                                                }, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
+                                                Spacer(Modifier.width(10.dp))
+                                                Column {
+                                                    Text(acct.name, fontWeight = FontWeight.Medium)
+                                                    Text(acct.type, style = MaterialTheme.typography.labelSmall,
+                                                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                                }
+                                            }
+                                            Text("₹${String.format("%,.0f", acct.balance)}",
+                                                style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
+                                                color = Emerald500)
+                                        }
+                                    },
+                                    onClick = { selectedAccount = acct; expandedDest = false }
+                                )
+                            }
+                        }
+                    }
+                    Spacer(Modifier.height(8.dp))
+                }
+
+                // ── Amount + dates ────────────────────────────────────────
+                OutlinedTextField(value = amount, onValueChange = { amount = it },
                     label = { Text("Amount (₹)") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    modifier = Modifier.fillMaxWidth()
-                )
+                    modifier = Modifier.fillMaxWidth())
                 DatePickerField(value = date, onValueChange = { date = it }, label = "Date Taken")
-                OutlinedTextField(
-                    value = rate,
-                    onValueChange = { rate = it },
+                OutlinedTextField(value = rate, onValueChange = { rate = it },
                     label = { Text("Annual Interest Rate (%)") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    modifier = Modifier.fillMaxWidth()
-                )
+                    modifier = Modifier.fillMaxWidth())
 
-                // Interest Type dropdown
-                ExposedDropdownMenuBox(
-                    expanded = expandedIntType,
-                    onExpandedChange = { expandedIntType = !expandedIntType }
-                ) {
-                    OutlinedTextField(
-                        value = selectedIntType,
-                        onValueChange = {},
-                        readOnly = true,
+                // ── Interest type ─────────────────────────────────────────
+                ExposedDropdownMenuBox(expanded = expandedIntType, onExpandedChange = { expandedIntType = !expandedIntType }) {
+                    OutlinedTextField(value = selectedIntType, onValueChange = {}, readOnly = true,
                         label = { Text("Interest Type") },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedIntType) },
-                        modifier = Modifier.menuAnchor(androidx.compose.material3.ExposedDropdownMenuAnchorType.PrimaryNotEditable, true).fillMaxWidth()
-                    )
+                        modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, true).fillMaxWidth())
                     ExposedDropdownMenu(expanded = expandedIntType, onDismissRequest = { expandedIntType = false }) {
                         interestTypes.forEach { t ->
                             DropdownMenuItem(text = { Text(t) }, onClick = { selectedIntType = t; expandedIntType = false })
@@ -158,48 +182,35 @@ fun AddDebtDialog(
                 }
 
                 DatePickerField(value = due, onValueChange = { due = it }, label = "Due Date", optional = true)
-                OutlinedTextField(
-                    value = notes,
-                    onValueChange = { notes = it },
-                    label = { Text("Notes / Purpose") },
-                    modifier = Modifier.fillMaxWidth()
-                )
+                OutlinedTextField(value = notes, onValueChange = { notes = it },
+                    label = { Text("Notes / Purpose") }, modifier = Modifier.fillMaxWidth())
 
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(Modifier.height(24.dp))
 
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                Row(Modifier.fillMaxWidth(), Arrangement.End) {
                     TextButton(onClick = onDismiss) { Text("Cancel") }
                     Spacer(Modifier.width(8.dp))
                     Button(
                         onClick = {
-                            val finalDest = when (selectedDest) {
-                                "Cash" -> "Cash in Hand"
-                                "Custom" -> bankDetailName
-                                else -> bankDetailName.ifEmpty { selectedDest }
-                            }
-                            val rawId = initialDebt?.id ?: ""
                             val debt = Debt(
-                                id = if (rawId.isBlank()) UUID.randomUUID().toString() else rawId,
-                                name = selectedPerson?.name ?: initialDebt?.name ?: "Unknown",
-                                amount = amount.toDoubleOrNull() ?: 0.0,
-                                rate = rate.toDoubleOrNull() ?: 0.0,
-                                date = DateUtils.parseInput(date),
-                                due = if (due.isNotEmpty()) DateUtils.parseInput(due) else "",
-                                notes = notes,
-                                status = initialDebt?.status ?: "Active",
-                                type = initialDebt?.type ?: "Friend / Family",
+                                id      = initialDebt?.id?.takeIf { it.isNotBlank() } ?: UUID.randomUUID().toString(),
+                                name    = lenderName,
+                                amount  = amount.toDoubleOrNull() ?: 0.0,
+                                rate    = rate.toDoubleOrNull() ?: 0.0,
+                                date    = DateUtils.parseInput(date),
+                                due     = if (due.isNotEmpty()) DateUtils.parseInput(due) else "",
+                                notes   = notes,
+                                status  = initialDebt?.status ?: "Active",
+                                type    = initialDebt?.type ?: "Friend / Family",
                                 intType = selectedIntType,
-                                paid = initialDebt?.paid ?: 0.0
+                                paid    = initialDebt?.paid ?: 0.0
                             )
-                            onConfirm(debt, finalDest)
+                            onConfirm(debt, selectedAccount.name)
                         },
-                        enabled = (selectedPerson != null || initialDebt != null) && amount.isNotEmpty()
-                    ) {
-                        Text("Save")
-                    }
+                        enabled = isValid
+                    ) { Text("Save") }
                 }
             }
         }
     }
 }
-
