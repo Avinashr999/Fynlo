@@ -449,7 +449,7 @@ fun MainNavigation(viewModel: FinanceViewModel) {
             },
             floatingActionButtonPosition = FabPosition.Center
         ) { innerPadding ->
-            Column(modifier = Modifier.padding(bottom = innerPadding.calculateBottomPadding())) {
+            Column(modifier = Modifier.padding(innerPadding)) {
                 // Offline banner
                 AnimatedVisibility(
                     visible = isOffline,
