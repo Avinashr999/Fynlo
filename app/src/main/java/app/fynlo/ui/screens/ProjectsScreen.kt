@@ -217,7 +217,7 @@ private fun AddProjectDialog(
                     ExposedDropdownMenu(expanded = currExpanded, onDismissRequest = { currExpanded = false }) {
                         app.fynlo.logic.CurrencyUtils.supported.forEach { c ->
                             DropdownMenuItem(
-                                text    = { Text("${c.symbol}  ${c.code} â€” ${c.name}") },
+                                text    = { Text("${c.symbol}  ${c.code}  ${c.name}") },
                                 onClick = { currency = c.code; currExpanded = false }
                             )
                         }
