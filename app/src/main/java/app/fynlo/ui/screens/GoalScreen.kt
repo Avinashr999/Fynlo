@@ -94,6 +94,8 @@ fun GoalScreen(viewModel: FinanceViewModel) {
     }
 }
 
+}
+
 @Composable
 fun GoalCard(goal: Goal, currencySymbol: String, onDelete: () -> Unit) {
     val haptic = LocalHapticFeedback.current
@@ -180,5 +182,4 @@ fun AddGoalDialog(currencySymbol: String, onDismiss: () -> Unit, onConfirm: (Goa
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
     )
-    }
 }

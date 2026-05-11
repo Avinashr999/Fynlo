@@ -130,6 +130,7 @@ fun PeopleScreen(viewModel: FinanceViewModel) {
         ) { Icon(Icons.Default.Add, contentDescription = "Add Contact") }
     }
 }
+}
 
 // ── PersonCard ────────────────────────────────────────────────────────────────
 
@@ -389,5 +390,4 @@ fun EmptyPeopleState(onAdd: () -> Unit = {}) {
             textAlign = androidx.compose.ui.text.style.TextAlign.Center
         )
         Button(onClick = onAdd) { Text("Add First Contact") }
-    }
 }
