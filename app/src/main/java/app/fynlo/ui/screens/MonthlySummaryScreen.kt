@@ -57,7 +57,7 @@ fun MonthlySummaryScreen(viewModel: FinanceViewModel) {
         modifier = Modifier.fillMaxSize().statusBarsPadding()
             .padding(horizontal = 16.dp).verticalScroll(rememberScrollState())
     ) {
-        Text("Monthly Summary", style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold),
+        PremiumScreenHeader("Monthly Summary", "6-month income & expense analysis"),
             modifier = Modifier.padding(top = 12.dp, bottom = 16.dp))
 
         if (isIdle) {

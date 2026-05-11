@@ -84,7 +84,7 @@ val transactions by viewModel.transactions.collectAsState()
     ) {
         // Header
         Row(Modifier.fillMaxWidth().padding(vertical = 16.dp), Arrangement.SpaceBetween, Alignment.CenterVertically) {
-            PremiumScreenHeader("Expenses")
+            PremiumScreenHeader("Expenses", "Track where your money goes")
             FilledTonalButton(onClick = { showDialog = true }, shape = RoundedCornerShape(12.dp)) {
                 Icon(Icons.Default.Add, null, Modifier.size(18.dp))
                 Spacer(Modifier.width(6.dp))

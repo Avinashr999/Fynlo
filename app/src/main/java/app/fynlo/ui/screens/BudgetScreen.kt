@@ -60,7 +60,7 @@ fun BudgetScreen(viewModel: FinanceViewModel) {
             item {
                 Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
                     Column {
-                        PremiumScreenHeader("Budgeting")
+                        PremiumScreenHeader("Budgeting", "Monthly spending limits")
                         Text("$daysRemaining days remaining in ${today.month.name.lowercase().replaceFirstChar { it.uppercase() }}",
                             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }

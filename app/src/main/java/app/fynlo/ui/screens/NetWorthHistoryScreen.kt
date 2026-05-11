@@ -45,7 +45,7 @@ fun NetWorthHistoryScreen(viewModel: FinanceViewModel) {
         modifier = Modifier.fillMaxSize().statusBarsPadding()
             .padding(horizontal = 16.dp).verticalScroll(rememberScrollState())
     ) {
-        PremiumScreenHeader("Net Worth History")
+        PremiumScreenHeader("Net Worth History", "Your wealth over time")
 
         // Current net worth card
         Card(Modifier.fillMaxWidth(), RoundedCornerShape(20.dp),

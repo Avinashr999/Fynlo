@@ -261,9 +261,7 @@ val currentProject by viewModel.currentProject.collectAsState()
             .statusBarsPadding()
             .padding(horizontal = 16.dp)
     ) {
-        Text(
-            "My Investments", 
-            style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold),
+        PremiumScreenHeader("My Investments", "Portfolio & returns tracker"),
             modifier = Modifier.padding(top = 10.dp, bottom = 12.dp)
         )
 

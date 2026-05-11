@@ -105,9 +105,9 @@ fun ReportsHubScreen(
         modifier = Modifier.fillMaxSize().statusBarsPadding()
             .padding(horizontal = 16.dp).verticalScroll(rememberScrollState())
     ) {
-        Row(Modifier.fillMaxWidth().padding(top = 16.dp, bottom = 12.dp),
-            Arrangement.SpaceBetween, Alignment.CenterVertically) {
-            Text("Reports", style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold))
+        PremiumScreenHeader("Reports", "Income, expenses & net worth")
+        Row(Modifier.fillMaxWidth().padding(bottom = 8.dp),
+            Arrangement.End, Alignment.CenterVertically) {
             val context = androidx.compose.ui.platform.LocalContext.current
             FilledTonalButton(
                 onClick = {

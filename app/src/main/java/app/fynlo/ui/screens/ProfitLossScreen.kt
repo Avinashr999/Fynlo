@@ -73,7 +73,7 @@ fun ProfitLossScreen(viewModel: FinanceViewModel) {
         modifier = Modifier.fillMaxSize().statusBarsPadding()
             .padding(horizontal = 16.dp).verticalScroll(rememberScrollState())
     ) {
-        Text("Profit & Loss", style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold),
+        PremiumScreenHeader("Profit & Loss", "Revenue, expenses & lending P&L"),
             modifier = Modifier.padding(vertical = 16.dp))
 
         Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {

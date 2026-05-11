@@ -20,7 +20,7 @@ import java.util.Locale
 // Deep Emerald + Carbon — inspired by premium fintech apps
 // All screens use these shared components for consistency
 
-// ── Screen header — used at top of every screen ───────────────────────────────
+// ── Screen header — dark emerald banner like Net Worth card ───────────────────
 @Composable
 fun PremiumScreenHeader(
     title: String,
@@ -28,28 +28,46 @@ fun PremiumScreenHeader(
     action: (@Composable () -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
-    Row(
-        modifier = modifier.fillMaxWidth().padding(top = 10.dp, bottom = 12.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(bottomStart = 20.dp, bottomEnd = 20.dp,
+            topStart = 0.dp, topEnd = 0.dp),
+        colors = CardDefaults.cardColors(containerColor = Emerald700),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
-        Column {
-            Text(
-                title,
-                style = MaterialTheme.typography.headlineMedium.copy(
-                    fontWeight = FontWeight.ExtraBold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
+        Box {
+            // Decorative circle top-right
+            Box(
+                Modifier.size(80.dp).clip(CircleShape)
+                    .background(Emerald600.copy(alpha = 0.4f))
+                    .align(Alignment.TopEnd)
             )
-            if (subtitle.isNotBlank()) {
-                Text(
-                    subtitle,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Emerald500
-                )
+            Row(
+                modifier = Modifier.fillMaxWidth()
+                    .padding(start = 20.dp, end = 16.dp, top = 18.dp, bottom = 18.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text(
+                        title,
+                        style = MaterialTheme.typography.headlineSmall.copy(
+                            fontWeight = FontWeight.ExtraBold,
+                            color = Color.White
+                        )
+                    )
+                    if (subtitle.isNotBlank()) {
+                        Spacer(Modifier.height(2.dp))
+                        Text(
+                            subtitle,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Emerald200.copy(alpha = 0.85f)
+                        )
+                    }
+                }
+                action?.invoke()
             }
         }
-        action?.invoke()
     }
 }
 
