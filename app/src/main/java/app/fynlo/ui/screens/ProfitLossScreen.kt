@@ -145,11 +145,11 @@ fun ProfitLossScreen(viewModel: FinanceViewModel) {
         Spacer(Modifier.height(12.dp))
 
         // ── INVESTMENTS ───────────────────────────────────────────────────────
+        // Investments P&L = only gains/returns, NOT the capital itself (balance sheet)
         PLSection("Investments", listOf(
-            "Total Invested"      to investments.sumOf { it.invested },
-            "Current Value"       to investments.sumOf { it.currentVal },
-            "Realised Returns"    to investReturns,
-            "Unrealised Growth"   to investGrowth
+            "Realised Returns (withdrawn)"  to investReturns,
+            "Unrealised Growth (on paper)"  to investGrowth.coerceAtLeast(0.0),
+            "Unrealised Loss (on paper)"    to investGrowth.coerceAtMost(0.0)
         ), investGrowth + investReturns, if (investGrowth + investReturns >= 0) green else red, currencySymbol, locale)
 
         Spacer(Modifier.height(100.dp))
