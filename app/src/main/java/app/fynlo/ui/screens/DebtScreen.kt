@@ -165,7 +165,7 @@ val debts by viewModel.debts.collectAsState()
 
         }
         if (filteredDebts.isEmpty()) {
-            EmptyDebtState(onAdd = { showAddDialog = true })
+            item { EmptyDebtState(onAdd = { showAddDialog = true }) }
         } else {
             items(filteredDebts) { debt ->
                     DebtCard(
