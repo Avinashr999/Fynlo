@@ -380,6 +380,7 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
                     }
                 }
             }
+        }
         // FAB (inside Box for BoxScope.align)
         androidx.compose.material3.FloatingActionButton(
             onClick = { showAddDialog = true },
@@ -388,7 +389,6 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
         ) { Icon(Icons.Default.Add, null) }
     }
         }
-}
 }
 @Composable
 fun LendingCard(borrower: Borrower, people: List<app.fynlo.data.model.Person> = emptyList(), currencySymbol: String = "₹", isOverdue: Boolean = false, onDelete: () -> Unit, onEdit: () -> Unit, onCollect: () -> Unit, onClick: () -> Unit, onDefault: () -> Unit = {}, onWriteOff: () -> Unit = {}) {

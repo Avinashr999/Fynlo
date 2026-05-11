@@ -143,6 +143,7 @@ fun BudgetScreen(viewModel: FinanceViewModel) {
                         onDelete = { viewModel.deleteBudget(budget) })
                 }
             }
+        }
         FloatingActionButton(
             onClick = { showAddDialog = true },
             modifier = Modifier.align(Alignment.BottomEnd).padding(24.dp),
@@ -150,10 +151,9 @@ fun BudgetScreen(viewModel: FinanceViewModel) {
         ) {
             Icon(Icons.Default.Add, contentDescription = "Add Budget")
         }
-    }
         }
-}
     }
+}
 
 @Composable
 fun BudgetCard(

@@ -81,6 +81,7 @@ fun GoalScreen(viewModel: FinanceViewModel) {
                     GoalCard(goal, currencySymbol, onDelete = { viewModel.deleteGoal(goal) })
                 }
             }
+        }
         FloatingActionButton(
             onClick = { showAddDialog = true },
             modifier = Modifier.align(Alignment.BottomEnd).padding(24.dp),
@@ -88,10 +89,9 @@ fun GoalScreen(viewModel: FinanceViewModel) {
         ) {
             Icon(Icons.Default.Add, contentDescription = "Add Goal")
         }
-    }
         }
-}
     }
+}
 
 @Composable
 fun GoalCard(goal: Goal, currencySymbol: String, onDelete: () -> Unit) {
