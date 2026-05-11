@@ -184,8 +184,8 @@ fun AddLendingDialog(
                             // Store source account on borrower for display on card
                             val rawId = initialBorrower?.id ?: ""
                             val borrower = Borrower(
-                                id     = if (rawId.isBlank(,
-                                    sourceAccount = if (initialBorrower == null) selectedAccount.name else initialBorrower.sourceAccount)) UUID.randomUUID().toString() else rawId,
+                                id     = if (rawId.isBlank()) UUID.randomUUID().toString() else rawId,
+                                sourceAccount = if (initialBorrower == null) selectedAccount.name else initialBorrower.sourceAccount,
                                 name   = selectedPerson?.name ?: initialBorrower?.name ?: "Unknown",
                                 phone  = selectedPerson?.phone ?: initialBorrower?.phone ?: "",
                                 amount = amount.toDoubleOrNull() ?: 0.0,
