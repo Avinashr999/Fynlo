@@ -167,11 +167,12 @@ fun MoneyFlowScreen(viewModel: FinanceViewModel) {
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
+        PremiumScreenHeader("Money Flow", "Income & expense patterns")
 
-        Column(Modifier.padding(horizontal = 16.dp).padding(top = 16.dp, bottom = 8.dp)) {
+        Column(Modifier.padding(horizontal = 16.dp).padding(bottom = 8.dp)) {
             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
                 Column {
-                    PremiumScreenHeader("Money Flow", "Income & expense patterns")
+                    Text("Money Flow", style = MaterialTheme.typography.labelSmall)  // placeholder
                     Text("Track every movement in your currency", style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }

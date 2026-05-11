@@ -89,17 +89,18 @@ fun PeopleScreen(viewModel: FinanceViewModel) {
         )
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    Column(modifier = Modifier.fillMaxSize()) {
+        PremiumScreenHeader("Contact Book", "Linked to loans & reminders")
+        Box(modifier = Modifier.weight(1f)) {
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 
                 .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
-            contentPadding = PaddingValues(top = 16.dp, bottom = 100.dp)
+            contentPadding = PaddingValues(bottom = 100.dp)
         ) {
             item {
-                PremiumScreenHeader("Contact Book", "Linked to loans & reminders")
                 Text(
                     "Contacts link loans to people and enable WhatsApp / SMS reminders.",
                     style = MaterialTheme.typography.bodySmall,

@@ -113,8 +113,6 @@ fun HomeScreen(viewModel: FinanceViewModel, onNavigateToScreen: (String) -> Unit
             .padding(horizontal = 16.dp)
             .verticalScroll(rememberScrollState())
     ) {
-        Spacer(Modifier.height(16.dp))
-
         // 1. Project Switcher
         ProjectSwitcherChip(
             projects = projects, currentProjectId = currentProjectId,

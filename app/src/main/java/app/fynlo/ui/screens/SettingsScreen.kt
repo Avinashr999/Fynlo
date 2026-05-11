@@ -91,16 +91,14 @@ fun SettingsScreen(
         }
     }}}
 
-    Column(
+    Column(modifier = Modifier.fillMaxSize()) {
+        PremiumScreenHeader("Settings", "App preferences & data management")
+        Column(
         modifier = Modifier
             .fillMaxSize()
-            
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 16.dp)
     ) {
-        // â”€â”€ Header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-        PremiumScreenHeader("Settings", "App preferences & data management")
-
         // â”€â”€ Appearance â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         SettingsSectionLabel("Appearance")
         SettingsCard {

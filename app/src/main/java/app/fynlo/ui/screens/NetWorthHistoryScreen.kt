@@ -41,10 +41,9 @@ fun NetWorthHistoryScreen(viewModel: FinanceViewModel) {
     val range     = (maxNW - minNW).takeIf { it > 0 } ?: 1.0
     val lineColor = SemanticBlue
 
-    Column(
-        modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp).verticalScroll(rememberScrollState())
-    ) {
+    Column(modifier = Modifier.fillMaxSize()) {
         PremiumScreenHeader("Net Worth History", "Your wealth over time")
+        Column(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp).verticalScroll(rememberScrollState())) {
 
         // Current net worth card
         Card(Modifier.fillMaxWidth(), RoundedCornerShape(20.dp),

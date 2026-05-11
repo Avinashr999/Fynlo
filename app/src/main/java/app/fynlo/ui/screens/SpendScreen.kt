@@ -78,12 +78,13 @@ val transactions by viewModel.transactions.collectAsState()
         )
     }
 
-    Column(
+    Column(modifier = Modifier.fillMaxSize()) {
+        PremiumScreenHeader("Expenses", "Track where your money goes")
+        Column(
         modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp)
     ) {
         // Header
-        Row(Modifier.fillMaxWidth().padding(vertical = 16.dp), Arrangement.SpaceBetween, Alignment.CenterVertically) {
-            PremiumScreenHeader("Expenses", "Track where your money goes")
+        Row(Modifier.fillMaxWidth().padding(bottom = 8.dp), Arrangement.SpaceBetween, Alignment.CenterVertically) {
             FilledTonalButton(onClick = { showDialog = true }, shape = RoundedCornerShape(12.dp)) {
                 Icon(Icons.Default.Add, null, Modifier.size(18.dp))
                 Spacer(Modifier.width(6.dp))

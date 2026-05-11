@@ -101,10 +101,9 @@ fun ReportsHubScreen(
 
     fun fmt(v: Double) = "$currencySymbol${String.format(locale, "%,.0f", v)}"
 
-    Column(
-        modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp).verticalScroll(rememberScrollState())
-    ) {
+    Column(modifier = Modifier.fillMaxSize()) {
         PremiumScreenHeader("Reports", "Income, expenses & net worth")
+        Column(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp).verticalScroll(rememberScrollState())) {
         Row(Modifier.fillMaxWidth().padding(bottom = 8.dp),
             Arrangement.End, Alignment.CenterVertically) {
             val context = androidx.compose.ui.platform.LocalContext.current

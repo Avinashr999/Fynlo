@@ -69,10 +69,11 @@ fun ProfitLossScreen(viewModel: FinanceViewModel) {
     val red   = SemanticRed
     val amber = SemanticAmber
 
-    Column(
+    Column(modifier = Modifier.fillMaxSize()) {
+        PremiumScreenHeader("Profit & Loss", "Revenue, expenses & lending P&L")
+        Column(
         modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp).verticalScroll(rememberScrollState())
     ) {
-        PremiumScreenHeader("Profit & Loss", "Revenue, expenses & lending P&L")
 
         Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
             Text("Project: ${currentProject?.name ?: "Personal"}",

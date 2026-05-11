@@ -29,7 +29,7 @@ fun PremiumScreenHeader(
     modifier: Modifier = Modifier
 ) {
     Card(
-        modifier = modifier.fillMaxWidth().padding(horizontal = (-16).dp),
+        modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(bottomStart = 18.dp, bottomEnd = 18.dp,
             topStart = 0.dp, topEnd = 0.dp),
         colors = CardDefaults.cardColors(containerColor = Emerald700),

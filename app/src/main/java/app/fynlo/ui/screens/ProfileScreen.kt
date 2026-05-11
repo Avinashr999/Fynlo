@@ -42,10 +42,11 @@ fun ProfileScreen(onLogout: () -> Unit, onSignOut: () -> Unit = {}) {
     val name     = app.authManager.userName
     val uid      = app.authManager.userId
 
-    Column(
+    Column(modifier = Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
+        PremiumScreenHeader("Profile & Security", "Account & security settings")
+        Column(
         modifier = Modifier
             .fillMaxSize()
-            
             .padding(16.dp)
             .verticalScroll(rememberScrollState()),
         horizontalAlignment = Alignment.CenterHorizontally
