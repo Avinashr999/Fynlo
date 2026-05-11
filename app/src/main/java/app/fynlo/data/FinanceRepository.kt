@@ -267,6 +267,8 @@ class FinanceRepository(
      */
     // ─── Fix double-counted paid field (safe to run on every startup) ────────
     suspend fun fixPaidDoubleCount() {
+        // Backfill sourceAccount for borrowers that don't have it set yet
+        dao.backfillBorrowerSourceAccount()
         // Rebuild paid, paidPrincipal, paidInterest from the payments table (source of truth).
         // This fixes any corruption from previous migrations that used the wrong
         // denormalized fields as the source.

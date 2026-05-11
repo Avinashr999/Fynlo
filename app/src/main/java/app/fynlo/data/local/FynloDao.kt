@@ -44,6 +44,13 @@ interface FynloDao {
     @Query("UPDATE debts SET paidPrincipal = paid WHERE paidPrincipal = 0 AND paidInterest = 0 AND paid > 0")
     suspend fun seedDebtPaidPrincipalFromPaid()
 
+    @Query("""UPDATE borrowers SET sourceAccount = COALESCE(
+        (SELECT fromAcct FROM transactions
+         WHERE ref = borrowers.id AND type = 'Expense' AND category = 'Lending'
+         ORDER BY updatedAt DESC LIMIT 1), sourceAccount)
+        WHERE sourceAccount = '' """)
+    suspend fun backfillBorrowerSourceAccount()
+
     @Query("UPDATE borrowers SET paid = paidPrincipal + paidInterest")
     suspend fun recalculateBorrowerPaid()
 
