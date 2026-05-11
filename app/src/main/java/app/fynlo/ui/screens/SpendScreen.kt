@@ -79,8 +79,7 @@ val transactions by viewModel.transactions.collectAsState()
     }
 
     Column(
-        modifier = Modifier.fillMaxSize().statusBarsPadding()
-            .padding(horizontal = 16.dp)
+        modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp)
     ) {
         // Header
         Row(Modifier.fillMaxWidth().padding(vertical = 16.dp), Arrangement.SpaceBetween, Alignment.CenterVertically) {

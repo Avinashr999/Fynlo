@@ -102,8 +102,7 @@ fun ReportsHubScreen(
     fun fmt(v: Double) = "$currencySymbol${String.format(locale, "%,.0f", v)}"
 
     Column(
-        modifier = Modifier.fillMaxSize().statusBarsPadding()
-            .padding(horizontal = 16.dp).verticalScroll(rememberScrollState())
+        modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp).verticalScroll(rememberScrollState())
     ) {
         PremiumScreenHeader("Reports", "Income, expenses & net worth")
         Row(Modifier.fillMaxWidth().padding(bottom = 8.dp),

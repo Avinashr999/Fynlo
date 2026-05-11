@@ -97,7 +97,7 @@ fun HomeScreen(viewModel: FinanceViewModel, onNavigateToScreen: (String) -> Unit
     }
 
     if (!isSyncReady) {
-        Box(Modifier.fillMaxSize().statusBarsPadding(), Alignment.Center) {
+        Box(Modifier.fillMaxSize(), Alignment.Center) {
             Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 CircularProgressIndicator(color = Emerald500)
                 Text("Syncing your data...", style = MaterialTheme.typography.bodyMedium,
@@ -110,7 +110,6 @@ fun HomeScreen(viewModel: FinanceViewModel, onNavigateToScreen: (String) -> Unit
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .statusBarsPadding()
             .padding(horizontal = 16.dp)
             .verticalScroll(rememberScrollState())
     ) {

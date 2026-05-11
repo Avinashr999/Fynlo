@@ -85,7 +85,6 @@ val debts by viewModel.debts.collectAsState()
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .statusBarsPadding()
             .padding(horizontal = 16.dp)
     ) {
         PremiumScreenHeader("My Debts", "Loans you owe to others")

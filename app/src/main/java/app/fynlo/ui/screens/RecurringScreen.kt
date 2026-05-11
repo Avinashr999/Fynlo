@@ -39,7 +39,7 @@ fun RecurringScreen(viewModel: FinanceViewModel) {
     }
 
     Column(
-        modifier = Modifier.fillMaxSize().statusBarsPadding().padding(horizontal = 16.dp)
+        modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),

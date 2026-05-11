@@ -69,7 +69,6 @@ fun TransactionHistoryScreen(viewModel: FinanceViewModel) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .statusBarsPadding()
             .padding(horizontal = 16.dp)
     ) {
         Text(

@@ -114,8 +114,7 @@ fun LoanCalculatorScreen(viewModel: FinanceViewModel? = null) {
     }
 
     Column(
-        modifier = Modifier.fillMaxSize().statusBarsPadding()
-            .padding(horizontal = 16.dp).verticalScroll(rememberScrollState())
+        modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp).verticalScroll(rememberScrollState())
     ) {
         PremiumScreenHeader("Loan Calculator", "Plan your EMI before borrowing")
         Text("Plan your loan before taking it",

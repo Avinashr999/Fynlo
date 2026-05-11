@@ -203,13 +203,13 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
 
     Box(modifier = Modifier.fillMaxSize()) {
         LazyColumn(
-            modifier = Modifier.fillMaxSize().statusBarsPadding().padding(horizontal = 16.dp),
+            modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
             contentPadding = PaddingValues(top = 16.dp, bottom = 100.dp)
         ) {
             // Header
             item {
-                Row(Modifier.fillMaxWidth().padding(top = 10.dp, bottom = 4.dp), Arrangement.SpaceBetween, Alignment.CenterVertically) {
+                Row(Modifier.fillMaxWidth().padding(bottom = 4.dp), Arrangement.SpaceBetween, Alignment.CenterVertically) {
                     Column {
                         PremiumScreenHeader("Lending", "Interest loans & hand loans")
                         Text("${interestLoans.size} interest • ${handLoans.size} hand loans • ${settledLoans.size} settled",

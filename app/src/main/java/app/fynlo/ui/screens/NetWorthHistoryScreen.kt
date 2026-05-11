@@ -42,8 +42,7 @@ fun NetWorthHistoryScreen(viewModel: FinanceViewModel) {
     val lineColor = SemanticBlue
 
     Column(
-        modifier = Modifier.fillMaxSize().statusBarsPadding()
-            .padding(horizontal = 16.dp).verticalScroll(rememberScrollState())
+        modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp).verticalScroll(rememberScrollState())
     ) {
         PremiumScreenHeader("Net Worth History", "Your wealth over time")
 

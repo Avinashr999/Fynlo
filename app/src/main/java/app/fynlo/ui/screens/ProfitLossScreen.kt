@@ -70,8 +70,7 @@ fun ProfitLossScreen(viewModel: FinanceViewModel) {
     val amber = SemanticAmber
 
     Column(
-        modifier = Modifier.fillMaxSize().statusBarsPadding()
-            .padding(horizontal = 16.dp).verticalScroll(rememberScrollState())
+        modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp).verticalScroll(rememberScrollState())
     ) {
         PremiumScreenHeader("Profit & Loss", "Revenue, expenses & lending P&L")
 

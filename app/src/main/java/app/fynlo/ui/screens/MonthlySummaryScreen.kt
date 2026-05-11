@@ -54,8 +54,7 @@ fun MonthlySummaryScreen(viewModel: FinanceViewModel) {
     val isIdle    = idleRatio > 0.6 // Alert if > 60% is in cash
 
     Column(
-        modifier = Modifier.fillMaxSize().statusBarsPadding()
-            .padding(horizontal = 16.dp).verticalScroll(rememberScrollState())
+        modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp).verticalScroll(rememberScrollState())
     ) {
         PremiumScreenHeader("Monthly Summary", "6-month income & expense analysis")
 

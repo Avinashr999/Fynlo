@@ -258,7 +258,6 @@ val currentProject by viewModel.currentProject.collectAsState()
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .statusBarsPadding()
             .padding(horizontal = 16.dp)
     ) {
         PremiumScreenHeader("My Investments", "Portfolio & returns tracker")

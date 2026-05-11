@@ -166,7 +166,7 @@ fun MoneyFlowScreen(viewModel: FinanceViewModel) {
         map.entries.sortedByDescending { it.value.first + it.value.second }
     }
 
-    Column(modifier = Modifier.fillMaxSize().statusBarsPadding()) {
+    Column(modifier = Modifier.fillMaxSize()) {
 
         Column(Modifier.padding(horizontal = 16.dp).padding(top = 16.dp, bottom = 8.dp)) {
             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {

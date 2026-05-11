@@ -27,7 +27,7 @@ fun DebtPayoffScreen(viewModel: FinanceViewModel) {
 
     val activeDebts = debts.filter { it.status != "Cleared" && it.amount > it.paid }
 
-    Column(modifier = Modifier.fillMaxSize().statusBarsPadding().padding(horizontal = 16.dp)) {
+    Column(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
         Text("Debt Payoff Tracker",
             style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold),
             modifier = Modifier.padding(vertical = 16.dp))

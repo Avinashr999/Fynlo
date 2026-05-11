@@ -45,7 +45,7 @@ fun ProfileScreen(onLogout: () -> Unit, onSignOut: () -> Unit = {}) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .statusBarsPadding()
+            
             .padding(16.dp)
             .verticalScroll(rememberScrollState()),
         horizontalAlignment = Alignment.CenterHorizontally
