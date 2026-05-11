@@ -261,8 +261,7 @@ val currentProject by viewModel.currentProject.collectAsState()
             .statusBarsPadding()
             .padding(horizontal = 16.dp)
     ) {
-        PremiumScreenHeader("My Investments", "Portfolio & returns tracker"),
-            modifier = Modifier.padding(top = 10.dp, bottom = 12.dp)
+        PremiumScreenHeader("My Investments", "Portfolio & returns tracker")
         )
 
         if (investments.isEmpty()) {

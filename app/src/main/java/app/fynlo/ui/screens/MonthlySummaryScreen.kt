@@ -57,8 +57,7 @@ fun MonthlySummaryScreen(viewModel: FinanceViewModel) {
         modifier = Modifier.fillMaxSize().statusBarsPadding()
             .padding(horizontal = 16.dp).verticalScroll(rememberScrollState())
     ) {
-        PremiumScreenHeader("Monthly Summary", "6-month income & expense analysis"),
-            modifier = Modifier.padding(top = 12.dp, bottom = 16.dp))
+        PremiumScreenHeader("Monthly Summary", "6-month income & expense analysis")
 
         if (isIdle) {
             Card(
