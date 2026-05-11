@@ -58,7 +58,7 @@ fun MonthlySummaryScreen(viewModel: FinanceViewModel) {
             .padding(horizontal = 16.dp).verticalScroll(rememberScrollState())
     ) {
         Text("Monthly Summary", style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold),
-            modifier = Modifier.padding(vertical = 16.dp))
+            modifier = Modifier.padding(top = 12.dp, bottom = 16.dp))
 
         if (isIdle) {
             Card(

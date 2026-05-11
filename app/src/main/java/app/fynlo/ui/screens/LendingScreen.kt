@@ -209,7 +209,7 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
         ) {
             // Header
             item {
-                Row(Modifier.fillMaxWidth().padding(bottom = 4.dp), Arrangement.SpaceBetween, Alignment.CenterVertically) {
+                Row(Modifier.fillMaxWidth().padding(top = 10.dp, bottom = 4.dp), Arrangement.SpaceBetween, Alignment.CenterVertically) {
                     Column {
                         Text("Lending", style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold))
                         Text("${interestLoans.size} interest • ${handLoans.size} hand loans • ${settledLoans.size} settled",

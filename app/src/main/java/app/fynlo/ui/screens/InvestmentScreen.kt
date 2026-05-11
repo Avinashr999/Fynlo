@@ -264,7 +264,7 @@ val currentProject by viewModel.currentProject.collectAsState()
         Text(
             "My Investments", 
             style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold),
-            modifier = Modifier.padding(vertical = 16.dp)
+            modifier = Modifier.padding(top = 10.dp, bottom = 12.dp)
         )
 
         if (investments.isEmpty()) {

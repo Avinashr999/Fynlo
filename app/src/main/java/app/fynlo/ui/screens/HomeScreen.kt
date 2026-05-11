@@ -122,35 +122,69 @@ fun HomeScreen(viewModel: FinanceViewModel, onNavigateToScreen: (String) -> Unit
             onSwitch = { viewModel.switchProject(it) },
             onManageClick = { onNavigateToScreen("projects") }
         )
-        
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(8.dp))
 
-        // 2. Net Worth Card (High Visibility)
+        // 2. Net Worth Card — deep emerald premium design
         Card(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(24.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary)
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(containerColor = Emerald700)
         ) {
-            Column(Modifier.padding(24.dp)) {
-                Text("Total Net Worth", style = MaterialTheme.typography.labelMedium, color = Color.White.copy(alpha = 0.7f))
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    text  = "$currencySymbol ${String.format(locale, "%,.0f", summary.netWorth)}",
-                    style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.ExtraBold, color = Color.White)
+            Box {
+                // Decorative circle top-right
+                Box(
+                    Modifier.size(120.dp)
+                        .clip(CircleShape)
+                        .background(Emerald600.copy(alpha = 0.4f))
+                        .align(Alignment.TopEnd)
                 )
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    "Assets ${currencySymbol}${String.format(locale, "%,.0f", summary.totalAssets)} · Liabilities ${currencySymbol}${String.format(locale, "%,.0f", summary.totalDebtPrincipal + summary.totalDebtInterest)}",
-                    style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.6f)
+                Box(
+                    Modifier.size(80.dp)
+                        .offset(x = 20.dp, y = (-20).dp)
+                        .clip(CircleShape)
+                        .background(Emerald500.copy(alpha = 0.2f))
+                        .align(Alignment.TopEnd)
                 )
-                
-                Spacer(Modifier.height(16.dp))
-                WealthDistributionBar(
-                    cash = summary.totalCash,
-                    investments = summary.totalInvestments,
-                    interestLoans = summary.totalInterestLoans,
-                    handLoans = summary.totalHandLoans
-                )
+                Column(Modifier.padding(22.dp)) {
+                    Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.Top) {
+                        Column {
+                            Text("Total Net Worth", style = MaterialTheme.typography.labelMedium,
+                                color = Emerald200.copy(alpha = 0.8f))
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                text  = "$currencySymbol ${String.format(locale, "%,.0f", summary.netWorth)}",
+                                style = MaterialTheme.typography.headlineLarge.copy(
+                                    fontWeight = FontWeight.ExtraBold, color = Color.White)
+                            )
+                        }
+                    }
+                    Spacer(Modifier.height(4.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Column {
+                            Text("Assets", style = MaterialTheme.typography.labelSmall,
+                                color = Emerald200.copy(alpha = 0.6f))
+                            Text("$currencySymbol${String.format(locale, "%,.0f", summary.totalAssets)}",
+                                style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
+                                color = Color.White.copy(alpha = 0.9f))
+                        }
+                        Text("·", color = Emerald200.copy(alpha = 0.4f),
+                            style = MaterialTheme.typography.bodySmall)
+                        Column {
+                            Text("Liabilities", style = MaterialTheme.typography.labelSmall,
+                                color = Emerald200.copy(alpha = 0.6f))
+                            Text("$currencySymbol${String.format(locale, "%,.0f", summary.totalDebtPrincipal + summary.totalDebtInterest)}",
+                                style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
+                                color = Color.White.copy(alpha = 0.9f))
+                        }
+                    }
+                    Spacer(Modifier.height(16.dp))
+                    WealthDistributionBar(
+                        cash = summary.totalCash,
+                        investments = summary.totalInvestments,
+                        interestLoans = summary.totalInterestLoans,
+                        handLoans = summary.totalHandLoans
+                    )
+                }
             }
         }
 
@@ -196,7 +230,7 @@ fun HomeScreen(viewModel: FinanceViewModel, onNavigateToScreen: (String) -> Unit
             }
         }
 
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(16.dp))
 
         // 4. Quick Actions
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {

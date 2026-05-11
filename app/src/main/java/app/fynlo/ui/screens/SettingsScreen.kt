@@ -102,7 +102,7 @@ fun SettingsScreen(
         Text(
             "Settings",
             style    = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold),
-            modifier = Modifier.padding(top = 16.dp, bottom = 20.dp)
+            modifier = Modifier.padding(top = 12.dp, bottom = 16.dp)
         )
 
         // â”€â”€ Appearance â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
