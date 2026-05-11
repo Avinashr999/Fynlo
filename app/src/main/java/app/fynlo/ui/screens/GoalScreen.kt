@@ -44,6 +44,7 @@ fun GoalScreen(viewModel: FinanceViewModel) {
 
     Column(modifier = Modifier.fillMaxSize()) {
         PremiumScreenHeader("Savings Goals", "Track your financial targets")
+        Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
@@ -179,4 +180,5 @@ fun AddGoalDialog(currencySymbol: String, onDismiss: () -> Unit, onConfirm: (Goa
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
     )
+    }
 }

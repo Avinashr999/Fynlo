@@ -65,6 +65,7 @@ fun parsePhone(saved: String): Pair<CountryCode, String> {
         Pair(match, clean.removePrefix(match.code).trimStart())
     } else {
         Pair(COUNTRY_CODES.first(), clean)   // default India, keep as-is
+        }
     }
 }
 
@@ -91,6 +92,7 @@ fun PeopleScreen(viewModel: FinanceViewModel) {
 
     Column(modifier = Modifier.fillMaxSize()) {
         PremiumScreenHeader("Contact Book", "Linked to loans & reminders")
+        Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
