@@ -31,13 +31,15 @@ fun ProfitLossScreen(viewModel: FinanceViewModel) {
 
     // ── Cash-basis figures — exclude financing activities (debt/lending/investment)
     // Debt received = liability (not income), Debt repayment principal = balance sheet (not expense)
-    val financingCategories = listOf("Debt Received", "Debt Repayment", "Lending", "Loan Recovery", "Investment", "Investment Returns")
+    val financingCategories = listOf("Debt Received", "Debt Repayment", "Lending", "Loan Recovery", "Loan Repayment", "Investment", "Investment Returns")
     val cashTxns       = transactions.filter { it.tags != "journal_only" && it.category !in financingCategories }
     val totalIncome    = cashTxns.filter { it.type.equals("income",  ignoreCase = true) }.sumOf { it.amount }
     val totalExpense   = cashTxns.filter { it.type.equals("expense", ignoreCase = true) }.sumOf { it.amount }
 
     // ── Interest tracking ───────────────────────────────────────────────────
-    val interestIncome   = transactions.filter { it.category == "Loan Repayment" && it.tags != "journal_only" }.sumOf { it.amount }
+    // Use paidInterest from borrowers — this is the ACTUAL interest collected
+    // NOT the full Loan Repayment transaction (which includes principal recovery)
+    val interestIncome   = borrowers.sumOf { it.paidInterest }
     val interestExpense  = transactions.filter { it.category == "Interest Expense" }.sumOf { it.amount }  // journal entries
     val badDebtWriteOffs = transactions.filter { it.category == "Bad Debt" }.sumOf { it.amount }          // journal entries
 

@@ -73,7 +73,7 @@ fun ReportsHubScreen(
     // Exclude financing activities — debt received/repaid, lending, investments
     // are balance sheet movements, not income or expenses
     val financingCats = setOf("Debt Received", "Debt Repayment", "Lending",
-        "Loan Recovery", "Investment", "Investment Returns")
+        "Loan Recovery", "Loan Repayment", "Investment", "Investment Returns")
 
     val filtered = remember(transactions, fromStr, finalTo) {
         transactions.filter { it.date in fromStr..finalTo && it.tags != "journal_only" && it.category !in financingCats }
