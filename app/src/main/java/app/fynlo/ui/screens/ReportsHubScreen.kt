@@ -70,8 +70,13 @@ fun ReportsHubScreen(
     val fromStr = fromDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
     val finalTo = toDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
 
+    // Exclude financing activities — debt received/repaid, lending, investments
+    // are balance sheet movements, not income or expenses
+    val financingCats = setOf("Debt Received", "Debt Repayment", "Lending",
+        "Loan Recovery", "Investment", "Investment Returns")
+
     val filtered = remember(transactions, fromStr, finalTo) {
-        transactions.filter { it.date in fromStr..finalTo }
+        transactions.filter { it.date in fromStr..finalTo && it.tags != "journal_only" && it.category !in financingCats }
     }
     val income   = filtered.filter { it.type.equals("income",  true) }.sumOf { it.amount }
     val expense  = filtered.filter { it.type.equals("expense", true) }.sumOf { it.amount }
