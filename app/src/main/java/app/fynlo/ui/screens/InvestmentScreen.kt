@@ -1,13 +1,16 @@
 package app.fynlo.ui.screens
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.background
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Notes
+import androidx.compose.material.icons.filled.Update
 import androidx.compose.material.icons.filled.TrendingUp
+import androidx.compose.material.icons.filled.CallMade
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.History
@@ -288,94 +291,132 @@ val currentProject by viewModel.currentProject.collectAsState()
 
 @Composable
 fun InvestmentCard(invest: Investment, currencySymbol: String = "₹", onDelete: () -> Unit, onEdit: () -> Unit, onUpdate: () -> Unit, onViewHistory: () -> Unit, onWithdraw: () -> Unit = {}) {
-    val growth = invest.currentVal - invest.invested
+    val growth = invest.currentVal - (invest.invested - invest.withdrawn)
     val growthPercent = if (invest.invested > 0) (growth / invest.invested) * 100 else 0.0
+    val isProfit = growth >= 0
 
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        Icons.Default.TrendingUp,
-                        contentDescription = null, 
-                        tint = Emerald500,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        invest.name, 
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
-                    )
-                }
-                Row {
-                    IconButton(onClick = onViewHistory) {
-                        Icon(Icons.Default.History, contentDescription = "History", modifier = Modifier.size(20.dp), tint = Color.Gray)
-                    }
-                    IconButton(onClick = onEdit) {
-                        Icon(Icons.Default.Edit, contentDescription = "Edit", modifier = Modifier.size(20.dp), tint = Color.Gray)
-                    }
-                    IconButton(onClick = onDelete) {
-                        Icon(Icons.Default.Delete, contentDescription = "Delete", modifier = Modifier.size(20.dp), tint = Color.Red.copy(alpha = 0.6f))
-                    }
-                    if (invest.currentVal > 0) {
-                        FilledTonalButton(
-                            onClick = onWithdraw,
-                            contentPadding = PaddingValues(horizontal = 8.dp),
-                            modifier = Modifier.height(28.dp),
-                            colors = ButtonDefaults.filledTonalButtonColors(
-                                containerColor = Emerald500.copy(alpha = 0.15f),
-                                contentColor   = Emerald500
-                            )
-                        ) { Text("Withdraw", style = MaterialTheme.typography.labelSmall) }
-                    }
-                    FilledTonalButton(
-                        onClick = onUpdate,
-                        contentPadding = PaddingValues(horizontal = 8.dp),
-                        modifier = Modifier.height(28.dp)
-                    ) { Text("Update", style = MaterialTheme.typography.labelSmall) }
-                    Badge(
-                        containerColor = if (growth >= 0) Emerald50 else Color(0xFFFFEBEE),
-                        contentColor = if (growth >= 0) Emerald500 else Color.Red
+            // ── Header: name + type badge + action icons ──────────────────────
+            Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                    Box(
+                        Modifier.size(36.dp).clip(RoundedCornerShape(10.dp))
+                            .background(Emerald500.copy(alpha = 0.1f)),
+                        contentAlignment = Alignment.Center
                     ) {
-                        Text("${String.format(Locale.getDefault(), "%.1f", growthPercent)}%", style = MaterialTheme.typography.labelSmall)
+                        Icon(Icons.Default.TrendingUp, null, Modifier.size(18.dp), tint = Emerald500)
+                    }
+                    Spacer(Modifier.width(10.dp))
+                    Column {
+                        Text(invest.name, style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold))
+                        Text(invest.type, style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
-            }
-            
-            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-            
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Column {
-                    Text("Invested Principal", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text("$currencySymbol ${String.format(Locale.getDefault(), "%,.0f", invest.invested)}", style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold))
-                    Text("Date: ${DateUtils.formatToDisplay(invest.date)}", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
-                }
-                Column(horizontalAlignment = Alignment.End) {
-                    Text("Current Value", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text("$currencySymbol ${String.format(Locale.getDefault(), "%,.0f", invest.currentVal)}", style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold, color = Emerald500))
-                    Text("Type: ${invest.type}", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                    // Growth badge
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = if (isProfit) Emerald500.copy(alpha = 0.1f) else SemanticRed.copy(alpha = 0.1f)
+                    ) {
+                        Text(
+                            "${if (isProfit) "+" else ""}${String.format(Locale.getDefault(), "%.1f", growthPercent)}%",
+                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                            color = if (isProfit) Emerald500 else SemanticRed,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
+                    }
+                    Spacer(Modifier.width(4.dp))
+                    IconButton(onClick = onViewHistory, Modifier.size(30.dp)) {
+                        Icon(Icons.Default.History, "History", Modifier.size(15.dp), tint = Carbon500)
+                    }
+                    IconButton(onClick = onEdit, Modifier.size(30.dp)) {
+                        Icon(Icons.Default.Edit, "Edit", Modifier.size(15.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    IconButton(onClick = onDelete, Modifier.size(30.dp)) {
+                        Icon(Icons.Default.Delete, "Delete", Modifier.size(15.dp), tint = SemanticRed.copy(alpha = 0.7f))
+                    }
                 }
             }
 
+            Spacer(Modifier.height(12.dp))
+            HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
+            Spacer(Modifier.height(12.dp))
+
+            // ── Key metrics row ──────────────────────────────────────────────
+            Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
+                Column {
+                    Text("Invested", style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("$currencySymbol ${String.format(Locale.getDefault(), "%,.0f", invest.invested)}",
+                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold))
+                    Text("Since ${DateUtils.formatToDisplay(invest.date)}",
+                        style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+                }
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("Gain / Loss", style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(
+                        "${if (isProfit) "+" else ""}$currencySymbol ${String.format(Locale.getDefault(), "%,.0f", kotlin.math.abs(growth))}",
+                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                        color = if (isProfit) Emerald500 else SemanticRed
+                    )
+                }
+                Column(horizontalAlignment = Alignment.End) {
+                    Text("Current Value", style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("$currencySymbol ${String.format(Locale.getDefault(), "%,.0f", invest.currentVal)}",
+                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold,
+                            color = if (isProfit) Emerald500 else SemanticRed))
+                }
+            }
+
+            if (invest.withdrawn > 0) {
+                Spacer(Modifier.height(6.dp))
+                Text("Withdrawn: $currencySymbol ${String.format(Locale.getDefault(), "%,.0f", invest.withdrawn)}",
+                    style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+
             if (invest.notes.isNotEmpty()) {
-                Spacer(Modifier.height(12.dp))
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(Icons.AutoMirrored.Filled.Notes, contentDescription = null, modifier = Modifier.size(14.dp), tint = Color.Gray)
-                    Spacer(Modifier.width(8.dp))
+                Spacer(Modifier.height(8.dp))
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.AutoMirrored.Filled.Notes, null, Modifier.size(13.dp), tint = Color.Gray)
+                    Spacer(Modifier.width(6.dp))
                     Text(invest.notes, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                }
+            }
+
+            // ── Action buttons row ───────────────────────────────────────────
+            Spacer(Modifier.height(12.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(
+                    onClick = onUpdate,
+                    modifier = Modifier.weight(1f).height(36.dp),
+                    shape = RoundedCornerShape(10.dp),
+                    contentPadding = PaddingValues(horizontal = 8.dp)
+                ) {
+                    Icon(Icons.Default.Update, null, Modifier.size(14.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text("Update Value", style = MaterialTheme.typography.labelSmall)
+                }
+                if (invest.currentVal > 0) {
+                    Button(
+                        onClick = onWithdraw,
+                        modifier = Modifier.weight(1f).height(36.dp),
+                        shape = RoundedCornerShape(10.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Emerald500),
+                        contentPadding = PaddingValues(horizontal = 8.dp)
+                    ) {
+                        Icon(Icons.Default.CallMade, null, Modifier.size(14.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text("Withdraw", style = MaterialTheme.typography.labelSmall)
+                    }
                 }
             }
         }

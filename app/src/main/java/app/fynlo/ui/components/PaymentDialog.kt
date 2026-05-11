@@ -387,6 +387,19 @@ fun PayDebtDialog(
                     }
                     Spacer(Modifier.height(4.dp))
                 }
+                // Full Settlement — always show when any amount is outstanding
+                if (totalOutstanding > 0) {
+                    FilledTonalButton(onClick = {
+                        interestStr  = String.format("%.0f", interestOutstanding)
+                        principalStr = String.format("%.0f", principalOutstanding)
+                    }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(10.dp),
+                    colors = ButtonDefaults.filledTonalButtonColors(containerColor = Emerald500.copy(alpha = 0.15f))) {
+                        Icon(Icons.Default.AutoAwesome, null, Modifier.size(16.dp), tint = Emerald500)
+                        Spacer(Modifier.width(6.dp))
+                        Text("Full Settlement — ₹${String.format("%,.0f", totalOutstanding)}", color = Emerald500)
+                    }
+                    Spacer(Modifier.height(4.dp))
+                }
 
                 Spacer(Modifier.height(4.dp))
                 Text("Payment Breakdown", style = MaterialTheme.typography.labelMedium,
