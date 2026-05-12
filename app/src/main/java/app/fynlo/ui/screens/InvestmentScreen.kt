@@ -258,7 +258,6 @@ val currentProject by viewModel.currentProject.collectAsState()
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(horizontal = 16.dp)
     ) {
         PremiumScreenHeader("My Investments", "Portfolio & returns tracker")
 
@@ -267,7 +266,7 @@ val currentProject by viewModel.currentProject.collectAsState()
             EmptyInvestState(onAdd = { editingInvest = Investment(id = "", name = "", type = "", invested = 0.0, currentVal = 0.0, date = "", notes = "", projectId = "") })
         } else {
             LazyColumn(
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
                 contentPadding = PaddingValues(bottom = 100.dp)
             ) {
@@ -284,10 +283,15 @@ val currentProject by viewModel.currentProject.collectAsState()
                 }
             }
         }
+        FloatingActionButton(
+            onClick = { editingInvest = Investment(id = "", name = "", type = "", invested = 0.0, currentVal = 0.0, date = "", notes = "", projectId = "") },
+            modifier = Modifier.align(Alignment.BottomEnd).padding(24.dp),
+            containerColor = MaterialTheme.colorScheme.primary
+        ) { Icon(Icons.Default.Add, contentDescription = "Add Investment") }
+        }
     }
 }
 
-        }
 @Composable
 fun InvestmentCard(invest: Investment, currencySymbol: String = "₹", onDelete: () -> Unit, onEdit: () -> Unit, onUpdate: () -> Unit, onViewHistory: () -> Unit, onWithdraw: () -> Unit = {}) {
     val growth = invest.currentVal - (invest.invested - invest.withdrawn)
