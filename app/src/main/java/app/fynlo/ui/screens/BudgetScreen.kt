@@ -54,6 +54,12 @@ fun BudgetScreen(viewModel: FinanceViewModel) {
 
     Column(modifier = Modifier.fillMaxSize()) {
         PremiumScreenHeader("Budgeting", "Monthly spending limits")
+        val sorted = remember(budgets, expenses) {
+            budgets.sortedByDescending { b ->
+                val pct = (expenses[b.category] ?: 0.0) / b.limitAmount
+                pct
+            }
+        }
         Box(modifier = Modifier.weight(1f)) {
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp).imePadding(),
@@ -133,13 +139,7 @@ fun BudgetScreen(viewModel: FinanceViewModel) {
                     }
                 }
             } else {
-                val sorted = remember(budgets, expenses) {
-                    budgets.sortedByDescending { b ->
-                    val pct = (expenses[b.category] ?: 0.0) / b.limitAmount
-                    pct
-                }
-                }
-                items(sorted, key = { it.id }) { budget ->
+                items(sorted, key = { it.category }) { budget ->
                     val actualSpent = expenses[budget.category] ?: 0.0
                     BudgetCard(budget, actualSpent, daysRemaining, daysPassed, currencySymbol, locale,
                         onDelete = { viewModel.deleteBudget(budget) })
