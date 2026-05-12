@@ -52,7 +52,7 @@ fun RecurringScreen(viewModel: FinanceViewModel) {
         }
     }
 
-    val dueCount = recurringList.count { r.isActive && !today.isBefore(nextDue(r)) }
+    val dueCount = recurringList.count { rec -> rec.isActive && !today.isBefore(nextDue(rec)) }
 
     Column(modifier = Modifier.fillMaxSize()) {
         PremiumScreenHeader(
