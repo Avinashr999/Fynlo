@@ -138,7 +138,7 @@ fun MonthlySummaryScreen(viewModel: FinanceViewModel) {
                 Row(Modifier.padding(14.dp).fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
                     Text(label, style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold), modifier = Modifier.width(48.dp))
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("Income", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("Income", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold), color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Text("$currencySymbol${String.format(locale, "%,.0f", inc)}", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold), color = incomeColor)
                     }
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -168,10 +168,10 @@ private fun SummaryChip(label: String, value: String, color: Color, modifier: Mo
         border = androidx.compose.foundation.BorderStroke(0.5.dp, color.copy(alpha = 0.2f))
     ) {
         Column(Modifier.padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(label, style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium),
+            Text(label, style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
                 color = color, textAlign = TextAlign.Center)
             Spacer(Modifier.height(4.dp))
-            Text(value, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.ExtraBold),
+            Text(value, style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.ExtraBold),
                 color = MaterialTheme.colorScheme.onSurface, textAlign = TextAlign.Center)
         }
     }

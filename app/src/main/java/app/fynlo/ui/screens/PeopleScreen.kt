@@ -74,6 +74,14 @@ fun parsePhone(saved: String): Pair<CountryCode, String> {
 fun PeopleScreen(viewModel: FinanceViewModel) {
     val haptic = LocalHapticFeedback.current
     val people by viewModel.people.collectAsState()
+    var searchQuery by remember { mutableStateOf("") }
+    val filteredPeople = remember(people, searchQuery) {
+        if (searchQuery.isBlank()) people
+        else people.filter {
+            it.name.contains(searchQuery, ignoreCase = true) ||
+            it.phone.contains(searchQuery, ignoreCase = true)
+        }
+    }
     var showAddDialog by remember { mutableStateOf(false) }
     var editingPerson by remember { mutableStateOf<Person?>(null) }
 
@@ -92,6 +100,17 @@ fun PeopleScreen(viewModel: FinanceViewModel) {
     Column(modifier = Modifier.fillMaxSize()) {
         PremiumScreenHeader("Contact Book", "Linked to loans & reminders")
         Box(modifier = Modifier.weight(1f)) {
+        Column(modifier = Modifier.fillMaxSize()) {
+        OutlinedTextField(
+            value = searchQuery,
+            onValueChange = { searchQuery = it },
+            placeholder = { Text("Search contacts...") },
+            leadingIcon = { Icon(Icons.Default.Search, null, Modifier.size(20.dp)) },
+            trailingIcon = { if (searchQuery.isNotEmpty()) IconButton(onClick = { searchQuery = "" }) { Icon(Icons.Default.Clear, null) } },
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp),
+            singleLine = true
+        )
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
@@ -111,7 +130,7 @@ fun PeopleScreen(viewModel: FinanceViewModel) {
             if (people.isEmpty()) {
                 item { EmptyPeopleState(onAdd = { showAddDialog = true }) }
             } else {
-                items(people, key = { it.id }) { person ->
+                items(filteredPeople, key = { it.id }) { person ->
                     PersonCard(
                         person   = person,
                         onEdit   = { editingPerson = person },
@@ -120,6 +139,7 @@ fun PeopleScreen(viewModel: FinanceViewModel) {
                 }
             }
         }
+        } // close search Column
         FloatingActionButton(
             onClick = { showAddDialog = true },
             modifier = Modifier.align(Alignment.BottomEnd).padding(24.dp),

@@ -111,27 +111,17 @@ fun CollectionCalendarScreen(
     val todayCount    = allEntries.count { it.status == DueStatus.TODAY }
     val upcomingCount = allEntries.count { it.status == DueStatus.UPCOMING || it.status == DueStatus.UPCOMING_SOON }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text("Collection Calendar", fontWeight = androidx.compose.ui.text.font.FontWeight.ExtraBold)
-                        Text("Due dates & overdue loans", style = MaterialTheme.typography.labelSmall,
-                            color = Emerald500)
-                    }
-                },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                )
-            )
-        }
-    ) { padding ->
+    Column(modifier = Modifier.fillMaxSize()) {
+        PremiumScreenHeader(
+            title = "Collection Calendar",
+            subtitle = "Due dates & overdue loans",
+            action = {
+                IconButton(onClick = onNavigateBack) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = androidx.compose.ui.graphics.Color.White)
+                }
+            }
+        )
+        val padding = androidx.compose.foundation.layout.PaddingValues(0.dp)
         LazyColumn(
             modifier = Modifier.padding(padding).fillMaxSize(),
             contentPadding = PaddingValues(bottom = 32.dp)
@@ -483,19 +473,21 @@ private fun DueEntryCard(
 private fun SummaryChip(label: String, color: Color, modifier: Modifier, onClick: () -> Unit) {
     Surface(
         modifier  = modifier.clickable(onClick = onClick),
-        shape     = RoundedCornerShape(10.dp),
-        color     = color.copy(alpha = 0.12f),
+        shape     = RoundedCornerShape(12.dp),
+        color     = color.copy(alpha = 0.08f),
+        border    = androidx.compose.foundation.BorderStroke(1.dp, color.copy(alpha = 0.3f)),
         tonalElevation = 0.dp
     ) {
-        Text(
-            label,
-            modifier  = Modifier.padding(vertical = 8.dp, horizontal = 4.dp),
-            textAlign = TextAlign.Center,
-            style     = MaterialTheme.typography.labelMedium.copy(
-                fontWeight = FontWeight.Bold,
-                color      = color
+        Box(Modifier.padding(vertical = 10.dp, horizontal = 4.dp), contentAlignment = Alignment.Center) {
+            Text(
+                label,
+                textAlign = TextAlign.Center,
+                style     = MaterialTheme.typography.labelLarge.copy(
+                    fontWeight = FontWeight.Bold,
+                    color      = color
+                )
             )
-        )
+        }
     }
 }
 

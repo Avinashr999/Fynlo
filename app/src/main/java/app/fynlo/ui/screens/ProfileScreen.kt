@@ -149,6 +149,8 @@ fun ProfileScreen(onLogout: () -> Unit, onSignOut: () -> Unit = {}) {
                 modifier = Modifier.fillMaxWidth().height(52.dp),
                 shape    = RoundedCornerShape(16.dp)
             ) {
+                Icon(Icons.Default.AccountCircle, null, Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
                 Text("Sign out of Google", fontWeight = FontWeight.SemiBold)
             }
             Spacer(Modifier.height(12.dp))
@@ -161,8 +163,11 @@ fun ProfileScreen(onLogout: () -> Unit, onSignOut: () -> Unit = {}) {
             shape    = RoundedCornerShape(16.dp),
             colors   = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
         ) {
+            Icon(Icons.Default.Lock, null, Modifier.size(18.dp))
+            Spacer(Modifier.width(8.dp))
             Text("Logout & Lock App", fontWeight = FontWeight.Bold)
         }
+        Spacer(Modifier.height(32.dp))
     }
     }
 }
