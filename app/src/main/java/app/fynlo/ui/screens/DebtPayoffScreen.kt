@@ -94,7 +94,7 @@ private fun DebtPayoffCard(debt: Debt, currencySymbol: String, locale: Locale) {
         Column(Modifier.padding(16.dp)) {
             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
                 Text(debt.name, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
-                Surface(color = Color(0xFFFFEBEE), shape = RoundedCornerShape(8.dp)) {
+                Surface(color = SemanticRed.copy(alpha = 0.08f), shape = RoundedCornerShape(8.dp)) {
                     Text("$currencySymbol ${String.format(locale, "%,.0f", outstanding)}",
                         style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                         color = SemanticRed, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
