@@ -475,24 +475,45 @@ fun MainNavigation(viewModel: FinanceViewModel) {
                 startDestination = Screen.Home.route,
                 modifier = Modifier.weight(1f),
                 enterTransition = {
-                    // Fade for bottom nav tabs, slide for drill-down
                     val isBottomNav = bottomNavItems.any {
                         initialState.destination.route == it.route ||
                         targetState.destination.route == it.route
                     }
-                    if (isBottomNav) fadeIn(animationSpec = androidx.compose.animation.core.tween(200))
-                    else slideInHorizontally(animationSpec = androidx.compose.animation.core.tween(280)) { it / 3 } + fadeIn(androidx.compose.animation.core.tween(280))
+                    if (isBottomNav)
+                        fadeIn(animationSpec = androidx.compose.animation.core.tween(220, easing = androidx.compose.animation.core.FastOutSlowInEasing))
+                    else
+                        slideInHorizontally(
+                            animationSpec = androidx.compose.animation.core.spring(
+                                dampingRatio = androidx.compose.animation.core.Spring.DampingRatioLowBouncy,
+                                stiffness    = androidx.compose.animation.core.Spring.StiffnessMedium
+                            )
+                        ) { (it * 0.25f).toInt() } + fadeIn(androidx.compose.animation.core.tween(250))
                 },
                 exitTransition = {
                     val isBottomNav = bottomNavItems.any {
                         initialState.destination.route == it.route ||
                         targetState.destination.route == it.route
                     }
-                    if (isBottomNav) fadeOut(animationSpec = androidx.compose.animation.core.tween(150))
-                    else slideOutHorizontally(animationSpec = androidx.compose.animation.core.tween(280)) { -it / 3 } + fadeOut(androidx.compose.animation.core.tween(280))
+                    if (isBottomNav)
+                        fadeOut(animationSpec = androidx.compose.animation.core.tween(160))
+                    else
+                        slideOutHorizontally(
+                            animationSpec = androidx.compose.animation.core.tween(220, easing = androidx.compose.animation.core.FastOutSlowInEasing)
+                        ) { -(it * 0.25f).toInt() } + fadeOut(androidx.compose.animation.core.tween(180))
                 },
-                popEnterTransition = { slideInHorizontally(animationSpec = androidx.compose.animation.core.tween(280)) { -it / 3 } + fadeIn(androidx.compose.animation.core.tween(280)) },
-                popExitTransition = { slideOutHorizontally(animationSpec = androidx.compose.animation.core.tween(280)) { it / 3 } + fadeOut(androidx.compose.animation.core.tween(280)) }
+                popEnterTransition = {
+                    slideInHorizontally(
+                        animationSpec = androidx.compose.animation.core.tween(220, easing = androidx.compose.animation.core.FastOutSlowInEasing)
+                    ) { -(it * 0.25f).toInt() } + fadeIn(androidx.compose.animation.core.tween(220))
+                },
+                popExitTransition = {
+                    slideOutHorizontally(
+                        animationSpec = androidx.compose.animation.core.spring(
+                            dampingRatio = androidx.compose.animation.core.Spring.DampingRatioNoBouncy,
+                            stiffness    = androidx.compose.animation.core.Spring.StiffnessMedium
+                        )
+                    ) { (it * 0.25f).toInt() } + fadeOut(androidx.compose.animation.core.tween(180))
+                }
             ) {
                 composable(Screen.Home.route) { 
                     HomeScreen(

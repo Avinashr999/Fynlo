@@ -141,7 +141,7 @@ fun ReportsHubScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(bottom = 8.dp))
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    items(ranges) { r ->
+                    items(ranges, key = { it }) { r ->
                         FilterChip(
                             selected = selectedRange == r,
                             onClick  = { selectedRange = r },

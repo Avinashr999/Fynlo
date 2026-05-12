@@ -82,7 +82,7 @@ fun AccountStatementScreen(
                     colors   = CardDefaults.cardColors(
                         containerColor = if (account.balance >= 0)
                             MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
-                        else Color(0xFFFFEBEE).copy(alpha = 0.5f)
+                        else SemanticRed.copy(alpha = 0.08f)
                     )
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
@@ -106,7 +106,7 @@ fun AccountStatementScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             } else {
                 LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(accountTransactions) { txn ->
+                    items(accountTransactions, key = { it.id }) { txn ->
                         TransactionItem(
                             txn            = txn,
                             currencySymbol = currencySymbol,

@@ -64,10 +64,17 @@ fun NetWorthHistoryScreen(viewModel: FinanceViewModel) {
         if (sorted.size < 2) {
             Card(Modifier.fillMaxWidth(), RoundedCornerShape(16.dp)) {
                 Box(Modifier.fillMaxWidth().padding(32.dp), Alignment.Center) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text("Building your history...", style = MaterialTheme.typography.titleMedium)
+                    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Icon(
+                            androidx.compose.material.icons.Icons.Default.TrendingUp,
+                            contentDescription = null,
+                            modifier = Modifier.size(48.dp),
+                            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+                        )
+                        Text("Building your history...", style = MaterialTheme.typography.titleMedium.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.Bold))
                         Text("Open the app daily to track net worth trends",
-                            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center)
                     }
                 }
             }

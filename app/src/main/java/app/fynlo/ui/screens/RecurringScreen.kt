@@ -70,7 +70,7 @@ fun RecurringScreen(viewModel: FinanceViewModel) {
         } else {
             LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp),
                 contentPadding = PaddingValues(bottom = 100.dp)) {
-                items(recurringList) { r ->
+                items(recurringList, key = { it.id }) { r ->
                     RecurringCard(r, onDelete = { viewModel.deleteRecurringTransaction(r) })
                 }
             }

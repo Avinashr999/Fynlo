@@ -133,11 +133,13 @@ fun BudgetScreen(viewModel: FinanceViewModel) {
                     }
                 }
             } else {
-                val sorted = budgets.sortedByDescending { b ->
+                val sorted = remember(budgets, expenses) {
+                    budgets.sortedByDescending { b ->
                     val pct = (expenses[b.category] ?: 0.0) / b.limitAmount
                     pct
                 }
-                items(sorted) { budget ->
+                }
+                items(sorted, key = { it.id }) { budget ->
                     val actualSpent = expenses[budget.category] ?: 0.0
                     BudgetCard(budget, actualSpent, daysRemaining, daysPassed, currencySymbol, locale,
                         onDelete = { viewModel.deleteBudget(budget) })
@@ -257,10 +259,19 @@ private fun InfoItem(label: String, value: String, color: Color) {
 
 @Composable
 private fun OverviewChip(label: String, value: String, color: Color, modifier: Modifier) {
-    Surface(modifier, RoundedCornerShape(8.dp), color = color.copy(alpha = 0.1f)) {
-        Column(Modifier.padding(8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text(value, style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold), color = color)
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(14.dp),
+        color = color.copy(alpha = 0.08f),
+        border = androidx.compose.foundation.BorderStroke(0.5.dp, color.copy(alpha = 0.25f))
+    ) {
+        Column(
+            Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Text(label, style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Medium), color = color)
+            Text(value, style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.ExtraBold), color = MaterialTheme.colorScheme.onSurface)
         }
     }
 }
@@ -278,7 +289,7 @@ fun AddBudgetDialog(currencySymbol: String, onDismiss: () -> Unit, onConfirm: (B
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    items(categories.size) { i ->
+                    items(categories.size, key = { it }) { i ->
                         FilterChip(selected = category == categories[i], onClick = { category = categories[i] },
                             label = { Text(categories[i], style = MaterialTheme.typography.labelSmall) })
                     }

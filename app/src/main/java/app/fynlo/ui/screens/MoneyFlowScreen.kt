@@ -259,7 +259,7 @@ fun MoneyFlowScreen(viewModel: FinanceViewModel) {
                 androidx.compose.foundation.lazy.LazyRow(
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    items(tabs.size) { i ->
+                    items(tabs.size, key = { it }) { i ->
                         FilterChip(
                             selected = selectedTab == i,
                             onClick  = { selectedTab = i },
@@ -276,7 +276,7 @@ fun MoneyFlowScreen(viewModel: FinanceViewModel) {
                     }
                 }
             } else {
-                items(filteredFlows) { flow ->
+                items(filteredFlows, key = { it.id }) { flow ->
                     FlowEntryCard(flow, currencySymbol, locale)
                 }
             }

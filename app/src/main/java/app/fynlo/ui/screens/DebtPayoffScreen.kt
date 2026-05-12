@@ -45,7 +45,7 @@ fun DebtPayoffScreen(viewModel: FinanceViewModel) {
                 d.amount + interest - d.paid
             }
             Card(Modifier.fillMaxWidth().padding(bottom = 16.dp), RoundedCornerShape(16.dp),
-                CardDefaults.cardColors(containerColor = Color(0xFFFFEBEE).copy(alpha = 0.5f))) {
+                CardDefaults.cardColors(containerColor = SemanticRed.copy(alpha = 0.08f))) {
                 Column(Modifier.padding(16.dp)) {
                     Text("Total Remaining", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text("$currencySymbol ${String.format(locale, "%,.2f", totalOwed)}",
@@ -58,7 +58,7 @@ fun DebtPayoffScreen(viewModel: FinanceViewModel) {
 
             LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp),
                 contentPadding = PaddingValues(bottom = 100.dp)) {
-                items(activeDebts) { debt ->
+                items(activeDebts, key = { it.id }) { debt ->
                     DebtPayoffCard(debt, currencySymbol, locale)
                 }
             }

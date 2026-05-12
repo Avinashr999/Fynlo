@@ -271,7 +271,7 @@ val currentProject by viewModel.currentProject.collectAsState()
                 verticalArrangement = Arrangement.spacedBy(12.dp),
                 contentPadding = PaddingValues(bottom = 100.dp)
             ) {
-                items(investments) { invest ->
+                items(investments, key = { it.id }) { invest ->
                     InvestmentCard(
                         invest   = invest,
                         currencySymbol = currencySymbol,

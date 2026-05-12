@@ -77,7 +77,7 @@ fun GoalScreen(viewModel: FinanceViewModel) {
                     }
                 }
             } else {
-                items(goals) { goal ->
+                items(goals, key = { it.id }) { goal ->
                     GoalCard(goal, currencySymbol, onDelete = { viewModel.deleteGoal(goal) })
                 }
             }

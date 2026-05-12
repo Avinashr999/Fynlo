@@ -168,7 +168,7 @@ val debts by viewModel.debts.collectAsState()
         if (filteredDebts.isEmpty()) {
             item { EmptyDebtState(onAdd = { showAddDialog = true }) }
         } else {
-            items(filteredDebts) { debt ->
+            items(filteredDebts, key = { it.id }) { debt ->
                     DebtCard(
                         debt = debt,
                         currencySymbol = currencySymbol,
@@ -264,7 +264,7 @@ fun DebtCard(debt: Debt, currencySymbol: String = "₹", onEdit: () -> Unit, onD
             // For "Both" type show SI + CI split
             if (bothPortions != null) {
                 Spacer(Modifier.height(6.dp))
-                Surface(color = Color(0xFFFFEBEE).copy(alpha = 0.5f), shape = RoundedCornerShape(8.dp)) {
+                Surface(color = SemanticRed.copy(alpha = 0.08f), shape = RoundedCornerShape(8.dp)) {
                     Column(Modifier.fillMaxWidth().padding(10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
                             Text("➔ SI (until due date)", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -281,7 +281,7 @@ fun DebtCard(debt: Debt, currencySymbol: String = "₹", onEdit: () -> Unit, onD
             // Days elapsed strip
             Spacer(Modifier.height(8.dp))
             Surface(
-                color = Color(0xFFFFEBEE).copy(alpha = 0.5f),
+                color = SemanticRed.copy(alpha = 0.08f),
                 shape = RoundedCornerShape(8.dp)
             ) {
                 Row(

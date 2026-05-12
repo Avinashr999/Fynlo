@@ -338,7 +338,7 @@ fun StepFundingSource(
             }
         } else {
             Surface(
-                color = Color(0xFFFDE68A).copy(alpha = 0.2f),
+                color = SemanticAmber.copy(alpha = 0.12f),
                 shape = RoundedCornerShape(12.dp)
             ) {
                 Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {

@@ -98,8 +98,8 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
             else b.paidPrincipal < b.amount              // interest loan: principal not yet recovered
         )
     }
-    val interestLoans  = processed.filter { it.rate > 0  && isActive(it) }
-    val handLoans      = processed.filter { it.rate <= 0 && isActive(it) }
+    val interestLoans  = remember(processed) { processed.filter { it.rate > 0  && isActive(it) } }
+    val handLoans      = remember(processed) { processed.filter { it.rate <= 0 && isActive(it) } }
     val defaultedLoans = processed.filter { it.status == "Defaulted" }
     // Settled = marked Settled/WrittenOff, OR fully paid (using same logic as isActive)
     val settledLoans   = processed.filter { b ->
@@ -332,7 +332,7 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
                         }
                     }
                 } else {
-                    items(activeLoans) { borrower ->
+                    items(activeLoans, key = { it.id }) { borrower ->
                         LendingCard(
                             borrower  = borrower,
                             people    = people,
