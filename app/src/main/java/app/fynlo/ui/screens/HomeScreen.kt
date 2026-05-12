@@ -44,6 +44,7 @@ fun HomeScreen(viewModel: FinanceViewModel, onNavigateToScreen: (String) -> Unit
     val locale           = java.util.Locale.getDefault()
     val currencySymbol   = app.fynlo.logic.CurrencyUtils.symbolFor(currentProject?.currency ?: "INR")
     var showAddTxn       by remember { mutableStateOf(false) }
+    val netWorthSnapshots by viewModel.getNetWorthSnapshots().collectAsState(initial = emptyList())
 
     // Analytics Sheet State
     var activeBreakdownType by remember { mutableStateOf<BreakdownType?>(null) }
@@ -210,6 +211,41 @@ fun HomeScreen(viewModel: FinanceViewModel, onNavigateToScreen: (String) -> Unit
                         interestLoans = summary.totalInterestLoans,
                         handLoans = summary.totalHandLoans
                     )
+
+                    // Sparkline — 7-day net worth trend
+                    if (netWorthSnapshots.size >= 2) {
+                        Spacer(Modifier.height(12.dp))
+                        val recentSnaps = netWorthSnapshots.sortedBy { it.date }.takeLast(7)
+                        val minVal = recentSnaps.minOf { it.netWorth }.toFloat()
+                        val maxVal = recentSnaps.maxOf { it.netWorth }.toFloat()
+                        val range  = (maxVal - minVal).takeIf { it > 0f } ?: 1f
+                        val trend  = recentSnaps.last().netWorth - recentSnaps.first().netWorth
+                        val sparkColor = if (trend >= 0) Color(0xFF86EFAC) else Color(0xFFFCA5A5)
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            androidx.compose.foundation.Canvas(modifier = Modifier.weight(1f).height(36.dp)) {
+                                val pts = recentSnaps.mapIndexed { i, s ->
+                                    val x = if (recentSnaps.size == 1) size.width / 2
+                                            else i * size.width / (recentSnaps.size - 1)
+                                    val y = size.height - ((s.netWorth.toFloat() - minVal) / range) * size.height
+                                    androidx.compose.ui.geometry.Offset(x, y)
+                                }
+                                for (i in 0 until pts.size - 1) {
+                                    drawLine(
+                                        color = sparkColor.copy(alpha = 0.7f),
+                                        start = pts[i], end = pts[i + 1],
+                                        strokeWidth = 2.5.dp.toPx(),
+                                        cap = androidx.compose.ui.graphics.StrokeCap.Round
+                                    )
+                                }
+                                drawCircle(sparkColor, radius = 4.dp.toPx(), center = pts.last())
+                            }
+                            Column(horizontalAlignment = Alignment.End) {
+                                val trendStr = if (trend >= 0) "+₹${String.format("%,.0f", trend)}" else "-₹${String.format("%,.0f", -trend)}"
+                                Text(trendStr, style = MaterialTheme.typography.labelSmall.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.Bold), color = sparkColor)
+                                Text("${recentSnaps.size}d trend", style = MaterialTheme.typography.labelSmall, color = Emerald200.copy(alpha = 0.5f))
+                            }
+                        }
+                    }
                 }
             }
         }

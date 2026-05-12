@@ -696,6 +696,59 @@ class FinanceViewModel(private val repository: FinanceRepository) : ViewModel() 
         viewModelScope.launch { repository.deleteRecurringTransaction(r) }
     }
 
+    // ── Recurring Auto-Logger ─────────────────────────────────────────────
+    /** Call once on app start. Logs all overdue recurring transactions. */
+    fun triggerDueRecurring() {
+        viewModelScope.launch(Dispatchers.IO) {
+            val today = LocalDate.now()
+            val fmt   = DateTimeFormatter.ofPattern("dd-MM-yyyy")
+            val all   = repository.getAllRecurringTransactions().first()
+
+            var logged = 0
+            for (r in all) {
+                if (!r.isActive) continue
+
+                // Calculate next due date from lastRun
+                val lastRun = if (r.lastRun.isBlank()) null else
+                    runCatching { LocalDate.parse(r.lastRun, fmt) }.getOrNull()
+
+                val nextDue: java.time.LocalDate = when {
+                    lastRun == null -> today // never run → due today
+                    r.frequency == "Daily"   -> lastRun.plusDays(1)
+                    r.frequency == "Weekly"  -> lastRun.plusWeeks(1)
+                    r.frequency == "Monthly" -> lastRun.plusMonths(1)
+                    r.frequency == "Yearly"  -> lastRun.plusYears(1)
+                    else -> lastRun.plusMonths(1)
+                }
+
+                if (!today.isBefore(nextDue)) {
+                    // Create the transaction
+                    val txn = Transaction(
+                        id       = java.util.UUID.randomUUID().toString(),
+                        date     = today.format(fmt),
+                        type     = r.type,
+                        amount   = r.amount,
+                        fromAcct = if (r.type == "Expense") r.fromAcct else "",
+                        toAcct   = if (r.type == "Income")  r.toAcct  else "",
+                        category = r.category,
+                        notes    = "Auto: ${r.name}",
+                        projectId = r.projectId
+                    )
+                    repository.insertTransaction(txn)
+
+                    // Update lastRun
+                    repository.insertRecurringTransaction(
+                        r.copy(lastRun = today.format(fmt), updatedAt = System.currentTimeMillis())
+                    )
+                    logged++
+                }
+            }
+            if (logged > 0) {
+                android.util.Log.i("Recurring", "Auto-logged $logged recurring transactions")
+            }
+        }
+    }
+
     fun populateDummyData() {
         viewModelScope.launch(Dispatchers.IO) {
             val cash = Account("1", "Cash in Hand", "Cash",  5000.0,  projectId = pid)

@@ -200,6 +200,12 @@ fun MainNavigation(viewModel: FinanceViewModel) {
     val navAccounts by viewModel.accounts.collectAsState()
     val navDebts    by viewModel.debts.collectAsState()
 
+    // Auto-log recurring transactions once on each app session start
+    androidx.compose.runtime.LaunchedEffect(Unit) {
+        viewModel.triggerDueRecurring()
+        viewModel.saveNetWorthSnapshot()
+    }
+
     if (showInvestmentDialog) {
         AddInvestmentDialog(
             accounts  = navAccounts,

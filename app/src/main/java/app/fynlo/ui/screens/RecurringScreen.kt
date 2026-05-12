@@ -20,6 +20,9 @@ import app.fynlo.data.model.RecurringTransaction
 import app.fynlo.ui.theme.*
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.time.temporal.ChronoUnit
 
 
 @Composable
@@ -27,59 +30,116 @@ fun RecurringScreen(viewModel: FinanceViewModel) {
     val haptic = LocalHapticFeedback.current
     val recurringList by viewModel.recurringTransactions.collectAsState()
     var showAddDialog by remember { mutableStateOf(false) }
+    val today = LocalDate.now()
+    val fmt   = DateTimeFormatter.ofPattern("dd-MM-yyyy")
 
     if (showAddDialog) {
         AddRecurringDialog(
             onDismiss = { showAddDialog = false },
-            onConfirm = { r ->
-                viewModel.addRecurringTransaction(r)
-                showAddDialog = false
-            }
+            onConfirm = { r -> viewModel.addRecurringTransaction(r); showAddDialog = false }
         )
     }
 
-    Column(
-        modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp)
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column {
-                Text("Recurring", style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold))
-                Text("Auto-log on schedule", style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            FilledTonalButton(onClick = { showAddDialog = true }, shape = RoundedCornerShape(12.dp)) {
-                Icon(Icons.Default.Add, null, Modifier.size(18.dp))
-                Spacer(Modifier.width(6.dp))
-                Text("Add")
-            }
+    fun nextDue(r: RecurringTransaction): LocalDate {
+        val last = if (r.lastRun.isBlank()) null else runCatching { LocalDate.parse(r.lastRun, fmt) }.getOrNull()
+        return when {
+            last == null          -> today
+            r.frequency == "Daily"   -> last.plusDays(1)
+            r.frequency == "Weekly"  -> last.plusWeeks(1)
+            r.frequency == "Monthly" -> last.plusMonths(1)
+            r.frequency == "Yearly"  -> last.plusYears(1)
+            else -> last.plusMonths(1)
         }
+    }
 
+    val dueCount = recurringList.count { r.isActive && !today.isBefore(nextDue(r)) }
+
+    Column(modifier = Modifier.fillMaxSize()) {
+        PremiumScreenHeader(
+            title = "Recurring",
+            subtitle = "Auto-log on schedule",
+            action = {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    if (dueCount > 0) {
+                        Surface(shape = RoundedCornerShape(20.dp), color = SemanticAmber) {
+                            Text("$dueCount due",
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                color = Color.White)
+                        }
+                    }
+                    IconButton(onClick = { showAddDialog = true }) {
+                        Icon(Icons.Default.Add, "Add", tint = Color.White)
+                    }
+                }
+            }
+        )
+        Box(modifier = Modifier.weight(1f)) {
         if (recurringList.isEmpty()) {
             Box(Modifier.fillMaxSize(), Alignment.Center) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Icon(Icons.Default.Repeat, null, Modifier.size(56.dp), tint = MaterialTheme.colorScheme.outlineVariant)
-                    Text("No recurring transactions", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text("Add salary, rent, EMIs to auto-log them", style = MaterialTheme.typography.bodySmall,
+                    Text("No recurring transactions", style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("Add salary, rent, EMIs to auto-log", style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.outlineVariant)
+                    FilledTonalButton(onClick = { showAddDialog = true }, shape = RoundedCornerShape(12.dp)) {
+                        Icon(Icons.Default.Add, null, Modifier.size(16.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text("Add First")
+                    }
                 }
             }
         } else {
-            LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp),
-                contentPadding = PaddingValues(bottom = 100.dp)) {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+                contentPadding = PaddingValues(top = 12.dp, bottom = 100.dp)
+            ) {
+                if (dueCount > 0) {
+                    item {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(14.dp),
+                            colors = CardDefaults.cardColors(containerColor = SemanticAmber.copy(alpha = 0.08f)),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, SemanticAmber.copy(alpha = 0.3f))
+                        ) {
+                            Row(Modifier.padding(14.dp).fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
+                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                    Icon(Icons.Default.NotificationImportant, null, Modifier.size(20.dp), tint = SemanticAmber)
+                                    Column {
+                                        Text("$dueCount due today",
+                                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                                            color = SemanticAmber)
+                                        Text("Will auto-log on next app open",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    }
+                                }
+                                FilledTonalButton(
+                                    onClick = { viewModel.triggerDueRecurring() },
+                                    shape = RoundedCornerShape(10.dp),
+                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                                ) { Text("Run Now", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold)) }
+                            }
+                        }
+                    }
+                }
                 items(recurringList, key = { it.id }) { r ->
-                    RecurringCard(r, onDelete = { viewModel.deleteRecurringTransaction(r) })
+                    val nd = nextDue(r)
+                    val isDue = !today.isBefore(nd)
+                    val daysUntil = ChronoUnit.DAYS.between(today, nd)
+                    RecurringCard(r, isDue = isDue, daysUntil = daysUntil,
+                        onDelete = { viewModel.deleteRecurringTransaction(r) })
                 }
             }
+        }
         }
     }
 }
 
 @Composable
-private fun RecurringCard(r: RecurringTransaction, onDelete: () -> Unit) {
+private fun RecurringCard(r: RecurringTransaction, isDue: Boolean = false, daysUntil: Long = 0, onDelete: () -> Unit) {
     val haptic = LocalHapticFeedback.current
     Card(Modifier.fillMaxWidth(), RoundedCornerShape(16.dp),
         CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -100,6 +160,14 @@ private fun RecurringCard(r: RecurringTransaction, onDelete: () -> Unit) {
                         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text(r.category.ifBlank { r.type }, style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.outlineVariant)
+                    val dueLabel = when {
+                        isDue -> "Due today"
+                        daysUntil == 1L -> "Due tomorrow"
+                        else -> "In $daysUntil days"
+                    }
+                    Text(dueLabel,
+                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                        color = if (isDue) SemanticRed else Emerald500)
                 }
             }
             IconButton(onClick = { haptic.performHapticFeedback(HapticFeedbackType.LongPress); onDelete() }) {
