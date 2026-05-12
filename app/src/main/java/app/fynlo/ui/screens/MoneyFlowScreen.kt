@@ -276,7 +276,7 @@ fun MoneyFlowScreen(viewModel: FinanceViewModel) {
                     }
                 }
             } else {
-                items(filteredFlows, key = { it.id }) { flow ->
+                items(filteredFlows, key = { "${it.date}_${it.label}_${it.amount}" }) { flow ->
                     FlowEntryCard(flow, currencySymbol, locale)
                 }
             }
