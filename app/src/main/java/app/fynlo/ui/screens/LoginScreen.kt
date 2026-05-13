@@ -115,18 +115,19 @@ fun LoginScreen(onSignedIn: () -> Unit) {
             horizontalAlignment   = Alignment.CenterHorizontally,
             verticalArrangement   = Arrangement.Center
         ) {
-            // App icon
+            // App icon — white tinted so it reads cleanly on emerald
             Box(
                 modifier         = Modifier
                     .size(96.dp)
                     .clip(RoundedCornerShape(24.dp))
-                    .background(Color.White.copy(alpha = 0.12f)),
+                    .background(Color.White.copy(alpha = 0.15f)),
                 contentAlignment = Alignment.Center
             ) {
                 Image(
                     painter            = painterResource(id = R.drawable.ic_launcher_foreground),
                     contentDescription = "Fynlo",
-                    modifier           = Modifier.size(80.dp)
+                    modifier           = Modifier.size(80.dp),
+                    colorFilter        = androidx.compose.ui.graphics.ColorFilter.tint(Color.White)
                 )
             }
 
