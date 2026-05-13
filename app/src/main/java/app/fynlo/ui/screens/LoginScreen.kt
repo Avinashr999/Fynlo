@@ -115,12 +115,12 @@ fun LoginScreen(onSignedIn: () -> Unit) {
             horizontalAlignment   = Alignment.CenterHorizontally,
             verticalArrangement   = Arrangement.Center
         ) {
-            // App icon — white tinted so it reads cleanly on emerald
+            // App icon — white icon on solid Emerald surface
             Box(
                 modifier         = Modifier
                     .size(96.dp)
                     .clip(RoundedCornerShape(24.dp))
-                    .background(Color.White.copy(alpha = 0.15f)),
+                    .background(Emerald600),
                 contentAlignment = Alignment.Center
             ) {
                 Image(
