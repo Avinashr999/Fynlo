@@ -37,7 +37,7 @@ data class OnboardingPage(
 fun IllustrationNetWorth() {
     Canvas(modifier = Modifier.size(200.dp)) {
         val w = size.width; val h = size.height
-        val green = Emerald500; val light = Emerald100
+        val green = Emerald500; val light = Emerald500.copy(alpha = 0.15f)
         drawRoundRect(color = light, topLeft = Offset(w*0.1f,h*0.15f),
             size = Size(w*0.8f, h*0.55f), cornerRadius = CornerRadius(24f))
         drawRoundRect(color = green.copy(0.15f), topLeft = Offset(w*0.1f,h*0.15f),
@@ -201,7 +201,15 @@ fun OnboardingScreen(onComplete: () -> Unit) {
     var page by remember { mutableIntStateOf(0) }
     val current = pages[page]
 
-    Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+    Box(Modifier.fillMaxSize().background(
+        androidx.compose.ui.graphics.Brush.verticalGradient(
+            colors = listOf(
+                MaterialTheme.colorScheme.background,
+                MaterialTheme.colorScheme.background,
+                Emerald700.copy(alpha = 0.04f)
+            )
+        )
+    )) {
         Column(
             modifier = Modifier.fillMaxSize().padding(32.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
