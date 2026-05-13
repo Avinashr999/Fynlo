@@ -86,7 +86,7 @@ fun IllustrationLending() {
             lineTo(w*0.52f, arrowY - 8f)
             lineTo(w*0.52f, arrowY + 8f)
         }, SemanticAmber)
-        drawRoundRect(Color(0xFFFEF3C7), topLeft = Offset(w*0.3f, h*0.6f),
+        drawRoundRect(Color.White.copy(alpha = 0.15f), topLeft = Offset(w*0.3f, h*0.6f),
             size = Size(w*0.4f, h*0.14f), cornerRadius = CornerRadius(16f))
         drawRoundRect(SemanticAmber, topLeft = Offset(w*0.3f, h*0.6f),
             size = Size(w*0.4f, h*0.14f), cornerRadius = CornerRadius(16f), style = Stroke(2f))
@@ -97,7 +97,7 @@ fun IllustrationLending() {
 fun IllustrationDebt() {
     Canvas(modifier = Modifier.size(200.dp)) {
         val w = size.width; val h = size.height
-        val red = SemanticRed; val light = Color(0xFFFEF2F2)
+        val red = SemanticRed; val light = Color.White.copy(alpha = 0.18f)
         drawRoundRect(Brush.linearGradient(listOf(red, SemanticRed),
             Offset(w*0.1f, h*0.2f), Offset(w*0.9f, h*0.65f)),
             topLeft = Offset(w*0.1f, h*0.2f), size = Size(w*0.8f, h*0.45f),
@@ -149,7 +149,7 @@ fun IllustrationSync() {
     Canvas(modifier = Modifier.size(200.dp)) {
         val w = size.width; val h = size.height
         val blue = SemanticBlue
-        val light = Color(0xFFEFF6FF)
+        val light = Color.White.copy(alpha = 0.18f)
         drawCircle(light, w*0.18f, Offset(w*0.38f, h*0.38f))
         drawCircle(light, w*0.14f, Offset(w*0.56f, h*0.40f))
         drawCircle(light, w*0.22f, Offset(w*0.50f, h*0.32f))
