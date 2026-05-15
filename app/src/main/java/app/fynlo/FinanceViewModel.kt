@@ -1,6 +1,8 @@
 package app.fynlo
 
 import androidx.lifecycle.ViewModel
+import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 import androidx.lifecycle.viewModelScope
 import app.fynlo.data.FinanceRepository
 import app.fynlo.data.SyncStatus
@@ -14,7 +16,10 @@ import kotlinx.coroutines.tasks.await
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
-class FinanceViewModel(private val repository: FinanceRepository) : ViewModel() {
+@HiltViewModel
+class FinanceViewModel @Inject constructor(
+    private val repository: FinanceRepository
+) : ViewModel() {
 
     private val _uiState = MutableStateFlow<UiState>(UiState.Initial)
     val uiState: StateFlow<UiState> = _uiState.asStateFlow()

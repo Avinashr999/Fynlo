@@ -16,6 +16,7 @@ room = "2.8.4"
 navigationCompose = "2.9.8"
 kotlinxSerialization = "1.7.3"
 ksp = "2.3.7"
+hilt = "2.52"
 poi = "5.5.1"
 
 [libraries]
@@ -47,6 +48,17 @@ google-signin    = { group = "com.google.android.gms", name = "play-services-aut
 room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }
 room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }
 room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "room" }
+hilt-android          = { group = "com.google.dagger", name = "hilt-android",          version.ref = "hilt" }
+hilt-android-compiler = { group = "com.google.dagger", name = "hilt-android-compiler", version.ref = "hilt" }
+hilt-navigation-compose = { group = "androidx.hilt", name = "hilt-navigation-compose", version = "1.2.0" }
+# Test deps
+coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version = "1.9.0" }
+turbine         = { group = "app.cash.turbine",       name = "turbine",                 version = "1.2.0" }
+truth           = { group = "com.google.truth",       name = "truth",                   version = "1.4.4" }
+mockk           = { group = "io.mockk",               name = "mockk",                   version = "1.13.14" }
+robolectric     = { group = "org.robolectric",         name = "robolectric",             version = "4.13" }
+room-testing    = { group = "androidx.room",          name = "room-testing",            version.ref = "room" }
+hilt-android-testing = { group = "com.google.dagger", name = "hilt-android-testing",   version.ref = "hilt" }
 navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigationCompose" }
 kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlinxSerialization" }
 apache-poi = { group = "org.apache.poi", name = "poi", version.ref = "poi" }
@@ -60,3 +72,4 @@ google-gms-google-services = { id = "com.google.gms.google-services", version.re
 firebase-crashlytics-plugin = { id = "com.google.firebase.crashlytics", version = "3.0.2" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
+hilt-android = { id = "com.google.dagger.hilt.android", version.ref = "hilt" }

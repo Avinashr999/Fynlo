@@ -1,6 +1,7 @@
 package app.fynlo
 
 import android.app.Application
+import dagger.hilt.android.HiltAndroidApp
 import android.util.Log
 import androidx.room.Room
 import app.fynlo.data.local.MIGRATION_10_11
@@ -28,6 +29,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
+@HiltAndroidApp
 class FynloApplication : Application() {
 
     val database: FynloDatabase by lazy {
