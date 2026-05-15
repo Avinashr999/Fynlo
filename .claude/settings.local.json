@@ -5,7 +5,13 @@
       "Bash(rm -rf .gradle/configuration-cache)",
       "Bash(./gradlew --no-configuration-cache --no-daemon assembleDebug)",
       "Bash(./gradlew test:*)",
-      "Bash(./gradlew testDebugUnitTest --tests \"app.fynlo.logic.InterestEngineExtendedTest\" --tests \"app.fynlo.logic.FinancialSummaryCalculationTest\")"
+      "Bash(./gradlew testDebugUnitTest --tests \"app.fynlo.logic.InterestEngineExtendedTest\" --tests \"app.fynlo.logic.FinancialSummaryCalculationTest\")",
+      "Bash(./gradlew testDebugUnitTest --tests \"app.fynlo.InterestEngineTest\")",
+      "Bash(./gradlew testDebugUnitTest)",
+      "Bash(./gradlew testDebugUnitTest --rerun-tasks)",
+      "Bash(find app/build/test-results -name \"*.xml\" -exec grep -l \"testcase\" {} \\\\;)",
+      "Bash(xargs grep:*)",
+      "Bash(bc)"
     ]
   }
 }

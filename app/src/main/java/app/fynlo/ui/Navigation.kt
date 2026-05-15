@@ -105,10 +105,10 @@ fun MainNavigation(viewModel: FinanceViewModel) {
         AppLockState.unlock()
     }
 
-    // Onboarding â€” show only on first launch
+    // Onboarding â€" show only on first launch
     val prefs = remember { context.getSharedPreferences("fynlo_prefs", android.content.Context.MODE_PRIVATE) }
     var showOnboarding by remember { mutableStateOf(!prefs.getBoolean("onboarding_done", false)) }
-
+    var showSetup by remember { mutableStateOf(!prefs.getBoolean("setup_done", false)) }
 
     if (showOnboarding) {
         OnboardingScreen(onComplete = {
@@ -118,7 +118,15 @@ fun MainNavigation(viewModel: FinanceViewModel) {
         return
     }
 
-    // Offline banner â€” use real network state, not Firestore status
+    if (showSetup) {
+        FirstLaunchSetupScreen(onComplete = {
+            prefs.edit { putBoolean("setup_done", true) }
+            showSetup = false
+        })
+        return
+    }
+
+    // Offline banner â€" use real network state, not Firestore status
     val isOffline = remember {
         val cm = context.getSystemService(android.content.Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
         val network = cm.activeNetwork
@@ -238,7 +246,7 @@ fun MainNavigation(viewModel: FinanceViewModel) {
                     modifier = Modifier.fillMaxHeight().verticalScroll(rememberScrollState())
                 ) {
 
-                    // â”€â”€ Brand Header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+                    // â"€â"€ Brand Header â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
                     Box(
                         modifier = Modifier.fillMaxWidth()
                             .background(
@@ -280,7 +288,7 @@ fun MainNavigation(viewModel: FinanceViewModel) {
 
                     Spacer(Modifier.height(8.dp))
 
-                    // â”€â”€ Account â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+                    // â"€â"€ Account â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
                     DrawerSectionLabel("Account")
                     DrawerItem(Icons.Default.Person, "Profile & Security",
                         currentRoute == Screen.Profile.route) {
@@ -300,7 +308,7 @@ fun MainNavigation(viewModel: FinanceViewModel) {
 
                     DrawerDivider()
 
-                    // â”€â”€ Finance Tools â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+                    // â"€â"€ Finance Tools â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
                     DrawerSectionLabel("Finance Tools")
                     DrawerItem(Icons.Default.PieChart, "Budgeting",
                         currentRoute == Screen.Budgets.route) {
@@ -335,7 +343,7 @@ fun MainNavigation(viewModel: FinanceViewModel) {
 
                     DrawerDivider()
 
-                    // â”€â”€ Reports â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+                    // â"€â"€ Reports â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
                     DrawerSectionLabel("Reports")
                     DrawerItem(Icons.Default.DateRange, "Monthly Summary",
                         currentRoute == Screen.Monthly.route) {
@@ -365,7 +373,7 @@ fun MainNavigation(viewModel: FinanceViewModel) {
 
                     DrawerDivider()
 
-                    // â”€â”€ App â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+                    // â"€â"€ App â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
                     DrawerSectionLabel("App")
                     DrawerItem(Icons.Default.Settings, "Settings",
                         currentRoute == Screen.Settings.route) {
@@ -380,7 +388,7 @@ fun MainNavigation(viewModel: FinanceViewModel) {
 
                     DrawerDivider()
 
-                    // â”€â”€ Logout â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+                    // â"€â"€ Logout â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
                     NavigationDrawerItem(
                         icon     = { Icon(Icons.AutoMirrored.Filled.Logout, null,
                             tint = SemanticRed) },
@@ -470,7 +478,7 @@ fun MainNavigation(viewModel: FinanceViewModel) {
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             Icon(Icons.Default.CloudOff, null, Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onErrorContainer)
-                            Text("No internet â€” changes will sync when reconnected",
+                            Text("No internet \u2014 changes will sync when reconnected",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onErrorContainer)
                         }
@@ -682,7 +690,7 @@ fun ActionItem(icon: ImageVector, label: String, onClick: () -> Unit) {
     }
 }
 
-// â”€â”€ Drawer helper composables â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â"€â"€ Drawer helper composables â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 
 @Composable
 fun DrawerSectionLabel(title: String) {

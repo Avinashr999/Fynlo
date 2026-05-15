@@ -121,6 +121,7 @@ dependencies {
     implementation(libs.work.runtime)
     implementation(libs.biometric)
     implementation("androidx.fragment:fragment-ktx:1.8.3")
+    implementation("androidx.appcompat:appcompat:1.7.0")
     implementation(libs.google.signin)
 
     testImplementation(libs.junit)
