@@ -4,10 +4,9 @@ import android.app.Application
 import android.util.Log
 import app.fynlo.data.AuthManager
 import app.fynlo.data.FinanceRepository
-import app.fynlo.data.local.FynloDatabase
+import app.fynlo.data.local.FynloDao
 import app.fynlo.data.remote.FirestoreRepository
 import app.fynlo.data.remote.SyncManager
-import javax.inject.Inject
 import app.fynlo.notifications.ReminderScheduler
 import com.google.firebase.FirebaseApp
 import dagger.hilt.android.HiltAndroidApp
@@ -17,19 +16,29 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
+/**
+ * Application class with Hilt DI.
+ *
+ * All dependencies are injected by Hilt after super.onCreate() returns.
+ * DO NOT access @Inject fields before onCreate() or in field initialisers —
+ * that was the root cause of the lateinit crash.
+ */
 @HiltAndroidApp
 class FynloApplication : Application() {
 
-    @Inject lateinit var database: FynloDatabase
+    // Hilt injects all of these after super.onCreate() completes
+    @Inject lateinit var dao: FynloDao
     @Inject lateinit var repository: FinanceRepository
+    @Inject lateinit var firestoreRepository: FirestoreRepository
 
+    // AuthManager has no Hilt dependency — keep as lazy
     val authManager: AuthManager by lazy { AuthManager() }
 
-    lateinit var firestoreRepository: FirestoreRepository
+    // SyncManager is stateful (holds userId) — we create it after sign-in
     lateinit var syncManager: SyncManager
 
-    // Supervised scope — child coroutine failures don't crash sibling coroutines or the app
     private val appScope = CoroutineScope(
         SupervisorJob() + Dispatchers.IO + CoroutineExceptionHandler { _, e ->
             Log.e("FynloApp", "Unhandled coroutine exception: ${e.message}", e)
@@ -38,18 +47,18 @@ class FynloApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        // All @Inject fields are now populated — safe to use dao, repository, firestoreRepository
 
         FirebaseApp.initializeApp(this)
 
-        // Crashlytics — auto-captures all crashes and sends to Firebase Console
         com.google.firebase.crashlytics.FirebaseCrashlytics.getInstance().apply {
-            setCrashlyticsCollectionEnabled(!BuildConfig.DEBUG) // only in release
+            setCrashlyticsCollectionEnabled(!BuildConfig.DEBUG)
         }
 
         ReminderScheduler.schedule(this)
 
-        firestoreRepository = FirestoreRepository("")
-        syncManager         = SyncManager("", database.dao())
+        // Initialise SyncManager with empty userId — updated when user signs in
+        syncManager = SyncManager("", dao)
         repository.updateRemote(firestoreRepository, syncManager)
 
         appScope.launch {
@@ -80,7 +89,7 @@ class FynloApplication : Application() {
                 syncManager.stopListening()
             }
             firestoreRepository = FirestoreRepository(uid)
-            syncManager         = SyncManager(uid, database.dao())
+            syncManager = SyncManager(uid, dao)
             repository.updateRemote(firestoreRepository, syncManager)
             syncManager.startListening()
         } catch (e: Exception) {
@@ -90,7 +99,6 @@ class FynloApplication : Application() {
 
         appScope.launch {
             try {
-                // Push all local Room data to Firestore first (catches offline writes)
                 try {
                     repository.pushAllLocalToFirestore()
                     Log.d("FynloApp", "Local→Firestore push completed on sign-in")
@@ -98,24 +106,20 @@ class FynloApplication : Application() {
                     Log.e("FynloApp", "pushAllLocal failed (non-fatal): ${e.message}")
                 }
 
-                // Poll up to 20 seconds for Firestore to populate Room
                 var waited = 0
-                while (database.dao().getAllAccounts().first().isEmpty() && waited < 20000) {
+                while (dao.getAllAccounts().first().isEmpty() && waited < 20000) {
                     kotlinx.coroutines.delay(500)
                     waited += 500
                 }
 
-                // Normalize projectIds if needed
                 try {
-                    val allProjects = database.dao().getAllProjects().first()
+                    val allProjects = dao.getAllProjects().first()
                     val firstProject = allProjects.firstOrNull()
 
-                    // ── Recovery: if projects table is empty, create one from orphaned data ──
                     if (allProjects.isEmpty()) {
-                        // Find what projectId is used in existing data
-                        val orphanedPid = database.dao().getAllAccounts().first()
+                        val orphanedPid = dao.getAllAccounts().first()
                             .firstOrNull()?.projectId?.takeIf { it.isNotBlank() && it != "personal" }
-                            ?: database.dao().getAllBorrowers().first()
+                            ?: dao.getAllBorrowers().first()
                             .firstOrNull()?.projectId?.takeIf { it.isNotBlank() && it != "personal" }
 
                         val recoveryProject = app.fynlo.data.model.Project(
@@ -126,10 +130,10 @@ class FynloApplication : Application() {
                             currency  = "INR",
                             createdAt = ""
                         )
-                        database.dao().insertProject(recoveryProject)
+                        dao.insertProject(recoveryProject)
                         Log.e("FynloApp", "Recovered missing project record: ${recoveryProject.id}")
                     } else if (firstProject != null && firstProject.id != "personal") {
-                        val accounts = database.dao().getAllAccounts().first()
+                        val accounts = dao.getAllAccounts().first()
                         if (accounts.isNotEmpty()) {
                             repository.normalizeLegacyProjectIds(firstProject.id)
                             repository.pushNormalizedProjectIds()
@@ -139,7 +143,6 @@ class FynloApplication : Application() {
                     Log.e("FynloApp", "normalization failed (non-fatal): ${e.message}", e)
                 }
 
-                // Daily backup — fully isolated, never crashes the app
                 try {
                     repository.takeBackupIfNeeded(uid)
                 } catch (e: Exception) {
