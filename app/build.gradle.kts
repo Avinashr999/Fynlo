@@ -8,6 +8,7 @@ plugins {
     alias(libs.plugins.firebase.crashlytics.plugin)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
+    id("com.google.dagger.hilt.android") version "2.51.1"
 }
 
 android {
