@@ -259,11 +259,11 @@ fun SettingsScreen(
                 label         = { Text("Your Name") },
                 placeholder   = { Text("Optional — used for greetings") },
                 singleLine    = true,
-                trailingIcon  = if (displayName.isNotBlank()) {{
-                    IconButton(onClick = {
+                trailingIcon  = if (displayName.isNotBlank()) {
+                    { IconButton(onClick = {
                         prefs.edit().putString("user_display_name", displayName.trim()).apply()
-                    }) { Icon(Icons.Default.Check, "Save") }
-                }} else null,
+                    }) { Icon(Icons.Default.Check, "Save") } }
+                } else null,
                 modifier      = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp),
                 colors        = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor   = Emerald500,
