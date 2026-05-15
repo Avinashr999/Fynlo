@@ -1,4 +1,4 @@
-﻿package app.fynlo.notifications
+package app.fynlo.notifications
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -27,7 +27,7 @@ class ReminderWorker(
     override suspend fun doWork(): Result {
         createChannel()
         val app     = context.applicationContext as FynloApplication
-        val dao     = app.database.dao()
+        val dao     = app.dao
         val today   = LocalDate.now()
         val fmt     = DateTimeFormatter.ofPattern("yyyy-MM-dd")
         var notifId = 1000

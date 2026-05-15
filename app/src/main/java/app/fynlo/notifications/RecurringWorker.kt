@@ -1,4 +1,4 @@
-﻿package app.fynlo.notifications
+package app.fynlo.notifications
 
 import android.content.Context
 import androidx.work.CoroutineWorker
@@ -18,7 +18,7 @@ class RecurringWorker(
 
     override suspend fun doWork(): Result {
         val app    = context.applicationContext as FynloApplication
-        val dao    = app.database.dao()
+        val dao    = app.dao
         val today  = LocalDate.now()
         val fmt    = DateTimeFormatter.ofPattern("yyyy-MM-dd")
         val todayStr = today.format(fmt)
