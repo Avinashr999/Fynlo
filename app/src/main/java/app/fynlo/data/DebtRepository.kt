@@ -1,8 +1,7 @@
 package app.fynlo.data
 
 import app.fynlo.data.local.FynloDao
-import app.fynlo.data.model.Debt
-import app.fynlo.data.model.DebtPayment
+import app.fynlo.data.model.*
 import app.fynlo.data.remote.FirestoreRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -10,55 +9,66 @@ import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/**
- * Single-responsibility repository for debt management.
- * Owns: Debts (loans taken), DebtPayments (repayments made to lenders)
- */
 @Singleton
 class DebtRepository @Inject constructor(
     private val dao: FynloDao,
     private val firestore: FirestoreRepository
 ) {
-    val allDebts:        Flow<List<Debt>>        = dao.getAllDebts()
+    val allDebts: Flow<List<Debt>> = dao.getAllDebts()
     val allDebtPayments: Flow<List<DebtPayment>> = dao.getAllDebtPayments()
 
     suspend fun insertDebt(debt: Debt) = withContext(Dispatchers.IO) {
-        dao.insertDebt(debt)
-        firestore.upsertDebt(debt)
+        val d = debt.copy(updatedAt = System.currentTimeMillis())
+        dao.insertDebt(d)
     }
 
     suspend fun updateDebt(debt: Debt) = withContext(Dispatchers.IO) {
-        dao.updateDebt(debt)
-        firestore.upsertDebt(debt)
+        val d = debt.copy(updatedAt = System.currentTimeMillis())
+        dao.insertDebt(d)
     }
 
-    suspend fun deleteDebt(debt: Debt) = withContext(Dispatchers.IO) {
-        dao.deleteDebt(debt.id)
-        firestore.deleteDebt(debt.id)
+    suspend fun deleteDebtRecord(debt: Debt) = withContext(Dispatchers.IO) {
+        dao.deleteDebt(debt)
     }
 
-    suspend fun payInstalment(
-        debt: Debt,
-        principal: Double,
-        interest: Double,
-        debtPayment: DebtPayment
-    ) = withContext(Dispatchers.IO) {
-        dao.insertDebtPayment(debtPayment)
-        dao.addDebtPayment(debt.id, principal, interest)
-        val updated = debt.copy(
-            paid          = debt.paid + principal + interest,
-            paidPrincipal = debt.paidPrincipal + principal,
-            paidInterest  = debt.paidInterest  + interest
-        )
-        dao.updateDebt(updated)
-        firestore.upsertDebt(updated)
-        firestore.upsertDebtPayment(debtPayment)
+    suspend fun deleteDebtById(id: String) = withContext(Dispatchers.IO) {
+        dao.deleteDebtById(id)
     }
 
-    suspend fun getDebtPaymentsForDebt(debtId: String): List<DebtPayment> =
-        withContext(Dispatchers.IO) { dao.getDebtPaymentsForDebt(debtId) }
+    suspend fun getDebtById(id: String): Debt? = withContext(Dispatchers.IO) {
+        dao.getDebtById(id)
+    }
 
-    suspend fun fixPaidDoubleCount() = withContext(Dispatchers.IO) {
-        dao.fixDebtPaidDoubleCount()
+    suspend fun insertDebtPayment(payment: DebtPayment) = withContext(Dispatchers.IO) {
+        val p = payment.copy(updatedAt = System.currentTimeMillis())
+        dao.insertDebtPayment(p)
+    }
+
+    suspend fun deleteDebtPayment(payment: DebtPayment) = withContext(Dispatchers.IO) {
+        dao.deleteDebtPayment(payment)
+    }
+
+    suspend fun getDebtPaymentsForDebtOnce(debtId: String): List<DebtPayment> = withContext(Dispatchers.IO) {
+        dao.getDebtPaymentsForDebtOnce(debtId)
+    }
+
+    suspend fun updateDebtPaidAmount(debtId: String, amount: Double) = withContext(Dispatchers.IO) {
+        dao.updateDebtPaidAmount(debtId, amount)
+    }
+
+    suspend fun updateDebtPaidPrincipal(debtId: String, amount: Double) = withContext(Dispatchers.IO) {
+        dao.updateDebtPaidPrincipal(debtId, amount)
+    }
+
+    suspend fun updateDebtPaidInterest(debtId: String, amount: Double) = withContext(Dispatchers.IO) {
+        dao.updateDebtPaidInterest(debtId, amount)
+    }
+
+    suspend fun rebuildDebtPaidFromDebtPayments() = withContext(Dispatchers.IO) {
+        dao.rebuildDebtPaidFromDebtPayments()
+    }
+
+    suspend fun recalculateDebtPaid() = withContext(Dispatchers.IO) {
+        dao.recalculateDebtPaid()
     }
 }

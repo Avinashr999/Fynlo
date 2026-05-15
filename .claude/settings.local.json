@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(./gradlew assembleDebug)",
+      "Bash(rm -rf .gradle/configuration-cache)",
+      "Bash(./gradlew --no-configuration-cache --no-daemon assembleDebug)",
+      "Bash(./gradlew test:*)",
+      "Bash(./gradlew testDebugUnitTest --tests \"app.fynlo.logic.InterestEngineExtendedTest\" --tests \"app.fynlo.logic.FinancialSummaryCalculationTest\")"
+    ]
+  }
+}

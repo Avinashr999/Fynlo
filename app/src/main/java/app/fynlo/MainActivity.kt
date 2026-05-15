@@ -1,19 +1,19 @@
-package app.fynlo
+﻿package app.fynlo
 
 import android.os.Bundle
 import android.os.Build
-import androidx.fragment.app.FragmentActivity
-import dagger.hilt.android.AndroidEntryPoint
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.viewModels
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
-import androidx.activity.viewModels
+import androidx.fragment.app.FragmentActivity
 import app.fynlo.ui.MainNavigation
 import app.fynlo.ui.theme.FynloTheme
+import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
 class MainActivity : FragmentActivity() {

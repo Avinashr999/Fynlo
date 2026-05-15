@@ -1,27 +1,16 @@
 package app.fynlo
 
 import android.app.Application
-import dagger.hilt.android.HiltAndroidApp
 import android.util.Log
-import androidx.room.Room
-import app.fynlo.data.local.MIGRATION_10_11
-import app.fynlo.data.local.MIGRATION_11_12
-import app.fynlo.data.local.MIGRATION_12_13
-import app.fynlo.data.local.MIGRATION_13_14
 import app.fynlo.data.AuthManager
 import app.fynlo.data.FinanceRepository
 import app.fynlo.data.local.FynloDatabase
-import app.fynlo.data.local.MIGRATION_3_4
-import app.fynlo.data.local.MIGRATION_4_5
-import app.fynlo.data.local.MIGRATION_5_6
-import app.fynlo.data.local.MIGRATION_6_7
-import app.fynlo.data.local.MIGRATION_7_8
-import app.fynlo.data.local.MIGRATION_8_9
-import app.fynlo.data.local.MIGRATION_9_10
 import app.fynlo.data.remote.FirestoreRepository
 import app.fynlo.data.remote.SyncManager
+import javax.inject.Inject
 import app.fynlo.notifications.ReminderScheduler
 import com.google.firebase.FirebaseApp
+import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -32,19 +21,13 @@ import kotlinx.coroutines.launch
 @HiltAndroidApp
 class FynloApplication : Application() {
 
-    val database: FynloDatabase by lazy {
-        Room.databaseBuilder(this, FynloDatabase::class.java, "Fynlo_database")
-            .addMigrations(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14)
-
-            .fallbackToDestructiveMigrationOnDowngrade() // safety
-            .build()
-    }
+    @Inject lateinit var database: FynloDatabase
+    @Inject lateinit var repository: FinanceRepository
 
     val authManager: AuthManager by lazy { AuthManager() }
 
     lateinit var firestoreRepository: FirestoreRepository
     lateinit var syncManager: SyncManager
-    lateinit var repository: FinanceRepository
 
     // Supervised scope — child coroutine failures don't crash sibling coroutines or the app
     private val appScope = CoroutineScope(
@@ -67,9 +50,7 @@ class FynloApplication : Application() {
 
         firestoreRepository = FirestoreRepository("")
         syncManager         = SyncManager("", database.dao())
-        repository          = FinanceRepository(
-            database.dao(), database, firestoreRepository, syncManager
-        )
+        repository.updateRemote(firestoreRepository, syncManager)
 
         appScope.launch {
             try {
