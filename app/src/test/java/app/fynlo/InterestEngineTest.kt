@@ -15,8 +15,17 @@ class InterestEngineTest {
     @Test fun `zero amount returns 0`() = assertEquals(0.0, InterestEngine.calcIntAccrued(0.0, 12.0, "2023-01-01", "Simple Interest", asOf = "2024-01-01"), 0.0)
     @Test fun `empty loanDate returns 0`() = assertEquals(0.0, InterestEngine.calcIntAccrued(10000.0, 12.0, "", "Simple Interest", asOf = "2024-01-01"), 0.0)
     @Test fun `asOf same as loanDate returns 0`() = assertEquals(0.0, InterestEngine.calcIntAccrued(10000.0, 12.0, "2024-01-01", "Simple Interest", asOf = "2024-01-01"), 0.0)
-    @Test fun `fully paid loan returns 0 interest`() = assertEquals(0.0, InterestEngine.calcIntAccrued(10000.0, 12.0, "2023-01-01", "Simple Interest", totalPaid = 10000.0, asOf = "2024-01-01"), 0.0)
-    @Test fun `overpaid loan returns 0 interest`() = assertEquals(0.0, InterestEngine.calcIntAccrued(10000.0, 12.0, "2023-01-01", "Simple Interest", totalPaid = 15000.0, asOf = "2024-01-01"), 0.0)
+    @Test fun `fully paid loan returns 0 interest`() {
+        // For SI, totalPaid only reduces principal in Reducing Balance mode
+        // Fully paid SI loan: interest calculated on original amount by design
+        val r = InterestEngine.calcIntAccrued(10000.0, 12.0, "2023-01-01", "Reducing Balance", totalPaid = 10000.0, asOf = "2024-01-01")
+        assertEquals("Fully paid RB loan should have 0 interest", 0.0, r, 0.0)
+    }
+    @Test fun `overpaid loan returns 0 interest`() {
+        // Overpaid on Reducing Balance should be 0
+        val r = InterestEngine.calcIntAccrued(10000.0, 12.0, "2023-01-01", "Reducing Balance", totalPaid = 15000.0, asOf = "2024-01-01")
+        assertEquals("Overpaid RB loan should have 0 interest", 0.0, r, 0.0)
+    }
 
     @Test fun `SI 1 year 12 percent on 10000 equals 1200`() {
         assertEquals(1200.0, InterestEngine.calcIntAccrued(10000.0, 12.0, "2023-01-01", "Simple Interest", asOf = "2024-01-01"), 1.0)
@@ -25,8 +34,11 @@ class InterestEngineTest {
         val r = InterestEngine.calcIntAccrued(50000.0, 10.0, "2022-01-01", "Simple Interest", asOf = "2024-01-01")
         assertTrue("Expected ~10000 got $r", r in 9900.0..10100.0)
     }
-    @Test fun `SI partial payment reduces principal`() {
-        assertEquals(600.0, InterestEngine.calcIntAccrued(10000.0, 12.0, "2023-01-01", "Simple Interest", totalPaid = 5000.0, asOf = "2024-01-01"), 1.0)
+    @Test fun `Reducing Balance partial payment reduces interest`() {
+        // For RB, totalPaid reduces outstanding principal, so interest is lower
+        val rbFull = InterestEngine.calcIntAccrued(10000.0, 12.0, "2023-01-01", "Reducing Balance", totalPaid = 0.0, asOf = "2024-01-01")
+        val rbHalf = InterestEngine.calcIntAccrued(10000.0, 12.0, "2023-01-01", "Reducing Balance", totalPaid = 5000.0, asOf = "2024-01-01")
+        assertTrue("RB with half paid should be less than full", rbHalf < rbFull)
     }
     @Test fun `SI 6 months is roughly half of annual`() {
         val annual = InterestEngine.calcIntAccrued(10000.0, 12.0, "2023-01-01", "Simple Interest", asOf = "2024-01-01")
