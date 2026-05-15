@@ -5,6 +5,7 @@ import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Update
 import app.fynlo.data.model.Account
 import app.fynlo.data.model.Borrower
 import app.fynlo.data.model.Budget
