@@ -16,7 +16,7 @@ room = "2.8.4"
 navigationCompose = "2.9.8"
 kotlinxSerialization = "1.7.3"
 ksp = "2.3.7"
-hilt = "2.52"
+hilt = "2.51.1"
 poi = "5.5.1"
 
 [libraries]
