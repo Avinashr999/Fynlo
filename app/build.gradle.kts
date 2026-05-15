@@ -8,7 +8,6 @@ plugins {
     alias(libs.plugins.firebase.crashlytics.plugin)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
-    id("com.google.dagger.hilt.android") version "2.51.1"
 }
 
 android {
@@ -96,7 +95,7 @@ dependencies {
     
     // Hilt
     implementation(libs.hilt.android)
-    ksp(libs.hilt.android.compiler)
+    annotationProcessor(libs.hilt.android.compiler)
     implementation(libs.hilt.navigation.compose)
 
     // Room
