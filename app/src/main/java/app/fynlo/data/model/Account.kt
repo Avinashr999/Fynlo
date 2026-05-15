@@ -6,6 +6,7 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 @Entity(tableName = "accounts")
+@androidx.compose.runtime.Immutable
 data class Account(
     @PrimaryKey val id: String,
     val name: String,

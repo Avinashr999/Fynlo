@@ -1,5 +1,6 @@
 package app.fynlo.data.model
 
+@androidx.compose.runtime.Immutable
 data class FinancialSummary(
     // ── Balance Sheet ──────────────────────────────────────────────────────────
     val totalCash: Double = 0.0,              // sum of all account balances

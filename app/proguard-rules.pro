@@ -44,9 +44,6 @@
 -keepnames class kotlinx.coroutines.** { *; }
 -dontwarn kotlinx.coroutines.**
 
-# ── iText7 PDF library ────────────────────────────────────────────────────────
--keep class com.itextpdf.** { *; }
--dontwarn com.itextpdf.**
 -keep class org.bouncycastle.** { *; }
 -dontwarn org.bouncycastle.**
 
@@ -76,3 +73,6 @@
 
 # ── Misc ─────────────────────────────────────────────────────────────────────
 -dontwarn org.slf4j.**
+
+# Android native PDF (system API — no keep rules needed)
+# android.graphics.pdf.PdfDocument is always available on API 19+

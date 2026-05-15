@@ -26,3 +26,9 @@ Thumbs.db
 cashmemo-release.jks
 *.jks
 *.keystore
+
+# Firebase config — contains project credentials
+google-services.json
+
+# Room schema exports are committed to track DB changes
+# Do NOT add /app/schemas to .gitignore

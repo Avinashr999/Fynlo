@@ -1,4 +1,4 @@
-﻿plugins {
+plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
@@ -14,10 +14,23 @@ android {
 
     signingConfigs {
         create("release") {
-            storeFile     = file("fynlo-release.jks")
-            storePassword = "Fynlo@2024"
-            keyAlias      = "fynlo"
-            keyPassword   = "Fynlo@2024"
+            // Credentials are read from keystore.properties (NOT committed to git)
+            // Copy keystore.properties.example to keystore.properties and fill in values
+            val keystorePropsFile = rootProject.file("keystore.properties")
+            if (keystorePropsFile.exists()) {
+                val keystoreProps = java.util.Properties()
+                keystoreProps.load(keystorePropsFile.inputStream())
+                storeFile     = file(keystoreProps["storeFile"] as String)
+                storePassword = keystoreProps["storePassword"] as String
+                keyAlias      = keystoreProps["keyAlias"] as String
+                keyPassword   = keystoreProps["keyPassword"] as String
+            } else {
+                // CI/CD: read from environment variables
+                storeFile     = file(System.getenv("KEYSTORE_FILE") ?: "fynlo-release.jks")
+                storePassword = System.getenv("KEYSTORE_PASSWORD") ?: ""
+                keyAlias      = System.getenv("KEY_ALIAS") ?: "fynlo"
+                keyPassword   = System.getenv("KEY_PASSWORD") ?: ""
+            }
         }
     }
 
@@ -25,8 +38,8 @@ android {
         applicationId = "app.fynlo"
         minSdk = 26
         targetSdk = 36
-        versionCode = 121
-        versionName = "3.0.0"
+        versionCode = 122
+        versionName = "3.1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -57,6 +70,12 @@ android {
         compose = true
         buildConfig = true
     }
+
+    // Room schema export for migration validation
+    ksp {
+        arg("room.schemaLocation", "$projectDir/schemas")
+        arg("room.incremental", "true")
+    }
 }
 
 dependencies {
@@ -83,12 +102,7 @@ dependencies {
     // Serialization
     implementation(libs.kotlinx.serialization.json)
 
-    // PDF Generation
-    implementation("com.itextpdf:itext7-core:7.2.5")
-
     // Excel Generation
-    implementation(libs.apache.poi)
-    implementation(libs.apache.poi.ooxml)
 
     // Firebase
     implementation(platform(libs.firebase.bom))

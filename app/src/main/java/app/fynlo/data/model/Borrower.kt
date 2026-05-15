@@ -6,6 +6,7 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 @Entity(tableName = "borrowers")
+@androidx.compose.runtime.Immutable
 data class Borrower(
     @PrimaryKey val id: String,
     val name: String,

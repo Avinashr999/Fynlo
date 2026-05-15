@@ -34,8 +34,8 @@ class FinanceViewModel(private val repository: FinanceRepository) : ViewModel() 
     init {
         // Auto-fix: recalculate paid = paidPrincipal + paidInterest on every startup
         // This corrects any double-counted records from the pre-fix payment engine
-        viewModelScope.launch { repository.fixPaidDoubleCount() }
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) { repository.fixPaidDoubleCount() }
+        viewModelScope.launch(Dispatchers.IO) {
             projects.collect { list ->
                 if (_currentProjectId.value.isEmpty() && list.isNotEmpty()) {
                     _currentProjectId.value = list.first().id
@@ -45,7 +45,7 @@ class FinanceViewModel(private val repository: FinanceRepository) : ViewModel() 
                 }
             }
         }
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             delay(30_000)
             if (!_isSyncReady.value) {
                 _isSyncReady.value = true
@@ -60,11 +60,11 @@ class FinanceViewModel(private val repository: FinanceRepository) : ViewModel() 
     fun switchProject(projectId: String) { _currentProjectId.value = projectId }
 
     fun createProject(project: Project) {
-        viewModelScope.launch { repository.insertProject(project) }
+        viewModelScope.launch(Dispatchers.IO) { repository.insertProject(project) }
     }
 
     fun deleteProject(project: Project) {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             repository.deleteProject(project)
             if (_currentProjectId.value == project.id) _currentProjectId.value = "personal"
         }
@@ -256,66 +256,66 @@ class FinanceViewModel(private val repository: FinanceRepository) : ViewModel() 
     private val pid   get() = _currentProjectId.value.ifEmpty { "personal" }
 
     fun withdrawFromInvestment(investment: app.fynlo.data.model.Investment, amount: Double, toAccount: String) {
-        viewModelScope.launch { repository.withdrawFromInvestment(investment, amount, toAccount) }
+        viewModelScope.launch(Dispatchers.IO) { repository.withdrawFromInvestment(investment, amount, toAccount) }
     }
     fun restoreBorrowerToActive(borrower: app.fynlo.data.model.Borrower) {
-        viewModelScope.launch { repository.restoreBorrowerToActive(borrower) }
+        viewModelScope.launch(Dispatchers.IO) { repository.restoreBorrowerToActive(borrower) }
     }
         fun markBorrowerDefaulted(borrower: app.fynlo.data.model.Borrower) {
-        viewModelScope.launch { repository.markBorrowerDefaulted(borrower) }
+        viewModelScope.launch(Dispatchers.IO) { repository.markBorrowerDefaulted(borrower) }
     }
     fun writeOffBorrower(borrower: app.fynlo.data.model.Borrower) {
-        viewModelScope.launch { repository.writeOffBorrower(borrower) }
+        viewModelScope.launch(Dispatchers.IO) { repository.writeOffBorrower(borrower) }
     }
     fun recalculateAllBalances() {
-        viewModelScope.launch { repository.recalculateAllBalances() }
+        viewModelScope.launch(Dispatchers.IO) { repository.recalculateAllBalances() }
     }
 
     fun addBorrowerWithSource(borrower: Borrower, source: String) {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             repository.insertBorrowerWithSource(borrower.copy(projectId = pid), source, pid)
         }
     }
 
     fun deleteBorrower(borrower: Borrower) {
-        viewModelScope.launch { repository.deleteBorrower(borrower) }
+        viewModelScope.launch(Dispatchers.IO) { repository.deleteBorrower(borrower) }
     }
 
     fun updateBorrower(borrower: Borrower) {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             repository.updateBorrower(borrower.copy(projectId = pid))
         }
     }
 
     fun updateDebt(debt: Debt) {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             repository.updateDebt(debt.copy(projectId = pid, updatedAt = System.currentTimeMillis()))
         }
     }
 
     // â”€â”€â”€ Add investment â€” pick the right repository function by source type â”€â”€â”€â”€â”€
     fun addInvestmentFundedByAccount(investment: Investment, accountName: String) {
-        viewModelScope.launch { repository.insertInvestmentFundedByAccount(investment.copy(projectId = pid), accountName, pid) }
+        viewModelScope.launch(Dispatchers.IO) { repository.insertInvestmentFundedByAccount(investment.copy(projectId = pid), accountName, pid) }
     }
     fun addInvestmentFundedByExistingDebt(investment: Investment, debt: app.fynlo.data.model.Debt) {
-        viewModelScope.launch { repository.insertInvestmentFundedByExistingDebt(investment.copy(projectId = pid), debt, pid) }
+        viewModelScope.launch(Dispatchers.IO) { repository.insertInvestmentFundedByExistingDebt(investment.copy(projectId = pid), debt, pid) }
     }
     fun addInvestmentFundedByNewLoan(investment: Investment, newDebt: app.fynlo.data.model.Debt) {
-        viewModelScope.launch { repository.insertInvestmentFundedByNewLoan(investment.copy(projectId = pid), newDebt.copy(projectId = pid), pid) }
+        viewModelScope.launch(Dispatchers.IO) { repository.insertInvestmentFundedByNewLoan(investment.copy(projectId = pid), newDebt.copy(projectId = pid), pid) }
     }
     // Legacy shim kept so Navigation.kt compiles without changes until updated
     fun addInvestmentWithSource(investment: Investment, source: String) {
-        viewModelScope.launch { repository.insertInvestmentWithSource(investment.copy(projectId = pid), source, pid) }
+        viewModelScope.launch(Dispatchers.IO) { repository.insertInvestmentWithSource(investment.copy(projectId = pid), source, pid) }
     }
 
     fun updateInvestmentValue(investment: Investment, newCurrentVal: Double) {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             repository.updateInvestmentValue(investment, newCurrentVal)
         }
     }
 
     fun updateInvestment(investment: Investment) {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             repository.updateInvestment(investment.copy(projectId = pid))
         }
     }
@@ -326,7 +326,7 @@ class FinanceViewModel(private val repository: FinanceRepository) : ViewModel() 
         sourceName: String,
         debtDetails: Debt? = null
     ) {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             repository.executeLinkedInvestment(
                 investment.copy(projectId = pid),
                 fundingSourceType,
@@ -337,35 +337,35 @@ class FinanceViewModel(private val repository: FinanceRepository) : ViewModel() 
     }
 
     fun addValuation(v: InvestmentValuation) {
-        viewModelScope.launch { repository.addValuation(v) }
+        viewModelScope.launch(Dispatchers.IO) { repository.addValuation(v) }
     }
 
     fun getValuationsForInvestment(invId: String) = repository.getValuationsForInvestment(invId)
 
     fun deleteInvestment(investment: Investment) {
-        viewModelScope.launch { repository.deleteInvestmentOnly(investment) }
+        viewModelScope.launch(Dispatchers.IO) { repository.deleteInvestmentOnly(investment) }
     }
     fun deleteInvestmentAndReverseAccount(investment: Investment) {
-        viewModelScope.launch { repository.deleteInvestmentAndReverseAccount(investment) }
+        viewModelScope.launch(Dispatchers.IO) { repository.deleteInvestmentAndReverseAccount(investment) }
     }
     fun deleteInvestmentAndLinkedLoan(investment: Investment) {
-        viewModelScope.launch { repository.deleteInvestmentAndLinkedLoan(investment) }
+        viewModelScope.launch(Dispatchers.IO) { repository.deleteInvestmentAndLinkedLoan(investment) }
     }
 
     fun addTransaction(transaction: Transaction) {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             repository.insertTransaction(transaction.copy(projectId = pid))
         }
     }
 
     fun updateTransaction(transaction: Transaction) {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             repository.insertTransaction(transaction.copy(projectId = pid))
         }
     }
 
     fun restoreRealData() {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             val uid = repository.syncManager.userId
             if (uid.isBlank()) return@launch
             val fs = com.google.firebase.firestore.FirebaseFirestore.getInstance()
@@ -394,7 +394,7 @@ class FinanceViewModel(private val repository: FinanceRepository) : ViewModel() 
     }
 
     fun cleanupSeeederData() {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             val uid = repository.syncManager.userId
             if (uid.isBlank()) return@launch
             val fs = com.google.firebase.firestore.FirebaseFirestore.getInstance()
@@ -445,7 +445,7 @@ class FinanceViewModel(private val repository: FinanceRepository) : ViewModel() 
     }
 
     fun loadDummyData() {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             val seeder = app.fynlo.logic.DummyDataSeeder
             repository.dao.deleteAllTransactions()
             repository.dao.deleteAllBorrowers()
@@ -491,90 +491,90 @@ class FinanceViewModel(private val repository: FinanceRepository) : ViewModel() 
     }
 
     fun editTransaction(old: Transaction, new: Transaction) {
-        viewModelScope.launch { repository.editTransaction(old, new) }
+        viewModelScope.launch(Dispatchers.IO) { repository.editTransaction(old, new) }
     }
 
     fun deleteTransaction(transaction: Transaction) {
-        viewModelScope.launch { repository.deleteTransaction(transaction) }
+        viewModelScope.launch(Dispatchers.IO) { repository.deleteTransaction(transaction) }
     }
 
     fun deleteTransactions(transactions: List<Transaction>) {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             transactions.forEach { repository.deleteTransaction(it) }
         }
     }
 
     fun addDebtWithDestination(debt: Debt, destination: String) {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             repository.insertDebtWithDestination(debt.copy(projectId = pid), destination, pid)
         }
     }
 
     fun deleteDebt(debt: Debt) {
-        viewModelScope.launch { repository.deleteDebt(debt) }
+        viewModelScope.launch(Dispatchers.IO) { repository.deleteDebt(debt) }
     }
 
     fun collectLoanPayment(payment: Payment, destination: String) {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             repository.insertPaymentWithDest(payment.copy(projectId = pid), destination, pid)
         }
     }
 
     fun payDebt(payment: DebtPayment, source: String) {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             repository.insertDebtPaymentWithSource(payment.copy(projectId = pid), source, pid)
         }
     }
 
     fun addPerson(person: Person) {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             repository.insertPerson(person.copy(projectId = pid))
         }
     }
 
     fun updatePerson(person: Person) {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             repository.insertPerson(person.copy(projectId = pid, updatedAt = System.currentTimeMillis()))
         }
     }
 
     fun deletePerson(person: Person) {
-        viewModelScope.launch { repository.deletePerson(person) }
+        viewModelScope.launch(Dispatchers.IO) { repository.deletePerson(person) }
     }
 
     fun addBudget(budget: Budget) {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             repository.insertBudget(budget.copy(projectId = pid))
         }
     }
 
     fun deleteBudget(budget: Budget) {
-        viewModelScope.launch { repository.deleteBudget(budget) }
+        viewModelScope.launch(Dispatchers.IO) { repository.deleteBudget(budget) }
     }
 
     fun quickEditBalance(accountName: String, newBalance: Double, oldBalance: Double) {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             repository.quickEditBalance(accountName, newBalance, oldBalance)
         }
     }
 
 
     fun addGoal(goal: Goal) {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             repository.insertGoal(goal.copy(projectId = pid))
         }
     }
 
     fun deleteGoal(goal: Goal) {
-        viewModelScope.launch { repository.deleteGoal(goal) }
+        viewModelScope.launch(Dispatchers.IO) { repository.deleteGoal(goal) }
     }
 
     fun wipeAllData() {
-        viewModelScope.launch { repository.wipeAllData() }
+        viewModelScope.launch(Dispatchers.IO) { repository.wipeAllData() }
     }
 
     fun executeFlow(result: app.fynlo.data.model.FlowResult) {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             val id = java.util.UUID.randomUUID().toString()
             when (result.eventType) {
                 "Received" -> {
@@ -653,7 +653,7 @@ class FinanceViewModel(private val repository: FinanceRepository) : ViewModel() 
     suspend fun exportAllData(): String = repository.getAllDataAsJson()
 
     fun restoreData(json: String) {
-        viewModelScope.launch { repository.restoreDataFromJson(json) }
+        viewModelScope.launch(Dispatchers.IO) { repository.restoreDataFromJson(json) }
     }
 
     fun exportToCSV(): String =
@@ -671,7 +671,7 @@ class FinanceViewModel(private val repository: FinanceRepository) : ViewModel() 
     fun getNetWorthSnapshots() = repository.getNetWorthSnapshots(pid)
 
     fun saveSnapshotNow() {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             val s = financialSummary.value
             repository.saveNetWorthSnapshot(
                 app.fynlo.data.model.NetWorthSnapshot(
@@ -689,11 +689,11 @@ class FinanceViewModel(private val repository: FinanceRepository) : ViewModel() 
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     fun addRecurringTransaction(r: app.fynlo.data.model.RecurringTransaction) {
-        viewModelScope.launch { repository.insertRecurringTransaction(r) }
+        viewModelScope.launch(Dispatchers.IO) { repository.insertRecurringTransaction(r) }
     }
 
     fun deleteRecurringTransaction(r: app.fynlo.data.model.RecurringTransaction) {
-        viewModelScope.launch { repository.deleteRecurringTransaction(r) }
+        viewModelScope.launch(Dispatchers.IO) { repository.deleteRecurringTransaction(r) }
     }
 
     // ── Recurring Auto-Logger ─────────────────────────────────────────────

@@ -26,7 +26,7 @@ import app.fynlo.data.model.FlowTemplate
         InvestmentValuation::class
     ],
     version = 14,
-    exportSchema = false
+    exportSchema = true
 )
 abstract class FynloDatabase : RoomDatabase() {
     abstract fun dao(): FynloDao
