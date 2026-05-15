@@ -8,7 +8,7 @@ plugins {
     alias(libs.plugins.firebase.crashlytics.plugin)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
-    alias(libs.plugins.hilt.android)
+    id("org.jetbrains.kotlin.kapt")
 }
 
 android {
@@ -100,7 +100,7 @@ dependencies {
     
     // Hilt Dependency Injection
     implementation(libs.hilt.android)
-    ksp(libs.hilt.android.compiler)
+    kapt(libs.hilt.android.compiler)
     implementation(libs.hilt.navigation.compose)
 
     // Room
@@ -145,7 +145,7 @@ dependencies {
     androidTestImplementation(libs.room.testing)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.hilt.android.testing)
-    kspAndroidTest(libs.hilt.android.compiler)
+    kaptAndroidTest(libs.hilt.android.compiler)
 
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     debugImplementation(libs.androidx.compose.ui.tooling)
