@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -18,7 +20,7 @@ android {
             // Copy keystore.properties.example to keystore.properties and fill in values
             val keystorePropsFile = rootProject.file("keystore.properties")
             if (keystorePropsFile.exists()) {
-                val keystoreProps = java.util.Properties()
+                val keystoreProps = Properties()
                 keystoreProps.load(keystorePropsFile.inputStream())
                 storeFile     = file(keystoreProps["storeFile"] as String)
                 storePassword = keystoreProps["storePassword"] as String
