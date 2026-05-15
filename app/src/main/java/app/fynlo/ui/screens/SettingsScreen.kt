@@ -24,6 +24,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.fynlo.FinanceViewModel
+import androidx.appcompat.app.AppCompatDelegate
+import androidx.core.os.LocaleListCompat
 import app.fynlo.ui.theme.ThemeController
 import app.fynlo.ui.theme.*
 import kotlinx.coroutines.Dispatchers
@@ -42,6 +44,13 @@ fun SettingsScreen(
 ) {
     val scope   = rememberCoroutineScope()
     val context = LocalContext.current
+    val prefs   = remember { context.getSharedPreferences("fynlo_prefs", android.content.Context.MODE_PRIVATE) }
+
+    // ── Setup-wizard editable prefs ──────────────────────────────────────────
+    var selectedLanguage   by remember { mutableStateOf(prefs.getString("app_language", "en") ?: "en") }
+    var displayName        by remember { mutableStateOf(prefs.getString("user_display_name", "") ?: "") }
+    var notifsEnabled      by remember { mutableStateOf(prefs.getBoolean("notifications_enabled", true)) }
+
 
     // â”€â”€ Export launchers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     val jsonLauncher = rememberLauncherForActivityResult(
@@ -102,6 +111,10 @@ fun SettingsScreen(
         // â”€â”€ Appearance â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         SettingsSectionLabel("Appearance")
         SettingsCard {
+            // Theme
+            Text("Theme", style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = 4.dp, bottom = 6.dp))
             Row(
                 Modifier.fillMaxWidth().padding(horizontal = 4.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -115,6 +128,30 @@ fun SettingsScreen(
                         selected = ThemeController.darkModeOverride == value,
                         onClick  = { ThemeController.darkModeOverride = value; ThemeController.save(context) },
                         label    = { Text(label) },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
+            Spacer(Modifier.height(16.dp))
+            // Language
+            Text("Language", style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = 4.dp, bottom = 6.dp))
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                listOf("en" to "English", "hi" to "हिंदी", "te" to "తెలుగు").forEach { (code, label) ->
+                    FilterChip(
+                        selected = selectedLanguage == code,
+                        onClick  = {
+                            selectedLanguage = code
+                            prefs.edit().putString("app_language", code).apply()
+                            AppCompatDelegate.setApplicationLocales(
+                                LocaleListCompat.forLanguageTags(code)
+                            )
+                        },
+                        label    = { Text(label, style = MaterialTheme.typography.bodySmall) },
                         modifier = Modifier.weight(1f)
                     )
                 }
@@ -215,6 +252,52 @@ fun SettingsScreen(
         // â”€â”€ Notifications â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         SettingsSectionLabel("Notifications")
         SettingsCard {
+            // Display name
+            OutlinedTextField(
+                value         = displayName,
+                onValueChange = { displayName = it },
+                label         = { Text("Your Name") },
+                placeholder   = { Text("Optional — used for greetings") },
+                singleLine    = true,
+                trailingIcon  = if (displayName.isNotBlank()) {{
+                    IconButton(onClick = {
+                        prefs.edit().putString("user_display_name", displayName.trim()).apply()
+                    }) { Icon(Icons.Default.Check, "Save") }
+                }} else null,
+                modifier      = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp),
+                colors        = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor   = Emerald500,
+                    focusedLabelColor    = Emerald500
+                )
+            )
+            Spacer(Modifier.height(8.dp))
+            // Notification toggle
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(Icons.Default.Notifications, null, tint = Amber, modifier = Modifier.size(24.dp))
+                Spacer(Modifier.width(12.dp))
+                Column(Modifier.weight(1f)) {
+                    Text("Loan & Budget Reminders",
+                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold))
+                    Text("Overdue loans, due payments, budget alerts",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Switch(
+                    checked         = notifsEnabled,
+                    onCheckedChange = {
+                        notifsEnabled = it
+                        prefs.edit().putBoolean("notifications_enabled", it).apply()
+                        if (it) app.fynlo.notifications.ReminderScheduler.schedule(context)
+                    },
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = Emerald500,
+                        checkedTrackColor = Emerald500.copy(alpha = 0.4f))
+                )
+            }
+            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
             SettingsActionRow(
                 icon     = Icons.Default.Notifications,
                 color    = Amber,
