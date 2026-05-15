@@ -20,7 +20,7 @@ class NetWorthWidget : AppWidgetProvider() {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val app     = context.applicationContext as FynloApplication
-                val accounts = app.database.dao().getAllAccounts().first()
+                val accounts = app.dao.getAllAccounts().first()
                 val totalCash = accounts.sumOf { it.balance }
                 val locale   = Locale.getDefault()
                 val formatted = "₹${String.format(locale, "%,.0f", totalCash)}"
