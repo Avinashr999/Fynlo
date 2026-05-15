@@ -338,12 +338,24 @@ interface FynloDao {
     @Query("UPDATE recurring_transactions SET lastRun = :date WHERE id = :id")
     suspend fun updateRecurringLastRun(id: String, date: String)
 
+    @Update
+    suspend fun updateRecurringTransaction(r: app.fynlo.data.model.RecurringTransaction)
+
+    @Query("SELECT * FROM recurring_transactions ORDER BY name ASC")
+    suspend fun getAllRecurringTransactionsOnce(): List<app.fynlo.data.model.RecurringTransaction>
+
     // ─── Net Worth Snapshots ──────────────────────────────────────────────────
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertNetWorthSnapshot(s: app.fynlo.data.model.NetWorthSnapshot)
 
     @Query("SELECT * FROM net_worth_snapshots WHERE projectId = :pid ORDER BY date DESC LIMIT :limit")
     fun getNetWorthSnapshots(pid: String, limit: Int = 90): kotlinx.coroutines.flow.Flow<List<app.fynlo.data.model.NetWorthSnapshot>>
+
+    @Query("SELECT * FROM net_worth_snapshots WHERE projectId = :pid ORDER BY date DESC")
+    suspend fun getNetWorthSnapshotsOnce(pid: String): List<app.fynlo.data.model.NetWorthSnapshot>
+
+    @androidx.room.Insert(onConflict = androidx.room.OnConflictStrategy.REPLACE)
+    suspend fun insertOrUpdateNetWorthSnapshot(snapshot: app.fynlo.data.model.NetWorthSnapshot)
 
     // ─── Investment Valuations ────────────────────────────────────────────────
 

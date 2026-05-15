@@ -53,4 +53,32 @@ class InvestmentRepository @Inject constructor(
 
     suspend fun getValuationsForInvestment(investmentId: String): List<InvestmentValuation> =
         withContext(Dispatchers.IO) { dao.getInvestmentValuations(investmentId) }
+    /** Fund investment by debiting an account balance */
+    suspend fun insertFundedByAccount(investment: Investment, accountName: String) =
+        withContext(Dispatchers.IO) {
+            dao.insertInvestment(investment)
+            // Debit the source account
+            val account = dao.getAccountByName(accountName)
+            if (account != null) {
+                dao.updateAccount(account.copy(balance = account.balance - investment.invested))
+            }
+            firestore.upsertInvestment(investment)
+        }
+
+    /** Link investment to an existing debt record */
+    suspend fun insertFundedByExistingDebt(investment: Investment, debt: app.fynlo.data.model.Debt) =
+        withContext(Dispatchers.IO) {
+            dao.insertInvestment(investment)
+            firestore.upsertInvestment(investment)
+        }
+
+    /** Create a new debt AND an investment funded by it */
+    suspend fun insertFundedByNewLoan(investment: Investment, newDebt: app.fynlo.data.model.Debt) =
+        withContext(Dispatchers.IO) {
+            dao.insertDebt(newDebt)
+            dao.insertInvestment(investment)
+            firestore.upsertDebt(newDebt)
+            firestore.upsertInvestment(investment)
+        }
+
 }

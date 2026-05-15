@@ -4,6 +4,9 @@ import android.content.Context
 import androidx.room.Room
 import app.fynlo.data.AuthManager
 import app.fynlo.data.AccountRepository
+import app.fynlo.data.BudgetRepository
+import app.fynlo.data.RecurringRepository
+import app.fynlo.data.ReportRepository
 import app.fynlo.data.DebtRepository
 import app.fynlo.data.ExpenseRepository
 import app.fynlo.data.FinanceRepository
@@ -100,4 +103,16 @@ object AppModule {
         firestoreRepository: FirestoreRepository,
         syncManager: SyncManager
     ): FinanceRepository = FinanceRepository(dao, db, firestoreRepository, syncManager)
+    @Provides @Singleton
+    fun provideBudgetRepository(dao: FynloDao, fs: FirestoreRepository): BudgetRepository =
+        BudgetRepository(dao, fs)
+
+    @Provides @Singleton
+    fun provideRecurringRepository(dao: FynloDao, fs: FirestoreRepository): RecurringRepository =
+        RecurringRepository(dao, fs)
+
+    @Provides @Singleton
+    fun provideReportRepository(dao: FynloDao, fs: FirestoreRepository): ReportRepository =
+        ReportRepository(dao, fs)
+
 }

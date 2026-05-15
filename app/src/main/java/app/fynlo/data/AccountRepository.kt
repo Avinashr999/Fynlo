@@ -2,6 +2,7 @@ package app.fynlo.data
 
 import app.fynlo.data.local.FynloDao
 import app.fynlo.data.model.Account
+import app.fynlo.data.model.Person
 import app.fynlo.data.model.NetWorthSnapshot
 import app.fynlo.data.remote.FirestoreRepository
 import kotlinx.coroutines.Dispatchers
