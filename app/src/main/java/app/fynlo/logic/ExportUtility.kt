@@ -335,7 +335,7 @@ object ExportUtility {
             "Due Date"        to borrower.due.ifBlank { "Not specified" },
             "Principal"       to fmt(borrower.amount),
             "Interest Rate"   to "${borrower.rate}% p.a. (${borrower.type})",
-            "Interest Accrued"to fmt(interest),
+            "Interest Accrued" to fmt(interest),
             "Total Paid"      to fmt(borrower.paid),
             "Outstanding"     to fmt(outstanding)
         )
