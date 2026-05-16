@@ -5,6 +5,7 @@ import android.os.Build
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.viewModels
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -12,7 +13,9 @@ import androidx.compose.ui.Modifier
 import androidx.fragment.app.FragmentActivity
 import app.fynlo.ui.MainNavigation
 import app.fynlo.ui.theme.FynloTheme
+import dagger.hilt.android.AndroidEntryPoint
 
+@AndroidEntryPoint
 class MainActivity : FragmentActivity() {
 
     private var backgroundTime = 0L
@@ -20,7 +23,7 @@ class MainActivity : FragmentActivity() {
 
     private val notifPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
-    ) { /* permission result \u2014 notifications will work if granted */ }
+    ) { /* permission result */ }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -35,8 +38,7 @@ class MainActivity : FragmentActivity() {
             }
         }
 
-        val app = application as FynloApplication
-        val viewModel = FinanceViewModel(app.repository)
+        val viewModel: FinanceViewModel by viewModels()
 
         setContent {
             FynloTheme {

@@ -8,6 +8,7 @@ plugins {
     alias(libs.plugins.firebase.crashlytics.plugin)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
+    alias(libs.plugins.hilt.android.plugin)
 }
 
 android {
@@ -92,6 +93,11 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     
+    // Hilt DI
+    implementation(libs.hilt.android)
+    ksp(libs.hilt.android.compiler)
+    implementation(libs.hilt.navigation.compose)
+
     // Room
     implementation(libs.room.runtime)
     implementation(libs.room.ktx)
