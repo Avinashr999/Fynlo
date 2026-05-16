@@ -2,6 +2,7 @@ package app.fynlo
 
 import android.app.Application
 import android.util.Log
+import app.fynlo.data.Analytics
 import app.fynlo.data.AuthManager
 import app.fynlo.data.FinanceRepository
 import app.fynlo.data.local.FynloDao
@@ -10,6 +11,8 @@ import app.fynlo.data.remote.FirestoreRepository
 import app.fynlo.data.remote.SyncManager
 import app.fynlo.notifications.ReminderScheduler
 import com.google.firebase.FirebaseApp
+import com.google.firebase.crashlytics.FirebaseCrashlytics
+import com.google.firebase.perf.FirebasePerformance
 import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
@@ -33,6 +36,7 @@ class FynloApplication : Application() {
     private val appScope = CoroutineScope(
         SupervisorJob() + Dispatchers.IO + CoroutineExceptionHandler { _, e ->
             Log.e("FynloApp", "Unhandled coroutine exception: ${e.message}", e)
+            FirebaseCrashlytics.getInstance().recordException(e)
         }
     )
 
@@ -40,16 +44,23 @@ class FynloApplication : Application() {
         super.onCreate()
         // Hilt injects @Inject fields during super.onCreate() via bytecode transformation
 
+        val startupTrace = FirebasePerformance.getInstance().newTrace("app_startup")
+        startupTrace.start()
+
         FirebaseApp.initializeApp(this)
 
         com.google.firebase.crashlytics.FirebaseCrashlytics.getInstance().apply {
             setCrashlyticsCollectionEnabled(!BuildConfig.DEBUG)
         }
 
+        Analytics.init(this)
+
         ReminderScheduler.schedule(this)
 
         syncManager = SyncManager("", dao)
         repository.updateRemote(FirestoreRepository(""), syncManager)
+
+        startupTrace.stop()
 
         appScope.launch {
             try {
@@ -58,6 +69,7 @@ class FynloApplication : Application() {
                 if (uid.isNotEmpty()) initRemote(uid)
             } catch (e: Exception) {
                 Log.e("FynloApp", "onCreate init failed: ${e.message}", e)
+                FirebaseCrashlytics.getInstance().recordException(e)
             }
         }
     }
@@ -68,6 +80,7 @@ class FynloApplication : Application() {
                 initRemote(uid)
             } catch (e: Exception) {
                 Log.e("FynloApp", "onGoogleSignInComplete failed: ${e.message}", e)
+                FirebaseCrashlytics.getInstance().recordException(e)
             }
         }
     }
@@ -84,6 +97,7 @@ class FynloApplication : Application() {
             syncManager.startListening()
         } catch (e: Exception) {
             Log.e("FynloApp", "initRemote setup failed: ${e.message}", e)
+            FirebaseCrashlytics.getInstance().recordException(e)
             return
         }
 
@@ -141,6 +155,7 @@ class FynloApplication : Application() {
 
             } catch (e: Exception) {
                 Log.e("FynloApp", "initRemote coroutine failed: ${e.message}", e)
+                FirebaseCrashlytics.getInstance().recordException(e)
             }
         }
     }

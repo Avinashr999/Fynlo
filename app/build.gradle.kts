@@ -57,6 +57,17 @@ android {
                 "proguard-rules.pro"
             )
         }
+        create("staging") {
+            initWith(getByName("debug"))
+            isMinifyEnabled   = true
+            isShrinkResources = true
+            applicationIdSuffix = ".staging"
+            versionNameSuffix  = "-staging"
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
+        }
         debug {
             isDebuggable = true
         }
@@ -120,6 +131,7 @@ dependencies {
     implementation(libs.firebase.firestore)
     implementation(libs.firebase.auth)
     implementation(libs.firebase.crashlytics)
+    implementation(libs.firebase.perf)
     implementation(libs.firebase.analytics)
     implementation(libs.work.runtime)
     implementation(libs.biometric)
