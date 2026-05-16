@@ -98,6 +98,9 @@ dependencies {
     ksp(libs.hilt.android.compiler)
     implementation(libs.hilt.navigation.compose)
 
+    // DataStore
+    implementation("androidx.datastore:datastore-preferences:1.1.4")
+
     // Room
     implementation(libs.room.runtime)
     implementation(libs.room.ktx)

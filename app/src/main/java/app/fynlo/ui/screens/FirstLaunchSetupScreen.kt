@@ -55,6 +55,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -70,8 +71,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
-import androidx.core.content.edit
 import androidx.core.os.LocaleListCompat
+import kotlinx.coroutines.launch
+import app.fynlo.data.UserPreferences
 import app.fynlo.ui.theme.Emerald400
 import app.fynlo.ui.theme.Emerald500
 import app.fynlo.ui.theme.Emerald700
@@ -83,9 +85,7 @@ private const val TOTAL_STEPS = 4
 @Composable
 fun FirstLaunchSetupScreen(onComplete: () -> Unit) {
     val context = LocalContext.current
-    val prefs = remember {
-        context.getSharedPreferences("fynlo_prefs", android.content.Context.MODE_PRIVATE)
-    }
+    val scope = rememberCoroutineScope()
 
     var currentStep by remember { mutableIntStateOf(0) }
 
@@ -127,7 +127,7 @@ fun FirstLaunchSetupScreen(onComplete: () -> Unit) {
                     horizontalArrangement = Arrangement.End
                 ) {
                     TextButton(onClick = {
-                        prefs.edit { putString("user_display_name", "") }
+                        scope.launch { UserPreferences.setUserDisplayName(context, "") }
                         onComplete()
                     }) {
                         Text("Skip", color = Color.White.copy(alpha = 0.7f))
@@ -227,17 +227,15 @@ fun FirstLaunchSetupScreen(onComplete: () -> Unit) {
                     onClick = {
                         when (currentStep) {
                             0 -> {
-                                prefs.edit { putString("app_language", selectedLanguage) }
+                                scope.launch { UserPreferences.setAppLanguage(context, selectedLanguage) }
                                 val locales = LocaleListCompat.forLanguageTags(selectedLanguage)
                                 AppCompatDelegate.setApplicationLocales(locales)
                             }
                             1 -> {
-                                // Already saved on selection
+                                // Already saved on selection via ThemeController.save()
                             }
                             2 -> {
-                                prefs.edit {
-                                    putBoolean("notifications_enabled", notificationsEnabled)
-                                }
+                                scope.launch { UserPreferences.setNotificationsEnabled(context, notificationsEnabled) }
                                 if (notificationsEnabled &&
                                     Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
                                 ) {
@@ -252,9 +250,7 @@ fun FirstLaunchSetupScreen(onComplete: () -> Unit) {
                                 }
                             }
                             3 -> {
-                                prefs.edit {
-                                    putString("user_display_name", displayName.trim())
-                                }
+                                scope.launch { UserPreferences.setUserDisplayName(context, displayName.trim()) }
                             }
                         }
                         if (isLast) {

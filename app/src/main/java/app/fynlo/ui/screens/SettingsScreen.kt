@@ -24,6 +24,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.fynlo.FinanceViewModel
+import app.fynlo.data.UserPreferences
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.os.LocaleListCompat
 import app.fynlo.ui.theme.ThemeController
@@ -44,15 +45,19 @@ fun SettingsScreen(
 ) {
     val scope   = rememberCoroutineScope()
     val context = LocalContext.current
-    val prefs   = remember { context.getSharedPreferences("fynlo_prefs", android.content.Context.MODE_PRIVATE) }
+    // ── Setup-wizard editable prefs (DataStore-backed) ─────────────────────
+    val selectedLanguage   by UserPreferences.appLanguage(context).collectAsState(initial = "en")
+    val displayNameFlow    by UserPreferences.userDisplayName(context).collectAsState(initial = "")
+    var displayName        by remember { mutableStateOf("") }
+    val notifsEnabled      by UserPreferences.notificationsEnabled(context).collectAsState(initial = true)
+    val defaultCurrency    by UserPreferences.defaultCurrency(context).collectAsState(initial = "INR")
+    val dateFormat         by UserPreferences.dateFormat(context).collectAsState(initial = "dd-MM-yyyy")
 
-    // ── Setup-wizard editable prefs ──────────────────────────────────────────
-    var selectedLanguage   by remember { mutableStateOf(prefs.getString("app_language", "en") ?: "en") }
-    var displayName        by remember { mutableStateOf(prefs.getString("user_display_name", "") ?: "") }
-    var notifsEnabled      by remember { mutableStateOf(prefs.getBoolean("notifications_enabled", true)) }
+    // Sync display name from flow on first load
+    LaunchedEffect(displayNameFlow) { if (displayName.isEmpty()) displayName = displayNameFlow }
 
 
-    // â”€â”€ Export launchers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // â"€â"€ Export launchers â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
     val jsonLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("application/json")
     ) { uri -> uri?.let { scope.launch {
@@ -108,7 +113,7 @@ fun SettingsScreen(
             .verticalScroll(rememberScrollState()).imePadding()
             .padding(horizontal = 16.dp)
     ) {
-        // â”€â”€ Appearance â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // â"€â"€ Appearance â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
         SettingsSectionLabel("Appearance")
         SettingsCard {
             // Theme
@@ -145,8 +150,7 @@ fun SettingsScreen(
                     FilterChip(
                         selected = selectedLanguage == code,
                         onClick  = {
-                            selectedLanguage = code
-                            prefs.edit().putString("app_language", code).apply()
+                            scope.launch { UserPreferences.setAppLanguage(context, code) }
                             AppCompatDelegate.setApplicationLocales(
                                 LocaleListCompat.forLanguageTags(code)
                             )
@@ -160,7 +164,7 @@ fun SettingsScreen(
 
         Spacer(Modifier.height(16.dp))
 
-        // â”€â”€ Cloud Backup â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // â"€â"€ Cloud Backup â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
         SettingsSectionLabel("Cloud Backup")
         Card(
             Modifier.fillMaxWidth(),
@@ -186,7 +190,7 @@ fun SettingsScreen(
 
         Spacer(Modifier.height(16.dp))
 
-        // â”€â”€ Export & Backup â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // â"€â"€ Export & Backup â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
         SettingsSectionLabel("Export & Backup")
         SettingsCard {
             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -194,7 +198,7 @@ fun SettingsScreen(
                     icon  = Icons.Default.GridOn,
                     color = Green,
                     title = "Export Full Backup (.xlsx)",
-                    subtitle = "All data in 7 sheets â€” opens in Excel/Sheets"
+                    subtitle = "All data in 7 sheets \u2014 opens in Excel/Sheets"
                 ) { xlsxLauncher.launch("Fynlo_Backup_${System.currentTimeMillis()}.xlsx") }
 
                 SettingsDivider()
@@ -249,7 +253,7 @@ fun SettingsScreen(
 
         Spacer(Modifier.height(16.dp))
 
-        // â”€â”€ Notifications â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // â"€â"€ Notifications â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
         SettingsSectionLabel("Notifications")
         SettingsCard {
             // Display name
@@ -261,7 +265,7 @@ fun SettingsScreen(
                 singleLine    = true,
                 trailingIcon  = if (displayName.isNotBlank()) {
                     { IconButton(onClick = {
-                        prefs.edit().putString("user_display_name", displayName.trim()).apply()
+                        scope.launch { UserPreferences.setUserDisplayName(context, displayName.trim()) }
                     }) { Icon(Icons.Default.Check, "Save") } }
                 } else null,
                 modifier      = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp),
@@ -288,8 +292,7 @@ fun SettingsScreen(
                 Switch(
                     checked         = notifsEnabled,
                     onCheckedChange = {
-                        notifsEnabled = it
-                        prefs.edit().putBoolean("notifications_enabled", it).apply()
+                        scope.launch { UserPreferences.setNotificationsEnabled(context, it) }
                         if (it) app.fynlo.notifications.ReminderScheduler.schedule(context)
                     },
                     colors = SwitchDefaults.colors(
@@ -313,7 +316,47 @@ fun SettingsScreen(
 
         Spacer(Modifier.height(16.dp))
 
-        // â”€â”€ Security â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // ── Formatting ──────────────────────────────────────────────────────────
+        SettingsSectionLabel("Formatting")
+        SettingsCard {
+            // Currency
+            Text("Default Currency", style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
+            val currencies = listOf("INR", "USD", "EUR", "GBP", "AED", "SGD", "AUD", "CAD", "JPY")
+            Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                currencies.take(5).forEach { code ->
+                    FilterChip(
+                        selected = defaultCurrency == code,
+                        onClick  = { scope.launch { UserPreferences.setDefaultCurrency(context, code) } },
+                        label    = { Text(code, style = MaterialTheme.typography.labelSmall) }
+                    )
+                }
+            }
+            Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(bottom = 8.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                currencies.drop(5).forEach { code ->
+                    FilterChip(
+                        selected = defaultCurrency == code,
+                        onClick  = { scope.launch { UserPreferences.setDefaultCurrency(context, code) } },
+                        label    = { Text(code, style = MaterialTheme.typography.labelSmall) }
+                    )
+                }
+            }
+            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+            // Date Format
+            Text("Date Format", style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
+            Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(bottom = 12.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                listOf("dd-MM-yyyy", "MM-dd-yyyy", "yyyy-MM-dd").forEach { fmt ->
+                    FilterChip(
+                        selected = dateFormat == fmt,
+                        onClick  = { scope.launch { UserPreferences.setDateFormat(context, fmt) } },
+                        label    = { Text(fmt, style = MaterialTheme.typography.labelSmall) }
+                    )
+                }
+            }
+        }
+
+        Spacer(Modifier.height(16.dp))
+
+        // ── Security ────────────────────────────────────────────────────────────
         SettingsSectionLabel("Security")
         val pinManager = remember { app.fynlo.data.PinManager(context) }
         var pinSet      by remember { mutableStateOf(pinManager.isPinSet) }
@@ -491,7 +534,7 @@ fun SettingsScreen(
         }
 
 
-        // â”€â”€ App Info â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // â"€â"€ App Info â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
         SettingsSectionLabel("App Info")
         SettingsCard {
             SettingsActionRow(
@@ -558,7 +601,7 @@ fun SettingsScreen(
             }
         }
 
-        // â”€â”€ Developer (debug only) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // â"€â"€ Developer (debug only) â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
         if (app.fynlo.BuildConfig.DEBUG) {
             Spacer(Modifier.height(16.dp))
             SettingsSectionLabel("Developer")
@@ -617,7 +660,7 @@ fun SettingsScreen(
             }
         }
 
-        // â”€â”€ Version â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // â"€â"€ Version â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
         Spacer(Modifier.height(24.dp))
         Text(
             "Version ${app.fynlo.BuildConfig.VERSION_NAME} (${app.fynlo.BuildConfig.VERSION_CODE})",
@@ -630,7 +673,7 @@ fun SettingsScreen(
     }
 }
 
-// â”€â”€ Shared composables â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â"€â"€ Shared composables â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 
 @Composable
 private fun SettingsSectionLabel(title: String) {

@@ -28,7 +28,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.core.content.edit
 import androidx.navigation.NavController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -36,6 +35,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import app.fynlo.AppLockState
 import app.fynlo.FinanceViewModel
+import app.fynlo.data.UserPreferences
 import app.fynlo.ui.screens.*
 import app.fynlo.ui.components.*
 import app.fynlo.data.SyncStatus
@@ -105,14 +105,15 @@ fun MainNavigation(viewModel: FinanceViewModel) {
         AppLockState.unlock()
     }
 
-    // Onboarding â€" show only on first launch
-    val prefs = remember { context.getSharedPreferences("fynlo_prefs", android.content.Context.MODE_PRIVATE) }
-    var showOnboarding by remember { mutableStateOf(!prefs.getBoolean("onboarding_done", false)) }
-    var showSetup by remember { mutableStateOf(!prefs.getBoolean("setup_done", false)) }
+    // Onboarding + Setup — show only on first launch (DataStore-backed)
+    var showOnboarding by remember { mutableStateOf(!UserPreferences.getOnboardingDoneSync(context)) }
+    var showSetup by remember { mutableStateOf(!UserPreferences.getSetupDoneSync(context)) }
 
     if (showOnboarding) {
         OnboardingScreen(onComplete = {
-            prefs.edit { putBoolean("onboarding_done", true) }
+            kotlinx.coroutines.MainScope().launch {
+                UserPreferences.setOnboardingDone(context, true)
+            }
             showOnboarding = false
         })
         return
@@ -120,7 +121,9 @@ fun MainNavigation(viewModel: FinanceViewModel) {
 
     if (showSetup) {
         FirstLaunchSetupScreen(onComplete = {
-            prefs.edit { putBoolean("setup_done", true) }
+            kotlinx.coroutines.MainScope().launch {
+                UserPreferences.setSetupDone(context, true)
+            }
             showSetup = false
         })
         return
