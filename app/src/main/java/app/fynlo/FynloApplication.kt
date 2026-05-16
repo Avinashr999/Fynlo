@@ -2,42 +2,52 @@ package app.fynlo
 
 import android.app.Application
 import android.util.Log
+import androidx.room.Room
 import app.fynlo.data.AuthManager
 import app.fynlo.data.FinanceRepository
-import app.fynlo.data.local.FynloDao
+import app.fynlo.data.local.FynloDatabase
+import app.fynlo.data.local.MIGRATION_3_4
+import app.fynlo.data.local.MIGRATION_4_5
+import app.fynlo.data.local.MIGRATION_5_6
+import app.fynlo.data.local.MIGRATION_6_7
+import app.fynlo.data.local.MIGRATION_7_8
+import app.fynlo.data.local.MIGRATION_8_9
+import app.fynlo.data.local.MIGRATION_9_10
+import app.fynlo.data.local.MIGRATION_10_11
+import app.fynlo.data.local.MIGRATION_11_12
+import app.fynlo.data.local.MIGRATION_12_13
+import app.fynlo.data.local.MIGRATION_13_14
 import app.fynlo.data.remote.FirestoreRepository
 import app.fynlo.data.remote.SyncManager
 import app.fynlo.notifications.ReminderScheduler
 import com.google.firebase.FirebaseApp
-import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
-/**
- * Application class with Hilt DI.
- *
- * All dependencies are injected by Hilt after super.onCreate() returns.
- * DO NOT access @Inject fields before onCreate() or in field initialisers —
- * that was the root cause of the lateinit crash.
- */
-@HiltAndroidApp
 class FynloApplication : Application() {
 
-    // Hilt injects all of these after super.onCreate() completes
-    @Inject lateinit var dao: FynloDao
-    @Inject lateinit var repository: FinanceRepository
-    @Inject lateinit var firestoreRepository: FirestoreRepository
+    val database: FynloDatabase by lazy {
+        Room.databaseBuilder(this, FynloDatabase::class.java, "Fynlo_database")
+            .addMigrations(
+                MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7,
+                MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11,
+                MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14
+            )
+            .fallbackToDestructiveMigrationOnDowngrade()
+            .build()
+    }
 
-    // AuthManager has no Hilt dependency — keep as lazy
+    val dao get() = database.dao()
+
     val authManager: AuthManager by lazy { AuthManager() }
 
-    // SyncManager is stateful (holds userId) — we create it after sign-in
+    lateinit var firestoreRepository: FirestoreRepository
     lateinit var syncManager: SyncManager
+    lateinit var repository: FinanceRepository
 
     private val appScope = CoroutineScope(
         SupervisorJob() + Dispatchers.IO + CoroutineExceptionHandler { _, e ->
@@ -47,7 +57,6 @@ class FynloApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        // All @Inject fields are now populated — safe to use dao, repository, firestoreRepository
 
         FirebaseApp.initializeApp(this)
 
@@ -57,9 +66,11 @@ class FynloApplication : Application() {
 
         ReminderScheduler.schedule(this)
 
-        // Initialise SyncManager with empty userId — updated when user signs in
-        syncManager = SyncManager("", dao)
-        repository.updateRemote(firestoreRepository, syncManager)
+        firestoreRepository = FirestoreRepository("")
+        syncManager         = SyncManager("", database.dao())
+        repository          = FinanceRepository(
+            database.dao(), database, firestoreRepository, syncManager
+        )
 
         appScope.launch {
             try {
@@ -89,7 +100,7 @@ class FynloApplication : Application() {
                 syncManager.stopListening()
             }
             firestoreRepository = FirestoreRepository(uid)
-            syncManager = SyncManager(uid, dao)
+            syncManager         = SyncManager(uid, database.dao())
             repository.updateRemote(firestoreRepository, syncManager)
             syncManager.startListening()
         } catch (e: Exception) {
@@ -101,25 +112,25 @@ class FynloApplication : Application() {
             try {
                 try {
                     repository.pushAllLocalToFirestore()
-                    Log.d("FynloApp", "Local→Firestore push completed on sign-in")
+                    Log.d("FynloApp", "Local\u2192Firestore push completed on sign-in")
                 } catch (e: Exception) {
                     Log.e("FynloApp", "pushAllLocal failed (non-fatal): ${e.message}")
                 }
 
                 var waited = 0
-                while (dao.getAllAccounts().first().isEmpty() && waited < 20000) {
+                while (database.dao().getAllAccounts().first().isEmpty() && waited < 20000) {
                     kotlinx.coroutines.delay(500)
                     waited += 500
                 }
 
                 try {
-                    val allProjects = dao.getAllProjects().first()
+                    val allProjects = database.dao().getAllProjects().first()
                     val firstProject = allProjects.firstOrNull()
 
                     if (allProjects.isEmpty()) {
-                        val orphanedPid = dao.getAllAccounts().first()
+                        val orphanedPid = database.dao().getAllAccounts().first()
                             .firstOrNull()?.projectId?.takeIf { it.isNotBlank() && it != "personal" }
-                            ?: dao.getAllBorrowers().first()
+                            ?: database.dao().getAllBorrowers().first()
                             .firstOrNull()?.projectId?.takeIf { it.isNotBlank() && it != "personal" }
 
                         val recoveryProject = app.fynlo.data.model.Project(
@@ -130,10 +141,10 @@ class FynloApplication : Application() {
                             currency  = "INR",
                             createdAt = ""
                         )
-                        dao.insertProject(recoveryProject)
+                        database.dao().insertProject(recoveryProject)
                         Log.e("FynloApp", "Recovered missing project record: ${recoveryProject.id}")
                     } else if (firstProject != null && firstProject.id != "personal") {
-                        val accounts = dao.getAllAccounts().first()
+                        val accounts = database.dao().getAllAccounts().first()
                         if (accounts.isNotEmpty()) {
                             repository.normalizeLegacyProjectIds(firstProject.id)
                             repository.pushNormalizedProjectIds()

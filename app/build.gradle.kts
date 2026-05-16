@@ -77,7 +77,6 @@ android {
     ksp {
         arg("room.schemaLocation", "$projectDir/schemas")
         arg("room.incremental", "true")
-        arg("dagger.hilt.android.internal.disableAndroidSuperclassValidation", "true")
     }
 }
 
@@ -93,11 +92,6 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     
-    // Hilt
-    implementation(libs.hilt.android)
-    annotationProcessor(libs.hilt.android.compiler)
-    implementation(libs.hilt.navigation.compose)
-
     // Room
     implementation(libs.room.runtime)
     implementation(libs.room.ktx)

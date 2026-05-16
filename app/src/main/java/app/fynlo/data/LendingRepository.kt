@@ -6,11 +6,9 @@ import app.fynlo.data.remote.FirestoreRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
-import javax.inject.Inject
-import javax.inject.Singleton
 
-@Singleton
-class LendingRepository @Inject constructor(
+
+class LendingRepository constructor(
     private val dao: FynloDao,
     private val firestore: FirestoreRepository
 ) {
