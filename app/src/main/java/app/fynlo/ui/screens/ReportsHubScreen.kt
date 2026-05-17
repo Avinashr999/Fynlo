@@ -45,6 +45,7 @@ fun ReportsHubScreen(
     onNavigateToMoneyFlow: () -> Unit = {},
     onNavigateToInterest: () -> Unit = {}
 ) {
+    LaunchedEffect(Unit) { app.fynlo.data.Analytics.screenView("Reports") }
     val transactions  by viewModel.transactions.collectAsState()
     val summary       by viewModel.financialSummary.collectAsState()
     val currentProject by viewModel.currentProject.collectAsState()

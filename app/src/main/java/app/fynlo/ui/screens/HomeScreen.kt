@@ -34,6 +34,7 @@ import app.fynlo.ui.theme.*
 
 @Composable
 fun HomeScreen(viewModel: FinanceViewModel, onNavigateToScreen: (String) -> Unit = {}) {
+    LaunchedEffect(Unit) { app.fynlo.data.Analytics.screenView("Home") }
     val haptic           = LocalHapticFeedback.current
     val summary          by viewModel.financialSummary.collectAsState()
     val analytics        by viewModel.expenseAnalytics.collectAsState()

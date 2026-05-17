@@ -55,6 +55,7 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> Unit = {}, onNavigateToCalendar: () -> Unit = {}) {
+    LaunchedEffect(Unit) { app.fynlo.data.Analytics.screenView("Lending") }
     val haptic        = LocalHapticFeedback.current
     val borrowers     by viewModel.borrowers.collectAsState()
     val accounts      by viewModel.accounts.collectAsState()

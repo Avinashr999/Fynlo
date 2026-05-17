@@ -42,6 +42,7 @@ private val CAT_COLORS = listOf(
 
 @Composable
 fun SpendScreen(viewModel: FinanceViewModel) {
+    LaunchedEffect(Unit) { app.fynlo.data.Analytics.screenView("Expenses") }
         val haptic = LocalHapticFeedback.current
 val transactions by viewModel.transactions.collectAsState()
     val budgets      by viewModel.budgets.collectAsState()
