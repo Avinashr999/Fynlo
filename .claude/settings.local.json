@@ -11,7 +11,13 @@
       "Bash(./gradlew testDebugUnitTest --rerun-tasks)",
       "Bash(find app/build/test-results -name \"*.xml\" -exec grep -l \"testcase\" {} \\\\;)",
       "Bash(xargs grep:*)",
-      "Bash(bc)"
+      "Bash(bc)",
+      "Bash(adb devices *)",
+      "Bash(adb install *)",
+      "Bash(./gradlew assembleRelease)",
+      "Bash(adb logcat *)",
+      "Bash(adb shell *)",
+      "Bash(./gradlew assembleStaging)"
     ]
   }
 }
