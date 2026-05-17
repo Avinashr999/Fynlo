@@ -600,6 +600,7 @@ class FinanceRepository(
         db.withTransaction {
             val p = payment.copy(projectId = projectId, updatedAt = System.currentTimeMillis())
             dao.insertPayment(p)
+            Analytics.paymentCollected()
 
             // Credit the destination account with full payment amount
             dao.updateAccountBalance(destinationAccount, payment.amount)

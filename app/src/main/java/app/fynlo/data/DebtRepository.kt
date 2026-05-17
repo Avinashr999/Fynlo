@@ -1,8 +1,10 @@
 package app.fynlo.data
 
+import android.util.Log
 import app.fynlo.data.local.FynloDao
 import app.fynlo.data.model.*
 import app.fynlo.data.remote.FirestoreRepository
+import com.google.firebase.crashlytics.FirebaseCrashlytics
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
@@ -15,58 +17,75 @@ class DebtRepository constructor(
     val allDebts: Flow<List<Debt>> = dao.getAllDebts()
     val allDebtPayments: Flow<List<DebtPayment>> = dao.getAllDebtPayments()
 
+    private inline fun <T> recordOnFail(op: String, block: () -> T): T = try {
+        block()
+    } catch (e: Throwable) {
+        Log.e("DebtRepo", "$op failed: ${e.message}", e)
+        FirebaseCrashlytics.getInstance().apply {
+            log("DebtRepository.$op failed")
+            recordException(e)
+        }
+        throw e
+    }
+
     suspend fun insertDebt(debt: Debt) = withContext(Dispatchers.IO) {
-        val d = debt.copy(updatedAt = System.currentTimeMillis())
-        dao.insertDebt(d)
+        recordOnFail("insertDebt") {
+            val d = debt.copy(updatedAt = System.currentTimeMillis())
+            dao.insertDebt(d)
+        }
     }
 
     suspend fun updateDebt(debt: Debt) = withContext(Dispatchers.IO) {
-        val d = debt.copy(updatedAt = System.currentTimeMillis())
-        dao.insertDebt(d)
+        recordOnFail("updateDebt") {
+            val d = debt.copy(updatedAt = System.currentTimeMillis())
+            dao.insertDebt(d)
+        }
     }
 
     suspend fun deleteDebtRecord(debt: Debt) = withContext(Dispatchers.IO) {
-        dao.deleteDebt(debt)
+        recordOnFail("deleteDebtRecord") { dao.deleteDebt(debt) }
     }
 
     suspend fun deleteDebtById(id: String) = withContext(Dispatchers.IO) {
-        dao.deleteDebtById(id)
+        recordOnFail("deleteDebtById") { dao.deleteDebtById(id) }
     }
 
     suspend fun getDebtById(id: String): Debt? = withContext(Dispatchers.IO) {
-        dao.getDebtById(id)
+        recordOnFail("getDebtById") { dao.getDebtById(id) }
     }
 
     suspend fun insertDebtPayment(payment: DebtPayment) = withContext(Dispatchers.IO) {
-        val p = payment.copy(updatedAt = System.currentTimeMillis())
-        dao.insertDebtPayment(p)
+        recordOnFail("insertDebtPayment") {
+            val p = payment.copy(updatedAt = System.currentTimeMillis())
+            dao.insertDebtPayment(p)
+        }
     }
 
     suspend fun deleteDebtPayment(payment: DebtPayment) = withContext(Dispatchers.IO) {
-        dao.deleteDebtPayment(payment)
+        recordOnFail("deleteDebtPayment") { dao.deleteDebtPayment(payment) }
     }
 
     suspend fun getDebtPaymentsForDebtOnce(debtId: String): List<DebtPayment> = withContext(Dispatchers.IO) {
-        dao.getDebtPaymentsForDebtOnce(debtId)
+        recordOnFail("getDebtPaymentsForDebtOnce") { dao.getDebtPaymentsForDebtOnce(debtId) }
     }
 
     suspend fun updateDebtPaidAmount(debtId: String, amount: Double) = withContext(Dispatchers.IO) {
-        dao.updateDebtPaidAmount(debtId, amount)
+        recordOnFail("updateDebtPaidAmount") { dao.updateDebtPaidAmount(debtId, amount) }
     }
 
     suspend fun updateDebtPaidPrincipal(debtId: String, amount: Double) = withContext(Dispatchers.IO) {
-        dao.updateDebtPaidPrincipal(debtId, amount)
+        recordOnFail("updateDebtPaidPrincipal") { dao.updateDebtPaidPrincipal(debtId, amount) }
     }
 
     suspend fun updateDebtPaidInterest(debtId: String, amount: Double) = withContext(Dispatchers.IO) {
-        dao.updateDebtPaidInterest(debtId, amount)
+        recordOnFail("updateDebtPaidInterest") { dao.updateDebtPaidInterest(debtId, amount) }
     }
 
     suspend fun rebuildDebtPaidFromDebtPayments() = withContext(Dispatchers.IO) {
-        dao.rebuildDebtPaidFromDebtPayments()
+        recordOnFail("rebuildDebtPaidFromDebtPayments") { dao.rebuildDebtPaidFromDebtPayments() }
     }
 
     suspend fun recalculateDebtPaid() = withContext(Dispatchers.IO) {
-        dao.recalculateDebtPaid()
+        recordOnFail("recalculateDebtPaid") { dao.recalculateDebtPaid() }
     }
 }
