@@ -645,6 +645,18 @@ fun SettingsScreen(
                 )
 
                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    SettingsActionRow(Icons.Default.BugReport, Red, "Test Crash (Crashlytics)",
+                        "Triggers a fatal crash for Firebase verification") {
+                        (context.applicationContext as app.fynlo.FynloApplication).triggerTestCrash()
+                    }
+                    SettingsDivider()
+                    SettingsActionRow(Icons.Default.Warning, Amber, "Test Non-Fatal (Crashlytics)",
+                        "Records a non-fatal exception") {
+                        com.google.firebase.crashlytics.FirebaseCrashlytics.getInstance()
+                            .recordException(RuntimeException("Fynlo non-fatal test - verify in Firebase"))
+                        android.widget.Toast.makeText(context, "Non-fatal sent to Crashlytics", android.widget.Toast.LENGTH_SHORT).show()
+                    }
+                    SettingsDivider()
                     SettingsActionRow(Icons.Default.Science, Amber, "Load Test Data (QA)",
                         "Seeds fake data for testing") { showSeedConfirm = true }
                     SettingsDivider()

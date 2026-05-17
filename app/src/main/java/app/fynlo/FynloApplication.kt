@@ -50,7 +50,8 @@ class FynloApplication : Application() {
         FirebaseApp.initializeApp(this)
 
         com.google.firebase.crashlytics.FirebaseCrashlytics.getInstance().apply {
-            setCrashlyticsCollectionEnabled(!BuildConfig.DEBUG)
+            // Verification: enabled in DEBUG too so test crashes/non-fatals reach Firebase
+            setCrashlyticsCollectionEnabled(true)
         }
 
         Analytics.init(this)
@@ -73,6 +74,8 @@ class FynloApplication : Application() {
             }
         }
     }
+
+    fun triggerTestCrash(): Nothing = throw RuntimeException("Fynlo test crash - Crashlytics verification")
 
     fun onGoogleSignInComplete(uid: String) {
         appScope.launch {
