@@ -15,24 +15,27 @@ android {
     namespace = "app.fynlo"
     compileSdk = 36
 
-    signingConfigs {
-        create("release") {
-            // Credentials are read from keystore.properties (NOT committed to git)
-            // Copy keystore.properties.example to keystore.properties and fill in values
-            val keystorePropsFile = rootProject.file("keystore.properties")
-            if (keystorePropsFile.exists()) {
-                val keystoreProps = Properties()
-                keystoreProps.load(keystorePropsFile.inputStream())
-                storeFile     = file(keystoreProps["storeFile"] as String)
-                storePassword = keystoreProps["storePassword"] as String
-                keyAlias      = keystoreProps["keyAlias"] as String
-                keyPassword   = keystoreProps["keyPassword"] as String
-            } else {
-                // CI/CD: read from environment variables
-                storeFile     = file(System.getenv("KEYSTORE_FILE") ?: "fynlo-release.jks")
-                storePassword = System.getenv("KEYSTORE_PASSWORD") ?: ""
-                keyAlias      = System.getenv("KEY_ALIAS") ?: "fynlo"
-                keyPassword   = System.getenv("KEY_PASSWORD") ?: ""
+    // Signing is only configured when valid credentials exist. Without them,
+    // assembleRelease produces app-release-unsigned.apk (useful for verification).
+    val keystorePropsFile = rootProject.file("keystore.properties")
+    val envKeystorePassword = System.getenv("KEYSTORE_PASSWORD").orEmpty()
+    val hasReleaseSigning   = keystorePropsFile.exists() || envKeystorePassword.isNotEmpty()
+    if (hasReleaseSigning) {
+        signingConfigs {
+            create("release") {
+                if (keystorePropsFile.exists()) {
+                    val keystoreProps = Properties()
+                    keystoreProps.load(keystorePropsFile.inputStream())
+                    storeFile     = file(keystoreProps["storeFile"] as String)
+                    storePassword = keystoreProps["storePassword"] as String
+                    keyAlias      = keystoreProps["keyAlias"] as String
+                    keyPassword   = keystoreProps["keyPassword"] as String
+                } else {
+                    storeFile     = file(System.getenv("KEYSTORE_FILE") ?: "fynlo-release.jks")
+                    storePassword = envKeystorePassword
+                    keyAlias      = System.getenv("KEY_ALIAS") ?: "fynlo"
+                    keyPassword   = System.getenv("KEY_PASSWORD").orEmpty()
+                }
             }
         }
     }
@@ -51,7 +54,7 @@ android {
         release {
             isMinifyEnabled   = true
             isShrinkResources = true
-            signingConfig     = signingConfigs.getByName("release")
+            if (hasReleaseSigning) signingConfig = signingConfigs.getByName("release")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -61,7 +64,6 @@ android {
             initWith(getByName("debug"))
             isMinifyEnabled   = true
             isShrinkResources = true
-            applicationIdSuffix = ".staging"
             versionNameSuffix  = "-staging"
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
@@ -83,6 +85,10 @@ android {
     buildFeatures {
         compose = true
         buildConfig = true
+    }
+
+    lint {
+        disable += "ExtraTranslation"
     }
 
     // Room schema export for migration validation
