@@ -72,5 +72,4 @@ We may update this policy when adding new features. Continued use after changes 
 ## 10. Contact Us
 
 For privacy questions or data requests:
-- Email: avinash999.reddy@gmail.com
-- WhatsApp: +91 8500504810
+- Email: fynloapp.support@gmail.com
