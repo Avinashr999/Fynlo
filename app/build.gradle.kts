@@ -17,7 +17,10 @@ android {
 
     // Signing is only configured when valid credentials exist. Without them,
     // assembleRelease produces app-release-unsigned.apk (useful for verification).
-    val keystorePropsFile = rootProject.file("keystore.properties")
+    // Prefer secrets/keystore.properties (gitignored folder); fall back to root.
+    val keystorePropsFile = listOf("secrets/keystore.properties", "keystore.properties")
+        .map(rootProject::file).firstOrNull { it.exists() }
+        ?: rootProject.file("secrets/keystore.properties")
     val envKeystorePassword = System.getenv("KEYSTORE_PASSWORD").orEmpty()
     val hasReleaseSigning   = keystorePropsFile.exists() || envKeystorePassword.isNotEmpty()
     if (hasReleaseSigning) {
@@ -26,7 +29,8 @@ android {
                 if (keystorePropsFile.exists()) {
                     val keystoreProps = Properties()
                     keystoreProps.load(keystorePropsFile.inputStream())
-                    storeFile     = file(keystoreProps["storeFile"] as String)
+                    // storeFile is resolved relative to the repo root, not the app/ module.
+                    storeFile     = rootProject.file(keystoreProps["storeFile"] as String)
                     storePassword = keystoreProps["storePassword"] as String
                     keyAlias      = keystoreProps["keyAlias"] as String
                     keyPassword   = keystoreProps["keyPassword"] as String

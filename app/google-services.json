@@ -14,6 +14,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "1016532477819-foiep9sckngkn6k3qc17gg4tacjek5mq.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "app.fynlo",
+            "certificate_hash": "aa122e8b0ef4e6823217f105d26d755798b394af"
+          }
+        },
+        {
           "client_id": "1016532477819-j7in8trmuft1c4e5enekm899ukfb44hp.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
