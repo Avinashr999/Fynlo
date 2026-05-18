@@ -263,7 +263,14 @@ fun OnboardingScreen(onComplete: () -> Unit) {
                     Spacer(Modifier.width(80.dp))
                 }
                 Button(
-                    onClick = { if (page < pages.size - 1) page++ else onComplete() },
+                    onClick = {
+                        if (page < pages.size - 1) {
+                            page++
+                        } else {
+                            app.fynlo.data.Analytics.onboardingComplete()
+                            onComplete()
+                        }
+                    },
                     shape   = RoundedCornerShape(12.dp),
                     modifier = Modifier.height(48.dp),
                     colors  = ButtonDefaults.buttonColors(containerColor = current.color)
@@ -277,7 +284,10 @@ fun OnboardingScreen(onComplete: () -> Unit) {
             }
 
             Spacer(Modifier.height(16.dp))
-            TextButton(onClick = onComplete) {
+            TextButton(onClick = {
+                app.fynlo.data.Analytics.setupSkipped(page)
+                onComplete()
+            }) {
                 Text("Skip", color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }

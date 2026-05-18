@@ -101,6 +101,7 @@ fun SettingsScreen(
                     viewModel.investments.value, viewModel.payments.value,
                     viewModel.debtPayments.value
                 )
+                app.fynlo.data.Analytics.dataExported("xlsx")
             }
         }
     }}}

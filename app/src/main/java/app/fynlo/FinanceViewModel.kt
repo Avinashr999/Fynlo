@@ -653,22 +653,30 @@ class FinanceViewModel @Inject constructor(private val repository: FinanceReposi
         }
     }
 
-    suspend fun exportAllData(): String = repository.getAllDataAsJson()
+    suspend fun exportAllData(): String {
+        val json = repository.getAllDataAsJson()
+        app.fynlo.data.Analytics.dataExported("json")
+        return json
+    }
 
     fun restoreData(json: String) {
         viewModelScope.launch(Dispatchers.IO) { repository.restoreDataFromJson(json) }
     }
 
-    fun exportToCSV(): String =
-        app.fynlo.logic.ExportUtility.generateCSV(
+    fun exportToCSV(): String {
+        val csv = app.fynlo.logic.ExportUtility.generateCSV(
             transactions.value, borrowers.value, investments.value
         )
+        app.fynlo.data.Analytics.dataExported("csv")
+        return csv
+    }
 
     fun exportToPDF(outputStream: java.io.OutputStream) {
         app.fynlo.logic.ExportUtility.generatePDF(
             outputStream, financialSummary.value,
             transactions.value, borrowers.value, investments.value
         )
+        app.fynlo.data.Analytics.dataExported("pdf")
     }
 
     fun getNetWorthSnapshots() = repository.getNetWorthSnapshots(pid)

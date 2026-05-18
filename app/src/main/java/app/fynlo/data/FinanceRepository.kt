@@ -95,6 +95,7 @@ class FinanceRepository(
             }
             sync { setTransaction(t) }
         }
+        Analytics.transactionAdded(type = transaction.type, category = transaction.category)
         // Sync AFTER withTransaction commits so we push the updated balance
         affectedAccounts.forEach { syncAccountByName(it) }
     }
@@ -235,6 +236,7 @@ class FinanceRepository(
             dao.insertTransaction(t)
             sync { setBorrower(b); setTransaction(t) }
         }
+        Analytics.loanCreated(hasInterest = borrower.rate > 0.0)
         syncAccountByName(sourceAccount)
     }
     suspend fun deleteBorrower(borrower: Borrower) {
@@ -330,6 +332,7 @@ class FinanceRepository(
             dao.insertTransaction(t)
             sync { setInvestment(i); setTransaction(t) }
         }
+        Analytics.investmentCreated(type = investment.type)
         syncAccountByName(accountName)
     }
 
@@ -345,6 +348,7 @@ class FinanceRepository(
             dao.insertTransaction(t)
             sync { setInvestment(i); setTransaction(t) }
         }
+        Analytics.investmentCreated(type = investment.type)
     }
 
     // ─── Investment — auto-create new loan + link to investment ─────────────────
@@ -361,6 +365,7 @@ class FinanceRepository(
             dao.insertTransaction(t)
             sync { setDebt(d); setInvestment(i); setTransaction(t) }
         }
+        Analytics.investmentCreated(type = investment.type)
     }
 
     // ─── Keep old function as no-op shim so nothing else breaks ───────────────

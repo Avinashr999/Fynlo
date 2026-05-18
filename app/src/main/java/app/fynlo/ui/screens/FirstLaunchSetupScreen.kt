@@ -128,6 +128,7 @@ fun FirstLaunchSetupScreen(onComplete: () -> Unit) {
                 ) {
                     TextButton(onClick = {
                         scope.launch { UserPreferences.setUserDisplayName(context, "") }
+                        app.fynlo.data.Analytics.setupSkipped(atStep = currentStep)
                         onComplete()
                     }) {
                         Text("Skip", color = Color.White.copy(alpha = 0.7f))
@@ -225,11 +226,15 @@ fun FirstLaunchSetupScreen(onComplete: () -> Unit) {
                 val isLast = currentStep == TOTAL_STEPS - 1
                 Button(
                     onClick = {
+                        val stepName = when (currentStep) {
+                            0 -> "language"; 1 -> "theme"; 2 -> "notifications"; 3 -> "profile"; else -> "unknown"
+                        }
                         when (currentStep) {
                             0 -> {
                                 scope.launch { UserPreferences.setAppLanguage(context, selectedLanguage) }
                                 val locales = LocaleListCompat.forLanguageTags(selectedLanguage)
                                 AppCompatDelegate.setApplicationLocales(locales)
+                                app.fynlo.data.Analytics.setUserLanguage(selectedLanguage)
                             }
                             1 -> {
                                 // Already saved on selection via ThemeController.save()
@@ -253,7 +258,9 @@ fun FirstLaunchSetupScreen(onComplete: () -> Unit) {
                                 scope.launch { UserPreferences.setUserDisplayName(context, displayName.trim()) }
                             }
                         }
+                        app.fynlo.data.Analytics.setupStepComplete(step = currentStep + 1, stepName = stepName)
                         if (isLast) {
+                            app.fynlo.data.Analytics.setupComplete()
                             onComplete()
                         } else {
                             currentStep++

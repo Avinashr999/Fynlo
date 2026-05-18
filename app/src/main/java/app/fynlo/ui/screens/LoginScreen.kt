@@ -3,6 +3,7 @@ package app.fynlo.ui.screens
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.*
+import app.fynlo.data.Analytics
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -50,6 +51,7 @@ fun LoginScreen(onSignedIn: () -> Unit) {
                 val idToken = account.idToken ?: throw Exception("No ID token")
                 val signInResult = app.authManager.signInWithGoogle(idToken)
                 if (signInResult.isSuccess) {
+                    Analytics.signIn("google")
                     app.onGoogleSignInComplete(app.authManager.userId)
                     onSignedIn()
                 } else {
