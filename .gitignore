@@ -32,3 +32,4 @@ google-services.json
 
 # Room schema exports are committed to track DB changes
 # Do NOT add /app/schemas to .gitignore
+.claude/settings.local.json
