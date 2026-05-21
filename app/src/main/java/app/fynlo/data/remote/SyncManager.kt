@@ -67,10 +67,16 @@ class SyncManager(
                             tenure    = doc.int("tenure"),
                             type      = doc.str("type"),
                             paid      = doc.dbl("paid"),
+                            paidPrincipal  = doc.dbl("paidPrincipal"),
+                            paidInterest   = doc.dbl("paidInterest"),
                             status    = doc.str("status"),
+                            defaultDate    = doc.str("defaultDate"),
+                            frozenInterest = doc.dbl("frozenInterest"),
+                            sourceAccount  = doc.str("sourceAccount"),
                             notes     = doc.str("notes"),
                             projectId = doc.str("projectId"),
-                            updatedAt = doc.lng("updatedAt")
+                            updatedAt = doc.lng("updatedAt"),
+                            createdAt = doc.lng("createdAt")
                         )
                         // Only overwrite local if remote is newer (last-write-wins)
                         val local = dao.getBorrowerById(doc.id)
@@ -108,7 +114,8 @@ class SyncManager(
                             notes     = doc.str("notes"),
                             tags      = doc.str("tags"),
                             projectId = doc.str("projectId"),
-                            updatedAt = doc.lng("updatedAt")
+                            updatedAt = doc.lng("updatedAt"),
+                            createdAt = doc.lng("createdAt")
                         )
                         // LWW: only overwrite if remote is newer
                         val localTxn = dao.getTransactionById(remote.id)
@@ -136,7 +143,8 @@ class SyncManager(
                             color     = doc.str("color"),
                             notes     = doc.str("notes"),
                             projectId = doc.str("projectId"),
-                            updatedAt = doc.lng("updatedAt")
+                            updatedAt = doc.lng("updatedAt"),
+                            createdAt = doc.lng("createdAt")
                         )
                         val localAcct = dao.getAccountById(doc.id)
                         if (localAcct == null || remoteAcct.updatedAt >= localAcct.updatedAt) {
@@ -171,7 +179,8 @@ class SyncManager(
                             updatedAt    = doc.lng("updatedAt"),
                             fundingSource = doc.str("fundingSource"),
                             sourceType    = doc.str("sourceType"),
-                            linkedDebtId  = doc.str("linkedDebtId")
+                            linkedDebtId  = doc.str("linkedDebtId"),
+                            createdAt     = doc.lng("createdAt")
                         ))
                     }
                 }
@@ -222,11 +231,14 @@ class SyncManager(
                             tenure    = doc.int("tenure"),
                             intType   = doc.str("intType"),
                             paid      = doc.dbl("paid"),
+                            paidPrincipal = doc.dbl("paidPrincipal"),
+                            paidInterest  = doc.dbl("paidInterest"),
                             status    = doc.str("status"),
                             collateral = doc.str("collateral"),
                             notes     = doc.str("notes"),
                             projectId = doc.str("projectId"),
-                            updatedAt = doc.lng("updatedAt")
+                            updatedAt = doc.lng("updatedAt"),
+                            createdAt = doc.lng("createdAt")
                         ))
                     }
                 }
@@ -247,7 +259,8 @@ class SyncManager(
                             type      = doc.str("type"),
                             notes     = doc.str("notes"),
                             projectId = doc.str("projectId"),
-                            updatedAt = doc.lng("updatedAt")
+                            updatedAt = doc.lng("updatedAt"),
+                            createdAt = doc.lng("createdAt")
                         ))
                     }
                 }
@@ -269,6 +282,111 @@ class SyncManager(
                             currency  = doc.str("currency"),
                             createdAt = doc.str("createdAt"),
                             updatedAt = doc.lng("updatedAt")
+                        ))
+                    }
+                }
+                _status.value = SyncStatus.Synced
+            }
+        }
+
+        // ── Payments (loan repayments) — previously write-only, now synced down ──
+        listeners += col("payments").addSnapshotListener { snap, err ->
+            if (err != null || snap == null) { handleErr(err); return@addSnapshotListener }
+            scope.launch {
+                snap.documentChanges.forEach { change ->
+                    runCatching {
+                        val doc = change.document
+                        if (change.type == DocumentChange.Type.REMOVED) { dao.deletePaymentById(doc.id); return@runCatching }
+                        dao.insertPayment(Payment(
+                            id        = doc.id,
+                            loanId    = doc.str("loanId"),
+                            name      = doc.str("name"),
+                            date      = doc.str("date"),
+                            type      = doc.str("type"),
+                            amount    = doc.dbl("amount"),
+                            principal = doc.dbl("principal"),
+                            interest  = doc.dbl("interest"),
+                            mode      = doc.str("mode"),
+                            notes     = doc.str("notes"),
+                            projectId = doc.str("projectId"),
+                            updatedAt = doc.lng("updatedAt"),
+                            createdAt = doc.lng("createdAt")
+                        ))
+                    }
+                }
+                _status.value = SyncStatus.Synced
+            }
+        }
+
+        // ── Debt payments — previously write-only, now synced down ──────────────
+        listeners += col("debt_payments").addSnapshotListener { snap, err ->
+            if (err != null || snap == null) { handleErr(err); return@addSnapshotListener }
+            scope.launch {
+                snap.documentChanges.forEach { change ->
+                    runCatching {
+                        val doc = change.document
+                        if (change.type == DocumentChange.Type.REMOVED) { dao.deleteDebtPaymentById(doc.id); return@runCatching }
+                        dao.insertDebtPayment(DebtPayment(
+                            id        = doc.id,
+                            debtId    = doc.str("debtId"),
+                            name      = doc.str("name"),
+                            date      = doc.str("date"),
+                            type      = doc.str("type"),
+                            amount    = doc.dbl("amount"),
+                            principal = doc.dbl("principal"),
+                            interest  = doc.dbl("interest"),
+                            mode      = doc.str("mode"),
+                            notes     = doc.str("notes"),
+                            projectId = doc.str("projectId"),
+                            updatedAt = doc.lng("updatedAt"),
+                            createdAt = doc.lng("createdAt")
+                        ))
+                    }
+                }
+                _status.value = SyncStatus.Synced
+            }
+        }
+
+        // ── Budgets — previously write-only, now synced down ────────────────────
+        listeners += col("budgets").addSnapshotListener { snap, err ->
+            if (err != null || snap == null) { handleErr(err); return@addSnapshotListener }
+            scope.launch {
+                snap.documentChanges.forEach { change ->
+                    runCatching {
+                        val doc = change.document
+                        if (change.type == DocumentChange.Type.REMOVED) { dao.deleteBudgetByCategory(doc.id); return@runCatching }
+                        dao.insertBudget(Budget(
+                            category    = doc.id,
+                            limitAmount = doc.dbl("limitAmount"),
+                            period      = doc.str("period"),
+                            projectId   = doc.str("projectId"),
+                            updatedAt   = doc.lng("updatedAt"),
+                            createdAt   = doc.lng("createdAt")
+                        ))
+                    }
+                }
+                _status.value = SyncStatus.Synced
+            }
+        }
+
+        // ── Goals — previously write-only, now synced down ──────────────────────
+        listeners += col("goals").addSnapshotListener { snap, err ->
+            if (err != null || snap == null) { handleErr(err); return@addSnapshotListener }
+            scope.launch {
+                snap.documentChanges.forEach { change ->
+                    runCatching {
+                        val doc = change.document
+                        if (change.type == DocumentChange.Type.REMOVED) { dao.deleteGoalById(doc.id); return@runCatching }
+                        dao.insertGoal(Goal(
+                            id           = doc.id,
+                            name         = doc.str("name"),
+                            targetAmount = doc.dbl("targetAmount"),
+                            savedAmount  = doc.dbl("savedAmount"),
+                            deadline     = doc.str("deadline"),
+                            notes        = doc.str("notes"),
+                            projectId    = doc.str("projectId"),
+                            updatedAt    = doc.lng("updatedAt"),
+                            createdAt    = doc.lng("createdAt")
                         ))
                     }
                 }
