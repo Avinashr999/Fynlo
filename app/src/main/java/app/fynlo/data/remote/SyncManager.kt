@@ -369,6 +369,36 @@ class SyncManager(
             }
         }
 
+        // ── Recurring transactions — previously local-only, now synced ──────────
+        listeners += col("recurring_transactions").addSnapshotListener { snap, err ->
+            if (err != null || snap == null) { handleErr(err); return@addSnapshotListener }
+            scope.launch {
+                snap.documentChanges.forEach { change ->
+                    runCatching {
+                        val doc = change.document
+                        if (change.type == DocumentChange.Type.REMOVED) { dao.deleteRecurringById(doc.id); return@runCatching }
+                        dao.insertRecurringTransaction(RecurringTransaction(
+                            id         = doc.id,
+                            name       = doc.str("name"),
+                            type       = doc.str("type"),
+                            amount     = doc.dbl("amount"),
+                            category   = doc.str("category"),
+                            fromAcct   = doc.str("fromAcct"),
+                            toAcct     = doc.str("toAcct"),
+                            frequency  = doc.str("frequency"),
+                            dayOfMonth = doc.int("dayOfMonth"),
+                            notes      = doc.str("notes"),
+                            isActive   = doc.bool("isActive"),
+                            lastRun    = doc.str("lastRun"),
+                            projectId  = doc.str("projectId"),
+                            updatedAt  = doc.lng("updatedAt")
+                        ))
+                    }
+                }
+                _status.value = SyncStatus.Synced
+            }
+        }
+
         // ── Goals — previously write-only, now synced down ──────────────────────
         listeners += col("goals").addSnapshotListener { snap, err ->
             if (err != null || snap == null) { handleErr(err); return@addSnapshotListener }
@@ -412,4 +442,5 @@ class SyncManager(
     private fun DocumentSnapshot.dbl(key: String)  = getDouble(key)  ?: 0.0
     private fun DocumentSnapshot.lng(key: String)  = getLong(key)    ?: 0L
     private fun DocumentSnapshot.int(key: String)  = getLong(key)?.toInt() ?: 0
+    private fun DocumentSnapshot.bool(key: String) = getBoolean(key) ?: false
 }

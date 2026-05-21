@@ -887,6 +887,8 @@ class FinanceRepository(
         dao.getAllBudgets().first().forEach      { push("budget:${it.category}") { fs.setBudget(it) } }
         dao.getAllGoals().first().forEach        { push("goal:${it.id}")        { fs.setGoal(it) } }
         dao.getAllProjects().first().forEach     { push("project:${it.id}")     { fs.setProject(it) } }
+        dao.getAllRecurringTransactionsOnce().forEach { push("recurring:${it.id}") { fs.setRecurring(it) } }
+        dao.getAllValuationsOnce().forEach       { push("valuation:${it.id}")   { fs.setValuation(it) } }
 
         android.util.Log.d("FynloSync", "Full push complete: $pushed succeeded, $failed failed")
         if (failed == 0) syncManager.setSynced() else syncManager.setSyncing()
@@ -929,8 +931,13 @@ class FinanceRepository(
     suspend fun saveNetWorthSnapshot(s: app.fynlo.data.model.NetWorthSnapshot) = dao.insertNetWorthSnapshot(s)
 
     fun getAllRecurringTransactions() = dao.getAllRecurringTransactions()
-    suspend fun insertRecurringTransaction(r: app.fynlo.data.model.RecurringTransaction) = dao.insertRecurringTransaction(r)
-    suspend fun deleteRecurringTransaction(r: app.fynlo.data.model.RecurringTransaction) = dao.deleteRecurringTransaction(r)
+    suspend fun insertRecurringTransaction(r: app.fynlo.data.model.RecurringTransaction) {
+        val rec = r.copy(updatedAt = System.currentTimeMillis())
+        dao.insertRecurringTransaction(rec); sync { setRecurring(rec) }
+    }
+    suspend fun deleteRecurringTransaction(r: app.fynlo.data.model.RecurringTransaction) {
+        dao.deleteRecurringTransaction(r); sync { deleteRecurring(r.id) }
+    }
 
     suspend fun pushAllCollectionsToFirestore() {
         val accounts      = dao.getAllAccounts().first()

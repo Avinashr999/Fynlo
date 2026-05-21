@@ -366,6 +366,9 @@ interface FynloDao {
     @Query("SELECT * FROM investment_valuations WHERE investmentId = :invId ORDER BY date DESC")
     fun getValuationsForInvestment(invId: String): kotlinx.coroutines.flow.Flow<List<app.fynlo.data.model.InvestmentValuation>>
 
+    @Query("SELECT * FROM investment_valuations")
+    suspend fun getAllValuationsOnce(): List<app.fynlo.data.model.InvestmentValuation>
+
     @Query("DELETE FROM investment_valuations WHERE investmentId = :invId")
     suspend fun deleteValuationsForInvestment(invId: String)
 
@@ -387,4 +390,7 @@ interface FynloDao {
 
     @Query("DELETE FROM goals WHERE id = :id")
     suspend fun deleteGoalById(id: String)
+
+    @Query("DELETE FROM recurring_transactions WHERE id = :id")
+    suspend fun deleteRecurringById(id: String)
 }

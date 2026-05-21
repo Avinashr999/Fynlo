@@ -101,4 +101,13 @@ class FirestoreRepository(private val userId: String) {
 
     suspend fun setProject(p: Project)     { col("projects").document(p.id).set(p.toFirestoreMap()).await() }
     suspend fun deleteProject(id: String)  { col("projects").document(id).delete().await() }
+
+    // ── Recurring transactions ─────────────────────────────────────────────────
+
+    suspend fun setRecurring(r: app.fynlo.data.model.RecurringTransaction) {
+        col("recurring_transactions").document(r.id).set(r.toFirestoreMap()).await()
+    }
+    suspend fun deleteRecurring(id: String) {
+        col("recurring_transactions").document(id).delete().await()
+    }
 }

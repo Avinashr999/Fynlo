@@ -183,6 +183,15 @@ service cloud.firestore {
         allow delete: if isOwner(userId);
       }
 
+      // ── Recurring Transactions ────────────────────────────────────────────
+      match /recurring_transactions/{recurringId} {
+        allow read: if isOwner(userId);
+        allow create, update: if isOwner(userId)
+          && hasFields(['name', 'type', 'amount'])
+          && request.resource.data.amount is number;
+        allow delete: if isOwner(userId);
+      }
+
     } // end match /users/{userId}
 
     // ── Block all other paths ─────────────────────────────────────────────
