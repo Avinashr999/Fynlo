@@ -559,7 +559,7 @@ fun MainNavigation(viewModel: FinanceViewModel) {
                 composable(Screen.People.route) { PeopleScreen(viewModel) }
                 composable(Screen.Budgets.route) { BudgetScreen(viewModel) }
                 composable(Screen.Goals.route) { GoalScreen(viewModel) }
-                composable(Screen.Profile.route) { ProfileScreen(onLogout = { isLoggedIn = false }) }
+                composable(Screen.Profile.route) { ProfileScreen(onLogout = { isLoggedIn = false }, viewModel = viewModel) }
                 composable(Screen.Projects.route) { ProjectsScreen(viewModel) }
                 composable(Screen.Recurring.route)  { RecurringScreen(viewModel) }
                 composable(Screen.Monthly.route)    { MonthlySummaryScreen(viewModel) }

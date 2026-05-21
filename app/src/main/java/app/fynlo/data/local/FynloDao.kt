@@ -368,4 +368,10 @@ interface FynloDao {
 
     @Query("DELETE FROM investment_valuations WHERE investmentId = :invId")
     suspend fun deleteValuationsForInvestment(invId: String)
+
+    @Query("DELETE FROM investment_valuations")
+    suspend fun deleteAllValuations()
+
+    @Query("DELETE FROM recurring_transactions")
+    suspend fun deleteAllRecurringTransactions()
 }

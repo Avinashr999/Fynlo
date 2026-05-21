@@ -1020,22 +1020,25 @@ class FinanceRepository(
         val collections = listOf(
             "accounts", "transactions", "borrowers", "investments", "debts",
             "people", "payments", "debt_payments", "budgets", "goals",
-            "projects", "backup_meta", "backups", "net_worth_snapshots"
+            "projects", "backup_meta", "backups", "net_worth_snapshots",
+            "investment_valuations"
         )
 
         db.withTransaction {
-            // 1. Wipe Room — including payments and debt_payments which were previously missed
+            // 1. Wipe Room — every table, so no orphaned rows survive a wipe
             dao.deleteAllAccounts()
             dao.deleteAllTransactions()
             dao.deleteAllBorrowers()
-            dao.deleteAllPayments()          // ← was missing!
+            dao.deleteAllPayments()
             dao.deleteAllInvestments()
             dao.deleteAllDebts()
-            dao.deleteAllDebtPayments()      // ← was missing!
+            dao.deleteAllDebtPayments()
             dao.deleteAllPeople()
             dao.deleteAllProjects()
             dao.deleteAllBudgets()
             dao.deleteAllGoals()
+            dao.deleteAllValuations()
+            dao.deleteAllRecurringTransactions()
         }
 
         // 2. Wipe Firestore (Collection by Collection)
@@ -1049,19 +1052,38 @@ class FinanceRepository(
         }
     }
 
+
     suspend fun getAllDataAsJson(): String {
-        val data = BackupData(dao.getAllAccounts().first(), dao.getAllTransactions().first(), dao.getAllBorrowers().first(), dao.getAllInvestments().first(), dao.getAllDebts().first(), dao.getAllPeople().first(), dao.getAllProjects().first())
+        val data = BackupData(
+            accounts              = dao.getAllAccounts().first(),
+            transactions          = dao.getAllTransactions().first(),
+            borrowers             = dao.getAllBorrowers().first(),
+            investments           = dao.getAllInvestments().first(),
+            debts                 = dao.getAllDebts().first(),
+            people                = dao.getAllPeople().first(),
+            projects              = dao.getAllProjects().first(),
+            payments              = dao.getAllPayments().first(),
+            debtPayments          = dao.getAllDebtPayments().first(),
+            budgets               = dao.getAllBudgets().first(),
+            goals                 = dao.getAllGoals().first(),
+            recurringTransactions = dao.getAllRecurringTransactionsOnce()
+        )
         return Json.encodeToString(data)
     }
     suspend fun restoreDataFromJson(json: String) {
         db.withTransaction {
             val data = Json.decodeFromString<BackupData>(json)
+            // Clear everything first so a restore is a true replace, not a merge.
             dao.deleteAllAccounts(); dao.deleteAllTransactions(); dao.deleteAllBorrowers()
             dao.deleteAllInvestments(); dao.deleteAllDebts(); dao.deleteAllPeople(); dao.deleteAllProjects()
+            dao.deleteAllPayments(); dao.deleteAllDebtPayments(); dao.deleteAllBudgets(); dao.deleteAllGoals()
             data.accounts.forEach { dao.insertAccount(it) }; data.transactions.forEach { dao.insertTransaction(it) }
             data.borrowers.forEach { dao.insertBorrower(it) }; data.investments.forEach { dao.insertInvestment(it) }
             data.debts.forEach { dao.insertDebt(it) }; data.people.forEach { dao.insertPerson(it) }
             data.projects.forEach { dao.insertProject(it) }
+            data.payments.forEach { dao.insertPayment(it) }; data.debtPayments.forEach { dao.insertDebtPayment(it) }
+            data.budgets.forEach { dao.insertBudget(it) }; data.goals.forEach { dao.insertGoal(it) }
+            data.recurringTransactions.forEach { dao.insertRecurringTransaction(it) }
         }
     }
 }

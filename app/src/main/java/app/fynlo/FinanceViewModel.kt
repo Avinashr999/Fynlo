@@ -576,6 +576,23 @@ class FinanceViewModel @Inject constructor(private val repository: FinanceReposi
         viewModelScope.launch(Dispatchers.IO) { repository.wipeAllData() }
     }
 
+    /**
+     * Right-to-erasure: wipe all data (Room + Firestore) then delete the
+     * Firebase Auth user. authManager is passed in because the ViewModel
+     * doesn't own it. onResult(true) = fully erased; onResult(false) = data
+     * wiped but auth deletion needs a fresh login (caller should re-sign-in).
+     */
+    fun deleteAccountPermanently(
+        authManager: app.fynlo.data.AuthManager,
+        onResult: (Boolean) -> Unit
+    ) {
+        viewModelScope.launch(Dispatchers.IO) {
+            repository.wipeAllData()
+            val deleted = authManager.deleteAccount().isSuccess
+            kotlinx.coroutines.withContext(Dispatchers.Main) { onResult(deleted) }
+        }
+    }
+
     fun executeFlow(result: app.fynlo.data.model.FlowResult) {
         viewModelScope.launch(Dispatchers.IO) {
             val id = java.util.UUID.randomUUID().toString()

@@ -70,4 +70,16 @@ class AuthManager {
         auth.signOut()
         _user.value = null
     }
+
+    /**
+     * Permanently delete the Firebase Auth user (right-to-erasure).
+     * Firebase requires a recent login; if the session is stale it throws
+     * FirebaseAuthRecentLoginRequiredException — the caller should prompt
+     * the user to sign in again and retry.
+     */
+    suspend fun deleteAccount(): Result<Unit> = runCatching {
+        val current = auth.currentUser ?: error("No signed-in user to delete")
+        current.delete().await()
+        _user.value = null
+    }
 }

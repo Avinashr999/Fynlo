@@ -2,7 +2,9 @@
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import kotlinx.serialization.Serializable
 
+@Serializable
 @Entity(tableName = "recurring_transactions")
 data class RecurringTransaction(
     @PrimaryKey val id: String = java.util.UUID.randomUUID().toString(),

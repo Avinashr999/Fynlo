@@ -23,12 +23,18 @@ import app.fynlo.ui.screens.PinMode
 import app.fynlo.ui.theme.*
 
 @Composable
-fun ProfileScreen(onLogout: () -> Unit, onSignOut: () -> Unit = {}) {
+fun ProfileScreen(
+    onLogout: () -> Unit,
+    onSignOut: () -> Unit = {},
+    viewModel: app.fynlo.FinanceViewModel? = null
+) {
     val context = LocalContext.current
     val app     = context.applicationContext as FynloApplication
     val pinManager = remember { PinManager(context) }
     var showPinSetup by remember { mutableStateOf(false) }
     val isGoogle = app.authManager.isSignedInWithGoogle
+    var showDeleteConfirm by remember { mutableStateOf(false) }
+    var deleting by remember { mutableStateOf(false) }
 
     if (showPinSetup) {
         PinScreen(
@@ -166,6 +172,51 @@ fun ProfileScreen(onLogout: () -> Unit, onSignOut: () -> Unit = {}) {
             Icon(Icons.Default.Lock, null, Modifier.size(18.dp))
             Spacer(Modifier.width(8.dp))
             Text("Logout & Lock App", fontWeight = FontWeight.Bold)
+        }
+
+        // ── Delete account (right-to-erasure) ─────────────────────────────────
+        if (isGoogle && viewModel != null) {
+            Spacer(Modifier.height(24.dp))
+            TextButton(
+                onClick = { showDeleteConfirm = true },
+                enabled = !deleting,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    if (deleting) "Deleting…" else "Delete my account & all data",
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
+        }
+
+        if (showDeleteConfirm && viewModel != null) {
+            AlertDialog(
+                onDismissRequest = { showDeleteConfirm = false },
+                title = { Text("Delete account permanently?") },
+                text  = { Text("This erases ALL your data from this device and the cloud, and deletes your Fynlo account. This cannot be undone. Export a backup first if you might want your data later.") },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            showDeleteConfirm = false
+                            deleting = true
+                            viewModel.deleteAccountPermanently(app.authManager) { fullyDeleted ->
+                                deleting = false
+                                if (fullyDeleted) {
+                                    android.widget.Toast.makeText(context, "Account deleted", android.widget.Toast.LENGTH_LONG).show()
+                                } else {
+                                    android.widget.Toast.makeText(context, "Data wiped. Please sign in again to finish deleting your account.", android.widget.Toast.LENGTH_LONG).show()
+                                }
+                                app.authManager.signOut()
+                                onLogout()
+                            }
+                        },
+                        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                    ) { Text("Delete forever") }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showDeleteConfirm = false }) { Text("Cancel") }
+                }
+            )
         }
         Spacer(Modifier.height(32.dp))
     }
