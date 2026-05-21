@@ -44,6 +44,11 @@ class FynloApplication : Application() {
         super.onCreate()
         // Hilt injects @Inject fields during super.onCreate() via bytecode transformation
 
+        // Kick off DataStore warm-up immediately on a background thread so the
+        // first-frame synchronous reads (theme, onboarding/setup gates) hit a
+        // warm cache instead of cold-opening the prefs file on the main thread.
+        appScope.launch { app.fynlo.data.UserPreferences.warmUp(this@FynloApplication) }
+
         val startupTrace = FirebasePerformance.getInstance().newTrace("app_startup")
         startupTrace.start()
 
@@ -56,14 +61,18 @@ class FynloApplication : Application() {
 
         Analytics.init(this)
 
-        ReminderScheduler.schedule(this)
-
         syncManager = SyncManager("", dao)
         repository.updateRemote(FirestoreRepository(""), syncManager)
 
         startupTrace.stop()
 
         appScope.launch {
+            // Scheduling periodic work initializes the WorkManager subsystem
+            // (its own DB + executors). Kept OFF the main thread so it never
+            // delays the first frame.
+            try { ReminderScheduler.schedule(this@FynloApplication) } catch (e: Exception) {
+                Log.e("FynloApp", "ReminderScheduler.schedule failed: ${e.message}")
+            }
             try {
                 authManager.ensureSignedIn()
                 val uid = authManager.userId

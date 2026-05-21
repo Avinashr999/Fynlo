@@ -61,6 +61,16 @@ object UserPreferences {
 
     // ── Read (blocking, for one-time checks like Navigation init) ────────
 
+    /**
+     * Warms the DataStore on a background thread so the first-frame
+     * synchronous reads (getDarkModeSync etc.) hit a cached value instead
+     * of paying the cold file-open cost on the main thread. Safe to call
+     * fire-and-forget from Application.onCreate.
+     */
+    suspend fun warmUp(context: Context) {
+        runCatching { context.dataStore.data.first() }
+    }
+
     fun getOnboardingDoneSync(context: Context): Boolean = runBlocking {
         context.dataStore.data.first()[ONBOARDING_DONE] ?: false
     }
