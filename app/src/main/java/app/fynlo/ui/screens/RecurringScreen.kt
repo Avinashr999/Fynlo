@@ -141,6 +141,19 @@ fun RecurringScreen(viewModel: FinanceViewModel) {
 @Composable
 private fun RecurringCard(r: RecurringTransaction, isDue: Boolean = false, daysUntil: Long = 0, onDelete: () -> Unit) {
     val haptic = LocalHapticFeedback.current
+    var showDeleteConfirm by remember { mutableStateOf(false) }
+    if (showDeleteConfirm) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirm = false },
+            title = { Text("Delete recurring entry?") },
+            text  = { Text("Stop auto-logging \"${r.name}\"? Past transactions it created are kept. This cannot be undone.") },
+            confirmButton = {
+                TextButton(onClick = { onDelete(); showDeleteConfirm = false },
+                    colors = ButtonDefaults.textButtonColors(contentColor = SemanticRed)) { Text("Delete") }
+            },
+            dismissButton = { TextButton(onClick = { showDeleteConfirm = false }) { Text("Cancel") } }
+        )
+    }
     Card(Modifier.fillMaxWidth(), RoundedCornerShape(16.dp),
         CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         ) {
@@ -170,7 +183,7 @@ private fun RecurringCard(r: RecurringTransaction, isDue: Boolean = false, daysU
                         color = if (isDue) SemanticRed else Emerald500)
                 }
             }
-            IconButton(onClick = { haptic.performHapticFeedback(HapticFeedbackType.LongPress); onDelete() }) {
+            IconButton(onClick = { haptic.performHapticFeedback(HapticFeedbackType.LongPress); showDeleteConfirm = true }) {
                 Icon(Icons.Default.Delete, null, tint = Color.Red.copy(0.6f), modifier = Modifier.size(20.dp))
             }
         }

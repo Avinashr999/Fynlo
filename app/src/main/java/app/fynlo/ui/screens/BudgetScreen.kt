@@ -168,6 +168,19 @@ fun BudgetCard(
     onDelete: () -> Unit
 ) {
     val haptic = LocalHapticFeedback.current
+    var showDeleteConfirm by remember { mutableStateOf(false) }
+    if (showDeleteConfirm) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirm = false },
+            title = { Text("Delete budget?") },
+            text  = { Text("Remove the \"${budget.category}\" budget? This cannot be undone.") },
+            confirmButton = {
+                TextButton(onClick = { onDelete(); showDeleteConfirm = false },
+                    colors = ButtonDefaults.textButtonColors(contentColor = SemanticRed)) { Text("Delete") }
+            },
+            dismissButton = { TextButton(onClick = { showDeleteConfirm = false }) { Text("Cancel") } }
+        )
+    }
     val progress     = (actualSpent / budget.limitAmount).toFloat().coerceIn(0f, 1f)
     val pct          = (progress * 100).toInt()
     val remaining    = budget.limitAmount - actualSpent
@@ -201,7 +214,7 @@ fun BudgetCard(
                     }
                     Text(budget.category, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
                 }
-                IconButton(onClick = { haptic.performHapticFeedback(HapticFeedbackType.LongPress); onDelete() }, modifier = Modifier.size(32.dp)) {
+                IconButton(onClick = { haptic.performHapticFeedback(HapticFeedbackType.LongPress); showDeleteConfirm = true }, modifier = Modifier.size(32.dp)) {
                     Icon(Icons.Default.Delete, null, Modifier.size(18.dp), tint = Color.Red.copy(alpha = 0.5f))
                 }
             }

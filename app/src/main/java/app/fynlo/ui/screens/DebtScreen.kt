@@ -186,6 +186,19 @@ val debts by viewModel.debts.collectAsState()
 }
 @Composable
 fun DebtCard(debt: Debt, currencySymbol: String = "₹", onEdit: () -> Unit, onDelete: () -> Unit, onPay: () -> Unit) {
+    var showDeleteConfirm by remember { mutableStateOf(false) }
+    if (showDeleteConfirm) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirm = false },
+            title = { Text("Delete debt?") },
+            text  = { Text("Delete \"${debt.name}\" and its payment history? This also reverses the linked account entries and cannot be undone.") },
+            confirmButton = {
+                TextButton(onClick = { onDelete(); showDeleteConfirm = false },
+                    colors = ButtonDefaults.textButtonColors(contentColor = SemanticRed)) { Text("Delete") }
+            },
+            dismissButton = { TextButton(onClick = { showDeleteConfirm = false }) { Text("Cancel") } }
+        )
+    }
     val locale = Locale.getDefault()
     val today  = java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd"))
     val interestAccrued = InterestEngine.calcIntAccrued(
@@ -235,7 +248,7 @@ fun DebtCard(debt: Debt, currencySymbol: String = "₹", onEdit: () -> Unit, onD
                     IconButton(onClick = onEdit, Modifier.size(32.dp)) {
                         Icon(Icons.Default.Edit, "Edit", Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
-                    IconButton(onClick = onDelete, Modifier.size(32.dp)) {
+                    IconButton(onClick = { showDeleteConfirm = true }, Modifier.size(32.dp)) {
                         Icon(Icons.Default.Delete, "Delete", Modifier.size(16.dp), tint = SemanticRed.copy(alpha = 0.7f))
                     }
                 }

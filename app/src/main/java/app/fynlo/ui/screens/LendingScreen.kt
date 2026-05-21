@@ -393,6 +393,19 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
 }
 @Composable
 fun LendingCard(borrower: Borrower, people: List<app.fynlo.data.model.Person> = emptyList(), currencySymbol: String = "₹", isOverdue: Boolean = false, onDelete: () -> Unit, onEdit: () -> Unit, onCollect: () -> Unit, onClick: () -> Unit, onDefault: () -> Unit = {}, onWriteOff: () -> Unit = {}) {
+    var showDeleteConfirm by remember { mutableStateOf(false) }
+    if (showDeleteConfirm) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirm = false },
+            title = { Text("Delete loan?") },
+            text  = { Text("Delete the loan to \"${borrower.name}\" and its payment history? This also reverses the linked account entries and cannot be undone.") },
+            confirmButton = {
+                TextButton(onClick = { onDelete(); showDeleteConfirm = false },
+                    colors = ButtonDefaults.textButtonColors(contentColor = SemanticRed)) { Text("Delete") }
+            },
+            dismissButton = { TextButton(onClick = { showDeleteConfirm = false }) { Text("Cancel") } }
+        )
+    }
     // Pulsing animation for overdue
     val infiniteTransition = rememberInfiniteTransition(label = "pulse")
     val pulseAlpha by infiniteTransition.animateFloat(
@@ -607,7 +620,7 @@ fun LendingCard(borrower: Borrower, people: List<app.fynlo.data.model.Person> = 
                     IconButton(onClick = onEdit, Modifier.size(32.dp)) {
                         Icon(Icons.Default.Edit, "Edit", Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
-                    IconButton(onClick = onDelete, Modifier.size(32.dp)) {
+                    IconButton(onClick = { showDeleteConfirm = true }, Modifier.size(32.dp)) {
                         Icon(Icons.Default.Delete, "Delete", Modifier.size(16.dp), tint = SemanticRed.copy(alpha = 0.7f))
                     }
 

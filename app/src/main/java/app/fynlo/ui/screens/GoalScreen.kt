@@ -96,6 +96,19 @@ fun GoalScreen(viewModel: FinanceViewModel) {
 @Composable
 fun GoalCard(goal: Goal, currencySymbol: String, onDelete: () -> Unit) {
     val haptic = LocalHapticFeedback.current
+    var showDeleteConfirm by remember { mutableStateOf(false) }
+    if (showDeleteConfirm) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirm = false },
+            title = { Text("Delete goal?") },
+            text  = { Text("Remove the \"${goal.name}\" savings goal? This cannot be undone.") },
+            confirmButton = {
+                TextButton(onClick = { onDelete(); showDeleteConfirm = false },
+                    colors = ButtonDefaults.textButtonColors(contentColor = SemanticRed)) { Text("Delete") }
+            },
+            dismissButton = { TextButton(onClick = { showDeleteConfirm = false }) { Text("Cancel") } }
+        )
+    }
     val progress    = if (goal.targetAmount > 0) (goal.savedAmount / goal.targetAmount).toFloat().coerceIn(0f, 1f) else 0f
     val pct         = (progress * 100).toInt()
     val isComplete  = pct >= 100
@@ -122,7 +135,7 @@ fun GoalCard(goal: Goal, currencySymbol: String, onDelete: () -> Unit) {
                         }
                     }
                 }
-                IconButton(onClick = { haptic.performHapticFeedback(HapticFeedbackType.LongPress); onDelete() }, modifier = Modifier.size(32.dp)) {
+                IconButton(onClick = { haptic.performHapticFeedback(HapticFeedbackType.LongPress); showDeleteConfirm = true }, modifier = Modifier.size(32.dp)) {
                     Icon(Icons.Default.Delete, null, Modifier.size(18.dp), tint = SemanticRed.copy(alpha = 0.6f))
                 }
             }

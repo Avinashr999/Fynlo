@@ -156,6 +156,19 @@ fun PeopleScreen(viewModel: FinanceViewModel) {
 @Composable
 fun PersonCard(person: Person, onEdit: () -> Unit, onDelete: () -> Unit) {
     val haptic = LocalHapticFeedback.current
+    var showDeleteConfirm by remember { mutableStateOf(false) }
+    if (showDeleteConfirm) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirm = false },
+            title = { Text("Delete contact?") },
+            text  = { Text("Remove \"${person.name}\" from your contact book? Loans already linked to this contact are not affected. This cannot be undone.") },
+            confirmButton = {
+                TextButton(onClick = { onDelete(); showDeleteConfirm = false },
+                    colors = ButtonDefaults.textButtonColors(contentColor = SemanticRed)) { Text("Delete") }
+            },
+            dismissButton = { TextButton(onClick = { showDeleteConfirm = false }) { Text("Cancel") } }
+        )
+    }
     // Parse stored phone for clean display
     val (countryCode, localNumber) = remember(person.phone) { parsePhone(person.phone) }
     val displayPhone = when {
@@ -230,7 +243,7 @@ fun PersonCard(person: Person, onEdit: () -> Unit, onDelete: () -> Unit) {
                 IconButton(onClick = onEdit) {
                     Icon(Icons.Default.Edit, "Edit", tint = MaterialTheme.colorScheme.primary)
                 }
-                IconButton(onClick = { haptic.performHapticFeedback(HapticFeedbackType.LongPress); onDelete() }) {
+                IconButton(onClick = { haptic.performHapticFeedback(HapticFeedbackType.LongPress); showDeleteConfirm = true }) {
                     Icon(Icons.Default.Delete, "Delete", tint = SemanticRed.copy(alpha = 0.6f))
                 }
             }
