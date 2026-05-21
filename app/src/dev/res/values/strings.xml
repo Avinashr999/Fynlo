@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Overrides the app label for the dev flavor so it's visually distinct
+         from the production install (which lives side-by-side via the .dev
+         applicationId suffix). -->
+    <string name="app_name">Fynlo Dev</string>
+</resources>

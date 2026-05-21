@@ -54,6 +54,29 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    // ── Dev / Prod separation (#01/#11) ───────────────────────────────────────
+    // prod  → app.fynlo,      reads app/google-services.json (the live project)
+    // dev   → app.fynlo.dev,  reads app/src/dev/google-services.json
+    //
+    // The dev google-services.json checked in is a PLACEHOLDER pointing at the
+    // same project so the build stays green. To get true isolation (so wiping
+    // dev never touches prod data), create a SEPARATE Firebase project, register
+    // app.fynlo.dev in it, and drop its google-services.json at
+    // app/src/dev/google-services.json. See app/src/dev/README.md.
+    flavorDimensions += "env"
+    productFlavors {
+        create("prod") {
+            dimension = "env"
+            isDefault = true
+        }
+        create("dev") {
+            dimension = "env"
+            applicationIdSuffix = ".dev"
+            versionNameSuffix   = "-dev"
+            // app name override lives in app/src/dev/res/values/strings.xml
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled   = true

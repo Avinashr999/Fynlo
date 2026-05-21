@@ -116,7 +116,7 @@ fun ReportsHubScreen(
                             it, summary, transactions, emptyList(), emptyList())
                     }
                     val uri = androidx.core.content.FileProvider.getUriForFile(
-                        context, "app.fynlo.provider", file)
+                        context, "${context.packageName}.provider", file)
                     context.startActivity(android.content.Intent.createChooser(
                         android.content.Intent(android.content.Intent.ACTION_SEND).apply {
                             type = "application/pdf"
