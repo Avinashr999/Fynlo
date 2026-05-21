@@ -10,11 +10,6 @@ service cloud.firestore {
       return request.auth != null && request.auth.uid == uid;
     }
 
-    // Must be authenticated at all (any signed-in user)
-    function isAuthenticated() {
-      return request.auth != null;
-    }
-
     // Check that required fields exist in incoming data
     function hasFields(fields) {
       return fields.toSet().difference(request.resource.data.keys().toSet()).size() == 0;
