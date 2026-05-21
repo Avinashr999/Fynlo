@@ -11,5 +11,6 @@ data class Budget(
     val limitAmount: Double,
     val period: String = "Monthly", // Monthly, Weekly
     val projectId: String = "personal",
-    val updatedAt: Long = 0L
+    val updatedAt: Long = 0L,
+    val createdAt: Long = 0L
 )

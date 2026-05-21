@@ -14,5 +14,6 @@ data class Goal(
     val deadline: String = "",
     val notes: String = "",
     val projectId: String = "personal",
-    val updatedAt: Long = 0L
+    val updatedAt: Long = 0L,
+    val createdAt: Long = 0L
 )

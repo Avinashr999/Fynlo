@@ -25,5 +25,6 @@ data class Investment(
     // Funding source tracking — added v2.10
     val fundingSource: String = "",   // account name or debt/lender name
     val sourceType: String = "",      // "account" | "existing_debt" | "new_loan"
-    val linkedDebtId: String = ""     // non-empty only when sourceType = "new_loan"
+    val linkedDebtId: String = "",    // non-empty only when sourceType = "new_loan"
+    val createdAt: Long = 0L          // audit: first-created timestamp (#05)
 )

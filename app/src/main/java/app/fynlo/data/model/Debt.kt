@@ -24,5 +24,6 @@ data class Debt(
     val collateral: String = "",
     val notes: String = "",
     val projectId: String = "personal",
-    val updatedAt: Long = 0L
+    val updatedAt: Long = 0L,
+    val createdAt: Long = 0L
 )

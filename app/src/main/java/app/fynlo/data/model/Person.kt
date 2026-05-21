@@ -13,5 +13,6 @@ data class Person(
     val type: String = "Individual", // Individual, Business, etc.
     val notes: String = "",
     val projectId: String = "personal",
-    val updatedAt: Long = 0L
+    val updatedAt: Long = 0L,
+    val createdAt: Long = 0L
 )

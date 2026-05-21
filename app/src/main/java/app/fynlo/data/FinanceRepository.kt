@@ -86,7 +86,8 @@ class FinanceRepository(
     suspend fun insertTransaction(transaction: Transaction) {
         val affectedAccounts = mutableListOf<String>()
         db.withTransaction {
-            val t = transaction.copy(updatedAt = System.currentTimeMillis())
+            val now = System.currentTimeMillis()
+            val t = transaction.copy(updatedAt = now, createdAt = if (transaction.createdAt == 0L) now else transaction.createdAt)
             dao.insertTransaction(t)
             when (transaction.type.lowercase()) {
                 "expense"  -> { dao.updateAccountBalance(transaction.fromAcct, -transaction.amount); affectedAccounts += transaction.fromAcct }
@@ -229,10 +230,11 @@ class FinanceRepository(
     }
     suspend fun insertBorrowerWithSource(borrower: Borrower, sourceAccount: String, projectId: String = borrower.projectId) {
         db.withTransaction {
-            val b = borrower.copy(projectId = projectId, updatedAt = System.currentTimeMillis())
+            val now = System.currentTimeMillis()
+            val b = borrower.copy(projectId = projectId, updatedAt = now, createdAt = if (borrower.createdAt == 0L) now else borrower.createdAt)
             dao.insertBorrower(b)
             dao.updateAccountBalance(sourceAccount, -borrower.amount)
-            val t = Transaction(java.util.UUID.randomUUID().toString(), borrower.date, "Expense", borrower.amount, fromAcct = sourceAccount, category = "Lending", desc = "Lent to ${borrower.name}", ref = borrower.id, notes = borrower.notes, projectId = projectId, updatedAt = System.currentTimeMillis())
+            val t = Transaction(java.util.UUID.randomUUID().toString(), borrower.date, "Expense", borrower.amount, fromAcct = sourceAccount, category = "Lending", desc = "Lent to ${borrower.name}", ref = borrower.id, notes = borrower.notes, projectId = projectId, updatedAt = now, createdAt = now)
             dao.insertTransaction(t)
             sync { setBorrower(b); setTransaction(t) }
         }
@@ -316,13 +318,14 @@ class FinanceRepository(
     }
 
     suspend fun insertAccount(account: Account) {
-        val a = account.copy(updatedAt = System.currentTimeMillis())
+        val now = System.currentTimeMillis()
+        val a = account.copy(updatedAt = now, createdAt = if (account.createdAt == 0L) now else account.createdAt)
         dao.insertAccount(a); sync { setAccount(a) }
     }
     // ─── Investment — funded by own account ────────────────────────────────────
     suspend fun insertInvestmentFundedByAccount(investment: Investment, accountName: String, projectId: String = investment.projectId) {
         db.withTransaction {
-            val i = investment.copy(sourceType = "account", fundingSource = accountName, projectId = projectId, updatedAt = System.currentTimeMillis())
+            val i = investment.copy(sourceType = "account", fundingSource = accountName, projectId = projectId, updatedAt = System.currentTimeMillis(), createdAt = if (investment.createdAt == 0L) System.currentTimeMillis() else investment.createdAt)
             dao.insertInvestment(i)
             dao.updateAccountBalance(accountName, -investment.invested)
             val t = Transaction(java.util.UUID.randomUUID().toString(), investment.date, "Expense", investment.invested,
@@ -339,7 +342,7 @@ class FinanceRepository(
     // ─── Investment — funded by existing recorded debt ──────────────────────────
     suspend fun insertInvestmentFundedByExistingDebt(investment: Investment, debt: app.fynlo.data.model.Debt, projectId: String = investment.projectId) {
         db.withTransaction {
-            val i = investment.copy(sourceType = "existing_debt", fundingSource = debt.name, linkedDebtId = debt.id, projectId = projectId, updatedAt = System.currentTimeMillis())
+            val i = investment.copy(sourceType = "existing_debt", fundingSource = debt.name, linkedDebtId = debt.id, projectId = projectId, updatedAt = System.currentTimeMillis(), createdAt = if (investment.createdAt == 0L) System.currentTimeMillis() else investment.createdAt)
             dao.insertInvestment(i)
             val t = Transaction(java.util.UUID.randomUUID().toString(), investment.date, "Transfer", investment.invested,
                 fromAcct = debt.name, toAcct = investment.name, category = "Investment",
@@ -356,7 +359,7 @@ class FinanceRepository(
         db.withTransaction {
             val d = newDebt.copy(projectId = projectId, updatedAt = System.currentTimeMillis())
             dao.insertDebt(d)
-            val i = investment.copy(sourceType = "new_loan", fundingSource = d.name, linkedDebtId = d.id, projectId = projectId, updatedAt = System.currentTimeMillis())
+            val i = investment.copy(sourceType = "new_loan", fundingSource = d.name, linkedDebtId = d.id, projectId = projectId, updatedAt = System.currentTimeMillis(), createdAt = if (investment.createdAt == 0L) System.currentTimeMillis() else investment.createdAt)
             dao.insertInvestment(i)
             val t = Transaction(java.util.UUID.randomUUID().toString(), investment.date, "Transfer", investment.invested,
                 fromAcct = d.name, toAcct = investment.name, category = "Investment",
@@ -573,10 +576,11 @@ class FinanceRepository(
     }
     suspend fun insertDebtWithDestination(debt: Debt, destinationAccount: String, projectId: String = debt.projectId) {
         db.withTransaction {
-            val d = debt.copy(projectId = projectId, updatedAt = System.currentTimeMillis())
+            val now = System.currentTimeMillis()
+            val d = debt.copy(projectId = projectId, updatedAt = now, createdAt = if (debt.createdAt == 0L) now else debt.createdAt)
             dao.insertDebt(d)
             dao.updateAccountBalance(destinationAccount, debt.amount)
-            val t = Transaction(java.util.UUID.randomUUID().toString(), debt.date, "Income", debt.amount, toAcct = destinationAccount, category = "Debt Received", desc = "Loan received from ${debt.name}", ref = d.id, notes = debt.notes, projectId = projectId, updatedAt = System.currentTimeMillis())
+            val t = Transaction(java.util.UUID.randomUUID().toString(), debt.date, "Income", debt.amount, toAcct = destinationAccount, category = "Debt Received", desc = "Loan received from ${debt.name}", ref = d.id, notes = debt.notes, projectId = projectId, updatedAt = now, createdAt = now)
             dao.insertTransaction(t)
             sync { setDebt(d); setTransaction(t) }
         }
@@ -603,7 +607,8 @@ class FinanceRepository(
     }
     suspend fun insertPaymentWithDest(payment: Payment, destinationAccount: String, projectId: String = payment.projectId) {
         db.withTransaction {
-            val p = payment.copy(projectId = projectId, updatedAt = System.currentTimeMillis())
+            val now = System.currentTimeMillis()
+            val p = payment.copy(projectId = projectId, updatedAt = now, createdAt = if (payment.createdAt == 0L) now else payment.createdAt)
             dao.insertPayment(p)
             Analytics.paymentCollected()
 
@@ -635,7 +640,8 @@ class FinanceRepository(
                 ref = payment.loanId,
                 notes = payment.notes,
                 projectId = projectId,
-                updatedAt = System.currentTimeMillis()
+                updatedAt = now,
+                createdAt = now
             )
             dao.insertTransaction(t)
 
@@ -651,7 +657,8 @@ class FinanceRepository(
     }
     suspend fun insertDebtPaymentWithSource(payment: DebtPayment, sourceAccount: String, projectId: String = payment.projectId) {
         db.withTransaction {
-            val p = payment.copy(projectId = projectId, updatedAt = System.currentTimeMillis())
+            val now = System.currentTimeMillis()
+            val p = payment.copy(projectId = projectId, updatedAt = now, createdAt = if (payment.createdAt == 0L) now else payment.createdAt)
             dao.insertDebtPayment(p)
 
             // Debit source account with full payment amount
@@ -681,7 +688,8 @@ class FinanceRepository(
                 ref = payment.debtId,
                 notes = payment.notes,
                 projectId = projectId,
-                updatedAt = System.currentTimeMillis()
+                updatedAt = now,
+                createdAt = now
             )
             dao.insertTransaction(t)
 
@@ -699,7 +707,8 @@ class FinanceRepository(
                     ref = payment.debtId,
                     notes = "Auto-split from debt payment",
                     projectId = projectId,
-                    updatedAt = System.currentTimeMillis()
+                    updatedAt = now,
+                    createdAt = now
                 )
                 // Note: we do NOT double-deduct account balance here —
                 // the account was already debited by the full payment amount above.
@@ -719,11 +728,11 @@ class FinanceRepository(
         }
         syncAccountByName(sourceAccount)
     }
-    suspend fun insertPerson(person: Person) { val p = person.copy(updatedAt = System.currentTimeMillis()); dao.insertPerson(p); sync { setPerson(p) } }
+    suspend fun insertPerson(person: Person) { val now = System.currentTimeMillis(); val p = person.copy(updatedAt = now, createdAt = if (person.createdAt == 0L) now else person.createdAt); dao.insertPerson(p); sync { setPerson(p) } }
     suspend fun deletePerson(person: Person) { dao.deletePerson(person); sync { deletePerson(person.id) } }
-    suspend fun insertBudget(budget: Budget) { val b = budget.copy(updatedAt = System.currentTimeMillis()); dao.insertBudget(b); sync { setBudget(b) } }
+    suspend fun insertBudget(budget: Budget) { val now = System.currentTimeMillis(); val b = budget.copy(updatedAt = now, createdAt = if (budget.createdAt == 0L) now else budget.createdAt); dao.insertBudget(b); sync { setBudget(b) } }
     suspend fun deleteBudget(budget: Budget) { dao.deleteBudget(budget); sync { deleteBudget(budget.category) } }
-    suspend fun insertGoal(goal: Goal) { val g = goal.copy(updatedAt = System.currentTimeMillis()); dao.insertGoal(g); sync { setGoal(g) } }
+    suspend fun insertGoal(goal: Goal) { val now = System.currentTimeMillis(); val g = goal.copy(updatedAt = now, createdAt = if (goal.createdAt == 0L) now else goal.createdAt); dao.insertGoal(g); sync { setGoal(g) } }
     suspend fun deleteGoal(goal: Goal) { dao.deleteGoal(goal); sync { deleteGoal(goal.id) } }
 
     // ─── Investment Withdrawal Engine ──────────────────────────────────────────

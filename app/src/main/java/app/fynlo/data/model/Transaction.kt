@@ -21,5 +21,6 @@ data class Transaction(
     val notes: String = "",
     val tags: String = "",
     val projectId: String = "personal",
-    val updatedAt: Long = 0L
+    val updatedAt: Long = 0L,
+    val createdAt: Long = 0L
 )
