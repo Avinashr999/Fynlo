@@ -25,10 +25,17 @@ class FirestoreRepository(private val userId: String) {
 
     // ── Generic helpers ───────────────────────────────────────────────────────
 
+    // encodeDefaults = true so fields equal to their Kotlin default (e.g.
+    // RecurringTransaction.type = "Expense", amount = 0.0) are still written.
+    // Without this, default-valued fields are omitted and security rules that
+    // require them via hasFields([...]) reject the write (PERMISSION_DENIED),
+    // and down-sync receives incomplete documents.
+    private val fsJson = Json { encodeDefaults = true }
+
     /** Converts any @Serializable object to a Map Firestore can store. */
     private inline fun <reified T> T.toFirestoreMap(): Map<String, Any?> {
-        val json  = Json.encodeToString(this)
-        val elem  = Json.parseToJsonElement(json).jsonObject
+        val json  = fsJson.encodeToString(this)
+        val elem  = fsJson.parseToJsonElement(json).jsonObject
         return elem.mapValues { (_, v) -> v.toAny() }
     }
 
