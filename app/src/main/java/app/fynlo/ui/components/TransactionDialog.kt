@@ -7,12 +7,15 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import app.fynlo.data.model.Transaction
 import app.fynlo.logic.DateUtils
+import app.fynlo.ui.theme.Emerald500
 import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -54,14 +57,32 @@ fun AddTransactionDialog(
                     .padding(24.dp)
                     .verticalScroll(rememberScrollState())
             ) {
-                Text("Add Manual Entry", style = MaterialTheme.typography.headlineSmall)
+                Text("Add Manual Entry",
+                    style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold))
                 Spacer(modifier = Modifier.height(16.dp))
+
+                // Modern soft-filled field styling (matches dashboard) — no harsh
+                // outline; subtle tonal fill, emerald accent only on focus.
+                val fillColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
+                val fieldColors = OutlinedTextFieldDefaults.colors(
+                    focusedContainerColor   = fillColor,
+                    unfocusedContainerColor = fillColor,
+                    disabledContainerColor  = fillColor,
+                    focusedBorderColor      = Emerald500,
+                    unfocusedBorderColor    = androidx.compose.ui.graphics.Color.Transparent,
+                    disabledBorderColor     = androidx.compose.ui.graphics.Color.Transparent,
+                    focusedLabelColor       = Emerald500,
+                    cursorColor             = Emerald500
+                )
+                val fieldShape = RoundedCornerShape(16.dp)
 
                 OutlinedTextField(
                     value = amount,
                     onValueChange = { amount = it },
                     label = { Text("Amount (₹)") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    colors = fieldColors,
+                    shape = fieldShape,
                     modifier = Modifier.fillMaxWidth()
                 )
 
@@ -76,6 +97,8 @@ fun AddTransactionDialog(
                         readOnly = true,
                         label = { Text("Account / Source") },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedSrc) },
+                        colors = fieldColors,
+                        shape = fieldShape,
                         modifier = Modifier.menuAnchor(androidx.compose.material3.ExposedDropdownMenuAnchorType.PrimaryNotEditable, true).fillMaxWidth()
                     )
                     ExposedDropdownMenu(expanded = expandedSrc, onDismissRequest = { expandedSrc = false }) {
@@ -98,6 +121,8 @@ fun AddTransactionDialog(
                         value = sourceDetailName,
                         onValueChange = { sourceDetailName = it },
                         label = { Text(sourceLabel) },
+                        colors = fieldColors,
+                        shape = fieldShape,
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
@@ -118,6 +143,8 @@ fun AddTransactionDialog(
                         readOnly = true,
                         label = { Text("Category") },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedCategory) },
+                        colors = fieldColors,
+                        shape = fieldShape,
                         modifier = Modifier.menuAnchor(androidx.compose.material3.ExposedDropdownMenuAnchorType.PrimaryNotEditable, true).fillMaxWidth()
                     )
                     ExposedDropdownMenu(expanded = expandedCategory, onDismissRequest = { expandedCategory = false }) {
@@ -132,6 +159,8 @@ fun AddTransactionDialog(
                         value = customCategory,
                         onValueChange = { customCategory = it },
                         label = { Text("Custom Category Name") },
+                        colors = fieldColors,
+                        shape = fieldShape,
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
@@ -140,12 +169,16 @@ fun AddTransactionDialog(
                     value = desc,
                     onValueChange = { desc = it },
                     label = { Text("Description") },
+                    colors = fieldColors,
+                    shape = fieldShape,
                     modifier = Modifier.fillMaxWidth()
                 )
                 OutlinedTextField(
                     value = notes,
                     onValueChange = { notes = it },
                     label = { Text("Notes") },
+                    colors = fieldColors,
+                    shape = fieldShape,
                     modifier = Modifier.fillMaxWidth()
                 )
 
@@ -158,6 +191,8 @@ fun AddTransactionDialog(
                     TextButton(onClick = onDismiss) { Text("Cancel") }
                     Spacer(Modifier.width(8.dp))
                     Button(
+                        shape = RoundedCornerShape(14.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Emerald500),
                         onClick = {
                             val finalAccount = when (selectedSrc) {
                                 "Cash" -> "Cash in Hand"

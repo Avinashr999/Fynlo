@@ -8,6 +8,7 @@ package app.fynlo.ui
 
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -27,6 +28,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import androidx.navigation.compose.NavHost
@@ -411,12 +413,43 @@ fun MainNavigation(viewModel: FinanceViewModel) {
         Scaffold(
             topBar = {
                 CenterAlignedTopAppBar(
-                    title = { Text("Fynlo") },
+                    title = {
+                        // Brand wordmark — tap from any screen to jump to Dashboard
+                        Text(
+                            "Fynlo",
+                            color = Emerald500,
+                            fontWeight = FontWeight.ExtraBold,
+                            fontSize = 22.sp,
+                            letterSpacing = 0.5.sp,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .clickable {
+                                    navController.navigate(Screen.Home.route) {
+                                        popUpTo(Screen.Home.route) { saveState = true; inclusive = false }
+                                        launchSingleTop = true
+                                        restoreState = true
+                                    }
+                                }
+                                .padding(horizontal = 8.dp, vertical = 2.dp)
+                        )
+                    },
                     actions = {
                         IconButton(onClick = { navController.navigate(Screen.GlobalSearch.route) }) {
                             Icon(Icons.Default.Search, contentDescription = "Search")
                         }
-                        SyncStatusBadge(status = syncStatus)
+                        // Cloud/sync icon — tap to see current sync status
+                        IconButton(onClick = {
+                            val msg = when (syncStatus) {
+                                is app.fynlo.data.SyncStatus.Synced       -> "All changes synced to cloud ✓"
+                                is app.fynlo.data.SyncStatus.Syncing      -> "Syncing…"
+                                is app.fynlo.data.SyncStatus.Offline      -> "Offline — changes sync when reconnected"
+                                is app.fynlo.data.SyncStatus.Initialising -> "Connecting to cloud…"
+                                is app.fynlo.data.SyncStatus.Error        -> "Sync error — sign in again to retry"
+                            }
+                            android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_SHORT).show()
+                        }) {
+                            SyncStatusBadge(status = syncStatus)
+                        }
                     },
                     navigationIcon = {
                         if (canNavigateBack) {
@@ -425,7 +458,7 @@ fun MainNavigation(viewModel: FinanceViewModel) {
                             }
                         } else {
                             IconButton(onClick = { scope.launch { drawerState.open() } }) {
-                                Icon(Icons.Default.Menu, contentDescription = "Menu")
+                                Icon(Icons.AutoMirrored.Filled.Segment, contentDescription = "Menu")
                             }
                         }
                     }
@@ -532,11 +565,11 @@ fun MainNavigation(viewModel: FinanceViewModel) {
                     ) { (it * 0.25f).toInt() } + fadeOut(androidx.compose.animation.core.tween(180))
                 }
             ) {
-                composable(Screen.Home.route) { 
-                    HomeScreen(
+                composable(Screen.Home.route) {
+                    HomeScreenModern(
                         viewModel = viewModel,
                         onNavigateToScreen = { route -> navController.navigate(route) }
-                    ) 
+                    )
                 }
                 composable(Screen.History.route) { TransactionHistoryScreen(viewModel) }
                 composable(Screen.Lending.route) { 

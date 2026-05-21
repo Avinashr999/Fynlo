@@ -1,9 +1,11 @@
 package app.fynlo.ui.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -12,6 +14,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -47,6 +52,9 @@ fun GlobalSearchScreen(
 
     var query by remember { mutableStateOf("") }
     val locale = remember { Locale.getDefault() }
+    val focusRequester = remember { FocusRequester() }
+    // Auto-focus the search box so the keyboard opens immediately
+    LaunchedEffect(Unit) { runCatching { focusRequester.requestFocus() } }
 
     val results = remember(query, borrowers, debts, transactions, investments) {
         if (query.length < 2) return@remember emptyList()
@@ -117,18 +125,25 @@ fun GlobalSearchScreen(
                     OutlinedTextField(
                         value         = query,
                         onValueChange = { query = it },
-                        placeholder   = { Text("Search loans, debts, transactions...") },
+                        placeholder   = { Text("Search loans, debts, transactions…") },
                         singleLine    = true,
-                        modifier      = Modifier.fillMaxWidth(),
-                        shape         = RoundedCornerShape(12.dp),
-                        leadingIcon   = { Icon(Icons.Default.Search, null) },
+                        modifier      = Modifier.fillMaxWidth().focusRequester(focusRequester),
+                        shape         = RoundedCornerShape(16.dp),
+                        leadingIcon   = { Icon(Icons.Default.Search, null, tint = Emerald500) },
                         trailingIcon  = {
                             if (query.isNotBlank()) {
                                 IconButton(onClick = { query = "" }) {
                                     Icon(Icons.Default.Clear, null)
                                 }
                             }
-                        }
+                        },
+                        colors        = OutlinedTextFieldDefaults.colors(
+                            focusedContainerColor   = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+                            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+                            focusedBorderColor      = Color.Transparent,
+                            unfocusedBorderColor    = Color.Transparent,
+                            cursorColor             = Emerald500
+                        )
                     )
                 },
                 navigationIcon = {
@@ -178,56 +193,40 @@ fun GlobalSearchScreen(
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                items(results, key = { it.type + it.id }) { result ->
-                    Card(
+                itemsIndexed(results, key = { _, it -> it.type + it.id }) { idx, result ->
+                    if (idx > 0) HorizontalDivider(thickness = 0.5.dp,
+                        color = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f))
+                    Row(
                         modifier = Modifier
                             .fillMaxWidth()
+                            .clip(RoundedCornerShape(14.dp))
                             .clickable {
-                                // Navigate to the actual record
                                 when (result.type) {
                                     "Loan" -> onNavigateToCustomerDetail(result.id)
                                     else   -> { /* Debt/Transaction/Investment — back for now */ }
                                 }
-                            },
-                        shape = RoundedCornerShape(12.dp)
+                            }
+                            .padding(vertical = 14.dp, horizontal = 4.dp),
+                        verticalAlignment     = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(14.dp)
                     ) {
-                        Row(
-                            modifier              = Modifier.padding(16.dp),
-                            verticalAlignment     = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        Box(
+                            Modifier.size(44.dp).clip(RoundedCornerShape(12.dp))
+                                .background(result.color.copy(alpha = 0.12f)),
+                            contentAlignment = Alignment.Center
                         ) {
-                            Surface(
-                                shape    = RoundedCornerShape(8.dp),
-                                color    = result.color.copy(alpha = 0.12f),
-                                modifier = Modifier.size(42.dp)
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Icon(result.icon, null,
-                                        tint = result.color, modifier = Modifier.size(22.dp))
-                                }
-                            }
-                            Column(Modifier.weight(1f)) {
-                                Text(result.title,
-                                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold))
-                                Text(result.subtitle,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            }
-                            Column(horizontalAlignment = Alignment.End) {
-                                Text("$currencySymbol ${String.format(locale, "%,.0f", result.amount)}",
-                                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
-                                    color = result.color)
-                                Surface(
-                                    shape = RoundedCornerShape(4.dp),
-                                    color = result.color.copy(alpha = 0.1f)
-                                ) {
-                                    Text(result.type,
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = result.color,
-                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
-                                }
-                            }
+                            Icon(result.icon, null, tint = result.color, modifier = Modifier.size(22.dp))
                         }
+                        Column(Modifier.weight(1f)) {
+                            Text(result.title,
+                                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold))
+                            Text(result.subtitle,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        Text("$currencySymbol${String.format(locale, "%,.0f", result.amount)}",
+                            style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
+                            color = result.color)
                     }
                 }
             }

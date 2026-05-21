@@ -72,7 +72,15 @@ fun DatePickerField(
         readOnly      = false,   // still allow manual typing
         singleLine    = true,
         modifier      = modifier.fillMaxWidth(),
-        shape         = RoundedCornerShape(12.dp),
+        shape         = RoundedCornerShape(16.dp),
+        colors        = OutlinedTextFieldDefaults.colors(
+            focusedContainerColor   = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+            focusedBorderColor      = app.fynlo.ui.theme.Emerald500,
+            unfocusedBorderColor    = androidx.compose.ui.graphics.Color.Transparent,
+            focusedLabelColor       = app.fynlo.ui.theme.Emerald500,
+            cursorColor             = app.fynlo.ui.theme.Emerald500
+        ),
         placeholder   = { Text("DD-MM-YYYY") }
     )
 }
