@@ -157,9 +157,13 @@ fun MainNavigation(viewModel: FinanceViewModel) {
     val showFab = when (currentRoute) {
         Screen.Settings.route, Screen.About.route, Screen.People.route,
         Screen.Profile.route, Screen.Lending.route, Screen.Debts.route,
-        Screen.Reports.route -> false
+        Screen.Reports.route, Screen.GlobalSearch.route -> false
         else -> drawerState.isClosed
     }
+
+    // Routes that provide their own full-screen chrome (own top bar) — the outer
+    // app bar/bottom bar must hide to avoid duplicate back arrows.
+    val isFullScreenRoute = currentRoute == Screen.GlobalSearch.route
 
     val syncStatus by viewModel.syncStatus.collectAsState()
 
@@ -412,6 +416,7 @@ fun MainNavigation(viewModel: FinanceViewModel) {
     ) {
         Scaffold(
             topBar = {
+                if (!isFullScreenRoute)
                 CenterAlignedTopAppBar(
                     title = {
                         // Brand wordmark — tap from any screen to jump to Dashboard
@@ -465,6 +470,7 @@ fun MainNavigation(viewModel: FinanceViewModel) {
                 )
             },
             bottomBar = {
+                if (!isFullScreenRoute)
                 NavigationBar {
                     bottomNavItems.forEach { screen ->
                         NavigationBarItem(
