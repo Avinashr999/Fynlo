@@ -44,6 +44,7 @@ fun AddLendingDialog(
     var date by remember { mutableStateOf(initialBorrower?.date?.let { DateUtils.formatToDisplay(it) } ?: java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy"))) }
     var due by remember { mutableStateOf(initialBorrower?.due?.let { DateUtils.formatToDisplay(it) } ?: "") }
     var notes by remember { mutableStateOf(initialBorrower?.notes ?: "") }
+    val isPro by app.fynlo.billing.BillingManager.isPro.collectAsState()
     var selectedType by remember { mutableStateOf(initialBorrower?.type ?: "Simple Interest") }
     var showAdvancedInterest by remember { mutableStateOf(selectedType != "Simple Interest") }
 
@@ -168,7 +169,7 @@ fun AddLendingDialog(
                         }
                     }
                 }
-                if (!showAdvancedInterest) {
+                if (!showAdvancedInterest && isPro) {
                     TextButton(onClick = { showAdvancedInterest = true }, contentPadding = PaddingValues(horizontal = 4.dp)) {
                         Text("Advanced options", color = Emerald500, style = MaterialTheme.typography.labelMedium)
                     }

@@ -45,6 +45,7 @@ fun SettingsScreen(
 ) {
     val scope   = rememberCoroutineScope()
     val context = LocalContext.current
+    val isPro by app.fynlo.billing.BillingManager.isPro.collectAsState()
     // ── Setup-wizard editable prefs (DataStore-backed) ─────────────────────
     val displayNameFlow    by UserPreferences.userDisplayName(context).collectAsState(initial = "")
     var displayName        by remember { mutableStateOf("") }
@@ -199,7 +200,7 @@ fun SettingsScreen(
                     color = Green,
                     title = "Export Full Backup (.xlsx)",
                     subtitle = "All data in 7 sheets \u2014 opens in Excel/Sheets"
-                ) { xlsxLauncher.launch("Fynlo_Backup_${System.currentTimeMillis()}.xlsx") }
+                ) { if (isPro) xlsxLauncher.launch("Fynlo_Backup_${System.currentTimeMillis()}.xlsx") else onNavigateToUpgrade() }
 
                 SettingsDivider()
 
@@ -208,7 +209,7 @@ fun SettingsScreen(
                     color = Blue,
                     title = "Export JSON Backup",
                     subtitle = "Full backup for restore"
-                ) { jsonLauncher.launch("Fynlo_Backup_${System.currentTimeMillis()}.json") }
+                ) { if (isPro) jsonLauncher.launch("Fynlo_Backup_${System.currentTimeMillis()}.json") else onNavigateToUpgrade() }
 
                 SettingsDivider()
 
@@ -217,7 +218,7 @@ fun SettingsScreen(
                     color = Red,
                     title = "Export PDF Report",
                     subtitle = "Financial summary report"
-                ) { pdfLauncher.launch("Fynlo_Report_${System.currentTimeMillis()}.pdf") }
+                ) { if (isPro) pdfLauncher.launch("Fynlo_Report_${System.currentTimeMillis()}.pdf") else onNavigateToUpgrade() }
 
                 SettingsDivider()
 
@@ -362,6 +363,7 @@ fun SettingsScreen(
                                    bioStatus == androidx.biometric.BiometricManager.BIOMETRIC_ERROR_NONE_ENROLLED
         val onToggleBiometric = {
             when {
+                !isPro -> { onNavigateToUpgrade() }
                 !pinSet -> { showPinSetup = true }
                 bioStatus == androidx.biometric.BiometricManager.BIOMETRIC_ERROR_NONE_ENROLLED -> {
                     val intent = android.content.Intent(android.provider.Settings.ACTION_BIOMETRIC_ENROLL).apply {

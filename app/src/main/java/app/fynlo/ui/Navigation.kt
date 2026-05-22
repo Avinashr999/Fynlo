@@ -30,6 +30,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.dp
+import app.fynlo.billing.BillingManager
 import androidx.navigation.NavController
 import androidx.navigation.NavType
 import androidx.navigation.navArgument
@@ -160,6 +161,13 @@ fun MainNavigation(viewModel: FinanceViewModel) {
     val currentRoute = navBackStackEntry?.destination?.route
     // Strip any query args (e.g. "loans_hub?tab=1") so route comparisons still match.
     val baseRoute = currentRoute?.substringBefore("?")
+
+    // Pro gate: go to [dest] if the user has Pro, otherwise to the upgrade screen.
+    // While billing is disabled, isPro is always true → this just navigates normally.
+    fun navGated(dest: String) {
+        if (BillingManager.isPro.value) navController.navigate(dest)
+        else navController.navigate(Screen.UpgradePro.route)
+    }
 
     val showFab = when (baseRoute) {
         Screen.Settings.route, Screen.About.route, Screen.People.route,
@@ -337,7 +345,7 @@ fun MainNavigation(viewModel: FinanceViewModel) {
                     }
                     DrawerItem(Icons.Default.Repeat, "Recurring Transactions",
                         currentRoute == Screen.Recurring.route) {
-                        navController.navigate(Screen.Recurring.route)
+                        navGated(Screen.Recurring.route)
                         scope.launch { drawerState.close() }
                     }
                     DrawerItem(Icons.AutoMirrored.Filled.ShowChart, "Investments",
@@ -586,7 +594,7 @@ fun MainNavigation(viewModel: FinanceViewModel) {
                 composable(Screen.Budgets.route) { BudgetScreen(viewModel) }
                 composable(Screen.Goals.route) { GoalScreen(viewModel) }
                 composable(Screen.Profile.route) { ProfileScreen(onLogout = { isLoggedIn = false }, viewModel = viewModel) }
-                composable(Screen.Projects.route) { ProjectsScreen(viewModel) }
+                composable(Screen.Projects.route) { ProjectsScreen(viewModel, onNavigateToUpgrade = { navController.navigate(Screen.UpgradePro.route) }) }
                 composable(Screen.Recurring.route)  { RecurringScreen(viewModel) }
                 composable(Screen.Monthly.route)    { MonthlySummaryScreen(viewModel) }
                 composable(Screen.ProfitLoss.route) { ProfitLossScreen(viewModel) }
@@ -611,12 +619,12 @@ fun MainNavigation(viewModel: FinanceViewModel) {
                 composable(Screen.Reports.route) {
                     ReportsHubScreen(
                         viewModel             = viewModel,
-                        onNavigateToPL        = { navController.navigate(Screen.ProfitLoss.route) },
-                        onNavigateToNetWorth  = { navController.navigate(Screen.NetWorthH.route) },
-                        onNavigateToMoneyFlow = { navController.navigate(Screen.MoneyFlow.route) },
-                        onNavigateToInterest  = { navController.navigate(Screen.InterestIncome.route) },
-                        onNavigateToMonthly   = { navController.navigate(Screen.Monthly.route) },
-                        onNavigateToDebtPayoff = { navController.navigate(Screen.DebtPayoff.route) }
+                        onNavigateToPL        = { navGated(Screen.ProfitLoss.route) },
+                        onNavigateToNetWorth  = { navGated(Screen.NetWorthH.route) },
+                        onNavigateToMoneyFlow = { navGated(Screen.MoneyFlow.route) },
+                        onNavigateToInterest  = { navGated(Screen.InterestIncome.route) },
+                        onNavigateToMonthly   = { navGated(Screen.Monthly.route) },
+                        onNavigateToDebtPayoff = { navGated(Screen.DebtPayoff.route) }
                     )
                 }
                 composable(Screen.InterestIncome.route) {

@@ -26,8 +26,9 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 
 
 @Composable
-fun ProjectsScreen(viewModel: FinanceViewModel) {
+fun ProjectsScreen(viewModel: FinanceViewModel, onNavigateToUpgrade: () -> Unit = {}) {
     val haptic = LocalHapticFeedback.current
+    val isPro by app.fynlo.billing.BillingManager.isPro.collectAsState()
     val projects       by viewModel.projects.collectAsState()
     val currentPid     by viewModel.currentProjectId.collectAsState()
     var showAddDialog  by remember { mutableStateOf(false) }
@@ -75,7 +76,9 @@ fun ProjectsScreen(viewModel: FinanceViewModel) {
                 "Your Projects",
                 style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
             )
-            FilledTonalButton(onClick = { showAddDialog = true }) {
+            FilledTonalButton(onClick = {
+                if (isPro || projects.isEmpty()) showAddDialog = true else onNavigateToUpgrade()
+            }) {
                 Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(6.dp))
                 Text("New Project")
