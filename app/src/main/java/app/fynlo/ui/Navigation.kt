@@ -255,45 +255,42 @@ fun MainNavigation(viewModel: FinanceViewModel) {
                     modifier = Modifier.fillMaxHeight().verticalScroll(rememberScrollState())
                 ) {
 
-                    // â"€â"€ Brand Header â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
-                    Box(
+                    // ── Brand Header — flat (matches dashboard) ──────────────────
+                    Column(
                         modifier = Modifier.fillMaxWidth()
-                            .background(
-                                Brush.verticalGradient(
-                                    listOf(Emerald500, Emerald600)
-                                )
-                            )
-                            .padding(start = 20.dp, end = 20.dp, top = 48.dp, bottom = 24.dp)
+                            .padding(start = 20.dp, end = 20.dp, top = 44.dp, bottom = 12.dp)
                     ) {
-                        Column {
-                            // App icon circle
-                            Box(
-                                modifier = Modifier
-                                    .size(56.dp)
-                                    .clip(CircleShape)
-                                    .background(Color.White.copy(alpha = 0.2f)),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    Icons.Default.AccountBalanceWallet, null,
-                                    Modifier.size(28.dp), tint = Color.White
-                                )
-                            }
-                            Spacer(Modifier.height(12.dp))
-                            Text(
-                                "Fynlo",
-                                style = MaterialTheme.typography.titleLarge.copy(
-                                    fontWeight = FontWeight.ExtraBold, color = Color.White
-                                )
-                            )
-                            Text(
-                                "Personal Finance Manager",
-                                style = MaterialTheme.typography.bodySmall.copy(
-                                    color = Color.White.copy(alpha = 0.75f)
-                                )
+                        Box(
+                            modifier = Modifier
+                                .size(52.dp)
+                                .clip(CircleShape)
+                                .background(Emerald500.copy(alpha = 0.12f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                Icons.Default.AccountBalanceWallet, null,
+                                Modifier.size(26.dp), tint = Emerald500
                             )
                         }
+                        Spacer(Modifier.height(12.dp))
+                        Text(
+                            "Fynlo",
+                            style = MaterialTheme.typography.headlineSmall.copy(
+                                fontWeight = FontWeight.ExtraBold, color = Emerald500
+                            )
+                        )
+                        Text(
+                            "Personal Finance Manager",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
+
+                    HorizontalDivider(
+                        modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 12.dp),
+                        thickness = 0.5.dp,
+                        color = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f)
+                    )
 
                     Spacer(Modifier.height(8.dp))
 
@@ -778,7 +775,7 @@ fun DrawerItem(
         selected = selected,
         onClick  = onClick,
         colors   = NavigationDrawerItemDefaults.colors(
-            selectedContainerColor   = Emerald500.copy(alpha = 0.1f),
+            selectedContainerColor   = Emerald500.copy(alpha = 0.12f),
             unselectedContainerColor = Color.Transparent
         ),
         modifier = Modifier.padding(horizontal = 12.dp, vertical = 1.dp).height(48.dp)
@@ -790,7 +787,7 @@ fun DrawerDivider() {
     HorizontalDivider(
         modifier  = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
         thickness = 0.5.dp,
-        color     = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+        color     = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f)
     )
 }
 
