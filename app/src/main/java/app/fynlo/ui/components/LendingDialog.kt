@@ -4,208 +4,220 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import app.fynlo.FinanceViewModel
-import app.fynlo.data.model.Account
 import app.fynlo.data.model.Borrower
 import app.fynlo.data.model.Person
 import app.fynlo.logic.DateUtils
+import app.fynlo.ui.theme.Emerald500
 import java.util.*
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun AddLendingDialog(
-    viewModel: FinanceViewModel, // Added to fetch people
+    viewModel: FinanceViewModel,
     onDismiss: () -> Unit,
     onConfirm: (Borrower, String) -> Unit,
     initialBorrower: Borrower? = null
 ) {
     val people by viewModel.people.collectAsState()
-    
-    var selectedPerson by remember { mutableStateOf<Person?>(null) }
-    var personExpanded by remember { mutableStateOf(false) }
+    val accounts by viewModel.accounts.collectAsState()
 
-    var amount by remember { mutableStateOf(initialBorrower?.amount?.toString() ?: "") }
-    var rate by remember { mutableStateOf(initialBorrower?.rate?.toString() ?: "") }
+    var selectedPerson by remember { mutableStateOf<Person?>(null) }
+    var amount by remember { mutableStateOf(initialBorrower?.amount?.takeIf { it > 0 }?.let { String.format("%.0f", it) } ?: "") }
+    var rate by remember { mutableStateOf(initialBorrower?.rate?.takeIf { it > 0 }?.let { String.format("%.0f", it) } ?: "") }
     var date by remember { mutableStateOf(initialBorrower?.date?.let { DateUtils.formatToDisplay(it) } ?: java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy"))) }
     var due by remember { mutableStateOf(initialBorrower?.due?.let { DateUtils.formatToDisplay(it) } ?: "") }
     var notes by remember { mutableStateOf(initialBorrower?.notes ?: "") }
-    var expandedType by remember { mutableStateOf(false) }
     var selectedType by remember { mutableStateOf(initialBorrower?.type ?: "Simple Interest") }
-    
-    val accounts by viewModel.accounts.collectAsState()
-    var expandedSource by remember { mutableStateOf(false) }
+
     val accountOptions = if (accounts.isNotEmpty()) accounts
-    else listOf(app.fynlo.data.model.Account(id="cash", name="Cash in Hand", type="Cash", balance=0.0))
+        else listOf(app.fynlo.data.model.Account(id = "cash", name = "Cash in Hand", type = "Cash", balance = 0.0))
     var selectedAccount by remember { mutableStateOf(accountOptions.first()) }
 
     val interestTypes = listOf("Simple Interest", "Reducing Balance", "Compound Interest", "Both")
+    val isEdit = initialBorrower != null
 
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false)
-    ) {
+    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Surface(
-            modifier = Modifier.fillMaxWidth(0.95f).padding(vertical = 24.dp).imePadding(),
-            shape = MaterialTheme.shapes.extraLarge,
+            modifier = Modifier.fillMaxWidth(0.94f).padding(vertical = 20.dp).imePadding(),
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(28.dp),
             color = MaterialTheme.colorScheme.surface,
-            tonalElevation = 6.dp
+            tonalElevation = 4.dp
         ) {
-            Column(modifier = Modifier.padding(24.dp).verticalScroll(rememberScrollState())) {
-                Text(if (initialBorrower == null) "Add Lending Record" else "Edit Lending Record", style = MaterialTheme.typography.headlineSmall)
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // PERSON SELECTION
-                ExposedDropdownMenuBox(
-                    expanded = personExpanded,
-                    onExpandedChange = { personExpanded = !personExpanded }
-                ) {
-                    OutlinedTextField(
-                        value = selectedPerson?.name ?: initialBorrower?.name ?: "Select Person",
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("Borrower (Pick from Contacts)") },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = personExpanded) },
-                        modifier = Modifier.menuAnchor(androidx.compose.material3.ExposedDropdownMenuAnchorType.PrimaryNotEditable, true).fillMaxWidth()
-                    )
-                    ExposedDropdownMenu(expanded = personExpanded, onDismissRequest = { personExpanded = false }) {
-                        people.forEach { person ->
-                            DropdownMenuItem(
-                                text = { Text("${person.name} (${person.id})") },
-                                onClick = { selectedPerson = person; personExpanded = false }
-                            )
-                        }
-                    }
+            Column(Modifier.padding(20.dp).verticalScroll(rememberScrollState())) {
+                Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
+                    Text(if (isEdit) "Edit Loan" else "New Loan",
+                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold))
+                    IconButton(onClick = onDismiss) { Icon(Icons.Default.Close, "Close") }
                 }
-                
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(16.dp))
 
-                OutlinedTextField(
-                    value = amount,
-                    onValueChange = { amount = it },
-                    label = { Text("Amount (₹)") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                if (initialBorrower == null) {
-                    // Account dropdown — actual accounts so balance is correctly updated
-                    ExposedDropdownMenuBox(
-                        expanded = expandedSource,
-                        onExpandedChange = { expandedSource = !expandedSource }
-                    ) {
-                        OutlinedTextField(
-                            value = selectedAccount.name,
-                            onValueChange = {},
-                            readOnly = true,
-                            label = { Text("Lend from Account") },
-                            supportingText = {
-                                Text("${selectedAccount.type}  •  Balance: ₹${String.format("%,.0f", selectedAccount.balance)}",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.primary)
-                            },
-                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedSource) },
-                            modifier = Modifier.menuAnchor(androidx.compose.material3.ExposedDropdownMenuAnchorType.PrimaryNotEditable, true).fillMaxWidth()
-                        )
-                        ExposedDropdownMenu(expanded = expandedSource, onDismissRequest = { expandedSource = false }) {
-                            accountOptions.forEach { acct ->
-                                DropdownMenuItem(
-                                    text = {
-                                        androidx.compose.foundation.layout.Row(
-                                            Modifier.fillMaxWidth(),
-                                            horizontalArrangement = androidx.compose.foundation.layout.Arrangement.SpaceBetween
-                                        ) {
-                                            androidx.compose.foundation.layout.Column {
-                                                Text(acct.name, style = MaterialTheme.typography.bodyMedium)
-                                                Text(acct.type, style = MaterialTheme.typography.labelSmall,
-                                                    color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                            }
-                                            Text("₹${String.format("%,.0f", acct.balance)}",
-                                                style = MaterialTheme.typography.bodySmall,
-                                                color = app.fynlo.ui.theme.Emerald500)
-                                        }
-                                    },
-                                    onClick = { selectedAccount = acct; expandedSource = false }
-                                )
+                // ── Amount hero ───────────────────────────────────────────────
+                Box(Modifier.fillMaxWidth(), Alignment.Center) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("₹", fontSize = 32.sp, fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Spacer(Modifier.width(6.dp))
+                        androidx.compose.foundation.text.BasicTextField(
+                            value = amount,
+                            onValueChange = { amount = it.filter { c -> c.isDigit() || c == '.' } },
+                            textStyle = TextStyle(fontSize = 40.sp, fontWeight = FontWeight.ExtraBold,
+                                color = MaterialTheme.colorScheme.onSurface, textAlign = TextAlign.Start),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                            cursorBrush = SolidColor(Emerald500),
+                            singleLine = true,
+                            decorationBox = { inner ->
+                                if (amount.isBlank()) Text("0", fontSize = 40.sp, fontWeight = FontWeight.ExtraBold,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f))
+                                inner()
                             }
-                        }
+                        )
                     }
                 }
+                Spacer(Modifier.height(24.dp))
 
-                DatePickerField(value = date, onValueChange = { date = it }, label = "Lending Date")
-
-                ExposedDropdownMenuBox(
-                    expanded = expandedType,
-                    onExpandedChange = { expandedType = !expandedType }
-                ) {
-                    OutlinedTextField(
-                        value = selectedType,
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("Interest Type") },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedType) },
-                        modifier = Modifier.menuAnchor(androidx.compose.material3.ExposedDropdownMenuAnchorType.PrimaryNotEditable, true).fillMaxWidth()
-                    )
-                    ExposedDropdownMenu(expanded = expandedType, onDismissRequest = { expandedType = false }) {
-                        interestTypes.forEach { type ->
-                            DropdownMenuItem(text = { Text(type) }, onClick = { selectedType = type; expandedType = false })
-                        }
-                    }
-                }
-
-                OutlinedTextField(
-                    value = rate,
-                    onValueChange = { rate = it },
-                    label = { Text("Annual Interest Rate (%)") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    modifier = Modifier.fillMaxWidth()
-                )
-                DatePickerField(value = due, onValueChange = { due = it }, label = "Due Date", optional = true)
-                OutlinedTextField(
-                    value = notes, onValueChange = { notes = it },
-                    label = { Text("Notes") }, modifier = Modifier.fillMaxWidth()
-                )
-                
-                Spacer(modifier = Modifier.height(24.dp))
-                
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                    TextButton(onClick = onDismiss) { Text("Cancel") }
-                    Spacer(Modifier.width(8.dp))
-                    Button(
-                        onClick = {
-                            val finalSource = if (initialBorrower != null) "Cash in Hand"
-                                else selectedAccount.name
-                            // Store source account on borrower for display on card
-                            val rawId = initialBorrower?.id ?: ""
-                            val borrower = Borrower(
-                                id     = if (rawId.isBlank()) UUID.randomUUID().toString() else rawId,
-                                sourceAccount = if (initialBorrower == null) selectedAccount.name else initialBorrower.sourceAccount,
-                                name   = selectedPerson?.name ?: initialBorrower?.name ?: "Unknown",
-                                phone  = selectedPerson?.phone ?: initialBorrower?.phone ?: "",
-                                amount = amount.toDoubleOrNull() ?: 0.0,
-                                rate   = rate.toDoubleOrNull() ?: 0.0,
-                                date   = DateUtils.parseInput(date),
-                                due    = if (due.isNotEmpty()) DateUtils.parseInput(due) else "",
-                                type   = selectedType,
-                                status = initialBorrower?.status ?: "Active",
-                                notes  = notes,
-                                paid   = initialBorrower?.paid ?: 0.0
+                // ── Borrower ──────────────────────────────────────────────────
+                Text("Borrower", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Spacer(Modifier.height(8.dp))
+                if (isEdit) {
+                    Text(initialBorrower!!.name, style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold))
+                } else if (people.isEmpty()) {
+                    Text("Add a contact in Contact Book first.", style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                } else {
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        people.forEach { person ->
+                            FilterChip(
+                                selected = selectedPerson?.id == person.id,
+                                onClick = { selectedPerson = person },
+                                label = { Text(person.name) },
+                                shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = Emerald500.copy(alpha = 0.16f),
+                                    selectedLabelColor = Emerald500)
                             )
-                            onConfirm(borrower, finalSource)
-                        },
-                        enabled = (selectedPerson != null || initialBorrower != null) && amount.isNotEmpty()
-                    ) {
-                        Text("Save")
+                        }
                     }
+                }
+
+                if (!isEdit) {
+                    Spacer(Modifier.height(20.dp))
+                    Text("Lend from", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Spacer(Modifier.height(8.dp))
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        accountOptions.forEach { acct ->
+                            FilterChip(
+                                selected = selectedAccount.id == acct.id,
+                                onClick = { selectedAccount = acct },
+                                label = { Text(acct.name) },
+                                shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = Emerald500.copy(alpha = 0.16f),
+                                    selectedLabelColor = Emerald500)
+                            )
+                        }
+                    }
+                    Spacer(Modifier.height(4.dp))
+                    Text("Balance: ₹${String.format("%,.0f", selectedAccount.balance)}",
+                        style = MaterialTheme.typography.labelSmall, color = Emerald500)
+                }
+
+                Spacer(Modifier.height(20.dp))
+
+                // ── Interest type ─────────────────────────────────────────────
+                Text("Interest type", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Spacer(Modifier.height(8.dp))
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    interestTypes.forEach { type ->
+                        FilterChip(
+                            selected = selectedType == type,
+                            onClick = { selectedType = type },
+                            label = { Text(type) },
+                            shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = Emerald500.copy(alpha = 0.16f),
+                                selectedLabelColor = Emerald500)
+                        )
+                    }
+                }
+
+                Spacer(Modifier.height(16.dp))
+                LendSoftField(rate, "Annual interest rate (%)", KeyboardType.Number) { rate = it }
+                Spacer(Modifier.height(12.dp))
+                DatePickerField(value = date, onValueChange = { date = it }, label = "Lending date")
+                Spacer(Modifier.height(12.dp))
+                DatePickerField(value = due, onValueChange = { due = it }, label = "Due date", optional = true)
+                Spacer(Modifier.height(12.dp))
+                LendSoftField(notes, "Notes (optional)", KeyboardType.Text) { notes = it }
+
+                Spacer(Modifier.height(24.dp))
+
+                Button(
+                    onClick = {
+                        val finalSource = if (isEdit) "Cash in Hand" else selectedAccount.name
+                        val rawId = initialBorrower?.id ?: ""
+                        val borrower = Borrower(
+                            id     = if (rawId.isBlank()) UUID.randomUUID().toString() else rawId,
+                            sourceAccount = if (!isEdit) selectedAccount.name else initialBorrower!!.sourceAccount,
+                            name   = selectedPerson?.name ?: initialBorrower?.name ?: "Unknown",
+                            phone  = selectedPerson?.phone ?: initialBorrower?.phone ?: "",
+                            amount = amount.toDoubleOrNull() ?: 0.0,
+                            rate   = rate.toDoubleOrNull() ?: 0.0,
+                            date   = DateUtils.parseInput(date),
+                            due    = if (due.isNotEmpty()) DateUtils.parseInput(due) else "",
+                            type   = selectedType,
+                            status = initialBorrower?.status ?: "Active",
+                            notes  = notes,
+                            paid   = initialBorrower?.paid ?: 0.0
+                        )
+                        onConfirm(borrower, finalSource)
+                    },
+                    enabled = (selectedPerson != null || isEdit) && (amount.toDoubleOrNull() ?: 0.0) > 0.0,
+                    modifier = Modifier.fillMaxWidth().height(52.dp),
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Emerald500)
+                ) {
+                    Text(if (isEdit) "Save Changes" else "Add Loan",
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
                 }
             }
         }
     }
 }
 
+@Composable
+private fun LendSoftField(value: String, label: String, keyboard: KeyboardType, onChange: (String) -> Unit) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = onChange,
+        label = { Text(label) },
+        singleLine = true,
+        keyboardOptions = KeyboardOptions(keyboardType = keyboard),
+        modifier = Modifier.fillMaxWidth(),
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+            focusedBorderColor = Emerald500,
+            unfocusedBorderColor = Color.Transparent,
+            focusedLabelColor = Emerald500,
+            cursorColor = Emerald500
+        )
+    )
+}
