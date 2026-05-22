@@ -3,6 +3,7 @@ package app.fynlo.ui.screens
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -117,7 +118,7 @@ fun PeopleScreen(viewModel: FinanceViewModel) {
             modifier = Modifier
                 .fillMaxSize()
                 .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
             contentPadding = PaddingValues(bottom = 100.dp)
         ) {
             item {
@@ -132,12 +133,16 @@ fun PeopleScreen(viewModel: FinanceViewModel) {
             if (people.isEmpty()) {
                 item { EmptyPeopleState(onAdd = { showAddDialog = true }) }
             } else {
-                items(filteredPeople, key = { it.id }) { person ->
+                itemsIndexed(filteredPeople, key = { _, p -> p.id }) { index, person ->
                     PersonCard(
                         person   = person,
                         onEdit   = { editingPerson = person },
                         onDelete = { viewModel.deletePerson(person) }
                     )
+                    if (index < filteredPeople.lastIndex) {
+                        HorizontalDivider(thickness = 0.5.dp,
+                            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f))
+                    }
                 }
             }
         }
@@ -177,13 +182,8 @@ fun PersonCard(person: Person, onEdit: () -> Unit, onDelete: () -> Unit) {
         else                      -> person.phone
     }
 
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape    = RoundedCornerShape(16.dp),
-        colors   = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-    ) {
         Row(
-            modifier              = Modifier.padding(16.dp).fillMaxWidth(),
+            modifier              = Modifier.fillMaxWidth().padding(vertical = 14.dp),
             verticalAlignment     = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
@@ -248,7 +248,6 @@ fun PersonCard(person: Person, onEdit: () -> Unit, onDelete: () -> Unit) {
                 }
             }
         }
-    }
 }
 
 // ── AddPersonDialog ───────────────────────────────────────────────────────────

@@ -1,8 +1,10 @@
 package app.fynlo.ui.screens
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -82,8 +84,8 @@ fun ProjectsScreen(viewModel: FinanceViewModel) {
 
         Spacer(Modifier.height(16.dp))
 
-        LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            items(projects, key = { it.id }) { project ->
+        LazyColumn(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            itemsIndexed(projects, key = { _, it -> it.id }) { index, project ->
                 ProjectCard(
                     project   = project,
                     isActive  = project.id == currentPid,
@@ -92,6 +94,10 @@ fun ProjectsScreen(viewModel: FinanceViewModel) {
                         if (project.id != "personal") deleteTarget = project
                     }
                 )
+                if (index < projects.lastIndex) {
+                    HorizontalDivider(thickness = 0.5.dp,
+                        color = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f))
+                }
             }
         }
     }
@@ -105,23 +111,8 @@ private fun ProjectCard(
     onSelect: () -> Unit,
     onDelete: () -> Unit
 ) {
-    val border = if (isActive)
-        CardDefaults.outlinedCardBorder().copy()
-    else null
-
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape    = RoundedCornerShape(12.dp),
-        colors   = CardDefaults.cardColors(
-            containerColor = if (isActive)
-                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
-            else
-                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
-        ),
-        onClick = onSelect
-    ) {
         Row(
-            modifier          = Modifier.padding(16.dp),
+            modifier          = Modifier.fillMaxWidth().clickable(onClick = onSelect).padding(vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Color dot
@@ -175,7 +166,6 @@ private fun ProjectCard(
                 }
             }
         }
-    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

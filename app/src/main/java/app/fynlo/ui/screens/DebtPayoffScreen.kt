@@ -2,7 +2,7 @@ package app.fynlo.ui.screens
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -44,22 +44,21 @@ fun DebtPayoffScreen(viewModel: FinanceViewModel) {
                 val interest = InterestEngine.calcIntAccrued(d.amount, d.rate, d.date, d.intType, d.due, d.paid)
                 d.amount + interest - d.paid
             }
-            Card(Modifier.fillMaxWidth().padding(bottom = 16.dp), RoundedCornerShape(16.dp),
-                CardDefaults.cardColors(containerColor = SemanticRed.copy(alpha = 0.08f))) {
-                Column(Modifier.padding(16.dp)) {
-                    Text("Total Remaining", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text("$currencySymbol ${String.format(locale, "%,.2f", totalOwed)}",
-                        style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold),
-                        color = SemanticRed)
-                    Text("Across ${activeDebts.size} active debt(s)", style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
+            Column(Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 16.dp)) {
+                Text("Total Remaining", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("$currencySymbol ${String.format(locale, "%,.2f", totalOwed)}",
+                    style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.ExtraBold),
+                    color = SemanticRed)
+                Text("Across ${activeDebts.size} active debt(s)", style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
 
-            LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp),
-                contentPadding = PaddingValues(bottom = 100.dp)) {
-                items(activeDebts, key = { it.id }) { debt ->
+            LazyColumn(contentPadding = PaddingValues(bottom = 100.dp)) {
+                itemsIndexed(activeDebts, key = { _, d -> d.id }) { index, debt ->
                     DebtPayoffCard(debt, currencySymbol, locale)
+                    if (index < activeDebts.lastIndex) {
+                        HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f))
+                    }
                 }
             }
         }
@@ -90,8 +89,7 @@ private fun DebtPayoffCard(debt: Debt, currencySymbol: String, locale: Locale) {
 
     val progress = if (debt.amount > 0) (debt.paid / (debt.amount + interest)).toFloat().coerceIn(0f, 1f) else 0f
 
-    Card(Modifier.fillMaxWidth(), RoundedCornerShape(16.dp)) {
-        Column(Modifier.padding(16.dp)) {
+    Column(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
                 Text(debt.name, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
                 Surface(color = SemanticRed.copy(alpha = 0.08f), shape = RoundedCornerShape(8.dp)) {
@@ -119,7 +117,6 @@ private fun DebtPayoffCard(debt: Debt, currencySymbol: String, locale: Locale) {
                     InfoPill("Avg/Month", if (avgMonthlyPayment > 0) "$currencySymbol${String.format(locale, "%,.0f", avgMonthlyPayment)}" else "No payments yet", Modifier.weight(1f))
                 }
             }
-        }
     }
 }
 

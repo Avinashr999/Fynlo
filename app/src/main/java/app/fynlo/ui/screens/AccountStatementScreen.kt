@@ -74,29 +74,19 @@ fun AccountStatementScreen(
         }
     ) { padding ->
         Column(modifier = Modifier.padding(padding).fillMaxSize().padding(16.dp)) {
-            // Balance card
+            // Balance — flat hero
             if (account != null) {
-                Card(
-                    modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
-                    shape    = RoundedCornerShape(16.dp),
-                    colors   = CardDefaults.cardColors(
-                        containerColor = if (account.balance >= 0)
-                            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
-                        else SemanticRed.copy(alpha = 0.08f)
+                Column(modifier = Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 20.dp)) {
+                    Text("Current Balance", style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(
+                        "$currencySymbol${String.format(locale, "%,.2f", account.balance)}",
+                        style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.ExtraBold),
+                        color = if (account.balance >= 0) Emerald500 else SemanticRed
                     )
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text("Current Balance", style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text(
-                            "$currencySymbol ${String.format(locale, "%,.2f", account.balance)}",
-                            style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold),
-                            color = if (account.balance >= 0) MaterialTheme.colorScheme.primary else SemanticRed
-                        )
-                        Text("${accountTransactions.size} transactions",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
+                    Text("${accountTransactions.size} transactions",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
 

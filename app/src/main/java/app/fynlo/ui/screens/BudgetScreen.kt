@@ -1,10 +1,13 @@
 package app.fynlo.ui.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -63,7 +66,7 @@ fun BudgetScreen(viewModel: FinanceViewModel) {
         Box(modifier = Modifier.weight(1f)) {
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp).imePadding(),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
             contentPadding = PaddingValues(bottom = 100.dp)
         ) {
             item {
@@ -86,9 +89,13 @@ fun BudgetScreen(viewModel: FinanceViewModel) {
                         pct >= 0.8 && pct < 1.0
                     }
 
-                    Card(Modifier.fillMaxWidth(), RoundedCornerShape(16.dp),
-                        CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f))) {
-                        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Column(
+                        Modifier.fillMaxWidth()
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+                            .padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
                             Text("This Month's Overview", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold))
                             Row(Modifier.fillMaxWidth(), Arrangement.spacedBy(8.dp)) {
                                 OverviewChip("Total Budget", "$currencySymbol${String.format(locale, "%,.0f", totalLimit)}",
@@ -120,7 +127,6 @@ fun BudgetScreen(viewModel: FinanceViewModel) {
                                 }
                             }
                         }
-                    }
                 }
             }
 
@@ -139,10 +145,14 @@ fun BudgetScreen(viewModel: FinanceViewModel) {
                     }
                 }
             } else {
-                items(sorted, key = { it.category }) { budget ->
+                itemsIndexed(sorted, key = { _, b -> b.category }) { index, budget ->
                     val actualSpent = expenses[budget.category] ?: 0.0
                     BudgetCard(budget, actualSpent, daysRemaining, daysPassed, currencySymbol, locale,
                         onDelete = { viewModel.deleteBudget(budget) })
+                    if (index < sorted.lastIndex) {
+                        HorizontalDivider(thickness = 0.5.dp,
+                            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f))
+                    }
                 }
             }
         }
@@ -197,8 +207,7 @@ fun BudgetCard(
         else        -> MaterialTheme.colorScheme.primary
     }
 
-    Card(Modifier.fillMaxWidth(), RoundedCornerShape(16.dp)) {
-        Column(Modifier.padding(16.dp)) {
+    Column(Modifier.fillMaxWidth().padding(vertical = 14.dp)) {
             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     if (isExceeded) {
@@ -239,8 +248,13 @@ fun BudgetCard(
 
             Spacer(Modifier.height(8.dp))
 
-            Surface(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f), shape = RoundedCornerShape(8.dp)) {
-                Row(Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 6.dp), Arrangement.SpaceBetween) {
+            Row(
+                Modifier.fillMaxWidth()
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+                    .padding(horizontal = 10.dp, vertical = 6.dp),
+                Arrangement.SpaceBetween
+            ) {
                     InfoItem("Remaining", if (isExceeded) "-$currencySymbol${String.format(locale, "%,.0f", -remaining)}"
                         else "$currencySymbol${String.format(locale, "%,.0f", remaining)}",
                         if (isExceeded) SemanticRed else Emerald500)
@@ -250,7 +264,6 @@ fun BudgetCard(
                         if (dailySpent > dailyBudget) SemanticRed else MaterialTheme.colorScheme.onSurfaceVariant)
                     InfoItem("Projected", "$currencySymbol${String.format(locale, "%,.0f", projectedEnd)}",
                         if (projectedEnd > budget.limitAmount) SemanticRed else Emerald500)
-                }
             }
 
             if (projectedEnd > budget.limitAmount && !isExceeded) {
@@ -258,7 +271,6 @@ fun BudgetCard(
                 Text("⚠ At this rate you'll exceed by $currencySymbol${String.format(locale, "%,.0f", projectedEnd - budget.limitAmount)} this month",
                     style = MaterialTheme.typography.labelSmall, color = SemanticAmber)
             }
-        }
     }
 }
 

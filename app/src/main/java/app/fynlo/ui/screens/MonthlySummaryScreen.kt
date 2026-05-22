@@ -1,10 +1,12 @@
 package app.fynlo.ui.screens
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.draw.clip
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
@@ -58,18 +60,19 @@ fun MonthlySummaryScreen(viewModel: FinanceViewModel) {
         Column(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp).verticalScroll(rememberScrollState())) {
 
         if (isIdle) {
-            Card(
-                Modifier.fillMaxWidth().padding(bottom = 16.dp),
-                RoundedCornerShape(12.dp),
-                CardDefaults.cardColors(containerColor = SemanticAmber.copy(alpha = 0.12f))
+            Row(
+                Modifier.fillMaxWidth().padding(bottom = 16.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(SemanticAmber.copy(alpha = 0.12f))
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Icon(Icons.Default.Warning, null, tint = SemanticAmber)
-                    Column {
-                        Text("Idle Fund Alert", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold), color = SemanticAmber)
-                        Text("${(idleRatio * 100).toInt()}% of your wealth is sitting idle in cash. Consider investing or lending to grow your value.", 
-                            style = MaterialTheme.typography.labelSmall, color = SemanticAmber.copy(alpha = 0.8f))
-                    }
+                Icon(Icons.Default.Warning, null, tint = SemanticAmber)
+                Column {
+                    Text("Idle Fund Alert", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold), color = SemanticAmber)
+                    Text("${(idleRatio * 100).toInt()}% of your wealth is sitting idle in cash. Consider investing or lending to grow your value.",
+                        style = MaterialTheme.typography.labelSmall, color = SemanticAmber.copy(alpha = 0.8f))
                 }
             }
         }
@@ -92,9 +95,12 @@ fun MonthlySummaryScreen(viewModel: FinanceViewModel) {
         Spacer(Modifier.height(8.dp))
 
         // Bar Chart
-        Card(Modifier.fillMaxWidth(), RoundedCornerShape(16.dp),
-            CardDefaults.cardColors(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))) {
-            Column(Modifier.padding(16.dp)) {
+        Column(
+            Modifier.fillMaxWidth()
+                .clip(RoundedCornerShape(20.dp))
+                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+                .padding(16.dp)
+        ) {
                 Row(Modifier.fillMaxWidth(), Arrangement.spacedBy(4.dp)) {
                     listOf("Income" to incomeColor, "Expense" to expenseColor).forEach { (label, color) ->
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -124,7 +130,6 @@ fun MonthlySummaryScreen(viewModel: FinanceViewModel) {
                             modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
                     }
                 }
-            }
         }
 
         Spacer(Modifier.height(20.dp))
@@ -132,25 +137,26 @@ fun MonthlySummaryScreen(viewModel: FinanceViewModel) {
             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
         Spacer(Modifier.height(8.dp))
 
-        months.reversed().forEach { (label, inc, exp) ->
+        months.reversed().forEachIndexed { index, (label, inc, exp) ->
             val savings = inc - exp
-            Card(Modifier.fillMaxWidth().padding(bottom = 8.dp), RoundedCornerShape(12.dp)) {
-                Row(Modifier.padding(14.dp).fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
-                    Text(label, style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold), modifier = Modifier.width(48.dp))
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("Income", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold), color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text("$currencySymbol${String.format(locale, "%,.0f", inc)}", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold), color = incomeColor)
-                    }
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("Expense", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text("$currencySymbol${String.format(locale, "%,.0f", exp)}", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold), color = expenseColor)
-                    }
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("Saved", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text("$currencySymbol${String.format(locale, "%,.0f", savings)}",
-                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
-                            color = if (savings >= 0) incomeColor else expenseColor)
-                    }
+            if (index > 0) {
+                HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f))
+            }
+            Row(Modifier.padding(vertical = 14.dp).fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
+                Text(label, style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold), modifier = Modifier.width(48.dp))
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("Income", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("$currencySymbol${String.format(locale, "%,.0f", inc)}", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold), color = incomeColor)
+                }
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("Expense", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("$currencySymbol${String.format(locale, "%,.0f", exp)}", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold), color = expenseColor)
+                }
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("Saved", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("$currencySymbol${String.format(locale, "%,.0f", savings)}",
+                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                        color = if (savings >= 0) incomeColor else expenseColor)
                 }
             }
         }

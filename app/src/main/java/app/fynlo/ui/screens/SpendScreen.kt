@@ -123,29 +123,25 @@ val transactions by viewModel.transactions.collectAsState()
             }
 
             Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-                // Total card
-                Card(Modifier.fillMaxWidth(), RoundedCornerShape(20.dp),
-                    CardDefaults.cardColors(SemanticRed.copy(alpha = 0.1f))) {
-                    Column(Modifier.padding(20.dp)) {
-                        Text(selectedMonth.format(monthFmt), style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text("$currencySymbol ${String.format(locale, "%,.0f", total)}",
-                            style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold),
-                            color = SemanticRed)
-                        Text("${expenses.size} transactions", style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
+                // Total — flat hero
+                Column(Modifier.fillMaxWidth().padding(top = 4.dp)) {
+                    Text("Spent in ${selectedMonth.format(monthFmt)}",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("$currencySymbol${String.format(locale, "%,.0f", total)}",
+                        style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.ExtraBold),
+                        color = SemanticRed)
+                    Text("${expenses.size} transactions", style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
 
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(24.dp))
 
                 // Category breakdown with FIXED budget %
                 if (byCat.isNotEmpty()) {
                     Text("Category Breakdown", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
-                    Spacer(Modifier.height(8.dp))
-                    Card(Modifier.fillMaxWidth(), RoundedCornerShape(16.dp),
-                        CardDefaults.cardColors(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))) {
-                        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                    Spacer(Modifier.height(12.dp))
+                    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                             byCat.forEachIndexed { i, (cat, amt) ->
                                 val budget     = budgets.find { it.category.equals(cat, ignoreCase = true) }
                                 // Fix: use budget limit as max, not total spending
@@ -196,7 +192,6 @@ val transactions by viewModel.transactions.collectAsState()
                                     }
                                 }
                             }
-                        }
                     }
                     Spacer(Modifier.height(20.dp))
                 }
@@ -269,11 +264,11 @@ private fun ExpenseRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Surface(Modifier.size(40.dp), RoundedCornerShape(12.dp),
-            color = SemanticRed.copy(alpha = 0.1f)) {
-            Box(contentAlignment = Alignment.Center) {
-                Icon(Icons.Default.ShoppingCart, null, tint = SemanticRed, modifier = Modifier.size(20.dp))
-            }
+        Box(
+            Modifier.size(40.dp).clip(CircleShape).background(SemanticRed.copy(alpha = 0.15f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(getCategoryIcon(txn.category), null, tint = SemanticRed, modifier = Modifier.size(20.dp))
         }
         Column(Modifier.weight(1f)) {
             Text(txn.category, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold))

@@ -1,8 +1,10 @@
 package app.fynlo.ui.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -116,17 +118,14 @@ fun LoanCalculatorScreen(viewModel: FinanceViewModel? = null) {
     Column(modifier = Modifier.fillMaxSize()) {
         PremiumScreenHeader("Loan Calculator", "Plan your EMI before borrowing")
         Column(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp).verticalScroll(rememberScrollState()).imePadding()) {
-        Text("Plan your loan before taking it",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Spacer(Modifier.height(8.dp))
 
-        Spacer(Modifier.height(16.dp))
-
-        Card(
-            Modifier.fillMaxWidth(), RoundedCornerShape(16.dp),
-            CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+        Column(
+            Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp))
+                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
 
                 OutlinedTextField(
                     value = principal, onValueChange = { principal = it },
@@ -191,33 +190,32 @@ fun LoanCalculatorScreen(viewModel: FinanceViewModel? = null) {
                     modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp), singleLine = true
                 )
                 if (daysElapsed > 0) {
-                    Surface(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
-                        shape = RoundedCornerShape(8.dp)) {
-                        Row(Modifier.fillMaxWidth().padding(10.dp), Arrangement.SpaceBetween) {
-                            Text("Days elapsed: $daysElapsed", style = MaterialTheme.typography.bodySmall)
-                            if (isOverdue) Text("Overdue: $daysOverdue days",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = SemanticRed)
-                        }
+                    Row(
+                        Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
+                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+                            .padding(10.dp),
+                        Arrangement.SpaceBetween
+                    ) {
+                        Text("Days elapsed: $daysElapsed", style = MaterialTheme.typography.bodySmall)
+                        if (isOverdue) Text("Overdue: $daysOverdue days",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = SemanticRed)
                     }
                 }
-            }
         }
 
         Spacer(Modifier.height(16.dp))
 
         if (result != null) {
-            Card(
-                Modifier.fillMaxWidth(), RoundedCornerShape(20.dp),
-                CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+            Column(
+                Modifier.fillMaxWidth().padding(top = 4.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Column(Modifier.padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("Monthly EMI", style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text("$currencySymbol ${String.format(locale, "%,.2f", result.emi)}",
-                        style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.ExtraBold),
-                        color = MaterialTheme.colorScheme.primary)
-                }
+                Text("Monthly EMI", style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("$currencySymbol ${String.format(locale, "%,.2f", result.emi)}",
+                    style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.ExtraBold),
+                    color = Emerald500)
             }
 
             Spacer(Modifier.height(12.dp))
@@ -234,14 +232,16 @@ fun LoanCalculatorScreen(viewModel: FinanceViewModel? = null) {
             val pct = if ((principal.toDoubleOrNull() ?: 0.0) > 0)
                 result.totalInterest / (principal.toDoubleOrNull() ?: 1.0) * 100 else 0.0
             Spacer(Modifier.height(8.dp))
-            Surface(Modifier.fillMaxWidth(), RoundedCornerShape(12.dp),
-                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)) {
-                Row(Modifier.padding(12.dp).fillMaxWidth(), Arrangement.SpaceBetween) {
-                    Text("Interest is ${String.format(locale, "%.1f", pct)}% of principal",
-                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text("Method: $intType", style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
+            Row(
+                Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+                    .padding(12.dp),
+                Arrangement.SpaceBetween
+            ) {
+                Text("Interest is ${String.format(locale, "%.1f", pct)}% of principal",
+                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("Method: $intType", style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
 
             if (daysElapsed > 0 && (principal.toDoubleOrNull() ?: 0.0) > 0) {
@@ -268,9 +268,12 @@ fun LoanCalculatorScreen(viewModel: FinanceViewModel? = null) {
                 val outstanding = p + accrued
                 val perDay = if (daysElapsed > 0) accrued / daysElapsed else 0.0
 
-                Card(Modifier.fillMaxWidth(), RoundedCornerShape(16.dp),
-                    CardDefaults.cardColors(containerColor = SemanticRed.copy(alpha = 0.08f))) {
-                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(
+                    Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp))
+                        .background(SemanticRed.copy(alpha = 0.08f))
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
                         Text("Outstanding as of Today",
                             style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold))
                         HorizontalDivider()
@@ -293,12 +296,12 @@ fun LoanCalculatorScreen(viewModel: FinanceViewModel? = null) {
                                 style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold))
                         }
                         if (isOverdue) {
-                            Surface(color = SemanticRed.copy(alpha = 0.1f), shape = RoundedCornerShape(8.dp)) {
-                                Text("Overdue by $daysOverdue days",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = SemanticRed,
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
-                            }
+                            Text("Overdue by $daysOverdue days",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = SemanticRed,
+                                modifier = Modifier.clip(RoundedCornerShape(8.dp))
+                                    .background(SemanticRed.copy(alpha = 0.1f))
+                                    .padding(horizontal = 8.dp, vertical = 4.dp))
                         }
                         HorizontalDivider()
                         Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
@@ -307,7 +310,6 @@ fun LoanCalculatorScreen(viewModel: FinanceViewModel? = null) {
                                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.ExtraBold),
                                 color = SemanticRed)
                         }
-                    }
                 }
             }
 
@@ -316,8 +318,11 @@ fun LoanCalculatorScreen(viewModel: FinanceViewModel? = null) {
                 Text("Amortization Schedule",
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
                 Spacer(Modifier.height(8.dp))
-                Card(Modifier.fillMaxWidth(), RoundedCornerShape(12.dp)) {
-                    Column(Modifier.padding(12.dp)) {
+                Column(
+                    Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+                        .padding(16.dp)
+                ) {
                         Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
                             listOf("Month", "Principal", "Interest", "Total EMI").forEach { h ->
                                 Text(h, style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
@@ -348,7 +353,6 @@ fun LoanCalculatorScreen(viewModel: FinanceViewModel? = null) {
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.fillMaxWidth().padding(top = 8.dp), textAlign = TextAlign.Center)
                         }
-                    }
                 }
             }
         }
@@ -360,12 +364,13 @@ fun LoanCalculatorScreen(viewModel: FinanceViewModel? = null) {
 
 @Composable
 fun ResultCard(label: String, value: String, color: Color, modifier: Modifier) {
-    Card(modifier, RoundedCornerShape(12.dp), CardDefaults.cardColors(containerColor = color.copy(alpha = 0.08f))) {
-        Column(Modifier.padding(10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(label, style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
-            Text(value, style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
-                color = color, textAlign = TextAlign.Center)
-        }
+    Column(
+        modifier.clip(RoundedCornerShape(16.dp)).background(color.copy(alpha = 0.08f)).padding(14.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(label, style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
+        Text(value, style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
+            color = color, textAlign = TextAlign.Center)
     }
 }

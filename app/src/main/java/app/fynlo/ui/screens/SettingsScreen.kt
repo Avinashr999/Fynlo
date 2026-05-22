@@ -167,25 +167,25 @@ fun SettingsScreen(
 
         // â"€â"€ Cloud Backup â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
         SettingsSectionLabel("Cloud Backup")
-        Card(
-            Modifier.fillMaxWidth(),
-            RoundedCornerShape(16.dp),
-            CardDefaults.cardColors(containerColor = Green.copy(alpha = 0.08f))
+        Row(
+            Modifier.fillMaxWidth()
+                .clip(RoundedCornerShape(20.dp))
+                .background(Green.copy(alpha = 0.08f))
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                Box(Modifier.size(40.dp).clip(CircleShape).background(Green.copy(0.15f)),
-                    Alignment.Center) {
-                    Icon(Icons.Default.CloudDone, null, Modifier.size(20.dp), tint = Green)
-                }
-                Column {
-                    Text("Auto-Backup Active",
-                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
-                        color = Green)
-                    Text("Data synced to Google Firestore in real-time",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
+            Box(Modifier.size(40.dp).clip(CircleShape).background(Green.copy(0.15f)),
+                Alignment.Center) {
+                Icon(Icons.Default.CloudDone, null, Modifier.size(20.dp), tint = Green)
+            }
+            Column {
+                Text("Auto-Backup Active",
+                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
+                    color = Green)
+                Text("Data synced to Google Firestore in real-time",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
 
@@ -394,8 +394,8 @@ fun SettingsScreen(
             )
         }
 
-        Card(Modifier.fillMaxWidth(), RoundedCornerShape(16.dp)) {
-            Column {
+        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))) {
                 // Main toggle row — tap anywhere to toggle PIN on/off
                 Row(
                     modifier = Modifier
@@ -452,7 +452,6 @@ fun SettingsScreen(
                         Text("Change PIN")
                     }
                 }
-            }
         }
 
         Spacer(Modifier.height(16.dp))
@@ -485,25 +484,26 @@ fun SettingsScreen(
                     }
                 }
             }
-            Card(Modifier.fillMaxWidth(), RoundedCornerShape(16.dp)) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { onToggleBiometric() }
-                        .padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(14.dp)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+                    .clickable { onToggleBiometric() }
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                Box(
+                    Modifier.size(40.dp).clip(CircleShape).background(
+                        if (biometricEnabled) MaterialTheme.colorScheme.primaryContainer
+                        else MaterialTheme.colorScheme.surfaceVariant
+                    ), Alignment.Center
                 ) {
-                    Box(
-                        Modifier.size(40.dp).clip(CircleShape).background(
-                            if (biometricEnabled) MaterialTheme.colorScheme.primaryContainer
-                            else MaterialTheme.colorScheme.surfaceVariant
-                        ), Alignment.Center
-                    ) {
-                        Icon(Icons.Default.Fingerprint, null, Modifier.size(20.dp),
-                            tint = if (biometricEnabled) MaterialTheme.colorScheme.primary
-                                   else MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
+                    Icon(Icons.Default.Fingerprint, null, Modifier.size(20.dp),
+                        tint = if (biometricEnabled) MaterialTheme.colorScheme.primary
+                               else MaterialTheme.colorScheme.onSurfaceVariant)
+                }
                     Column(Modifier.weight(1f)) {
                         Text("Biometric Unlock",
                             style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold))
@@ -531,7 +531,6 @@ fun SettingsScreen(
                         )
                     )
                 }
-            }
         }
 
 
@@ -699,14 +698,13 @@ private fun SettingsSectionLabel(title: String) {
 
 @Composable
 private fun SettingsCard(content: @Composable ColumnScope.() -> Unit) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape    = RoundedCornerShape(16.dp),
-        colors   = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        border   = androidx.compose.foundation.BorderStroke(0.5.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
-    ) {
-        Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp), content = content)
-    }
+    Column(
+        modifier = Modifier.fillMaxWidth()
+            .clip(RoundedCornerShape(20.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        content = content
+    )
 }
 
 @Composable

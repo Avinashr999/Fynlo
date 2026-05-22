@@ -1,10 +1,13 @@
 package app.fynlo.ui.screens
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.draw.clip
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ShowChart
 import androidx.compose.material3.*
@@ -47,46 +50,40 @@ fun NetWorthHistoryScreen(viewModel: FinanceViewModel) {
         PremiumScreenHeader("Net Worth History", "Your wealth over time")
         Column(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp).verticalScroll(rememberScrollState())) {
 
-        // Current net worth card
-        Card(Modifier.fillMaxWidth(), RoundedCornerShape(20.dp),
-            CardDefaults.cardColors(SemanticBlue.copy(alpha = 0.1f))) {
-            Column(Modifier.padding(20.dp)) {
-                Text("Current Net Worth", style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text("$currencySymbol ${String.format(locale, "%,.2f", summary.netWorth)}",
-                    style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold),
-                    color = if (summary.netWorth >= 0) Emerald500 else SemanticRed)
-                Text("${sorted.size} snapshots recorded", style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
+        // Current net worth — flat hero block
+        Column(Modifier.fillMaxWidth().padding(top = 4.dp)) {
+            Text("Current Net Worth", style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("$currencySymbol ${String.format(locale, "%,.2f", summary.netWorth)}",
+                style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.ExtraBold),
+                color = if (summary.netWorth >= 0) Emerald500 else SemanticRed)
+            Text("${sorted.size} snapshots recorded", style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
 
         Spacer(Modifier.height(20.dp))
 
         if (sorted.size < 2) {
-            Card(Modifier.fillMaxWidth(), RoundedCornerShape(16.dp)) {
-                Box(Modifier.fillMaxWidth().padding(32.dp), Alignment.Center) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Icon(
-                            Icons.Default.ShowChart,
-                            contentDescription = null,
-                            modifier = Modifier.size(48.dp),
-                            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
-                        )
-                        Text("Building your history...", style = MaterialTheme.typography.titleMedium.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.Bold))
-                        Text("Open the app daily to track net worth trends",
-                            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            textAlign = androidx.compose.ui.text.style.TextAlign.Center)
-                    }
+            Box(Modifier.fillMaxWidth().padding(32.dp), Alignment.Center) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Icon(
+                        Icons.Default.ShowChart,
+                        contentDescription = null,
+                        modifier = Modifier.size(48.dp),
+                        tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+                    )
+                    Text("Building your history...", style = MaterialTheme.typography.titleMedium.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.Bold))
+                    Text("Open the app daily to track net worth trends",
+                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center)
                 }
             }
         } else {
             Text("Net Worth Trend", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
             Spacer(Modifier.height(8.dp))
 
-            Card(Modifier.fillMaxWidth(), RoundedCornerShape(16.dp),
-                CardDefaults.cardColors(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))) {
-                Column(Modifier.padding(16.dp)) {
+            Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp))
+                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)).padding(16.dp)) {
                     Canvas(modifier = Modifier.fillMaxWidth().height(180.dp)) {
                         val pts = sorted.mapIndexed { i, snap ->
                             val x = i.toFloat() / (sorted.size - 1) * size.width
@@ -117,7 +114,6 @@ fun NetWorthHistoryScreen(viewModel: FinanceViewModel) {
                         Text(sorted.last().date.takeLast(5), style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
-                }
             }
 
             Spacer(Modifier.height(16.dp))
@@ -165,10 +161,12 @@ fun NetWorthHistoryScreen(viewModel: FinanceViewModel) {
 
 @Composable
 private fun StatCard(label: String, value: String, color: Color, modifier: Modifier) {
-    Card(modifier, RoundedCornerShape(12.dp), CardDefaults.cardColors(color.copy(alpha = 0.1f))) {
-        Column(Modifier.padding(10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+    Column(modifier.padding(vertical = 6.dp, horizontal = 2.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Box(Modifier.size(6.dp).clip(CircleShape).background(color))
             Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text(value, style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold), color = color)
         }
+        Spacer(Modifier.height(6.dp))
+        Text(value, style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold), color = color)
     }
 }

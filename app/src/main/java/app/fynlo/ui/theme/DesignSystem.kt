@@ -1,6 +1,7 @@
 package app.fynlo.ui.theme
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -20,7 +21,7 @@ import java.util.Locale
 // Deep Emerald + Carbon — inspired by premium fintech apps
 // All screens use these shared components for consistency
 
-// ── Screen header — dark emerald banner like Net Worth card ───────────────────
+// ── Screen header — flat title on background (matches dashboard) ───────────────
 @Composable
 fun PremiumScreenHeader(
     title: String,
@@ -28,46 +29,30 @@ fun PremiumScreenHeader(
     action: (@Composable () -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
-    Card(
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(bottomStart = 18.dp, bottomEnd = 18.dp,
-            topStart = 0.dp, topEnd = 0.dp),
-        colors = CardDefaults.cardColors(containerColor = Emerald700),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+    Row(
+        modifier = modifier.fillMaxWidth()
+            .padding(start = 20.dp, end = 20.dp, top = 14.dp, bottom = 6.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Box {
-            // Decorative circle top-right
-            Box(
-                Modifier.size(80.dp).clip(CircleShape)
-                    .background(Emerald600.copy(alpha = 0.4f))
-                    .align(Alignment.TopEnd)
+        Column(Modifier.weight(1f)) {
+            Text(
+                title,
+                style = MaterialTheme.typography.headlineMedium.copy(
+                    fontWeight = FontWeight.ExtraBold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
             )
-            Row(
-                modifier = Modifier.fillMaxWidth()
-                    .padding(start = 20.dp, end = 16.dp, top = 18.dp, bottom = 18.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column {
-                    Text(
-                        title,
-                        style = MaterialTheme.typography.headlineSmall.copy(
-                            fontWeight = FontWeight.ExtraBold,
-                            color = Color.White
-                        )
-                    )
-                    if (subtitle.isNotBlank()) {
-                        Spacer(Modifier.height(2.dp))
-                        Text(
-                            subtitle,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = Emerald200.copy(alpha = 0.85f)
-                        )
-                    }
-                }
-                action?.invoke()
+            if (subtitle.isNotBlank()) {
+                Spacer(Modifier.height(2.dp))
+                Text(
+                    subtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
+        action?.invoke()
     }
 }
 
@@ -111,43 +96,33 @@ fun PremiumStatCard(
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null
 ) {
-    val cardMod = if (onClick != null) modifier.then(Modifier.padding(0.dp)) else modifier
-    Surface(
-        modifier = cardMod,
-        shape = RoundedCornerShape(14.dp),
-        color = MaterialTheme.colorScheme.surface,
-        tonalElevation = 0.5.dp,
-        shadowElevation = 0.dp,
-        border = androidx.compose.foundation.BorderStroke(
-            0.5.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)
-        ),
-        onClick = onClick ?: {}
-    ) {
-        Column(Modifier.padding(14.dp)) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                if (icon != null) {
-                    Icon(icon, null, Modifier.size(14.dp), tint = iconTint)
-                } else {
-                    Box(Modifier.size(6.dp).clip(CircleShape).background(iconTint))
-                }
-                Text(
-                    label,
-                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+    val base = if (onClick != null)
+        modifier.clip(RoundedCornerShape(12.dp)).clickable(onClick = onClick)
+    else modifier
+    Column(base.padding(vertical = 6.dp, horizontal = 2.dp)) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            if (icon != null) {
+                Icon(icon, null, Modifier.size(14.dp), tint = iconTint)
+            } else {
+                Box(Modifier.size(6.dp).clip(CircleShape).background(iconTint))
             }
-            Spacer(Modifier.height(6.dp))
             Text(
-                value,
-                style = MaterialTheme.typography.titleMedium.copy(
-                    fontWeight = FontWeight.Bold,
-                    color = valueColor
-                )
+                label,
+                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium),
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
+        Spacer(Modifier.height(6.dp))
+        Text(
+            value,
+            style = MaterialTheme.typography.titleMedium.copy(
+                fontWeight = FontWeight.Bold,
+                color = valueColor
+            )
+        )
     }
 }
 
@@ -158,21 +133,13 @@ fun PremiumCard(
     borderColor: Color = Color.Transparent,
     content: @Composable ColumnScope.() -> Unit
 ) {
-    Card(
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        border = androidx.compose.foundation.BorderStroke(
-            0.5.dp,
-            if (borderColor != Color.Transparent) borderColor
-            else MaterialTheme.colorScheme.outline.copy(alpha = 0.12f)
-        )
-    ) {
-        Column(Modifier.padding(16.dp), content = content)
-    }
+    Column(
+        modifier = modifier.fillMaxWidth()
+            .clip(RoundedCornerShape(20.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+            .padding(16.dp),
+        content = content
+    )
 }
 
 // ── Settings item row — for settings screen ───────────────────────────────────

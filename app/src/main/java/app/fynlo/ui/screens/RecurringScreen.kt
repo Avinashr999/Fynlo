@@ -1,9 +1,12 @@
 package app.fynlo.ui.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -93,18 +96,18 @@ fun RecurringScreen(viewModel: FinanceViewModel) {
         } else {
             LazyColumn(
                 modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
                 contentPadding = PaddingValues(top = 12.dp, bottom = 100.dp)
             ) {
                 if (dueCount > 0) {
                     item {
-                        Card(
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(14.dp),
-                            colors = CardDefaults.cardColors(containerColor = SemanticAmber.copy(alpha = 0.08f)),
-                            border = androidx.compose.foundation.BorderStroke(1.dp, SemanticAmber.copy(alpha = 0.3f))
-                        ) {
-                            Row(Modifier.padding(14.dp).fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
+                            Row(
+                                Modifier.fillMaxWidth()
+                                    .clip(RoundedCornerShape(16.dp))
+                                    .background(SemanticAmber.copy(alpha = 0.08f))
+                                    .padding(14.dp),
+                                Arrangement.SpaceBetween, Alignment.CenterVertically
+                            ) {
                                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                                     Icon(Icons.Default.NotificationImportant, null, Modifier.size(20.dp), tint = SemanticAmber)
                                     Column {
@@ -122,15 +125,18 @@ fun RecurringScreen(viewModel: FinanceViewModel) {
                                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
                                 ) { Text("Run Now", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold)) }
                             }
-                        }
                     }
                 }
-                items(recurringList, key = { it.id }) { r ->
+                itemsIndexed(recurringList, key = { _, it -> it.id }) { index, r ->
                     val nd = nextDue(r)
                     val isDue = !today.isBefore(nd)
                     val daysUntil = ChronoUnit.DAYS.between(today, nd)
                     RecurringCard(r, isDue = isDue, daysUntil = daysUntil,
                         onDelete = { viewModel.deleteRecurringTransaction(r) })
+                    if (index < recurringList.lastIndex) {
+                        HorizontalDivider(thickness = 0.5.dp,
+                            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f))
+                    }
                 }
             }
         }
@@ -154,10 +160,7 @@ private fun RecurringCard(r: RecurringTransaction, isDue: Boolean = false, daysU
             dismissButton = { TextButton(onClick = { showDeleteConfirm = false }) { Text("Cancel") } }
         )
     }
-    Card(Modifier.fillMaxWidth(), RoundedCornerShape(16.dp),
-        CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        ) {
-        Row(Modifier.padding(16.dp).fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
+        Row(Modifier.fillMaxWidth().padding(vertical = 14.dp), Arrangement.SpaceBetween, Alignment.CenterVertically) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Surface(Modifier.size(44.dp), RoundedCornerShape(12.dp),
                     color = if (r.type == "Income") Emerald500.copy(0.1f) else SemanticRed.copy(0.1f)) {
@@ -187,7 +190,6 @@ private fun RecurringCard(r: RecurringTransaction, isDue: Boolean = false, daysU
                 Icon(Icons.Default.Delete, null, tint = Color.Red.copy(0.6f), modifier = Modifier.size(20.dp))
             }
         }
-    }
 }
 
 @Composable

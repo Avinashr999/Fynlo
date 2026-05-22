@@ -3,12 +3,14 @@ package app.fynlo.ui.screens
 import android.content.Intent
 import androidx.core.content.FileProvider
 import androidx.compose.foundation.background
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import app.fynlo.logic.ExportUtility
 import java.io.File
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
@@ -170,12 +172,7 @@ fun MoneyFlowScreen(viewModel: FinanceViewModel) {
         PremiumScreenHeader("Money Flow", "Income & expense patterns")
 
         Column(Modifier.fillMaxSize().padding(horizontal = 16.dp).padding(bottom = 8.dp)) {
-            Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
-                Column {
-                    Text("Money Flow", style = MaterialTheme.typography.labelSmall)  // placeholder
-                    Text("Track every movement in your currency", style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
+            Row(Modifier.fillMaxWidth(), Arrangement.End, Alignment.CenterVertically) {
                 Box {
                     FilledTonalButton(onClick = { showExportMenu = true }, shape = RoundedCornerShape(12.dp)) {
                         Icon(Icons.Default.Share, null, Modifier.size(16.dp))
@@ -225,9 +222,11 @@ fun MoneyFlowScreen(viewModel: FinanceViewModel) {
             item {
                 Text("Account Flows", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
                 Spacer(Modifier.height(8.dp))
-                accountFlows.take(5).forEach { (name, flows) ->
+                accountFlows.take(5).forEachIndexed { index, (name, flows) ->
+                    if (index > 0) {
+                        HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f))
+                    }
                     AccountFlowCard(name, flows.first, flows.second, currencySymbol, locale)
-                    Spacer(Modifier.height(6.dp))
                 }
             }
 
@@ -236,20 +235,23 @@ fun MoneyFlowScreen(viewModel: FinanceViewModel) {
                 val totalOut = allFlows.filter { it.flowType == FlowType.EXPENSE || it.flowType == FlowType.DEBT_REPAY }.sumOf { it.amount }
                 val lentOut  = allFlows.filter { it.flowType == FlowType.LENDING }.sumOf { it.amount }
 
-                Card(Modifier.fillMaxWidth(), RoundedCornerShape(16.dp),
-                    CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f))) {
-                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text("Flow Summary", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold))
-                        HorizontalDivider()
-                        FlowSummaryRow("Total Inflow",   "$currencySymbol${String.format(locale, "%,.0f", totalIn)}",  Emerald500)
-                        FlowSummaryRow("Total Outflow",  "$currencySymbol${String.format(locale, "%,.0f", totalOut)}", SemanticRed)
-                        FlowSummaryRow("Lent Out",       "$currencySymbol${String.format(locale, "%,.0f", lentOut)}",  SemanticAmber)
-                        HorizontalDivider()
-                        FlowSummaryRow("Net Flow",
-                            "$currencySymbol${String.format(locale, "%,.0f", totalIn - totalOut)}",
-                            if (totalIn >= totalOut) Emerald500 else SemanticRed,
-                            bold = true)
-                    }
+                Column(
+                    Modifier.fillMaxWidth()
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text("Flow Summary", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold))
+                    HorizontalDivider()
+                    FlowSummaryRow("Total Inflow",   "$currencySymbol${String.format(locale, "%,.0f", totalIn)}",  Emerald500)
+                    FlowSummaryRow("Total Outflow",  "$currencySymbol${String.format(locale, "%,.0f", totalOut)}", SemanticRed)
+                    FlowSummaryRow("Lent Out",       "$currencySymbol${String.format(locale, "%,.0f", lentOut)}",  SemanticAmber)
+                    HorizontalDivider()
+                    FlowSummaryRow("Net Flow",
+                        "$currencySymbol${String.format(locale, "%,.0f", totalIn - totalOut)}",
+                        if (totalIn >= totalOut) Emerald500 else SemanticRed,
+                        bold = true)
                 }
             }
 
@@ -276,7 +278,10 @@ fun MoneyFlowScreen(viewModel: FinanceViewModel) {
                     }
                 }
             } else {
-                items(filteredFlows, key = { "${it.date}_${it.label}_${it.amount}" }) { flow ->
+                itemsIndexed(filteredFlows, key = { _, it -> "${it.date}_${it.label}_${it.amount}" }) { index, flow ->
+                    if (index > 0) {
+                        HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f))
+                    }
                     FlowEntryCard(flow, currencySymbol, locale)
                 }
             }
@@ -289,70 +294,65 @@ fun MoneyFlowScreen(viewModel: FinanceViewModel) {
 @Composable
 private fun AccountFlowCard(name: String, inflow: Double, outflow: Double, currencySymbol: String, locale: Locale) {
     val net = inflow - outflow
-    Card(Modifier.fillMaxWidth(), RoundedCornerShape(12.dp)) {
-        Row(Modifier.padding(12.dp).fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                Text(name, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
-                    maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text("Net: $currencySymbol${String.format(locale, "%,.0f", net)}",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = if (net >= 0) Emerald500 else SemanticRed)
-            }
-            Spacer(Modifier.width(8.dp))
-            Column(horizontalAlignment = Alignment.End) {
-                Text("▲ $currencySymbol${String.format(locale, "%,.0f", inflow)}", fontSize = 11.sp, color = Emerald500)
-                Text("▼ $currencySymbol${String.format(locale, "%,.0f", outflow)}", fontSize = 11.sp, color = SemanticRed)
-            }
+    Row(Modifier.padding(vertical = 12.dp).fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
+        Column(Modifier.weight(1f)) {
+            Text(name, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text("Net: $currencySymbol${String.format(locale, "%,.0f", net)}",
+                style = MaterialTheme.typography.labelSmall,
+                color = if (net >= 0) Emerald500 else SemanticRed)
+        }
+        Spacer(Modifier.width(8.dp))
+        Column(horizontalAlignment = Alignment.End) {
+            Text("▲ $currencySymbol${String.format(locale, "%,.0f", inflow)}", fontSize = 11.sp, color = Emerald500)
+            Text("▼ $currencySymbol${String.format(locale, "%,.0f", outflow)}", fontSize = 11.sp, color = SemanticRed)
         }
     }
 }
 
 @Composable
 private fun FlowEntryCard(flow: FlowEntry, currencySymbol: String, locale: Locale) {
-    val (bgColor, arrowColor, icon) = when (flow.flowType) {
-        FlowType.INCOME        -> Triple(Emerald500.copy(0.08f), Emerald500, Icons.Default.ArrowDownward)
-        FlowType.EXPENSE       -> Triple(SemanticRed.copy(0.08f), SemanticRed, Icons.Default.ArrowUpward)
-        FlowType.TRANSFER      -> Triple(SemanticBlue.copy(0.08f), SemanticBlue, Icons.AutoMirrored.Filled.ArrowForward)
-        FlowType.LENDING       -> Triple(SemanticAmber.copy(0.08f), SemanticAmber, Icons.Default.Person)
-        FlowType.DEBT_RECEIVED -> Triple(Carbon500.copy(0.08f), Carbon500, Icons.Default.CreditCard)
-        FlowType.DEBT_REPAY    -> Triple(SemanticRed.copy(0.08f), SemanticRed, Icons.Default.CreditCard)
-        FlowType.INVESTMENT    -> Triple(Color(0xFF06B6D4).copy(0.08f), Color(0xFF06B6D4), Icons.Default.TrendingUp)
+    val (arrowColor, icon) = when (flow.flowType) {
+        FlowType.INCOME        -> Pair(Emerald500, Icons.Default.ArrowDownward)
+        FlowType.EXPENSE       -> Pair(SemanticRed, Icons.Default.ArrowUpward)
+        FlowType.TRANSFER      -> Pair(SemanticBlue, Icons.AutoMirrored.Filled.ArrowForward)
+        FlowType.LENDING       -> Pair(SemanticAmber, Icons.Default.Person)
+        FlowType.DEBT_RECEIVED -> Pair(Carbon500, Icons.Default.CreditCard)
+        FlowType.DEBT_REPAY    -> Pair(SemanticRed, Icons.Default.CreditCard)
+        FlowType.INVESTMENT    -> Pair(Color(0xFF06B6D4), Icons.Default.TrendingUp)
     }
 
-    Card(Modifier.fillMaxWidth(), RoundedCornerShape(12.dp),
-        CardDefaults.cardColors(containerColor = bgColor)) {
-        Row(Modifier.padding(12.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Surface(Modifier.size(36.dp), RoundedCornerShape(8.dp), color = arrowColor.copy(0.15f)) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(icon, null, Modifier.size(18.dp), tint = arrowColor)
-                }
+    Row(Modifier.padding(vertical = 12.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Surface(Modifier.size(36.dp), RoundedCornerShape(8.dp), color = arrowColor.copy(0.15f)) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(icon, null, Modifier.size(18.dp), tint = arrowColor)
             }
-            Spacer(Modifier.width(10.dp))
-
-            Column(Modifier.weight(1f)) {
-                Row(verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(flow.from, style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
-                        maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, false))
-                    Icon(Icons.AutoMirrored.Filled.ArrowForward, null, Modifier.size(12.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text(flow.to, style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
-                        color = arrowColor, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f, false))
-                }
-                Text(flow.label, style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1,
-                    overflow = TextOverflow.Ellipsis)
-                Text(flow.date, style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.outlineVariant)
-            }
-
-            Spacer(Modifier.width(8.dp))
-
-            Text("$currencySymbol${String.format(locale, "%,.0f", flow.amount)}",
-                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
-                color = arrowColor)
         }
+        Spacer(Modifier.width(10.dp))
+
+        Column(Modifier.weight(1f)) {
+            Row(verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(flow.from, style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
+                    maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, false))
+                Icon(Icons.AutoMirrored.Filled.ArrowForward, null, Modifier.size(12.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(flow.to, style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
+                    color = arrowColor, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, false))
+            }
+            Text(flow.label, style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1,
+                overflow = TextOverflow.Ellipsis)
+            Text(flow.date, style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.outlineVariant)
+        }
+
+        Spacer(Modifier.width(8.dp))
+
+        Text("$currencySymbol${String.format(locale, "%,.0f", flow.amount)}",
+            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+            color = arrowColor)
     }
 }
 

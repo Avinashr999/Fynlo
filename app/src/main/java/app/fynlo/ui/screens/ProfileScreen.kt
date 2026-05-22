@@ -1,9 +1,11 @@
 package app.fynlo.ui.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.draw.clip
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Cloud
@@ -58,15 +60,12 @@ fun ProfileScreen(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         // ── Account card ──────────────────────────────────────────────────────
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape    = RoundedCornerShape(16.dp),
-            colors   = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            border   = androidx.compose.foundation.BorderStroke(
-                0.5.dp, if (isGoogle) SemanticBlue.copy(alpha = 0.3f)
-                else MaterialTheme.colorScheme.outline.copy(alpha = 0.12f))
+        Column(
+            modifier = Modifier.fillMaxWidth()
+                .clip(RoundedCornerShape(20.dp))
+                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+                .padding(16.dp)
         ) {
-            Column(modifier = Modifier.padding(16.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
                         if (isGoogle) Icons.Default.AccountCircle else Icons.Default.Person,
@@ -90,22 +89,17 @@ fun ProfileScreen(
                     }
                 }
             }
-        }
 
         Spacer(Modifier.height(12.dp))
 
         // ── Sync status card ──────────────────────────────────────────────────
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape    = RoundedCornerShape(16.dp),
-            colors   = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.3f)
-            )
+        Row(
+            modifier = Modifier.fillMaxWidth()
+                .clip(RoundedCornerShape(20.dp))
+                .background(MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.3f))
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
-                modifier          = Modifier.padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
                 Icon(Icons.Default.Cloud, contentDescription = null, tint = MaterialTheme.colorScheme.secondary)
                 Spacer(Modifier.width(12.dp))
                 Column {
@@ -118,16 +112,16 @@ fun ProfileScreen(
                     )
                 }
             }
-        }
 
         Spacer(Modifier.height(16.dp))
 
         // ── Security card ─────────────────────────────────────────────────────
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape    = RoundedCornerShape(16.dp)
+        Column(
+            modifier = Modifier.fillMaxWidth()
+                .clip(RoundedCornerShape(20.dp))
+                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+                .padding(16.dp)
         ) {
-            Column(modifier = Modifier.padding(16.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Default.Lock, contentDescription = null, tint = MaterialTheme.colorScheme.secondary)
                     Spacer(Modifier.width(12.dp))
@@ -141,7 +135,6 @@ fun ProfileScreen(
                     shape    = RoundedCornerShape(8.dp)
                 ) { Text("Change Login PIN") }
             }
-        }
 
         Spacer(Modifier.height(24.dp))
 

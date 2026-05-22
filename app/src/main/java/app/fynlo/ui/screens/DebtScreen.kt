@@ -1,9 +1,13 @@
 package app.fynlo.ui.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Notes
@@ -89,7 +93,6 @@ val debts by viewModel.debts.collectAsState()
         Box(modifier = Modifier.weight(1f)) {
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp).imePadding(),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
             contentPadding = PaddingValues(bottom = 100.dp)
         ) {
         item {
@@ -110,26 +113,23 @@ val debts by viewModel.debts.collectAsState()
             val today = java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd"))
             val totalPrincipal = debts.sumOf { maxOf(0.0, it.amount - it.paid) }
             val overdueCount   = debts.count { it.due.isNotBlank() && it.due < today && it.paid < it.amount }
-            Card(Modifier.fillMaxWidth().padding(bottom = 12.dp), RoundedCornerShape(16.dp),
-                CardDefaults.cardColors(SemanticRed.copy(alpha = 0.08f))) {
-                Row(Modifier.padding(16.dp).fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
-                    Column {
-                        Text("Total Outstanding", style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text("$currencySymbol${String.format(java.util.Locale.getDefault(), "%,.0f", totalPrincipal)}",
-                            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-                            color = SemanticRed)
-                        Text("${debts.size} debt${if (debts.size != 1) "s" else ""}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                    if (overdueCount > 0) {
-                        Surface(color = SemanticRed.copy(alpha = 0.15f), shape = RoundedCornerShape(8.dp)) {
-                            Text("$overdueCount OVERDUE",
-                                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-                                color = SemanticRed,
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp))
-                        }
+            Row(Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 16.dp), Arrangement.SpaceBetween, Alignment.CenterVertically) {
+                Column {
+                    Text("Total Outstanding", style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("$currencySymbol${String.format(java.util.Locale.getDefault(), "%,.0f", totalPrincipal)}",
+                        style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.ExtraBold),
+                        color = SemanticRed)
+                    Text("${debts.size} debt${if (debts.size != 1) "s" else ""}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                if (overdueCount > 0) {
+                    Surface(color = SemanticRed.copy(alpha = 0.15f), shape = RoundedCornerShape(10.dp)) {
+                        Text("$overdueCount OVERDUE",
+                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                            color = SemanticRed,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp))
                     }
                 }
             }
@@ -148,12 +148,20 @@ val debts by viewModel.debts.collectAsState()
             OutlinedTextField(
                 value         = searchQuery,
                 onValueChange = { searchQuery = it; expanded = true },
-                label         = { Text("Search debts...") },
+                placeholder   = { Text("Search debts…") },
                 leadingIcon   = { Icon(Icons.Default.Search, null) },
                 trailingIcon  = { if (searchQuery.isNotBlank()) IconButton(onClick = { searchQuery = ""; expanded = false }) { Icon(Icons.Default.Clear, null, Modifier.size(18.dp)) } },
                 singleLine    = true,
                 modifier      = Modifier.fillMaxWidth().menuAnchor(androidx.compose.material3.ExposedDropdownMenuAnchorType.PrimaryNotEditable, true),
-                shape         = RoundedCornerShape(12.dp)
+                shape         = RoundedCornerShape(16.dp),
+                colors        = OutlinedTextFieldDefaults.colors(
+                    focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+                    focusedBorderColor = Emerald500,
+                    unfocusedBorderColor = Color.Transparent,
+                    focusedLeadingIconColor = Emerald500,
+                    cursorColor = Emerald500
+                )
             )
             ExposedDropdownMenu(expanded = expanded && suggestions.isNotEmpty(), onDismissRequest = { expanded = false }) {
                 suggestions.forEach { name ->
@@ -169,7 +177,7 @@ val debts by viewModel.debts.collectAsState()
         if (filteredDebts.isEmpty()) {
             item { EmptyDebtState(onAdd = { showAddDialog = true }) }
         } else {
-            items(filteredDebts, key = { it.id }) { debt ->
+            itemsIndexed(filteredDebts, key = { _, d -> d.id }) { index, debt ->
                     DebtCard(
                         debt = debt,
                         currencySymbol = currencySymbol,
@@ -177,6 +185,10 @@ val debts by viewModel.debts.collectAsState()
                         onDelete = { viewModel.deleteDebt(debt) },
                         onPay = { payingDebt = debt }
                     )
+                    if (index < filteredDebts.lastIndex) {
+                        HorizontalDivider(thickness = 0.5.dp,
+                            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f))
+                    }
                 }
             }
         }
@@ -214,27 +226,22 @@ fun DebtCard(debt: Debt, currencySymbol: String = "₹", onEdit: () -> Unit, onD
     val bothPortions   = if (debt.intType == "Both") InterestEngine.calcBothPortions(
         debt.amount, debt.rate, debt.date, debt.due, debt.paid
     ) else null
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        Icons.Default.CreditCard, 
-                        contentDescription = null, 
-                        tint = SemanticRed,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(Modifier.width(8.dp))
+                    Box(
+                        Modifier.size(36.dp).clip(CircleShape).background(SemanticRed.copy(alpha = 0.15f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(Icons.Default.CreditCard, null, tint = SemanticRed, modifier = Modifier.size(18.dp))
+                    }
+                    Spacer(Modifier.width(10.dp))
                     Text(
-                        debt.name, 
+                        debt.name,
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
                     )
                 }
@@ -277,43 +284,36 @@ fun DebtCard(debt: Debt, currencySymbol: String = "₹", onEdit: () -> Unit, onD
 
             // For "Both" type show SI + CI split
             if (bothPortions != null) {
-                Spacer(Modifier.height(6.dp))
-                Surface(color = SemanticRed.copy(alpha = 0.08f), shape = RoundedCornerShape(8.dp)) {
-                    Column(Modifier.fillMaxWidth().padding(10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
-                            Text("➔ SI (until due date)", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Text("$currencySymbol ${String.format(locale, "%,.0f", bothPortions.first)}", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold))
-                        }
-                        Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
-                            Text("➔ CI (after due date)", style = MaterialTheme.typography.labelSmall, color = SemanticRed)
-                            Text("$currencySymbol ${String.format(locale, "%,.0f", bothPortions.second)}", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold), color = SemanticRed)
-                        }
+                Spacer(Modifier.height(10.dp))
+                Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
+                        Text("➔ SI (until due date)", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("$currencySymbol ${String.format(locale, "%,.0f", bothPortions.first)}", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold))
+                    }
+                    Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
+                        Text("➔ CI (after due date)", style = MaterialTheme.typography.labelSmall, color = SemanticRed)
+                        Text("$currencySymbol ${String.format(locale, "%,.0f", bothPortions.second)}", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold), color = SemanticRed)
                     }
                 }
             }
 
             // Days elapsed strip
-            Spacer(Modifier.height(8.dp))
-            Surface(
-                color = SemanticRed.copy(alpha = 0.08f),
-                shape = RoundedCornerShape(8.dp)
+            Spacer(Modifier.height(12.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("Days Elapsed", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text("$daysElapsed days", style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold))
-                    }
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("Per Day Interest", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text("$currencySymbol ${String.format(locale, "%,.2f", perDayInterest)}", style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold), color = SemanticRed)
-                    }
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("Paid So Far", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text("$currencySymbol ${String.format(locale, "%,.0f", debt.paid)}", style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold), color = MaterialTheme.colorScheme.primary)
-                    }
+                Column(horizontalAlignment = Alignment.Start) {
+                    Text("Days Elapsed", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("$daysElapsed days", style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold))
+                }
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("Per Day Interest", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("$currencySymbol ${String.format(locale, "%,.2f", perDayInterest)}", style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold), color = SemanticRed)
+                }
+                Column(horizontalAlignment = Alignment.End) {
+                    Text("Paid So Far", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("$currencySymbol ${String.format(locale, "%,.0f", debt.paid)}", style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold), color = MaterialTheme.colorScheme.primary)
                 }
             }
 
@@ -342,7 +342,6 @@ fun DebtCard(debt: Debt, currencySymbol: String = "₹", onEdit: () -> Unit, onD
                 }
             }
         }
-    }
 }
 
 

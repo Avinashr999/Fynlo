@@ -4,8 +4,10 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.draw.clip
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ChevronLeft
@@ -178,15 +180,14 @@ fun InterestIncomeScreen(
                 )
             }
 
-            // ── Chart card ───────────────────────────────────────────────────
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                )
+            // ── Chart block ──────────────────────────────────────────────────
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+                    .padding(16.dp)
             ) {
-                Column(modifier = Modifier.padding(16.dp)) {
                     // Legend
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -258,19 +259,15 @@ fun InterestIncomeScreen(
                         }
                     }
                 }
-            }
 
             // ── Peak month callout ───────────────────────────────────────────
             if (peakMonth != null && peakMonth.interestEarned > 0) {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = barColor.copy(alpha = 0.08f)
-                    )
-                ) {
                     Row(
-                        modifier = Modifier.padding(16.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(barColor.copy(alpha = 0.08f))
+                            .padding(16.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
@@ -293,7 +290,6 @@ fun InterestIncomeScreen(
                             )
                         )
                     }
-                }
             }
 
             // ── Monthly breakdown table ──────────────────────────────────────
@@ -386,30 +382,28 @@ private fun DrawScope.drawInterestChart(
 
 @Composable
 private fun InterestStatCard(label: String, value: String, color: Color, modifier: Modifier) {
-    Card(
-        modifier = modifier,
-        shape    = RoundedCornerShape(12.dp),
-        colors   = CardDefaults.cardColors(
-            containerColor = color.copy(alpha = 0.08f)
-        )
+    Column(
+        modifier = modifier.padding(vertical = 6.dp, horizontal = 2.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
-        Column(
-            modifier = Modifier.padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(2.dp)
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
+            Box(Modifier.size(6.dp).clip(CircleShape).background(color))
             Text(
                 label,
                 style = MaterialTheme.typography.labelSmall,
-                color = color
-            )
-            Text(
-                value,
-                style = MaterialTheme.typography.titleSmall.copy(
-                    fontWeight = FontWeight.ExtraBold,
-                    color      = color
-                )
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
+        Text(
+            value,
+            style = MaterialTheme.typography.titleSmall.copy(
+                fontWeight = FontWeight.ExtraBold,
+                color      = color
+            )
+        )
     }
 }
 
@@ -441,14 +435,7 @@ private fun MonthRow(
 ) {
     val progress = if (maxInterest > 0) (month.interestEarned / maxInterest).toFloat() else 0f
 
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(bottom = 6.dp),
-        shape  = RoundedCornerShape(10.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-    ) {
-        Column(modifier = Modifier.padding(12.dp)) {
+    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -500,8 +487,8 @@ private fun MonthRow(
                     trackColor  = Emerald500.copy(alpha = 0.12f)
                 )
             }
-        }
     }
+    HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f))
 }
 
 private fun fmtK(v: Double, locale: Locale): String = when {

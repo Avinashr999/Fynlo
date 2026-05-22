@@ -2,6 +2,8 @@ package app.fynlo.ui.screens
 
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -16,6 +18,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -282,18 +285,26 @@ fun StepFundingSource(
         Text("How was this funded?", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         
         sources.forEach { src ->
-            Surface(
-                onClick = { onSourceChange(src) },
-                shape = RoundedCornerShape(12.dp),
-                color = if (selected == src) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
-                border = if (selected == src) androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null,
-                modifier = Modifier.fillMaxWidth()
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(
+                        if (selected == src) MaterialTheme.colorScheme.primaryContainer
+                        else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                    )
+                    .border(
+                        width = if (selected == src) 2.dp else 0.dp,
+                        color = if (selected == src) MaterialTheme.colorScheme.primary else Color.Transparent,
+                        shape = RoundedCornerShape(12.dp)
+                    )
+                    .clickable { onSourceChange(src) }
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                    RadioButton(selected = (selected == src), onClick = { onSourceChange(src) })
-                    Spacer(Modifier.width(12.dp))
-                    Text(src, style = MaterialTheme.typography.bodyLarge)
-                }
+                RadioButton(selected = (selected == src), onClick = { onSourceChange(src) })
+                Spacer(Modifier.width(12.dp))
+                Text(src, style = MaterialTheme.typography.bodyLarge)
             }
         }
 
@@ -337,16 +348,17 @@ fun StepFundingSource(
                 )
             }
         } else {
-            Surface(
-                color = SemanticAmber.copy(alpha = 0.12f),
-                shape = RoundedCornerShape(12.dp)
+            Row(
+                Modifier.fillMaxWidth()
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(SemanticAmber.copy(alpha = 0.12f))
+                    .padding(14.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Info, null, tint = SemanticAmber)
-                    Spacer(Modifier.width(12.dp))
-                    Text("Choosing this will NOT deduct money from your current accounts. Perfect for historical data.", 
-                        style = MaterialTheme.typography.bodySmall, color = SemanticAmber)
-                }
+                Icon(Icons.Default.Info, null, tint = SemanticAmber)
+                Spacer(Modifier.width(12.dp))
+                Text("Choosing this will NOT deduct money from your current accounts. Perfect for historical data.",
+                    style = MaterialTheme.typography.bodySmall, color = SemanticAmber)
             }
         }
     }
@@ -362,11 +374,13 @@ fun StepVerification(
     Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
         Text("Double-Entry Verification", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+        Column(
+            Modifier.fillMaxWidth()
+                .clip(RoundedCornerShape(20.dp))
+                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+                .padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 EntryRow("Debit (Asset)", assetName, "+ ₹${String.format("%,.0f", amt)}", Emerald500)
                 
                 val creditLabel = when(source) {
@@ -383,9 +397,8 @@ fun StepVerification(
                     Text("₹ 0 (Neutral)", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
                 }
             }
-        }
-        
-        Text("By clicking confirm, the app will execute these balanced ledger entries simultaneously to maintain financial integrity.", 
+
+        Text("By clicking confirm, the app will execute these balanced ledger entries simultaneously to maintain financial integrity.",
             style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }

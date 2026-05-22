@@ -11,6 +11,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import androidx.compose.ui.draw.clip
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
@@ -928,24 +929,27 @@ fun EmiCalculatorDialog(onDismiss: () -> Unit) {
 
                 if (emi != null) {
                     HorizontalDivider()
-                    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)),
-                        shape = RoundedCornerShape(12.dp)) {
-                        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
-                                Text("Monthly EMI", style = MaterialTheme.typography.bodyMedium)
-                                Text("₹ ${String.format(locale, "%,.2f", emi)}",
-                                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
-                                    color = MaterialTheme.colorScheme.primary)
-                            }
-                            Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
-                                Text("Total Amount", style = MaterialTheme.typography.bodyMedium)
-                                Text("₹ ${String.format(locale, "%,.2f", total!!)}", style = MaterialTheme.typography.bodyMedium)
-                            }
-                            Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
-                                Text("Total Interest", style = MaterialTheme.typography.bodyMedium)
-                                Text("₹ ${String.format(locale, "%,.2f", interest!!)}",
-                                    style = MaterialTheme.typography.bodyMedium, color = SemanticRed)
-                            }
+                    Column(
+                        Modifier.fillMaxWidth()
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+                            .padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
+                            Text("Monthly EMI", style = MaterialTheme.typography.bodyMedium)
+                            Text("₹ ${String.format(locale, "%,.2f", emi)}",
+                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                                color = MaterialTheme.colorScheme.primary)
+                        }
+                        Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
+                            Text("Total Amount", style = MaterialTheme.typography.bodyMedium)
+                            Text("₹ ${String.format(locale, "%,.2f", total!!)}", style = MaterialTheme.typography.bodyMedium)
+                        }
+                        Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
+                            Text("Total Interest", style = MaterialTheme.typography.bodyMedium)
+                            Text("₹ ${String.format(locale, "%,.2f", interest!!)}",
+                                style = MaterialTheme.typography.bodyMedium, color = SemanticRed)
                         }
                     }
                 }

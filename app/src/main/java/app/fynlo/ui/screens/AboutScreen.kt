@@ -37,16 +37,14 @@ fun AboutScreen() {
         )
 
         // ── App identity card ────────────────────────────────────────────────
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape    = RoundedCornerShape(20.dp),
-            colors   = CardDefaults.cardColors(containerColor = green.copy(alpha = 0.08f))
+        Row(
+            modifier = Modifier.fillMaxWidth()
+                .clip(RoundedCornerShape(20.dp))
+                .background(green.copy(alpha = 0.08f))
+                .padding(20.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Row(
-                modifier          = Modifier.padding(20.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
                 Box(
                     modifier        = Modifier.size(56.dp).clip(CircleShape).background(green.copy(alpha = 0.15f)),
                     contentAlignment = Alignment.Center
@@ -60,15 +58,14 @@ fun AboutScreen() {
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(Modifier.height(4.dp))
-                    Surface(color = green.copy(alpha = 0.12f), shape = RoundedCornerShape(6.dp)) {
-                        Text("v${BuildConfig.VERSION_NAME}",
-                            style    = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                            color    = green,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp))
-                    }
+                    Text("v${BuildConfig.VERSION_NAME}",
+                        style    = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                        color    = green,
+                        modifier = Modifier.clip(RoundedCornerShape(6.dp))
+                            .background(green.copy(alpha = 0.12f))
+                            .padding(horizontal = 8.dp, vertical = 3.dp))
                 }
             }
-        }
 
         Spacer(Modifier.height(20.dp))
 
@@ -88,11 +85,12 @@ fun AboutScreen() {
             Icons.Default.Lock              to "PIN + biometric app lock"
         )
 
-        Card(
-            Modifier.fillMaxWidth(), RoundedCornerShape(16.dp),
-            CardDefaults.cardColors(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+        Column(
+            Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp))
+                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 features.forEach { (icon, desc) ->
                     Row(
                         verticalAlignment     = Alignment.CenterVertically,
@@ -103,7 +101,6 @@ fun AboutScreen() {
                     }
                 }
             }
-        }
 
         Spacer(Modifier.height(20.dp))
 
@@ -128,23 +125,20 @@ fun AboutScreen() {
         Spacer(Modifier.height(20.dp))
 
         // ── Footer ───────────────────────────────────────────────────────────
-        Card(
-            Modifier.fillMaxWidth(), RoundedCornerShape(16.dp),
-            CardDefaults.cardColors(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+        Column(
+            Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp))
+                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            Column(
-                Modifier.padding(16.dp).fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                Icon(Icons.Default.Favorite, null, Modifier.size(20.dp), tint = SemanticRed)
-                Text("Made with care for personal finance",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text("Build ${BuildConfig.VERSION_CODE}",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.outlineVariant)
-            }
+            Icon(Icons.Default.Favorite, null, Modifier.size(20.dp), tint = SemanticRed)
+            Text("Made with care for personal finance",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("Build ${BuildConfig.VERSION_CODE}",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.outlineVariant)
         }
 
         Spacer(Modifier.height(100.dp))
@@ -158,21 +152,21 @@ private fun AboutInfoCard(
     body: String,
     color: Color
 ) {
-    Card(
-        Modifier.fillMaxWidth(), RoundedCornerShape(16.dp),
-        CardDefaults.cardColors(containerColor = color.copy(alpha = 0.06f))
+    Column(
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp))
+            .background(color.copy(alpha = 0.06f))
+            .padding(14.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Icon(icon, null, Modifier.size(20.dp), tint = color)
-                Text(title,
-                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                    color = color)
-            }
-            Text(body,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Row(verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Icon(icon, null, Modifier.size(20.dp), tint = color)
+            Text(title,
+                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                color = color)
         }
+        Text(body,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }

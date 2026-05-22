@@ -3,6 +3,7 @@ package app.fynlo.ui.screens
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -49,7 +50,7 @@ fun GoalScreen(viewModel: FinanceViewModel) {
             modifier = Modifier
                 .fillMaxSize()
                 .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
             contentPadding = PaddingValues(bottom = 100.dp)
         ) {
             item {
@@ -77,8 +78,12 @@ fun GoalScreen(viewModel: FinanceViewModel) {
                     }
                 }
             } else {
-                items(goals, key = { it.id }) { goal ->
+                itemsIndexed(goals, key = { _, g -> g.id }) { index, goal ->
                     GoalCard(goal, currencySymbol, onDelete = { viewModel.deleteGoal(goal) })
+                    if (index < goals.lastIndex) {
+                        HorizontalDivider(thickness = 0.5.dp,
+                            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f))
+                    }
                 }
             }
         }
@@ -114,14 +119,7 @@ fun GoalCard(goal: Goal, currencySymbol: String, onDelete: () -> Unit) {
     val isComplete  = pct >= 100
     val accentColor = if (isComplete) Emerald500 else MaterialTheme.colorScheme.primary
 
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape    = RoundedCornerShape(16.dp),
-        colors   = CardDefaults.cardColors(
-            containerColor = accentColor.copy(alpha = 0.06f)
-        )
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 14.dp)) {
             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
                 Row(verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -161,7 +159,6 @@ fun GoalCard(goal: Goal, currencySymbol: String, onDelete: () -> Unit) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
-    }
 }
 
 @Composable

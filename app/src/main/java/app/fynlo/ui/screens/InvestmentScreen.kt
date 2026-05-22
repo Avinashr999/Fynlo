@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -268,10 +269,9 @@ val currentProject by viewModel.currentProject.collectAsState()
         } else {
             LazyColumn(
                 modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
                 contentPadding = PaddingValues(bottom = 100.dp)
             ) {
-                items(investments, key = { it.id }) { invest ->
+                itemsIndexed(investments, key = { _, i -> i.id }) { index, invest ->
                     InvestmentCard(
                         invest   = invest,
                         currencySymbol = currencySymbol,
@@ -281,6 +281,10 @@ val currentProject by viewModel.currentProject.collectAsState()
                         onUpdate = { updatingInvest = invest },
                         onViewHistory = { viewingHistory = invest }
                     )
+                    if (index < investments.lastIndex) {
+                        HorizontalDivider(thickness = 0.5.dp,
+                            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f))
+                    }
                 }
             }
         }
@@ -299,13 +303,7 @@ fun InvestmentCard(invest: Investment, currencySymbol: String = "₹", onDelete:
     val growthPercent = if (invest.invested > 0) (growth / invest.invested) * 100 else 0.0
     val isProfit = growth >= 0
 
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp)) {
             // ── Header: name + type badge + action icons ──────────────────────
             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
@@ -424,7 +422,6 @@ fun InvestmentCard(invest: Investment, currencySymbol: String = "₹", onDelete:
                 }
             }
         }
-    }
 }
 
 @Composable

@@ -132,100 +132,74 @@ fun ReportsHubScreen(
             }
         }
 
-        Card(
-            Modifier.fillMaxWidth().padding(bottom = 12.dp),
-            RoundedCornerShape(16.dp),
-            CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
-        ) {
-            Column(Modifier.padding(12.dp)) {
-                Text("Date Range", style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(bottom = 8.dp))
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    items(ranges, key = { it }) { r ->
-                        FilterChip(
-                            selected = selectedRange == r,
-                            onClick  = { selectedRange = r },
-                            label    = { Text(r, style = MaterialTheme.typography.labelSmall) },
-                            colors   = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = green.copy(alpha = 0.2f),
-                                selectedLabelColor     = green
-                            )
+        Column(Modifier.fillMaxWidth().padding(bottom = 16.dp)) {
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                items(ranges, key = { it }) { r ->
+                    FilterChip(
+                        selected = selectedRange == r,
+                        onClick  = { selectedRange = r },
+                        label    = { Text(r, style = MaterialTheme.typography.labelSmall) },
+                        shape    = RoundedCornerShape(12.dp),
+                        colors   = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = green.copy(alpha = 0.16f),
+                            selectedLabelColor     = green
                         )
-                    }
+                    )
                 }
-                Text(
-                    "${fromDate.format(DateTimeFormatter.ofPattern("dd MMM yyyy"))} -> ${toDate.format(DateTimeFormatter.ofPattern("dd MMM yyyy"))}",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 6.dp)
-                )
             }
+            Text(
+                "${fromDate.format(DateTimeFormatter.ofPattern("dd MMM yyyy"))} → ${toDate.format(DateTimeFormatter.ofPattern("dd MMM yyyy"))}",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 8.dp)
+            )
         }
 
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            Surface(Modifier.weight(1f), RoundedCornerShape(16.dp),
-                color = MaterialTheme.colorScheme.surface,
-                border = androidx.compose.foundation.BorderStroke(0.5.dp, green.copy(alpha = 0.25f))) {
-                Column(Modifier.padding(14.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Box(Modifier.size(6.dp).clip(CircleShape).background(green))
-                        Text("Income", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium), color = green)
-                    }
-                    Spacer(Modifier.height(6.dp))
-                    AnimatedContent(income, label = "income",
-                        transitionSpec = { fadeIn() togetherWith fadeOut() }) { v ->
-                        Text(fmt(v), style = MaterialTheme.typography.titleMedium.copy(
-                            fontWeight = FontWeight.ExtraBold), color = MaterialTheme.colorScheme.onSurface)
-                    }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(28.dp)) {
+            Column(Modifier.weight(1f)) {
+                Row(verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Box(Modifier.size(6.dp).clip(CircleShape).background(green))
+                    Text("Income", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium), color = green)
+                }
+                Spacer(Modifier.height(4.dp))
+                AnimatedContent(income, label = "income",
+                    transitionSpec = { fadeIn() togetherWith fadeOut() }) { v ->
+                    Text(fmt(v), style = MaterialTheme.typography.titleLarge.copy(
+                        fontWeight = FontWeight.ExtraBold), color = MaterialTheme.colorScheme.onSurface)
                 }
             }
-            Surface(Modifier.weight(1f), RoundedCornerShape(16.dp),
-                color = MaterialTheme.colorScheme.surface,
-                border = androidx.compose.foundation.BorderStroke(0.5.dp, red.copy(alpha = 0.25f))) {
-                Column(Modifier.padding(14.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Box(Modifier.size(6.dp).clip(CircleShape).background(red))
-                        Text("Expenses", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium), color = red)
-                    }
-                    Spacer(Modifier.height(6.dp))
-                    AnimatedContent(expense, label = "expense",
-                        transitionSpec = { fadeIn() togetherWith fadeOut() }) { v ->
-                        Text(fmt(v), style = MaterialTheme.typography.titleMedium.copy(
-                            fontWeight = FontWeight.ExtraBold), color = MaterialTheme.colorScheme.onSurface)
-                    }
+            Column(Modifier.weight(1f)) {
+                Row(verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Box(Modifier.size(6.dp).clip(CircleShape).background(red))
+                    Text("Expenses", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium), color = red)
+                }
+                Spacer(Modifier.height(4.dp))
+                AnimatedContent(expense, label = "expense",
+                    transitionSpec = { fadeIn() togetherWith fadeOut() }) { v ->
+                    Text(fmt(v), style = MaterialTheme.typography.titleLarge.copy(
+                        fontWeight = FontWeight.ExtraBold), color = MaterialTheme.colorScheme.onSurface)
                 }
             }
         }
 
         Spacer(Modifier.height(10.dp))
 
-        Card(Modifier.fillMaxWidth(), RoundedCornerShape(16.dp),
-            CardDefaults.cardColors(containerColor = Emerald700),
-            border = null) {
-            Box {
-                Box(Modifier.size(80.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.06f)).align(Alignment.TopEnd))
-                Row(Modifier.fillMaxWidth().padding(18.dp), Arrangement.SpaceBetween, Alignment.CenterVertically) {
-                    Column {
-                        Text("Net Cash Flow", style = MaterialTheme.typography.labelSmall,
-                            color = Color.White.copy(alpha = 0.7f))
-                        Text(fmt(netFlow),
-                            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold),
-                            color = Color.White)
-                    }
-                    Column(horizontalAlignment = Alignment.End) {
-                        Text("Savings Rate", style = MaterialTheme.typography.labelSmall,
-                            color = Color.White.copy(alpha = 0.7f))
-                        Surface(shape = RoundedCornerShape(8.dp), color = Color.White.copy(alpha = 0.15f)) {
-                            Text("${String.format(locale, "%.1f", savings.coerceAtLeast(0.0))}%",
-                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.ExtraBold),
-                                color = Color.White,
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp))
-                        }
-                    }
-                }
+        Row(Modifier.fillMaxWidth().padding(top = 4.dp), Arrangement.SpaceBetween, Alignment.CenterVertically) {
+            Column {
+                Text("Net Cash Flow", style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(fmt(netFlow),
+                    style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.ExtraBold),
+                    color = if (netFlow < 0) red else green)
+            }
+            Column(horizontalAlignment = Alignment.End) {
+                Text("Savings Rate", style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("${String.format(locale, "%.1f", savings.coerceAtLeast(0.0))}%",
+                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold),
+                    color = green)
             }
         }
 
@@ -233,9 +207,8 @@ fun ReportsHubScreen(
 
         PremiumSectionLabel("Net Worth Trend")
         Spacer(Modifier.height(8.dp))
-        Card(Modifier.fillMaxWidth(), RoundedCornerShape(16.dp),
-            CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))) {
-            Column(Modifier.padding(16.dp)) {
+        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)).padding(16.dp)) {
                 if (sortedSnaps.size >= 2) {
                     val minV = sortedSnaps.minOf { it.netWorth }
                     val maxV = sortedSnaps.maxOf { it.netWorth }
@@ -275,7 +248,6 @@ fun ReportsHubScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
-            }
         }
 
         Spacer(Modifier.height(20.dp))
@@ -295,9 +267,7 @@ fun ReportsHubScreen(
             val expColors = listOf(SemanticRed, SemanticAmber, Carbon500,
                 Color(0xFFEC4899), Color(0xFF06B6D4), Color(0xFF84CC16))
             val maxExp = expByCat.firstOrNull()?.value ?: 1.0
-            Card(Modifier.fillMaxWidth(), RoundedCornerShape(16.dp),
-                CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))) {
-                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                     expByCat.take(6).forEachIndexed { i, (cat, amt) ->
                         val frac = (amt / maxExp).toFloat().coerceIn(0f, 1f)
                         val color = expColors[i % expColors.size]
@@ -319,7 +289,6 @@ fun ReportsHubScreen(
                             }
                         }
                     }
-                }
             }
             Spacer(Modifier.height(20.dp))
         }
@@ -337,9 +306,7 @@ fun ReportsHubScreen(
             }
             Spacer(Modifier.height(8.dp))
             val incColors = listOf(green, SemanticBlue, Emerald500, Emerald500)
-            Card(Modifier.fillMaxWidth(), RoundedCornerShape(16.dp),
-                CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))) {
-                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     incByCat.take(5).forEachIndexed { i, (cat, amt) ->
                         Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -352,7 +319,6 @@ fun ReportsHubScreen(
                                 fontWeight = FontWeight.SemiBold), color = incColors[i % incColors.size])
                         }
                     }
-                }
             }
             Spacer(Modifier.height(20.dp))
         }
@@ -377,16 +343,20 @@ fun ReportsHubScreen(
 @Composable
 fun ReportLinkCard(label: String, icon: androidx.compose.ui.graphics.vector.ImageVector,
     color: Color, modifier: Modifier, onClick: () -> Unit) {
-    Card(modifier = modifier.clickable(onClick = onClick), shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = color.copy(alpha = 0.08f))) {
-        Column(Modifier.padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Box(Modifier.size(36.dp).clip(CircleShape).background(color.copy(alpha = 0.15f)),
-                Alignment.Center) {
-                Icon(icon, null, Modifier.size(18.dp), tint = color)
-            }
-            Text(label, style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
-                color = color, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+    Column(
+        modifier
+            .clip(RoundedCornerShape(16.dp))
+            .background(color.copy(alpha = 0.08f))
+            .clickable(onClick = onClick)
+            .padding(14.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        Box(Modifier.size(36.dp).clip(CircleShape).background(color.copy(alpha = 0.15f)),
+            Alignment.Center) {
+            Icon(icon, null, Modifier.size(18.dp), tint = color)
         }
+        Text(label, style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+            color = color, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
     }
 }

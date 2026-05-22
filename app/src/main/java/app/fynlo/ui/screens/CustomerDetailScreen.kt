@@ -1,6 +1,8 @@
 package app.fynlo.ui.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -178,40 +180,33 @@ val borrowers by viewModel.borrowers.collectAsState()
             contentPadding = PaddingValues(vertical = 16.dp)
         ) {
             item {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
-                    ),
-                    shape = RoundedCornerShape(20.dp)
-                ) {
-                    Column(modifier = Modifier.padding(24.dp)) {
-                        Text("Current Balance", style = MaterialTheme.typography.labelMedium)
-                        Text(
-                            "$currencySymbol ${String.format(Locale.getDefault(), "%,.0f", totalOutstanding)}",
-                            style = MaterialTheme.typography.headlineLarge.copy(
-                                fontWeight = FontWeight.ExtraBold,
-                                color = if (totalOutstanding > 0) MaterialTheme.colorScheme.error
-                                        else Emerald500
-                            )
+                Column(modifier = Modifier.fillMaxWidth().padding(top = 4.dp)) {
+                    Text("Current Balance", style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(
+                        "$currencySymbol${String.format(Locale.getDefault(), "%,.0f", totalOutstanding)}",
+                        style = MaterialTheme.typography.displaySmall.copy(
+                            fontWeight = FontWeight.ExtraBold,
+                            color = if (totalOutstanding > 0) MaterialTheme.colorScheme.error
+                                    else Emerald500
                         )
-                        Spacer(Modifier.height(16.dp))
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            DetailItem("Principal", "$currencySymbol${borrower.amount.toInt()}")
-                            DetailItem("Interest",  "$currencySymbol${interest.toInt()}")
-                            DetailItem("Paid",      "$currencySymbol${borrower.paid.toInt()}")
-                        }
-                        if (borrower.rate > 0) {
-                            Spacer(Modifier.height(8.dp))
-                            Text(
-                                "Rate: ${borrower.rate}% • ${borrower.type}",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
+                    )
+                    Spacer(Modifier.height(16.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        DetailItem("Principal", "$currencySymbol${borrower.amount.toInt()}")
+                        DetailItem("Interest",  "$currencySymbol${interest.toInt()}")
+                        DetailItem("Paid",      "$currencySymbol${borrower.paid.toInt()}")
+                    }
+                    if (borrower.rate > 0) {
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            "Rate: ${borrower.rate}% • ${borrower.type}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                 }
             }
@@ -273,26 +268,21 @@ val borrowers by viewModel.borrowers.collectAsState()
                     )
                 }
                 item {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-                        )
+                    Row(
+                        modifier = Modifier.fillMaxWidth()
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.Top
                     ) {
-                        Row(
-                            modifier = Modifier.padding(16.dp),
-                            verticalAlignment = Alignment.Top
-                        ) {
-                            Icon(
-                                Icons.AutoMirrored.Filled.Notes,
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Spacer(Modifier.width(12.dp))
-                            Text(borrower.notes, style = MaterialTheme.typography.bodyMedium)
-                        }
+                        Icon(
+                            Icons.AutoMirrored.Filled.Notes,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(Modifier.width(12.dp))
+                        Text(borrower.notes, style = MaterialTheme.typography.bodyMedium)
                     }
                 }
             }
@@ -302,56 +292,47 @@ val borrowers by viewModel.borrowers.collectAsState()
 
 @Composable
 fun PaymentItem(payment: Payment, currencySymbol: String) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(
-            modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
+        Box(
+            Modifier.size(40.dp).clip(CircleShape).background(Emerald500.copy(alpha = 0.15f)),
+            contentAlignment = Alignment.Center
         ) {
-            Surface(
-                shape = CircleShape,
-                color = Emerald50,
-                modifier = Modifier.size(40.dp)
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        Icons.Default.Payments,
-                        contentDescription = null,
-                        tint = Emerald500,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-            }
-            Spacer(Modifier.width(16.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    payment.type.ifBlank { "Repayment" },
-                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold)
-                )
-                Text(
-                    DateUtils.formatToDisplay(payment.date),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = Color.Gray
-                )
-                if (payment.notes.isNotBlank()) {
-                    Text(
-                        payment.notes,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-            Text(
-                "$currencySymbol ${String.format(Locale.getDefault(), "%,.0f", payment.amount)}",
-                style = MaterialTheme.typography.bodyLarge.copy(
-                    fontWeight = FontWeight.Bold,
-                    color = Emerald500
-                )
+            Icon(
+                Icons.Default.Payments,
+                contentDescription = null,
+                tint = Emerald500,
+                modifier = Modifier.size(20.dp)
             )
         }
+        Spacer(Modifier.width(14.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                payment.type.ifBlank { "Repayment" },
+                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold)
+            )
+            Text(
+                DateUtils.formatToDisplay(payment.date),
+                style = MaterialTheme.typography.labelSmall,
+                color = Color.Gray
+            )
+            if (payment.notes.isNotBlank()) {
+                Text(
+                    payment.notes,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+        Text(
+            "+$currencySymbol${String.format(Locale.getDefault(), "%,.0f", payment.amount)}",
+            style = MaterialTheme.typography.bodyLarge.copy(
+                fontWeight = FontWeight.ExtraBold,
+                color = Emerald500
+            )
+        )
     }
 }
 
