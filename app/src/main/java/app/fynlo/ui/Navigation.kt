@@ -447,15 +447,21 @@ fun MainNavigation(viewModel: FinanceViewModel) {
                             label    = { Text(screen.label) },
                             selected = currentRoute == screen.route,
                             onClick  = {
-                                navController.navigate(screen.route) {
-                                    // Pop everything up to the start destination (Home)
-                                    // This clears Settings, About, Profile etc. from back stack
-                                    popUpTo(Screen.Home.route) {
-                                        saveState    = true
-                                        inclusive    = false
+                                if (currentRoute != screen.route) {
+                                    val isHome = screen.route == Screen.Home.route
+                                    navController.navigate(screen.route) {
+                                        // Pop everything up to Home (clears Settings, History,
+                                        // detail screens etc. from the back stack).
+                                        // Don't save/restore state when the target IS Home —
+                                        // otherwise the popped child gets saved under Home's key
+                                        // and immediately restored, bouncing back to it.
+                                        popUpTo(Screen.Home.route) {
+                                            inclusive = false
+                                            saveState = !isHome
+                                        }
+                                        launchSingleTop = true
+                                        restoreState    = !isHome
                                     }
-                                    launchSingleTop = true
-                                    restoreState    = true
                                 }
                             }
                         )
