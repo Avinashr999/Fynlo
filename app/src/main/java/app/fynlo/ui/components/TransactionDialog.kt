@@ -30,9 +30,10 @@ import java.util.*
 @Composable
 fun AddTransactionDialog(
     onDismiss: () -> Unit,
-    onConfirm: (Transaction) -> Unit
+    onConfirm: (Transaction) -> Unit,
+    initialIsIncome: Boolean = false
 ) {
-    var isIncome by remember { mutableStateOf(false) }
+    var isIncome by remember { mutableStateOf(initialIsIncome) }
     var amount by remember { mutableStateOf("") }
     var customCategory by remember { mutableStateOf("") }
     var desc by remember { mutableStateOf("") }
@@ -40,7 +41,7 @@ fun AddTransactionDialog(
     var notes by remember { mutableStateOf("") }
 
     val categories = listOf("Food", "Rent", "Fuel", "Shopping", "Salary", "Investment", "Lending", "Custom")
-    var selectedCategory by remember { mutableStateOf(categories[0]) }
+    var selectedCategory by remember { mutableStateOf(if (initialIsIncome) "Salary" else categories[0]) }
 
     val sources = listOf("Cash", "Bank", "Investment", "Debts", "Custom")
     var selectedSrc by remember { mutableStateOf(sources[0]) }

@@ -15,6 +15,7 @@ import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Payment
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Clear
@@ -199,6 +200,7 @@ val debts by viewModel.debts.collectAsState()
 @Composable
 fun DebtCard(debt: Debt, currencySymbol: String = "₹", onEdit: () -> Unit, onDelete: () -> Unit, onPay: () -> Unit) {
     var showDeleteConfirm by remember { mutableStateOf(false) }
+    var menuOpen by remember { mutableStateOf(false) }
     if (showDeleteConfirm) {
         AlertDialog(
             onDismissRequest = { showDeleteConfirm = false },
@@ -252,11 +254,14 @@ fun DebtCard(debt: Debt, currencySymbol: String = "₹", onEdit: () -> Unit, onD
                     ) {
                         Text(debt.status, style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium))
                     }
-                    IconButton(onClick = onEdit, Modifier.size(32.dp)) {
-                        Icon(Icons.Default.Edit, "Edit", Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                    IconButton(onClick = { showDeleteConfirm = true }, Modifier.size(32.dp)) {
-                        Icon(Icons.Default.Delete, "Delete", Modifier.size(16.dp), tint = SemanticRed.copy(alpha = 0.7f))
+                    Box {
+                        IconButton(onClick = { menuOpen = true }, Modifier.size(32.dp)) {
+                            Icon(Icons.Default.MoreVert, "More", Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                            DropdownMenuItem(text = { Text("Edit") }, onClick = { menuOpen = false; onEdit() })
+                            DropdownMenuItem(text = { Text("Delete", color = SemanticRed) }, onClick = { menuOpen = false; showDeleteConfirm = true })
+                        }
                     }
                 }
             }

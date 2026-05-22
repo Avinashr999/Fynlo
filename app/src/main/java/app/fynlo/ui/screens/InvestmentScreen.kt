@@ -17,6 +17,7 @@ import androidx.compose.material.icons.filled.CallMade
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -302,6 +303,7 @@ fun InvestmentCard(invest: Investment, currencySymbol: String = "₹", onDelete:
     val growth = invest.currentVal - (invest.invested - invest.withdrawn)
     val growthPercent = if (invest.invested > 0) (growth / invest.invested) * 100 else 0.0
     val isProfit = growth >= 0
+    var menuOpen by remember { mutableStateOf(false) }
 
     Column(modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp)) {
             // ── Header: name + type badge + action icons ──────────────────────
@@ -335,14 +337,15 @@ fun InvestmentCard(invest: Investment, currencySymbol: String = "₹", onDelete:
                         )
                     }
                     Spacer(Modifier.width(4.dp))
-                    IconButton(onClick = onViewHistory, Modifier.size(30.dp)) {
-                        Icon(Icons.Default.History, "History", Modifier.size(15.dp), tint = Carbon500)
-                    }
-                    IconButton(onClick = onEdit, Modifier.size(30.dp)) {
-                        Icon(Icons.Default.Edit, "Edit", Modifier.size(15.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                    IconButton(onClick = onDelete, Modifier.size(30.dp)) {
-                        Icon(Icons.Default.Delete, "Delete", Modifier.size(15.dp), tint = SemanticRed.copy(alpha = 0.7f))
+                    Box {
+                        IconButton(onClick = { menuOpen = true }, Modifier.size(30.dp)) {
+                            Icon(Icons.Default.MoreVert, "More", Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                            DropdownMenuItem(text = { Text("Valuation History") }, onClick = { menuOpen = false; onViewHistory() })
+                            DropdownMenuItem(text = { Text("Edit") }, onClick = { menuOpen = false; onEdit() })
+                            DropdownMenuItem(text = { Text("Delete", color = SemanticRed) }, onClick = { menuOpen = false; onDelete() })
+                        }
                     }
                 }
             }

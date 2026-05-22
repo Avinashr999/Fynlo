@@ -319,7 +319,7 @@ private fun FlowEntryCard(flow: FlowEntry, currencySymbol: String, locale: Local
         FlowType.LENDING       -> Pair(SemanticAmber, Icons.Default.Person)
         FlowType.DEBT_RECEIVED -> Pair(Carbon500, Icons.Default.CreditCard)
         FlowType.DEBT_REPAY    -> Pair(SemanticRed, Icons.Default.CreditCard)
-        FlowType.INVESTMENT    -> Pair(Color(0xFF06B6D4), Icons.Default.TrendingUp)
+        FlowType.INVESTMENT    -> Pair(SemanticTeal, Icons.Default.TrendingUp)
     }
 
     Row(Modifier.padding(vertical = 12.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {

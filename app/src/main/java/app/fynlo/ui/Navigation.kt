@@ -91,6 +91,7 @@ fun MainNavigation(viewModel: FinanceViewModel) {
     
     var showSheet by remember { mutableStateOf(false) }
     @Suppress("ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE")     var showExpenseDialog by remember { mutableStateOf(false) }
+    var addTxnIsIncome by remember { mutableStateOf(false) }
     var showLendingDialog by remember { mutableStateOf(false) }
     var showDebtDialog by remember { mutableStateOf(false) }
     var showInvestmentDialog by remember { mutableStateOf(false) }
@@ -188,7 +189,8 @@ fun MainNavigation(viewModel: FinanceViewModel) {
             onConfirm = { txn ->
                 viewModel.addTransaction(txn)
                 showExpenseDialog = false
-            }
+            },
+            initialIsIncome = addTxnIsIncome
         )
     }
     
@@ -349,37 +351,7 @@ fun MainNavigation(viewModel: FinanceViewModel) {
 
                     DrawerDivider()
 
-                    // â"€â"€ Reports â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
-                    DrawerSectionLabel("Reports")
-                    DrawerItem(Icons.Default.DateRange, "Monthly Summary",
-                        currentRoute == Screen.Monthly.route) {
-                        navController.navigate(Screen.Monthly.route)
-                        scope.launch { drawerState.close() }
-                    }
-                    DrawerItem(Icons.AutoMirrored.Filled.List, "Profit & Loss",
-                        currentRoute == Screen.ProfitLoss.route) {
-                        navController.navigate(Screen.ProfitLoss.route)
-                        scope.launch { drawerState.close() }
-                    }
-                    DrawerItem(Icons.Default.Schedule, "Debt Payoff Tracker",
-                        currentRoute == Screen.DebtPayoff.route) {
-                        navController.navigate(Screen.DebtPayoff.route)
-                        scope.launch { drawerState.close() }
-                    }
-                    DrawerItem(Icons.AutoMirrored.Filled.TrendingUp, "Net Worth History",
-                        currentRoute == Screen.NetWorthH.route) {
-                        navController.navigate(Screen.NetWorthH.route)
-                        scope.launch { drawerState.close() }
-                    }
-                    DrawerItem(Icons.Default.SwapHoriz, "Money Flow",
-                        currentRoute == Screen.MoneyFlow.route) {
-                        navController.navigate(Screen.MoneyFlow.route)
-                        scope.launch { drawerState.close() }
-                    }
-
-                    DrawerDivider()
-
-                    // â"€â"€ App â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
+                    // ── App ──────────────────────────────────────────────────────
                     DrawerSectionLabel("App")
                     DrawerItem(Icons.Default.Settings, "Settings",
                         currentRoute == Screen.Settings.route) {
@@ -624,7 +596,9 @@ fun MainNavigation(viewModel: FinanceViewModel) {
                         onNavigateToPL        = { navController.navigate(Screen.ProfitLoss.route) },
                         onNavigateToNetWorth  = { navController.navigate(Screen.NetWorthH.route) },
                         onNavigateToMoneyFlow = { navController.navigate(Screen.MoneyFlow.route) },
-                        onNavigateToInterest  = { navController.navigate(Screen.InterestIncome.route) }
+                        onNavigateToInterest  = { navController.navigate(Screen.InterestIncome.route) },
+                        onNavigateToMonthly   = { navController.navigate(Screen.Monthly.route) },
+                        onNavigateToDebtPayoff = { navController.navigate(Screen.DebtPayoff.route) }
                     )
                 }
                 composable(Screen.InterestIncome.route) {
@@ -669,7 +643,8 @@ fun MainNavigation(viewModel: FinanceViewModel) {
                         onActionClick = { actionType ->
                             showSheet = false
                             when (actionType) {
-                                "expense" -> showExpenseDialog = true
+                                "expense" -> { addTxnIsIncome = false; showExpenseDialog = true }
+                                "income"  -> { addTxnIsIncome = true; showExpenseDialog = true }
                                 "lending" -> showLendingDialog = true
                                 "debt" -> showDebtDialog = true
                                 "invest" -> showInvestmentDialog = true
@@ -688,44 +663,52 @@ fun QuickActionMenu(navController: NavController, onActionClick: (String) -> Uni
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(24.dp)
-            .padding(bottom = 32.dp),
+            .padding(horizontal = 16.dp)
+            .padding(bottom = 28.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        FilledTonalButton(onClick = { navController.navigate(Screen.FlowWizard.route) }, modifier = Modifier.fillMaxWidth().height(48.dp).padding(bottom = 8.dp), shape = RoundedCornerShape(12.dp)) { Icon(Icons.Default.AutoAwesome, contentDescription = null, modifier = Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text("Use Smart Flow Wizard", fontWeight = FontWeight.SemiBold) }
         Text(
-            "Quick Log", 
+            "Quick Log",
             style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-            modifier = Modifier.padding(bottom = 24.dp)
+            modifier = Modifier.padding(top = 4.dp, bottom = 20.dp)
         )
-        
+
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceEvenly
         ) {
-            ActionItem(Icons.AutoMirrored.Filled.ReceiptLong, "Expense") { onActionClick("expense") }
-            ActionItem(Icons.Default.Handshake, "Lending") { onActionClick("lending") }
-            ActionItem(Icons.Default.CreditCard, "Debt") { onActionClick("debt") }
-            ActionItem(Icons.AutoMirrored.Filled.ShowChart, "Invest") { onActionClick("invest") }
+            ActionItem(Icons.Default.Remove, "Expense", SemanticRed) { onActionClick("expense") }
+            ActionItem(Icons.Default.Add, "Income", Emerald500) { onActionClick("income") }
+            ActionItem(Icons.Default.Handshake, "Lend", SemanticBlue) { onActionClick("lending") }
+            ActionItem(Icons.Default.CreditCard, "Debt", SemanticAmber) { onActionClick("debt") }
+            ActionItem(Icons.AutoMirrored.Filled.ShowChart, "Invest", Carbon500) { onActionClick("invest") }
+        }
+
+        Spacer(Modifier.height(20.dp))
+        TextButton(onClick = { navController.navigate(Screen.FlowWizard.route) }) {
+            Icon(Icons.Default.AutoAwesome, contentDescription = null, modifier = Modifier.size(16.dp), tint = Emerald500)
+            Spacer(Modifier.width(6.dp))
+            Text("Use Smart Flow Wizard", color = Emerald500, fontWeight = FontWeight.SemiBold)
         }
     }
 }
 
 @Composable
-fun ActionItem(icon: ImageVector, label: String, onClick: () -> Unit) {
+fun ActionItem(icon: ImageVector, label: String, color: Color, onClick: () -> Unit) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         FilledIconButton(
             onClick = onClick,
-            modifier = Modifier.size(64.dp),
-            shape = MaterialTheme.shapes.large,
+            modifier = Modifier.size(54.dp),
+            shape = CircleShape,
             colors = IconButtonDefaults.filledIconButtonColors(
-                containerColor = MaterialTheme.colorScheme.secondaryContainer
+                containerColor = color.copy(alpha = 0.12f),
+                contentColor = color
             )
         ) {
-            Icon(icon, contentDescription = label, modifier = Modifier.size(32.dp))
+            Icon(icon, contentDescription = label, modifier = Modifier.size(26.dp))
         }
         Spacer(Modifier.height(8.dp))
-        Text(label, style = MaterialTheme.typography.labelLarge)
+        Text(label, style = MaterialTheme.typography.labelMedium)
     }
 }
 

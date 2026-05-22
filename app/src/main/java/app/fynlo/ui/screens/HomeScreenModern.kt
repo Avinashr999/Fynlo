@@ -51,6 +51,7 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
     val locale            = Locale.getDefault()
     val cs                = app.fynlo.logic.CurrencyUtils.symbolFor(currentProject?.currency ?: "INR")
     var showAddTxn        by remember { mutableStateOf(false) }
+    var addTxnIncome      by remember { mutableStateOf(false) }
     val netWorthSnapshots by viewModel.getNetWorthSnapshots().collectAsState(initial = emptyList())
     var activeBreakdownType by remember { mutableStateOf<BreakdownType?>(null) }
 
@@ -71,7 +72,8 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
     if (showAddTxn) {
         AddTransactionDialog(
             onDismiss = { showAddTxn = false },
-            onConfirm = { txn -> haptic.performHapticFeedback(HapticFeedbackType.LongPress); viewModel.addTransaction(txn); showAddTxn = false }
+            onConfirm = { txn -> haptic.performHapticFeedback(HapticFeedbackType.LongPress); viewModel.addTransaction(txn); showAddTxn = false },
+            initialIsIncome = addTxnIncome
         )
     }
 
@@ -244,8 +246,8 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
 
         // ── Quick actions ─────────────────────────────────────────────────────
         Row(Modifier.fillMaxWidth(), Arrangement.spacedBy(10.dp)) {
-            NeoAction("Expense", Icons.Default.Remove, SemanticRed, Modifier.weight(1f)) { showAddTxn = true }
-            NeoAction("Income", Icons.Default.Add, Emerald500, Modifier.weight(1f)) { showAddTxn = true }
+            NeoAction("Expense", Icons.Default.Remove, SemanticRed, Modifier.weight(1f)) { addTxnIncome = false; showAddTxn = true }
+            NeoAction("Income", Icons.Default.Add, Emerald500, Modifier.weight(1f)) { addTxnIncome = true; showAddTxn = true }
             NeoAction("Lend", Icons.Default.Handshake, SemanticBlue, Modifier.weight(1f)) { onNavigateToScreen("lending") }
             NeoAction("History", Icons.Default.History, Carbon500, Modifier.weight(1f)) { onNavigateToScreen("history") }
         }

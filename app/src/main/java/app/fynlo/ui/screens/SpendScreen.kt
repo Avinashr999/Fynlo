@@ -34,11 +34,7 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 
 
-private val CAT_COLORS = listOf(
-    SemanticBlue, Emerald500, SemanticAmber,
-    SemanticRed, Carbon500, Color(0xFFEC4899),
-    Color(0xFF06B6D4), Color(0xFF84CC16)
-)
+private val CAT_COLORS = ChartColors
 
 @Composable
 fun SpendScreen(viewModel: FinanceViewModel) {
@@ -50,7 +46,6 @@ val transactions by viewModel.transactions.collectAsState()
     val currencySymbol = app.fynlo.logic.CurrencyUtils.symbolFor(currentProject?.currency ?: "INR")
     val locale       = remember { Locale.getDefault() }
     var showDialog   by remember { mutableStateOf(false) }
-    var selectedTab  by remember { mutableIntStateOf(0) }
 
     // Month navigation
     var selectedMonth by remember { mutableStateOf(YearMonth.now()) }
@@ -93,21 +88,9 @@ val transactions by viewModel.transactions.collectAsState()
             }
         }
 
-        // Tab row: Expenses | History
-        TabRow(selectedTabIndex = selectedTab, containerColor = Color.Transparent,
-            contentColor = MaterialTheme.colorScheme.primary) {
-            Tab(selected = selectedTab == 0, onClick = { selectedTab = 0 }) {
-                Text("Expenses", Modifier.padding(vertical = 12.dp), fontWeight = FontWeight.SemiBold)
-            }
-            Tab(selected = selectedTab == 1, onClick = { selectedTab = 1 }) {
-                Text("All Transactions", Modifier.padding(vertical = 12.dp), fontWeight = FontWeight.SemiBold)
-            }
-        }
+        Spacer(Modifier.height(4.dp))
 
-        Spacer(Modifier.height(12.dp))
-
-        if (selectedTab == 0) {
-            // Month selector
+        // Month selector
             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
                 IconButton(onClick = { selectedMonth = selectedMonth.minusMonths(1) }) {
                     Icon(Icons.AutoMirrored.Filled.ArrowBack, null, tint = MaterialTheme.colorScheme.primary)
@@ -219,10 +202,6 @@ val transactions by viewModel.transactions.collectAsState()
                 }
                 Spacer(Modifier.height(100.dp))
             }
-        } else {
-            // All Transactions tab — reuse TransactionHistoryScreen logic inline
-            TransactionHistoryScreen(viewModel = viewModel)
-        }
     }
     }
 }

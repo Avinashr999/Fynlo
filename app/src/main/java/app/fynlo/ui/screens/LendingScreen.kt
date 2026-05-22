@@ -19,6 +19,7 @@ import androidx.compose.material.icons.filled.Sort
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.MonetizationOn
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Warning
@@ -405,6 +406,7 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
 @Composable
 fun LendingCard(borrower: Borrower, people: List<app.fynlo.data.model.Person> = emptyList(), currencySymbol: String = "₹", isOverdue: Boolean = false, onDelete: () -> Unit, onEdit: () -> Unit, onCollect: () -> Unit, onClick: () -> Unit, onDefault: () -> Unit = {}, onWriteOff: () -> Unit = {}) {
     var showDeleteConfirm by remember { mutableStateOf(false) }
+    var menuOpen by remember { mutableStateOf(false) }
     if (showDeleteConfirm) {
         AlertDialog(
             onDismissRequest = { showDeleteConfirm = false },
@@ -623,11 +625,14 @@ fun LendingCard(borrower: Borrower, people: List<app.fynlo.data.model.Person> = 
                         Icon(Icons.Default.Sms, "SMS", Modifier.size(16.dp),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
-                    IconButton(onClick = onEdit, Modifier.size(32.dp)) {
-                        Icon(Icons.Default.Edit, "Edit", Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                    IconButton(onClick = { showDeleteConfirm = true }, Modifier.size(32.dp)) {
-                        Icon(Icons.Default.Delete, "Delete", Modifier.size(16.dp), tint = SemanticRed.copy(alpha = 0.7f))
+                    Box {
+                        IconButton(onClick = { menuOpen = true }, Modifier.size(32.dp)) {
+                            Icon(Icons.Default.MoreVert, "More", Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                            DropdownMenuItem(text = { Text("Edit") }, onClick = { menuOpen = false; onEdit() })
+                            DropdownMenuItem(text = { Text("Delete", color = SemanticRed) }, onClick = { menuOpen = false; showDeleteConfirm = true })
+                        }
                     }
 
 

@@ -32,6 +32,19 @@ val SemanticRed    = Color(0xFFEF4444)
 val SemanticAmber  = Color(0xFFF59E0B)
 val SemanticBlue   = Color(0xFF3B82F6)
 val SemanticViolet = Color(0xFF6B7280)
+val SemanticTeal   = Color(0xFF0D9488)
+
+// Chart palette — brand-aligned, restrained (no neon)
+val ChartColors = listOf(
+    Emerald500,
+    SemanticBlue,
+    SemanticAmber,
+    SemanticTeal,
+    Carbon500,
+    Emerald400,
+    SemanticRed,
+    Carbon400
+)
 
 // Light theme surface colors
 val LightBackground = Carbon50

@@ -43,7 +43,9 @@ fun ReportsHubScreen(
     onNavigateToPL: () -> Unit = {},
     onNavigateToNetWorth: () -> Unit = {},
     onNavigateToMoneyFlow: () -> Unit = {},
-    onNavigateToInterest: () -> Unit = {}
+    onNavigateToInterest: () -> Unit = {},
+    onNavigateToMonthly: () -> Unit = {},
+    onNavigateToDebtPayoff: () -> Unit = {}
 ) {
     LaunchedEffect(Unit) { app.fynlo.data.Analytics.screenView("Reports") }
     val transactions  by viewModel.transactions.collectAsState()
@@ -264,8 +266,7 @@ fun ReportsHubScreen(
                 }
             }
             Spacer(Modifier.height(8.dp))
-            val expColors = listOf(SemanticRed, SemanticAmber, Carbon500,
-                Color(0xFFEC4899), Color(0xFF06B6D4), Color(0xFF84CC16))
+            val expColors = ChartColors
             val maxExp = expByCat.firstOrNull()?.value ?: 1.0
             Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                     expByCat.take(6).forEachIndexed { i, (cat, amt) ->
@@ -330,9 +331,11 @@ fun ReportsHubScreen(
             ReportLinkCard("Net Worth", Icons.AutoMirrored.Filled.TrendingUp, blue, Modifier.weight(1f), onNavigateToNetWorth)
             ReportLinkCard("Money Flow", Icons.Default.SwapHoriz, Carbon500, Modifier.weight(1f), onNavigateToMoneyFlow)
         }
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(10.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             ReportLinkCard("Interest Income", Icons.Default.AccountBalance, green, Modifier.weight(1f), onNavigateToInterest)
+            ReportLinkCard("Monthly Summary", Icons.Default.DateRange, blue, Modifier.weight(1f), onNavigateToMonthly)
+            ReportLinkCard("Debt Payoff", Icons.Default.Schedule, SemanticRed, Modifier.weight(1f), onNavigateToDebtPayoff)
         }
 
         Spacer(Modifier.height(100.dp))
