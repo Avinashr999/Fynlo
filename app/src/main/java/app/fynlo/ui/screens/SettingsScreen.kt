@@ -25,8 +25,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.fynlo.FinanceViewModel
 import app.fynlo.data.UserPreferences
-import androidx.appcompat.app.AppCompatDelegate
-import androidx.core.os.LocaleListCompat
 import app.fynlo.ui.theme.ThemeController
 import app.fynlo.ui.theme.*
 import kotlinx.coroutines.Dispatchers
@@ -46,7 +44,6 @@ fun SettingsScreen(
     val scope   = rememberCoroutineScope()
     val context = LocalContext.current
     // ── Setup-wizard editable prefs (DataStore-backed) ─────────────────────
-    val selectedLanguage   by UserPreferences.appLanguage(context).collectAsState(initial = "en")
     val displayNameFlow    by UserPreferences.userDisplayName(context).collectAsState(initial = "")
     var displayName        by remember { mutableStateOf("") }
     val notifsEnabled      by UserPreferences.notificationsEnabled(context).collectAsState(initial = true)
@@ -134,29 +131,6 @@ fun SettingsScreen(
                         selected = ThemeController.darkModeOverride == value,
                         onClick  = { ThemeController.darkModeOverride = value; ThemeController.save(context) },
                         label    = { Text(label) },
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-            }
-            Spacer(Modifier.height(16.dp))
-            // Language
-            Text("Language", style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(start = 4.dp, bottom = 6.dp))
-            Row(
-                Modifier.fillMaxWidth().padding(horizontal = 4.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                listOf("en" to "English", "hi" to "हिंदी", "te" to "తెలుగు").forEach { (code, label) ->
-                    FilterChip(
-                        selected = selectedLanguage == code,
-                        onClick  = {
-                            scope.launch { UserPreferences.setAppLanguage(context, code) }
-                            AppCompatDelegate.setApplicationLocales(
-                                LocaleListCompat.forLanguageTags(code)
-                            )
-                        },
-                        label    = { Text(label, style = MaterialTheme.typography.bodySmall) },
                         modifier = Modifier.weight(1f)
                     )
                 }
