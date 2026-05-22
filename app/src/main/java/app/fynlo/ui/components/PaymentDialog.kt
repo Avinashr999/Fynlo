@@ -84,7 +84,8 @@ fun CollectPaymentDialog(
         ) {
             Column(modifier = Modifier.padding(24.dp).verticalScroll(rememberScrollState())) {
 
-                Text("Collect Repayment", style = MaterialTheme.typography.headlineSmall)
+                Text("Collect Repayment",
+                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.Bold))
                 Text("From: ${borrower.name}",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.primary)
@@ -290,7 +291,9 @@ fun CollectPaymentDialog(
                             )
                             onConfirm(payment, selectedAccount.name)
                         },
-                        enabled = isValid
+                        enabled = isValid,
+                        shape = RoundedCornerShape(14.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = app.fynlo.ui.theme.Emerald500)
                     ) { Text("Confirm ₹${String.format("%,.0f", totalAmount)}") }
                 }
             }
@@ -341,7 +344,8 @@ fun PayDebtDialog(
             tonalElevation = 6.dp
         ) {
             Column(modifier = Modifier.padding(24.dp).verticalScroll(rememberScrollState())) {
-                Text("Pay Debt", style = MaterialTheme.typography.headlineSmall)
+                Text("Pay Debt",
+                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.Bold))
                 Text("To: ${debt.name}", style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.error)
                 Spacer(Modifier.height(12.dp))
@@ -504,6 +508,7 @@ fun PayDebtDialog(
                             onConfirm(payment, selectedAccount.name)
                         },
                         enabled = isValid,
+                        shape   = RoundedCornerShape(14.dp),
                         colors  = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
                     ) { Text("Pay ₹${String.format("%,.0f", totalAmount)}") }
                 }

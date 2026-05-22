@@ -214,35 +214,36 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
             // Header
             // Sub-header: stats + action buttons (scrolls with content)
             item {
-                Row(Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 4.dp), Arrangement.SpaceBetween, Alignment.CenterVertically) {
-                    Text("${interestLoans.size} interest • ${handLoans.size} hand loans • ${settledLoans.size} settled",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        // Sort
-                        Box {
-                            OutlinedButton(onClick = { showSortMenu = true }, shape = RoundedCornerShape(12.dp),
-                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)) {
-                                Icon(Icons.Default.Sort, null, Modifier.size(16.dp))
-                                Spacer(Modifier.width(4.dp))
-                                Text(sortBy, style = MaterialTheme.typography.labelMedium)
+                // Stats on their own line — gives the action buttons room to breathe
+                Text("${interestLoans.size} interest • ${handLoans.size} hand loans • ${settledLoans.size} settled",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 10.dp, bottom = 10.dp))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    // Sort
+                    Box(Modifier.weight(1f)) {
+                        FilledTonalButton(onClick = { showSortMenu = true }, shape = RoundedCornerShape(14.dp),
+                            modifier = Modifier.fillMaxWidth(),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 10.dp)) {
+                            Icon(Icons.Default.Sort, null, Modifier.size(16.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text(sortBy, style = MaterialTheme.typography.labelMedium)
+                        }
+                        DropdownMenu(expanded = showSortMenu, onDismissRequest = { showSortMenu = false }) {
+                            listOf("Overdue", "Amount", "Name", "Date").forEach { opt ->
+                                DropdownMenuItem(text = { Text(opt) }, onClick = { sortBy = opt; showSortMenu = false })
                             }
-                            DropdownMenu(expanded = showSortMenu, onDismissRequest = { showSortMenu = false }) {
-                                listOf("Overdue", "Amount", "Name", "Date").forEach { opt ->
-                                    DropdownMenuItem(text = { Text(opt) }, onClick = { sortBy = opt; showSortMenu = false })
-                                }
-                            }
                         }
-                        // EMI calculator
-                        OutlinedButton(onClick = { showEmiCalc = true }, shape = RoundedCornerShape(12.dp),
-                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)) {
-                            Text("EMI", style = MaterialTheme.typography.labelMedium)
-                        }
-                        // Calendar — icon only to save space
-                        OutlinedButton(onClick = onNavigateToCalendar, shape = RoundedCornerShape(12.dp),
-                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp)) {
-                            Icon(Icons.Default.CalendarMonth, contentDescription = "Collection Calendar", Modifier.size(18.dp))
-                        }
+                    }
+                    // EMI calculator
+                    FilledTonalButton(onClick = { showEmiCalc = true }, shape = RoundedCornerShape(14.dp),
+                        contentPadding = PaddingValues(horizontal = 18.dp, vertical = 10.dp)) {
+                        Text("EMI", style = MaterialTheme.typography.labelMedium)
+                    }
+                    // Calendar — icon only
+                    FilledTonalButton(onClick = onNavigateToCalendar, shape = RoundedCornerShape(14.dp),
+                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 10.dp)) {
+                        Icon(Icons.Default.CalendarMonth, contentDescription = "Collection Calendar", Modifier.size(18.dp))
                     }
                 }
             }
@@ -251,10 +252,17 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
             item {
                 OutlinedTextField(
                     value = searchQuery, onValueChange = { searchQuery = it },
-                    placeholder = { Text("Search borrowers...") },
-                    leadingIcon = { Icon(Icons.Default.Search, null) },
+                    placeholder = { Text("Search borrowers…") },
+                    leadingIcon = { Icon(Icons.Default.Search, null, tint = Emerald500) },
                     trailingIcon = { if (searchQuery.isNotBlank()) IconButton(onClick = { searchQuery = "" }) { Icon(Icons.Default.Clear, null, Modifier.size(18.dp)) } },
-                    singleLine = true, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)
+                    singleLine = true, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor   = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+                        focusedBorderColor      = Color.Transparent,
+                        unfocusedBorderColor    = Color.Transparent,
+                        cursorColor             = Emerald500
+                    )
                 )
             }
 
