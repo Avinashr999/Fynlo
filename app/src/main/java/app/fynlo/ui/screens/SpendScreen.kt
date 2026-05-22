@@ -217,6 +217,7 @@ private fun ExpenseRow(
     val haptic = LocalHapticFeedback.current
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var showEditDialog    by remember { mutableStateOf(false) }
+    var menuOpen          by remember { mutableStateOf(false) }
 
     if (showDeleteConfirm) {
         AlertDialog(
@@ -262,13 +263,15 @@ private fun ExpenseRow(
             Text(txn.date, style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        IconButton(onClick = { showEditDialog = true }, modifier = Modifier.size(32.dp)) {
-            Icon(Icons.Default.Edit, null, Modifier.size(16.dp),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-        IconButton(onClick = { showDeleteConfirm = true }, modifier = Modifier.size(32.dp)) {
-            Icon(Icons.Default.Delete, null, Modifier.size(16.dp),
-                tint = SemanticRed.copy(alpha = 0.7f))
+        Box {
+            IconButton(onClick = { menuOpen = true }, modifier = Modifier.size(32.dp)) {
+                Icon(Icons.Default.MoreVert, "More", Modifier.size(18.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                DropdownMenuItem(text = { Text("Edit") }, onClick = { menuOpen = false; showEditDialog = true })
+                DropdownMenuItem(text = { Text("Delete", color = SemanticRed) }, onClick = { menuOpen = false; showDeleteConfirm = true })
+            }
         }
     }
 }

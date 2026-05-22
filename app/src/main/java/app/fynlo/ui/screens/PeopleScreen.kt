@@ -11,6 +11,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Search
@@ -160,6 +161,7 @@ fun PeopleScreen(viewModel: FinanceViewModel) {
 
 @Composable
 fun PersonCard(person: Person, onEdit: () -> Unit, onDelete: () -> Unit) {
+    var menuOpen by remember { mutableStateOf(false) }
     val haptic = LocalHapticFeedback.current
     var showDeleteConfirm by remember { mutableStateOf(false) }
     if (showDeleteConfirm) {
@@ -239,12 +241,14 @@ fun PersonCard(person: Person, onEdit: () -> Unit, onDelete: () -> Unit) {
                     }
                 }
             }
-            Row {
-                IconButton(onClick = onEdit) {
-                    Icon(Icons.Default.Edit, "Edit", tint = MaterialTheme.colorScheme.primary)
+            Box {
+                IconButton(onClick = { menuOpen = true }) {
+                    Icon(Icons.Default.MoreVert, "More", tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                IconButton(onClick = { haptic.performHapticFeedback(HapticFeedbackType.LongPress); showDeleteConfirm = true }) {
-                    Icon(Icons.Default.Delete, "Delete", tint = SemanticRed.copy(alpha = 0.6f))
+                DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                    DropdownMenuItem(text = { Text("Edit") }, onClick = { menuOpen = false; onEdit() })
+                    DropdownMenuItem(text = { Text("Delete", color = SemanticRed) },
+                        onClick = { menuOpen = false; haptic.performHapticFeedback(HapticFeedbackType.LongPress); showDeleteConfirm = true })
                 }
             }
         }
