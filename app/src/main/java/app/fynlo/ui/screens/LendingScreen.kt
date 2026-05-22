@@ -861,19 +861,31 @@ fun EmiCalculatorDialog(onDismiss: () -> Unit) {
         onDismissRequest = onDismiss,
         title = { Text("EMI Calculator") },
         text = {
+            val emiFieldColors = OutlinedTextFieldDefaults.colors(
+                focusedContainerColor   = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+                focusedBorderColor      = Emerald500,
+                unfocusedBorderColor    = Color.Transparent,
+                focusedLabelColor       = Emerald500,
+                cursorColor             = Emerald500
+            )
+            val emiChipColors = FilterChipDefaults.filterChipColors(
+                selectedContainerColor = Emerald500.copy(alpha = 0.16f),
+                selectedLabelColor = Emerald500
+            )
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedTextField(value = principal, onValueChange = { principal = it },
                     label = { Text("Principal Amount (₹)") }, singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp))
+                    modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp), colors = emiFieldColors)
                 OutlinedTextField(value = rate, onValueChange = { rate = it },
                     label = { Text("Annual Interest Rate (%)") }, singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp))
+                    modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp), colors = emiFieldColors)
                 OutlinedTextField(value = tenure, onValueChange = { tenure = it },
                     label = { Text("Tenure (months)") }, singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp))
+                    modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp), colors = emiFieldColors)
 
                 // Method toggle
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -881,18 +893,21 @@ fun EmiCalculatorDialog(onDismiss: () -> Unit) {
                         selected = useReducing,
                         onClick  = { useReducing = true; useSimple = false },
                         label    = { Text("Reducing", style = MaterialTheme.typography.labelSmall) },
+                        colors   = emiChipColors,
                         modifier = Modifier.weight(1f)
                     )
                     FilterChip(
                         selected = useSimple,
                         onClick  = { useReducing = false; useSimple = true },
                         label    = { Text("Simple", style = MaterialTheme.typography.labelSmall) },
+                        colors   = emiChipColors,
                         modifier = Modifier.weight(1f)
                     )
                     FilterChip(
                         selected = !useReducing && !useSimple,
                         onClick  = { useReducing = false; useSimple = false },
                         label    = { Text("Compound", style = MaterialTheme.typography.labelSmall) },
+                        colors   = emiChipColors,
                         modifier = Modifier.weight(1f)
                     )
                 }
@@ -906,7 +921,8 @@ fun EmiCalculatorDialog(onDismiss: () -> Unit) {
                         placeholder   = { Text("e.g. 2024-12-31") },
                         singleLine    = true,
                         modifier      = Modifier.fillMaxWidth(),
-                        shape         = RoundedCornerShape(12.dp)
+                        shape         = RoundedCornerShape(16.dp),
+                        colors        = emiFieldColors
                     )
                     if (dueDate.isNotBlank() && !isOverdue) {
                         Text(
