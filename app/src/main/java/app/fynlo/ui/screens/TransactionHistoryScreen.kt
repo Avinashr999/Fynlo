@@ -3,6 +3,7 @@ package app.fynlo.ui.screens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -15,20 +16,20 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import java.util.Locale
 import app.fynlo.FinanceViewModel
 import app.fynlo.data.model.Transaction
 import app.fynlo.logic.DateUtils
-import java.util.Locale
 import app.fynlo.ui.theme.*
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun TransactionHistoryScreen(viewModel: FinanceViewModel) {
     val haptic = LocalHapticFeedback.current
@@ -36,7 +37,8 @@ fun TransactionHistoryScreen(viewModel: FinanceViewModel) {
     val searchQuery by viewModel.searchQuery.collectAsState()
     val currentProject by viewModel.currentProject.collectAsState()
     val currencySymbol = app.fynlo.logic.CurrencyUtils.symbolFor(currentProject?.currency ?: "INR")
-    
+    val locale = Locale.getDefault()
+
     var selectedType   by remember { mutableStateOf("All") }
     var showDateFilter by remember { mutableStateOf(false) }
     var fromDate       by remember { mutableStateOf("") }
@@ -66,138 +68,214 @@ fun TransactionHistoryScreen(viewModel: FinanceViewModel) {
         list
     }
 
+    val totalIncome  = filteredHistory.filter { it.type.equals("income", true) }.sumOf { it.amount }
+    val totalExpense = filteredHistory.filter { it.type.equals("expense", true) }.sumOf { it.amount }
+    val net = totalIncome - totalExpense
+    val hairline = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f)
+
+    if (showBulkDeleteConfirm) {
+        AlertDialog(
+            onDismissRequest = { showBulkDeleteConfirm = false },
+            title = { Text("Delete ${selectedIds.size} transactions?") },
+            text  = { Text("This will permanently delete the selected transactions and reverse their account balances.") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val toDelete = filteredHistory.filter { it.id in selectedIds }
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress); viewModel.deleteTransactions(toDelete)
+                        selectedIds = emptySet()
+                        selectionMode = false
+                        showBulkDeleteConfirm = false
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = SemanticRed),
+                    shape = RoundedCornerShape(14.dp)
+                ) { Text("Delete All") }
+            },
+            dismissButton = { TextButton(onClick = { showBulkDeleteConfirm = false }) { Text("Cancel") } }
+        )
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(horizontal = 16.dp)
+            .padding(horizontal = 20.dp)
     ) {
-        Text(
-            text = if (selectionMode) "${selectedIds.size} selected" else "Master History",
-            style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold),
-            modifier = Modifier.padding(vertical = 16.dp)
-        )
+        Spacer(Modifier.height(8.dp))
 
-        if (showBulkDeleteConfirm) {
-            AlertDialog(
-                onDismissRequest = { showBulkDeleteConfirm = false },
-                title = { Text("Delete ${selectedIds.size} transactions?") },
-                text  = { Text("This will permanently delete the selected transactions and reverse their account balances.") },
-                confirmButton = {
-                    Button(
-                        onClick = {
-                            val toDelete = filteredHistory.filter { it.id in selectedIds }
-                            haptic.performHapticFeedback(HapticFeedbackType.LongPress); viewModel.deleteTransactions(toDelete)
-                            selectedIds = emptySet()
-                            selectionMode = false
-                            showBulkDeleteConfirm = false
-                        },
-                        colors = ButtonDefaults.buttonColors(containerColor = SemanticRed)
-                    ) { Text("Delete All") }
-                },
-                dismissButton = { TextButton(onClick = { showBulkDeleteConfirm = false }) { Text("Cancel") } }
-            )
-        }
-
+        // ── Hero: net total + entry count (flat, on background) ────────────────
         if (selectionMode) {
-            Row(Modifier.fillMaxWidth().padding(bottom = 8.dp),
-                Arrangement.SpaceBetween, Alignment.CenterVertically) {
-                TextButton(onClick = {
-                    selectionMode = false; selectedIds = emptySet()
-                }) { Text("Cancel") }
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(onClick = {
-                        selectedIds = filteredHistory.map { it.id }.toSet()
-                    }) { Text("Select All") }
-                    Button(
-                        onClick = { if (selectedIds.isNotEmpty()) showBulkDeleteConfirm = true },
-                        enabled = selectedIds.isNotEmpty(),
-                        colors  = ButtonDefaults.buttonColors(containerColor = SemanticRed)
-                    ) { Text("Delete (${selectedIds.size})") }
+            Text(
+                text = "${selectedIds.size} selected",
+                style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.ExtraBold),
+                modifier = Modifier.padding(top = 8.dp)
+            )
+        } else {
+            Text(
+                text = "History",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 8.dp)
+            )
+            Text(
+                text = "${if (net < 0) "-" else "+"}$currencySymbol${String.format(locale, "%,.0f", kotlin.math.abs(net))}",
+                style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.ExtraBold),
+                color = if (net < 0) SemanticRed else Emerald500
+            )
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(top = 2.dp, bottom = 4.dp)
+            ) {
+                Text("${filteredHistory.size} entries",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("▲ $currencySymbol${String.format(locale, "%,.0f", totalIncome)}",
+                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                    color = Emerald500)
+                Text("▼ $currencySymbol${String.format(locale, "%,.0f", totalExpense)}",
+                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                    color = SemanticRed)
+            }
+        }
+
+        Spacer(Modifier.height(14.dp))
+
+        // ── Selection action bar (flat, emerald) ───────────────────────────────
+        if (selectionMode) {
+            Row(
+                Modifier.fillMaxWidth().padding(bottom = 12.dp),
+                Arrangement.spacedBy(8.dp), Alignment.CenterVertically
+            ) {
+                TextButton(onClick = { selectionMode = false; selectedIds = emptySet() }) { Text("Cancel") }
+                Spacer(Modifier.weight(1f))
+                TextButton(onClick = { selectedIds = filteredHistory.map { it.id }.toSet() }) {
+                    Text("Select all", color = Emerald500)
+                }
+                Button(
+                    onClick = { if (selectedIds.isNotEmpty()) showBulkDeleteConfirm = true },
+                    enabled = selectedIds.isNotEmpty(),
+                    colors  = ButtonDefaults.buttonColors(containerColor = SemanticRed),
+                    shape = RoundedCornerShape(14.dp),
+                    contentPadding = PaddingValues(horizontal = 18.dp)
+                ) {
+                    Icon(Icons.Default.Delete, null, Modifier.size(18.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("Delete (${selectedIds.size})")
                 }
             }
-        }
+        } else {
+            // ── Soft search ────────────────────────────────────────────────────
+            HistorySoftField(
+                value = searchQuery,
+                placeholder = "Search transactions…",
+                leading = Icons.Default.Search,
+                onChange = { viewModel.updateSearchQuery(it) }
+            )
 
-        OutlinedTextField(
-            value = searchQuery,
-            onValueChange = { viewModel.updateSearchQuery(it) },
-            modifier = Modifier.fillMaxWidth(),
-            placeholder = { Text("Search transactions...") },
-            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-            shape = RoundedCornerShape(12.dp)
-        )
-        
-        Row(
-            modifier = Modifier.padding(vertical = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            types.forEach { type ->
-                FilterChip(selected = selectedType == type, onClick = { selectedType = type }, label = { Text(type) })
-            }
-            Spacer(Modifier.weight(1f))
-            IconButton(onClick = { showDateFilter = !showDateFilter }) {
-                Icon(Icons.Default.DateRange, null,
-                    tint = if (showDateFilter || fromDate.isNotBlank()) MaterialTheme.colorScheme.primary
-                           else MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-        }
+            Spacer(Modifier.height(12.dp))
 
-        if (showDateFilter) {
-            val today = java.time.LocalDate.now()
-            val displayFmt = java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy")
-            Card(Modifier.fillMaxWidth().padding(bottom = 8.dp), shape = RoundedCornerShape(12.dp)) {
-                Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Quick Select", style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        listOf(
-                            "Today"      to (today to today),
-                            "Yesterday"  to (today.minusDays(1) to today.minusDays(1)),
-                            "Last 7d"    to (today.minusDays(6) to today),
-                            "Last 30d"   to (today.minusDays(29) to today),
-                            "This Month" to (today.withDayOfMonth(1) to today),
-                            "Last Month" to (today.minusMonths(1).withDayOfMonth(1) to today.minusMonths(1).withDayOfMonth(today.minusMonths(1).lengthOfMonth())),
-                            "This Year"  to (today.withDayOfYear(1) to today)
-                        ).forEach { (label, range) ->
-                            FilterChip(
-                                selected = fromDate == range.first.format(displayFmt) && toDate == range.second.format(displayFmt),
-                                onClick  = { fromDate = range.first.format(displayFmt); toDate = range.second.format(displayFmt) },
-                                label    = { Text(label, style = MaterialTheme.typography.labelSmall) }
+            // ── Type chips + date toggle ───────────────────────────────────────
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                types.forEach { type ->
+                    FilterChip(
+                        selected = selectedType == type,
+                        onClick = { selectedType = type },
+                        label = { Text(type) },
+                        shape = RoundedCornerShape(12.dp),
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = Emerald500.copy(alpha = 0.16f),
+                            selectedLabelColor = Emerald500
+                        ),
+                        border = FilterChipDefaults.filterChipBorder(
+                            enabled = true, selected = selectedType == type,
+                            borderColor = hairline, selectedBorderColor = androidx.compose.ui.graphics.Color.Transparent
+                        )
+                    )
+                }
+                Spacer(Modifier.weight(1f))
+                FilterChip(
+                    selected = showDateFilter || fromDate.isNotBlank(),
+                    onClick = { showDateFilter = !showDateFilter },
+                    label = { Text("Dates") },
+                    leadingIcon = { Icon(Icons.Default.DateRange, null, Modifier.size(16.dp)) },
+                    shape = RoundedCornerShape(12.dp),
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = Emerald500.copy(alpha = 0.16f),
+                        selectedLabelColor = Emerald500,
+                        selectedLeadingIconColor = Emerald500
+                    ),
+                    border = FilterChipDefaults.filterChipBorder(
+                        enabled = true, selected = showDateFilter || fromDate.isNotBlank(),
+                        borderColor = hairline, selectedBorderColor = androidx.compose.ui.graphics.Color.Transparent
+                    )
+                )
+            }
+
+            // ── Flat date filter (no card) ─────────────────────────────────────
+            if (showDateFilter) {
+                val today = java.time.LocalDate.now()
+                val displayFmt = java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy")
+                Spacer(Modifier.height(12.dp))
+                Text("Quick select", style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Spacer(Modifier.height(8.dp))
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    listOf(
+                        "Today"      to (today to today),
+                        "Yesterday"  to (today.minusDays(1) to today.minusDays(1)),
+                        "Last 7d"    to (today.minusDays(6) to today),
+                        "Last 30d"   to (today.minusDays(29) to today),
+                        "This Month" to (today.withDayOfMonth(1) to today),
+                        "Last Month" to (today.minusMonths(1).withDayOfMonth(1) to today.minusMonths(1).withDayOfMonth(today.minusMonths(1).lengthOfMonth())),
+                        "This Year"  to (today.withDayOfYear(1) to today)
+                    ).forEach { (label, range) ->
+                        val sel = fromDate == range.first.format(displayFmt) && toDate == range.second.format(displayFmt)
+                        FilterChip(
+                            selected = sel,
+                            onClick  = { fromDate = range.first.format(displayFmt); toDate = range.second.format(displayFmt) },
+                            label    = { Text(label, style = MaterialTheme.typography.labelSmall) },
+                            shape = RoundedCornerShape(10.dp),
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = Emerald500.copy(alpha = 0.16f),
+                                selectedLabelColor = Emerald500
+                            ),
+                            border = FilterChipDefaults.filterChipBorder(
+                                enabled = true, selected = sel,
+                                borderColor = hairline, selectedBorderColor = androidx.compose.ui.graphics.Color.Transparent
                             )
-                        }
-                    }
-                    HorizontalDivider()
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        app.fynlo.ui.components.DatePickerField(
-                            value = fromDate, onValueChange = { fromDate = it },
-                            label = "From", optional = true, modifier = Modifier.weight(1f)
-                        )
-                        app.fynlo.ui.components.DatePickerField(
-                            value = toDate, onValueChange = { toDate = it },
-                            label = "To", optional = true, modifier = Modifier.weight(1f)
                         )
                     }
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
-                        if (fromDate.isNotBlank() || toDate.isNotBlank()) {
-                            TextButton(onClick = { fromDate = ""; toDate = "" }) { Text("Clear") }
-                        }
-                        Button(onClick = { showDateFilter = false }, modifier = Modifier.height(36.dp)) {
-                            Text("Apply")
-                        }
+                }
+                Spacer(Modifier.height(12.dp))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    app.fynlo.ui.components.DatePickerField(
+                        value = fromDate, onValueChange = { fromDate = it },
+                        label = "From", optional = true, modifier = Modifier.weight(1f)
+                    )
+                    app.fynlo.ui.components.DatePickerField(
+                        value = toDate, onValueChange = { toDate = it },
+                        label = "To", optional = true, modifier = Modifier.weight(1f)
+                    )
+                }
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
+                    if (fromDate.isNotBlank() || toDate.isNotBlank()) {
+                        TextButton(onClick = { fromDate = ""; toDate = "" }) { Text("Clear") }
                     }
+                    TextButton(onClick = { showDateFilter = false }) { Text("Done", color = Emerald500) }
                 }
             }
         }
+
+        Spacer(Modifier.height(8.dp))
 
         if (filteredHistory.isEmpty()) {
             EmptyTransactionState()
         } else {
-            val grouped = filteredHistory.groupBy { it.date }
-            val locale  = Locale.getDefault()
-            
             LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-                contentPadding      = PaddingValues(bottom = 100.dp)
+                contentPadding = PaddingValues(bottom = 100.dp)
             ) {
                 val byMonth = filteredHistory.groupBy { it.date.substring(0, 7) }
                 byMonth.keys.sortedByDescending { it }.forEach { month ->
@@ -209,22 +287,26 @@ fun TransactionHistoryScreen(viewModel: FinanceViewModel) {
                         ym.format(java.time.format.DateTimeFormatter.ofPattern("MMMM yyyy"))
                     }.getOrDefault(month)
 
+                    // ── Flat month header ──────────────────────────────────────
                     item {
-                        Card(Modifier.fillMaxWidth().padding(vertical = 8.dp),
-                            RoundedCornerShape(12.dp),
-                            CardDefaults.cardColors(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))) {
-                            Row(Modifier.padding(12.dp).fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
-                                Text(monthLabel, style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold))
-                                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                    Text("+${currencySymbol}${String.format(locale, "%,.0f", monthIncome)}",
-                                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-                                        color = Emerald500)
-                                    Text("-${currencySymbol}${String.format(locale, "%,.0f", monthExpense)}",
-                                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-                                        color = SemanticRed)
-                                }
+                        Row(
+                            Modifier.fillMaxWidth().padding(top = 18.dp, bottom = 6.dp),
+                            Arrangement.SpaceBetween, Alignment.CenterVertically
+                        ) {
+                            Text(monthLabel.uppercase(locale),
+                                style = MaterialTheme.typography.labelMedium.copy(
+                                    fontWeight = FontWeight.Bold, letterSpacing = 0.8.sp),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                Text("+$currencySymbol${String.format(locale, "%,.0f", monthIncome)}",
+                                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                    color = Emerald500)
+                                Text("-$currencySymbol${String.format(locale, "%,.0f", monthExpense)}",
+                                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                    color = SemanticRed)
                             }
                         }
+                        HorizontalDivider(thickness = 0.5.dp, color = hairline)
                     }
 
                     val byDate = monthTransactions.groupBy { it.date }
@@ -233,23 +315,30 @@ fun TransactionHistoryScreen(viewModel: FinanceViewModel) {
                             Text(DateUtils.formatToDisplay(date),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(start = 4.dp, top = 4.dp, bottom = 2.dp))
+                                modifier = Modifier.padding(top = 14.dp, bottom = 2.dp))
                         }
-                        items(byDate[date] ?: emptyList(), key = { it.id }) { transaction ->
+                        val dayTxns = byDate[date] ?: emptyList()
+                        itemsIndexedTxns(dayTxns) { idx, transaction ->
                             TransactionItem(
                                 txn         = transaction,
                                 isSelected  = transaction.id in selectedIds,
                                 selectionMode = selectionMode,
                                 currencySymbol = currencySymbol,
-                                onLongPress = { selectionMode = true; selectedIds = selectedIds + transaction.id },
+                                onLongPress = {
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    selectionMode = true; selectedIds = selectedIds + transaction.id
+                                },
                                 onSelect    = {
                                     selectedIds = if (transaction.id in selectedIds)
                                         selectedIds - transaction.id
                                     else selectedIds + transaction.id
                                 },
-                                onDelete = { viewModel.deleteTransaction(transaction) },
                                 onEdit   = { viewModel.editTransaction(transaction, it) }
                             )
+                            if (idx < dayTxns.lastIndex) {
+                                HorizontalDivider(thickness = 0.5.dp, color = hairline,
+                                    modifier = Modifier.padding(start = 52.dp))
+                            }
                         }
                     }
                 }
@@ -258,11 +347,50 @@ fun TransactionHistoryScreen(viewModel: FinanceViewModel) {
     }
 }
 
+/** Small wrapper so we get the index inside a LazyListScope.forEach loop. */
+private fun androidx.compose.foundation.lazy.LazyListScope.itemsIndexedTxns(
+    list: List<Transaction>,
+    content: @Composable (Int, Transaction) -> Unit
+) {
+    items(list.size, key = { list[it].id }) { i -> content(i, list[i]) }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun HistorySoftField(
+    value: String,
+    placeholder: String,
+    leading: ImageVector,
+    onChange: (String) -> Unit
+) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = onChange,
+        modifier = Modifier.fillMaxWidth(),
+        placeholder = { Text(placeholder) },
+        leadingIcon = { Icon(leading, contentDescription = null) },
+        trailingIcon = {
+            if (value.isNotEmpty()) {
+                IconButton(onClick = { onChange("") }) { Icon(Icons.Default.Close, "Clear") }
+            }
+        },
+        singleLine = true,
+        shape = RoundedCornerShape(16.dp),
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+            focusedBorderColor = Emerald500,
+            unfocusedBorderColor = androidx.compose.ui.graphics.Color.Transparent,
+            focusedLeadingIconColor = Emerald500,
+            cursorColor = Emerald500
+        )
+    )
+}
+
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun TransactionItem(
     txn: Transaction,
-    onDelete: () -> Unit = {},
     onEdit: (Transaction) -> Unit = {},
     isSelected: Boolean = false,
     selectionMode: Boolean = false,
@@ -270,10 +398,8 @@ fun TransactionItem(
     onLongPress: () -> Unit = {},
     onSelect: () -> Unit = {}
 ) {
-    val haptic    = LocalHapticFeedback.current
     val isExpense  = txn.type.lowercase() == "expense"
     val isIncome   = txn.type.lowercase() == "income"
-    val isTransfer = txn.type.lowercase() == "transfer"
     val rowColor   = when {
         isIncome   -> Emerald500
         isExpense  -> SemanticRed
@@ -285,21 +411,7 @@ fun TransactionItem(
         else       -> "↔"
     }
     val locale = java.util.Locale.getDefault()
-    var showDeleteConfirm by remember { mutableStateOf(false) }
-    var showEditDialog    by remember { mutableStateOf(false) }
-
-    if (showDeleteConfirm) {
-        AlertDialog(
-            onDismissRequest = { showDeleteConfirm = false },
-            title = { Text("Delete Transaction?") },
-            text  = { Text("Delete $currencySymbol${String.format(java.util.Locale.getDefault(), "%,.0f", txn.amount)} ${txn.category}? This will reverse the account balance.") },
-            confirmButton = {
-                Button(onClick = { haptic.performHapticFeedback(HapticFeedbackType.LongPress); onDelete(); showDeleteConfirm = false },
-                    colors = ButtonDefaults.buttonColors(containerColor = SemanticRed)) { Text("Delete") }
-            },
-            dismissButton = { TextButton(onClick = { showDeleteConfirm = false }) { Text("Cancel") } }
-        )
-    }
+    var showEditDialog by remember { mutableStateOf(false) }
 
     if (showEditDialog) {
         app.fynlo.ui.components.EditTransactionDialog(
@@ -309,114 +421,72 @@ fun TransactionItem(
         )
     }
 
-    Card(
-        modifier = Modifier.fillMaxWidth()
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
             .combinedClickable(
-                onClick  = { if (selectionMode) onSelect() },
-                onLongClick = { onLongPress() }
-            ),
-        shape    = RoundedCornerShape(12.dp),
-        colors   = CardDefaults.cardColors(
-            containerColor = if (isSelected) rowColor.copy(alpha = 0.15f) else rowColor.copy(alpha = 0.05f)
-        )
+                onClick = { if (selectionMode) onSelect() else showEditDialog = true },
+                onLongClick = onLongPress
+            )
+            .background(
+                if (isSelected) rowColor.copy(alpha = 0.10f)
+                else androidx.compose.ui.graphics.Color.Transparent
+            )
+            .padding(vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(Modifier.fillMaxWidth()) {
-            if (selectionMode) {
-                Checkbox(
-                    checked  = isSelected,
-                    onCheckedChange = { onSelect() },
-                    modifier = Modifier.padding(start = 8.dp).align(Alignment.CenterVertically)
-                )
+        // Leading: checkbox in selection mode, else colored category chip
+        if (selectionMode) {
+            Box(Modifier.size(40.dp), contentAlignment = Alignment.Center) {
+                if (isSelected) {
+                    Box(Modifier.size(28.dp).background(rowColor, CircleShape), Alignment.Center) {
+                        Icon(Icons.Default.Check, null, tint = androidx.compose.ui.graphics.Color.White, modifier = Modifier.size(18.dp))
+                    }
+                } else {
+                    Box(Modifier.size(28.dp).background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f), CircleShape))
+                }
             }
-            Box(Modifier.width(4.dp).height(IntrinsicSize.Max).background(rowColor,
-                RoundedCornerShape(topStart = 12.dp, bottomStart = 12.dp)))
-            Column(modifier = Modifier.padding(12.dp).weight(1f)) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(40.dp)
-                            .background(rowColor.copy(alpha = 0.15f), CircleShape),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector        = getCategoryIcon(txn.category),
-                            contentDescription = null,
-                            tint               = rowColor,
-                            modifier           = Modifier.size(20.dp)
-                        )
-                    }
+        } else {
+            Box(
+                modifier = Modifier.size(40.dp).background(rowColor.copy(alpha = 0.15f), CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(getCategoryIcon(txn.category), null, tint = rowColor, modifier = Modifier.size(20.dp))
+            }
+        }
 
-                    Spacer(modifier = Modifier.width(12.dp))
+        Spacer(Modifier.width(12.dp))
 
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(txn.category,
-                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold))
-                        Text(txn.desc.ifBlank { if (isExpense) txn.fromAcct else txn.toAcct },
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-
-                    Column(horizontalAlignment = Alignment.End) {
-                        Text(
-                            text  = "${amountPrefix}$currencySymbol ${String.format(locale, "%,.0f", txn.amount)}",
-                            style = MaterialTheme.typography.bodyLarge.copy(
-                                fontWeight = FontWeight.ExtraBold, color = rowColor)
-                        )
-                        Text(txn.date, style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-
-                    IconButton(onClick = { showEditDialog = true }, modifier = Modifier.size(32.dp)) {
-                        Icon(Icons.Default.Edit, null, Modifier.size(16.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                    IconButton(onClick = { showDeleteConfirm = true }, modifier = Modifier.size(32.dp)) {
-                        Icon(Icons.Default.Delete, null, Modifier.size(16.dp),
-                            tint = SemanticRed.copy(alpha = 0.7f))
-                    }
-                }
-
-                if (txn.notes.isNotEmpty()) {
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(
-                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
-                                RoundedCornerShape(8.dp)
-                            )
-                            .padding(8.dp),
-                        verticalAlignment = Alignment.Top
-                    ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.Notes,
-                            contentDescription = null,
-                            modifier = Modifier.size(14.dp).padding(top = 2.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = txn.notes,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-                
-                Row(modifier = Modifier.padding(top = 8.dp)) {
-                    if (txn.fromAcct.isNotEmpty()) {
-                        Text("From: ${txn.fromAcct}", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
-                    }
-                    if (txn.fromAcct.isNotEmpty() && txn.toAcct.isNotEmpty()) Spacer(Modifier.width(8.dp))
-                    if (txn.toAcct.isNotEmpty()) {
-                        Text("To: ${txn.toAcct}", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
-                    }
+        Column(Modifier.weight(1f)) {
+            Text(txn.category,
+                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold))
+            val sub = txn.desc.ifBlank { if (isExpense) txn.fromAcct else txn.toAcct }
+            if (sub.isNotBlank()) {
+                Text(sub,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1)
+            }
+            if (txn.notes.isNotEmpty()) {
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 2.dp)) {
+                    Icon(Icons.AutoMirrored.Filled.Notes, null, Modifier.size(12.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Spacer(Modifier.width(4.dp))
+                    Text(txn.notes,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1)
                 }
             }
         }
+
+        Spacer(Modifier.width(8.dp))
+
+        Text(
+            text  = "$amountPrefix$currencySymbol${String.format(locale, "%,.0f", txn.amount)}",
+            style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.ExtraBold),
+            color = rowColor
+        )
     }
 }
 

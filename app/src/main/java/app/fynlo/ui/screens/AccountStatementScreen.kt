@@ -110,7 +110,6 @@ fun AccountStatementScreen(
                         TransactionItem(
                             txn            = txn,
                             currencySymbol = currencySymbol,
-                            onDelete       = { viewModel.deleteTransaction(txn) },
                             onEdit         = { viewModel.editTransaction(txn, it) }
                         )
                     }
