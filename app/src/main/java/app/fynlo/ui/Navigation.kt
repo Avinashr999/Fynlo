@@ -56,6 +56,7 @@ sealed class Screen(val route: String, val label: String, val icon: ImageVector)
     object Invest : Screen("invest", "Invest", Icons.AutoMirrored.Filled.TrendingUp)
     object Spend : Screen("spend", "Expenses", Icons.AutoMirrored.Filled.ReceiptLong)
     object Settings : Screen("settings", "Settings", Icons.Default.Settings)
+    object UpgradePro : Screen("upgrade_pro", "Fynlo Pro", Icons.Default.Star)
     object About : Screen("about", "About", Icons.Default.Info)
     object People : Screen("people", "Contact Book", Icons.Default.Group)
     object Budgets : Screen("budgets", "Budgeting", Icons.Default.AccountBalanceWallet)
@@ -570,11 +571,15 @@ fun MainNavigation(viewModel: FinanceViewModel) {
                 composable(Screen.Debts.route) { DebtScreen(viewModel) }
                 composable(Screen.Invest.route) { InvestmentScreen(viewModel) }
                 composable(Screen.Spend.route) { SpendScreen(viewModel) }
-                composable(Screen.Settings.route) { 
+                composable(Screen.Settings.route) {
                     SettingsScreen(
                         viewModel = viewModel,
-                        onNavigateToAbout = { navController.navigate(Screen.About.route) }
-                    ) 
+                        onNavigateToAbout = { navController.navigate(Screen.About.route) },
+                        onNavigateToUpgrade = { navController.navigate(Screen.UpgradePro.route) }
+                    )
+                }
+                composable(Screen.UpgradePro.route) {
+                    UpgradeProScreen(onNavigateBack = { navController.navigateUp() })
                 }
                 composable(Screen.About.route) { AboutScreen() }
                 composable(Screen.People.route) { PeopleScreen(viewModel) }

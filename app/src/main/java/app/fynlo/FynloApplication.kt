@@ -61,6 +61,9 @@ class FynloApplication : Application() {
 
         Analytics.init(this)
 
+        // Pro / billing — dormant unless FeatureFlags.BILLING_ENABLED is true.
+        app.fynlo.billing.BillingManager.init(this)
+
         syncManager = SyncManager("", dao)
         repository.updateRemote(FirestoreRepository(""), syncManager)
 

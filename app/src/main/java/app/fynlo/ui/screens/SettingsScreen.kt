@@ -40,7 +40,8 @@ private val Amber = SemanticAmber
 fun SettingsScreen(
     viewModel: FinanceViewModel,
     onNavigateToAbout: () -> Unit,
-    onNavigateToProfile: () -> Unit = {}
+    onNavigateToProfile: () -> Unit = {},
+    onNavigateToUpgrade: () -> Unit = {}
 ) {
     val scope   = rememberCoroutineScope()
     val context = LocalContext.current
@@ -104,7 +105,36 @@ fun SettingsScreen(
             .verticalScroll(rememberScrollState()).imePadding()
             .padding(horizontal = 16.dp)
     ) {
-        // â"€â"€ Appearance â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
+        // ── Upgrade to Pro (hidden until billing is enabled) ──────────────────
+        if (app.fynlo.billing.FeatureFlags.BILLING_ENABLED) {
+            Row(
+                Modifier.fillMaxWidth()
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(Emerald500.copy(alpha = 0.10f))
+                    .clickable { onNavigateToUpgrade() }
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                Box(Modifier.size(40.dp).clip(CircleShape).background(Emerald500.copy(alpha = 0.18f)),
+                    Alignment.Center) {
+                    Icon(Icons.Default.Star, null, Modifier.size(22.dp), tint = Emerald500)
+                }
+                Column(Modifier.weight(1f)) {
+                    Text("Upgrade to Fynlo Pro",
+                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
+                        color = Emerald500)
+                    Text("Unlimited everything, cloud sync, reports & more",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Icon(Icons.AutoMirrored.Filled.ArrowForwardIos, null, Modifier.size(16.dp),
+                    tint = Emerald500)
+            }
+            Spacer(Modifier.height(16.dp))
+        }
+
+        // ── Appearance ────────────────────────────────────────────────────────
         SettingsSectionLabel("Personalization")
         SettingsCard {
             // Theme
