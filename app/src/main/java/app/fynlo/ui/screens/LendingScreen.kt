@@ -6,6 +6,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
@@ -274,23 +276,21 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
                         InterestEngine.calcOutstanding(it.amount, interest, it.paid)
                     }
                     val overdueCount = activeLoans.count { it.due.isNotBlank() && it.due < today }
-                    Card(Modifier.fillMaxWidth(), RoundedCornerShape(16.dp),
-                        CardDefaults.cardColors(SemanticBlue.copy(alpha = 0.1f))) {
-                        Row(Modifier.padding(16.dp).fillMaxWidth(), Arrangement.SpaceBetween) {
-                            Column {
-                                Text("Total Outstanding", style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                Text("$currencySymbol${String.format(java.util.Locale.getDefault(), "%,.0f", totalOut)}",
-                                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-                                    color = SemanticBlue)
-                            }
-                            if (overdueCount > 0) {
-                                Surface(color = SemanticRed.copy(alpha = 0.15f), shape = RoundedCornerShape(8.dp)) {
-                                    Text("$overdueCount OVERDUE",
-                                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-                                        color = SemanticRed,
-                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp))
-                                }
+                    // Flat hero (no card) — matches dashboard
+                    Row(Modifier.fillMaxWidth().padding(top = 6.dp, bottom = 6.dp), Arrangement.SpaceBetween, Alignment.CenterVertically) {
+                        Column {
+                            Text("Total outstanding", style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text("$currencySymbol${String.format(java.util.Locale.getDefault(), "%,.0f", totalOut)}",
+                                fontSize = 32.sp, fontWeight = FontWeight.ExtraBold,
+                                color = MaterialTheme.colorScheme.onSurface)
+                        }
+                        if (overdueCount > 0) {
+                            Surface(color = SemanticRed.copy(alpha = 0.12f), shape = RoundedCornerShape(20.dp)) {
+                                Text("$overdueCount OVERDUE",
+                                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                                    color = SemanticRed,
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp))
                             }
                         }
                     }
@@ -341,7 +341,9 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
                         }
                     }
                 } else {
-                    items(activeLoans, key = { it.id }) { borrower ->
+                    itemsIndexed(activeLoans, key = { _, it -> it.id }) { idx, borrower ->
+                        if (idx > 0) HorizontalDivider(thickness = 0.5.dp,
+                            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f))
                         LendingCard(
                             borrower  = borrower,
                             people    = people,
@@ -451,12 +453,7 @@ fun LendingCard(borrower: Borrower, people: List<app.fynlo.data.model.Person> = 
         borrower.amount, borrower.rate, borrower.date, borrower.due, borrower.paid
     ) else null
     
-    Card(
-        modifier = Modifier.fillMaxWidth().clickable { onClick() },
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+    Column(modifier = Modifier.fillMaxWidth().clickable { onClick() }.padding(vertical = 14.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -683,27 +680,22 @@ fun LendingCard(borrower: Borrower, people: List<app.fynlo.data.model.Person> = 
             }
 
             // Days elapsed + per day interest
-            Spacer(Modifier.height(8.dp))
-            Surface(
-                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
-                shape = RoundedCornerShape(8.dp)
+            Spacer(Modifier.height(10.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("Days Elapsed", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text("$daysElapsed days", style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold))
-                    }
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("Per Day Interest", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text("$currencySymbol ${String.format(locale, "%,.2f", perDayInterest)}", style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold), color = Emerald500)
-                    }
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("Paid So Far", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text("$currencySymbol ${String.format(locale, "%,.0f", borrower.paid)}", style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold), color = MaterialTheme.colorScheme.primary)
-                    }
+                Column {
+                    Text("Days Elapsed", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("$daysElapsed days", style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold))
+                }
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("Per Day Interest", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("$currencySymbol ${String.format(locale, "%,.2f", perDayInterest)}", style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold), color = Emerald500)
+                }
+                Column(horizontalAlignment = Alignment.End) {
+                    Text("Paid So Far", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("$currencySymbol ${String.format(locale, "%,.0f", borrower.paid)}", style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold), color = MaterialTheme.colorScheme.primary)
                 }
             }
             
@@ -765,33 +757,27 @@ fun LendingCard(borrower: Borrower, people: List<app.fynlo.data.model.Person> = 
             }
 
             if (borrower.notes.isNotEmpty()) {
-                Spacer(Modifier.height(12.dp))
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)),
-                    shape = RoundedCornerShape(8.dp)
+                Spacer(Modifier.height(10.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(
-                        modifier = Modifier.padding(8.dp).fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.Notes, 
-                            contentDescription = null, 
-                            modifier = Modifier.size(14.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Spacer(Modifier.width(8.dp))
-                        Text(
-                            borrower.notes, 
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
+                    Icon(
+                        Icons.AutoMirrored.Filled.Notes,
+                        contentDescription = null,
+                        modifier = Modifier.size(14.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        borrower.notes,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
         }
     }
-}
 
 @Composable
 fun EmptyLendingState(onAdd: () -> Unit = {}) {
