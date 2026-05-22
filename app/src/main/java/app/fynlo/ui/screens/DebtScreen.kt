@@ -41,7 +41,7 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DebtScreen(viewModel: FinanceViewModel) {
+fun DebtScreen(viewModel: FinanceViewModel, showHeader: Boolean = true) {
     LaunchedEffect(Unit) { app.fynlo.data.Analytics.screenView("Debts") }
         val haptic = LocalHapticFeedback.current
 val debts by viewModel.debts.collectAsState()
@@ -90,7 +90,7 @@ val debts by viewModel.debts.collectAsState()
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        PremiumScreenHeader("My Debts", "Loans you owe to others")
+        if (showHeader) PremiumScreenHeader("My Debts", "Loans you owe to others")
         Box(modifier = Modifier.weight(1f)) {
         app.fynlo.ui.components.PullRefresh(viewModel) {
         LazyColumn(

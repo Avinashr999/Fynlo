@@ -5,7 +5,6 @@ import android.content.pm.PackageManager
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -40,7 +39,6 @@ import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.NotificationsOff
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PhoneAndroid
-import androidx.compose.material.icons.filled.Translate
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -71,7 +69,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
-import androidx.core.os.LocaleListCompat
 import kotlinx.coroutines.launch
 import app.fynlo.data.UserPreferences
 import app.fynlo.ui.theme.Emerald400
@@ -80,7 +77,7 @@ import app.fynlo.ui.theme.Emerald700
 import app.fynlo.ui.theme.Emerald900
 import app.fynlo.ui.theme.ThemeController
 
-private const val TOTAL_STEPS = 4
+private const val TOTAL_STEPS = 3
 
 @Composable
 fun FirstLaunchSetupScreen(onComplete: () -> Unit) {
@@ -89,16 +86,13 @@ fun FirstLaunchSetupScreen(onComplete: () -> Unit) {
 
     var currentStep by remember { mutableIntStateOf(0) }
 
-    // Step 1 state
-    var selectedLanguage by remember { mutableStateOf("en") }
+    // Step 1 state — theme (null = system)
+    var selectedTheme by remember { mutableStateOf<Boolean?>(null) }
 
-    // Step 2 state
-    var selectedTheme by remember { mutableStateOf<Boolean?>(null) } // null = system
-
-    // Step 3 state
+    // Step 2 state — reminders
     var notificationsEnabled by remember { mutableStateOf(true) }
 
-    // Step 4 state
+    // Step 3 state — name
     var displayName by remember { mutableStateOf("") }
 
     // Notification permission launcher
@@ -120,8 +114,8 @@ fun FirstLaunchSetupScreen(onComplete: () -> Unit) {
                 .padding(top = 48.dp, bottom = 32.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Skip on step 4
-            if (currentStep == 3) {
+            // Skip on last step
+            if (currentStep == TOTAL_STEPS - 1) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.End
@@ -156,11 +150,7 @@ fun FirstLaunchSetupScreen(onComplete: () -> Unit) {
                 label = "step"
             ) { step ->
                 when (step) {
-                    0 -> LanguageStep(
-                        selected = selectedLanguage,
-                        onSelect = { selectedLanguage = it }
-                    )
-                    1 -> ThemeStep(
+                    0 -> ThemeStep(
                         selected = selectedTheme,
                         onSelect = {
                             selectedTheme = it
@@ -168,11 +158,11 @@ fun FirstLaunchSetupScreen(onComplete: () -> Unit) {
                             ThemeController.save(context)
                         }
                     )
-                    2 -> NotificationStep(
+                    1 -> NotificationStep(
                         enabled = notificationsEnabled,
                         onSelect = { notificationsEnabled = it }
                     )
-                    3 -> ProfileStep(
+                    2 -> ProfileStep(
                         name = displayName,
                         onNameChange = { displayName = it }
                     )
@@ -227,19 +217,13 @@ fun FirstLaunchSetupScreen(onComplete: () -> Unit) {
                 Button(
                     onClick = {
                         val stepName = when (currentStep) {
-                            0 -> "language"; 1 -> "theme"; 2 -> "notifications"; 3 -> "profile"; else -> "unknown"
+                            0 -> "theme"; 1 -> "notifications"; 2 -> "profile"; else -> "unknown"
                         }
                         when (currentStep) {
                             0 -> {
-                                scope.launch { UserPreferences.setAppLanguage(context, selectedLanguage) }
-                                val locales = LocaleListCompat.forLanguageTags(selectedLanguage)
-                                AppCompatDelegate.setApplicationLocales(locales)
-                                app.fynlo.data.Analytics.setUserLanguage(selectedLanguage)
+                                // Theme already saved on selection via ThemeController.save()
                             }
                             1 -> {
-                                // Already saved on selection via ThemeController.save()
-                            }
-                            2 -> {
                                 scope.launch { UserPreferences.setNotificationsEnabled(context, notificationsEnabled) }
                                 if (notificationsEnabled &&
                                     Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
@@ -254,7 +238,7 @@ fun FirstLaunchSetupScreen(onComplete: () -> Unit) {
                                     }
                                 }
                             }
-                            3 -> {
+                            2 -> {
                                 scope.launch { UserPreferences.setUserDisplayName(context, displayName.trim()) }
                             }
                         }
@@ -290,51 +274,7 @@ fun FirstLaunchSetupScreen(onComplete: () -> Unit) {
     }
 }
 
-// ── Step 1: Language ─────────────────────────────────────────────────────────
-
-@Composable
-private fun LanguageStep(selected: String, onSelect: (String) -> Unit) {
-    StepLayout(
-        icon = Icons.Default.Translate,
-        title = "Choose Your Language",
-        subtitle = "Select your preferred language"
-    ) {
-        val languages = listOf(
-            Triple("en", "\uD83C\uDDEC\uD83C\uDDE7  English", "English"),
-            Triple("hi", "\uD83C\uDDEE\uD83C\uDDF3  \u0939\u093F\u0902\u0926\u0940", "Hindi"),
-            Triple("te", "\uD83C\uDDEE\uD83C\uDDF3  \u0C24\u0C46\u0C32\u0C41\u0C17\u0C41", "Telugu")
-        )
-        languages.forEach { (code, label, subtitle) ->
-            SelectionCard(
-                selected = selected == code,
-                onClick = { onSelect(code) }
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(16.dp)
-                ) {
-                    Text(label, fontSize = 18.sp, color = Color.White)
-                    Spacer(Modifier.weight(1f))
-                    Text(
-                        subtitle,
-                        color = Color.White.copy(alpha = 0.6f),
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                    if (selected == code) {
-                        Spacer(Modifier.width(8.dp))
-                        Icon(
-                            Icons.Default.Check, null,
-                            tint = Emerald400, modifier = Modifier.size(20.dp)
-                        )
-                    }
-                }
-            }
-            Spacer(Modifier.height(10.dp))
-        }
-    }
-}
-
-// ── Step 2: Theme ────────────────────────────────────────────────────────────
+// ── Step 1: Theme ────────────────────────────────────────────────────────────
 
 @Composable
 private fun ThemeStep(selected: Boolean?, onSelect: (Boolean?) -> Unit) {

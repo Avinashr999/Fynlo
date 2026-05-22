@@ -45,12 +45,13 @@ fun AddLendingDialog(
     var due by remember { mutableStateOf(initialBorrower?.due?.let { DateUtils.formatToDisplay(it) } ?: "") }
     var notes by remember { mutableStateOf(initialBorrower?.notes ?: "") }
     var selectedType by remember { mutableStateOf(initialBorrower?.type ?: "Simple Interest") }
+    var showAdvancedInterest by remember { mutableStateOf(selectedType != "Simple Interest") }
 
     val accountOptions = if (accounts.isNotEmpty()) accounts
         else listOf(app.fynlo.data.model.Account(id = "cash", name = "Cash in Hand", type = "Cash", balance = 0.0))
     var selectedAccount by remember { mutableStateOf(accountOptions.first()) }
 
-    val interestTypes = listOf("Simple Interest", "Reducing Balance", "Compound Interest", "Both")
+    val advancedInterestTypes = listOf("Reducing Balance", "Compound Interest", "Both")
     val isEdit = initialBorrower != null
 
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
@@ -144,16 +145,32 @@ fun AddLendingDialog(
                 Text("Interest type", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Spacer(Modifier.height(8.dp))
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    interestTypes.forEach { type ->
-                        FilterChip(
-                            selected = selectedType == type,
-                            onClick = { selectedType = type },
-                            label = { Text(type) },
-                            shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = Emerald500.copy(alpha = 0.16f),
-                                selectedLabelColor = Emerald500)
-                        )
+                    FilterChip(
+                        selected = selectedType == "Simple Interest",
+                        onClick = { selectedType = "Simple Interest" },
+                        label = { Text("Simple Interest") },
+                        shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = Emerald500.copy(alpha = 0.16f),
+                            selectedLabelColor = Emerald500)
+                    )
+                    if (showAdvancedInterest) {
+                        advancedInterestTypes.forEach { type ->
+                            FilterChip(
+                                selected = selectedType == type,
+                                onClick = { selectedType = type },
+                                label = { Text(type) },
+                                shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = Emerald500.copy(alpha = 0.16f),
+                                    selectedLabelColor = Emerald500)
+                            )
+                        }
+                    }
+                }
+                if (!showAdvancedInterest) {
+                    TextButton(onClick = { showAdvancedInterest = true }, contentPadding = PaddingValues(horizontal = 4.dp)) {
+                        Text("Advanced options", color = Emerald500, style = MaterialTheme.typography.labelMedium)
                     }
                 }
 

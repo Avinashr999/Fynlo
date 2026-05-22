@@ -70,14 +70,6 @@ fun SettingsScreen(
         }
     }}}
 
-    val csvLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.CreateDocument("text/csv")
-    ) { uri -> uri?.let {
-        context.contentResolver.openOutputStream(it)?.use { os ->
-            os.write(viewModel.exportToCSV().toByteArray())
-        }
-    }}
-
     val pdfLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("application/pdf")
     ) { uri -> uri?.let {
@@ -184,15 +176,6 @@ fun SettingsScreen(
                     title = "Export JSON Backup",
                     subtitle = "Full backup for restore"
                 ) { jsonLauncher.launch("Fynlo_Backup_${System.currentTimeMillis()}.json") }
-
-                SettingsDivider()
-
-                SettingsActionRow(
-                    icon  = Icons.Default.TableChart,
-                    color = Blue,
-                    title = "Export Expenses (.csv)",
-                    subtitle = "Transactions in spreadsheet format"
-                ) { csvLauncher.launch("Fynlo_Expenses_${System.currentTimeMillis()}.csv") }
 
                 SettingsDivider()
 

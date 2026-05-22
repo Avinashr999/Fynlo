@@ -50,6 +50,7 @@ sealed class Screen(val route: String, val label: String, val icon: ImageVector)
     object History : Screen("history", "History", Icons.AutoMirrored.Filled.ReceiptLong)
     object Lending : Screen("lending", "Lending", Icons.Default.Group)
     object Debts : Screen("debts", "Debts", Icons.Default.CreditCard)
+    object Loans : Screen("loans_hub", "Loans", Icons.Default.Handshake)
     object Invest : Screen("invest", "Invest", Icons.AutoMirrored.Filled.TrendingUp)
     object Spend : Screen("spend", "Expenses", Icons.AutoMirrored.Filled.ReceiptLong)
     object Settings : Screen("settings", "Settings", Icons.Default.Settings)
@@ -75,8 +76,8 @@ sealed class Screen(val route: String, val label: String, val icon: ImageVector)
 
 val bottomNavItems = listOf(
     Screen.Home,
-    Screen.Lending,
-    Screen.Debts,
+    Screen.Loans,
+    Screen.Invest,
     Screen.Reports,
     Screen.Spend
 )
@@ -158,6 +159,7 @@ fun MainNavigation(viewModel: FinanceViewModel) {
     val showFab = when (currentRoute) {
         Screen.Settings.route, Screen.About.route, Screen.People.route,
         Screen.Profile.route, Screen.Lending.route, Screen.Debts.route,
+        Screen.Loans.route, Screen.Invest.route,
         Screen.Reports.route, Screen.GlobalSearch.route -> false
         else -> drawerState.isClosed
     }
@@ -336,16 +338,6 @@ fun MainNavigation(viewModel: FinanceViewModel) {
                     DrawerItem(Icons.AutoMirrored.Filled.ShowChart, "Investments",
                         currentRoute == Screen.Invest.route) {
                         navController.navigate(Screen.Invest.route)
-                        scope.launch { drawerState.close() }
-                    }
-                    DrawerItem(Icons.Default.Calculate, "Loan Calculator",
-                        currentRoute == Screen.LoanCalc.route) {
-                        navController.navigate(Screen.LoanCalc.route)
-                        scope.launch { drawerState.close() }
-                    }
-                    DrawerItem(Icons.Default.CalendarMonth, "Collection Calendar",
-                        currentRoute == Screen.Calendar.route) {
-                        navController.navigate(Screen.Calendar.route)
                         scope.launch { drawerState.close() }
                     }
 
@@ -553,12 +545,19 @@ fun MainNavigation(viewModel: FinanceViewModel) {
                     )
                 }
                 composable(Screen.History.route) { TransactionHistoryScreen(viewModel) }
-                composable(Screen.Lending.route) { 
+                composable(Screen.Loans.route) {
+                    LoansHubScreen(
+                        viewModel = viewModel,
+                        onNavigateToDetail = { id -> navController.navigate("customer/$id") },
+                        onNavigateToCalendar = { navController.navigate(Screen.Calendar.route) }
+                    )
+                }
+                composable(Screen.Lending.route) {
                     LendingScreen(
                         viewModel = viewModel,
                         onNavigateToDetail = { id -> navController.navigate("customer/$id") },
                         onNavigateToCalendar = { navController.navigate(Screen.Calendar.route) }
-                    ) 
+                    )
                 }
                 composable(Screen.Debts.route) { DebtScreen(viewModel) }
                 composable(Screen.Invest.route) { InvestmentScreen(viewModel) }
