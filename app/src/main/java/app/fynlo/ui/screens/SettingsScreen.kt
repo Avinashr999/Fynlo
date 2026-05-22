@@ -35,6 +35,7 @@ private val Blue  = SemanticBlue
 private val Red   = SemanticRed
 private val Amber = SemanticAmber
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     viewModel: FinanceViewModel,
@@ -104,7 +105,7 @@ fun SettingsScreen(
             .padding(horizontal = 16.dp)
     ) {
         // â"€â"€ Appearance â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
-        SettingsSectionLabel("Appearance")
+        SettingsSectionLabel("Personalization")
         SettingsCard {
             // Theme
             Text("Theme", style = MaterialTheme.typography.labelMedium,
@@ -127,40 +128,42 @@ fun SettingsScreen(
                     )
                 }
             }
+            Spacer(Modifier.height(14.dp))
+            OutlinedTextField(
+                value         = displayName,
+                onValueChange = { displayName = it },
+                label         = { Text("Your Name") },
+                placeholder   = { Text("Optional — used for greetings") },
+                singleLine    = true,
+                trailingIcon  = if (displayName.isNotBlank()) {
+                    { IconButton(onClick = {
+                        scope.launch { UserPreferences.setUserDisplayName(context, displayName.trim()) }
+                    }) { Icon(Icons.Default.Check, "Save") } }
+                } else null,
+                modifier      = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+                colors        = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor   = Emerald500,
+                    focusedLabelColor    = Emerald500
+                )
+            )
         }
 
         Spacer(Modifier.height(16.dp))
 
         // â"€â"€ Cloud Backup â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
-        SettingsSectionLabel("Cloud Backup")
-        Row(
-            Modifier.fillMaxWidth()
-                .clip(RoundedCornerShape(20.dp))
-                .background(Green.copy(alpha = 0.08f))
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(14.dp)
-        ) {
-            Box(Modifier.size(40.dp).clip(CircleShape).background(Green.copy(0.15f)),
-                Alignment.Center) {
-                Icon(Icons.Default.CloudDone, null, Modifier.size(20.dp), tint = Green)
-            }
-            Column {
-                Text("Auto-Backup Active",
-                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
-                    color = Green)
-                Text("Data synced to Google Firestore in real-time",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-        }
-
-        Spacer(Modifier.height(16.dp))
-
-        // â"€â"€ Export & Backup â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
-        SettingsSectionLabel("Export & Backup")
+        // ── Backup & Export ──────────────────────────────────────────────────
+        SettingsSectionLabel("Backup & Export")
         SettingsCard {
             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                // Compact auto-backup status
+                Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Icon(Icons.Default.CloudDone, null, Modifier.size(18.dp), tint = Green)
+                    Text("Auto-backup on · synced to cloud in real-time",
+                        style = MaterialTheme.typography.bodyMedium, color = Green)
+                }
+                SettingsDivider()
                 SettingsActionRow(
                     icon  = Icons.Default.GridOn,
                     color = Green,
@@ -214,25 +217,6 @@ fun SettingsScreen(
         // â"€â"€ Notifications â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
         SettingsSectionLabel("Notifications")
         SettingsCard {
-            // Display name
-            OutlinedTextField(
-                value         = displayName,
-                onValueChange = { displayName = it },
-                label         = { Text("Your Name") },
-                placeholder   = { Text("Optional — used for greetings") },
-                singleLine    = true,
-                trailingIcon  = if (displayName.isNotBlank()) {
-                    { IconButton(onClick = {
-                        scope.launch { UserPreferences.setUserDisplayName(context, displayName.trim()) }
-                    }) { Icon(Icons.Default.Check, "Save") } }
-                } else null,
-                modifier      = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp),
-                colors        = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor   = Emerald500,
-                    focusedLabelColor    = Emerald500
-                )
-            )
-            Spacer(Modifier.height(8.dp))
             // Notification toggle
             Row(
                 Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp),
@@ -258,18 +242,6 @@ fun SettingsScreen(
                         checkedTrackColor = Emerald500.copy(alpha = 0.4f))
                 )
             }
-            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-            SettingsActionRow(
-                icon     = Icons.Default.Notifications,
-                color    = Amber,
-                title    = "Test Notifications",
-                subtitle = "Schedule daily loan due date & budget alerts"
-            ) {
-                app.fynlo.notifications.ReminderScheduler.schedule(context)
-                android.widget.Toast.makeText(
-                    context, "Daily reminders scheduled!", android.widget.Toast.LENGTH_SHORT
-                ).show()
-            }
         }
 
         Spacer(Modifier.height(16.dp))
@@ -280,22 +252,26 @@ fun SettingsScreen(
             // Currency
             Text("Default Currency", style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
             val currencies = listOf("INR", "USD", "EUR", "GBP", "AED", "SGD", "AUD", "CAD", "JPY")
-            Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                currencies.take(5).forEach { code ->
-                    FilterChip(
-                        selected = defaultCurrency == code,
-                        onClick  = { scope.launch { UserPreferences.setDefaultCurrency(context, code) } },
-                        label    = { Text(code, style = MaterialTheme.typography.labelSmall) }
-                    )
-                }
-            }
-            Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(bottom = 8.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                currencies.drop(5).forEach { code ->
-                    FilterChip(
-                        selected = defaultCurrency == code,
-                        onClick  = { scope.launch { UserPreferences.setDefaultCurrency(context, code) } },
-                        label    = { Text(code, style = MaterialTheme.typography.labelSmall) }
-                    )
+            var currencyExpanded by remember { mutableStateOf(false) }
+            ExposedDropdownMenuBox(
+                expanded = currencyExpanded,
+                onExpandedChange = { currencyExpanded = !currencyExpanded },
+                modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 8.dp)
+            ) {
+                OutlinedTextField(
+                    value = defaultCurrency, onValueChange = {}, readOnly = true,
+                    label = { Text("Currency") },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = currencyExpanded) },
+                    modifier = Modifier.menuAnchor(androidx.compose.material3.ExposedDropdownMenuAnchorType.PrimaryNotEditable, true).fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp)
+                )
+                ExposedDropdownMenu(expanded = currencyExpanded, onDismissRequest = { currencyExpanded = false }) {
+                    currencies.forEach { code ->
+                        DropdownMenuItem(text = { Text(code) }, onClick = {
+                            scope.launch { UserPreferences.setDefaultCurrency(context, code) }
+                            currencyExpanded = false
+                        })
+                    }
                 }
             }
             HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
@@ -349,6 +325,30 @@ fun SettingsScreen(
                     TextButton(onClick = { showRemovePinConfirm = false }) { Text("Cancel") }
                 }
             )
+        }
+
+        val bioStatus = remember { app.fynlo.ui.screens.biometricStatus(context) }
+        val bioHardwareAvailable = bioStatus == androidx.biometric.BiometricManager.BIOMETRIC_SUCCESS ||
+                                   bioStatus == androidx.biometric.BiometricManager.BIOMETRIC_ERROR_NONE_ENROLLED
+        val onToggleBiometric = {
+            when {
+                !pinSet -> { showPinSetup = true }
+                bioStatus == androidx.biometric.BiometricManager.BIOMETRIC_ERROR_NONE_ENROLLED -> {
+                    val intent = android.content.Intent(android.provider.Settings.ACTION_BIOMETRIC_ENROLL).apply {
+                        putExtra(android.provider.Settings.EXTRA_BIOMETRIC_AUTHENTICATORS_ALLOWED,
+                            androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_STRONG or
+                            androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_WEAK)
+                    }
+                    try { context.startActivity(intent) } catch (e: Exception) {
+                        context.startActivity(android.content.Intent(android.provider.Settings.ACTION_SECURITY_SETTINGS))
+                    }
+                }
+                else -> {
+                    val newVal = !biometricEnabled
+                    pinManager.isBiometricEnabled = newVal
+                    biometricEnabled = newVal
+                }
+            }
         }
 
         Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp))
@@ -409,48 +409,16 @@ fun SettingsScreen(
                         Text("Change PIN")
                     }
                 }
-        }
-
-        Spacer(Modifier.height(16.dp))
-
-        // ── Biometric unlock ─────────────────────────────────────────────────
-        val bioStatus = remember { app.fynlo.ui.screens.biometricStatus(context) }
-        // Hardware is available if status is SUCCESS or NONE_ENROLLED (has hardware, just no biometrics added yet)
-        val bioHardwareAvailable = bioStatus == androidx.biometric.BiometricManager.BIOMETRIC_SUCCESS ||
-                                   bioStatus == androidx.biometric.BiometricManager.BIOMETRIC_ERROR_NONE_ENROLLED
-
-        if (bioHardwareAvailable) {
-            // Use clickable Row + visual-only Switch — avoids LazyColumn touch interception on OPPO
-            val onToggleBiometric = {
-                when {
-                    !pinSet -> { showPinSetup = true }
-                    bioStatus == androidx.biometric.BiometricManager.BIOMETRIC_ERROR_NONE_ENROLLED -> {
-                        val intent = android.content.Intent(android.provider.Settings.ACTION_BIOMETRIC_ENROLL).apply {
-                            putExtra(android.provider.Settings.EXTRA_BIOMETRIC_AUTHENTICATORS_ALLOWED,
-                                androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_STRONG or
-                                androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_WEAK)
-                        }
-                        try { context.startActivity(intent) } catch (e: Exception) {
-                            context.startActivity(android.content.Intent(android.provider.Settings.ACTION_SECURITY_SETTINGS))
-                        }
-                    }
-                    else -> {
-                        val newVal = !biometricEnabled
-                        pinManager.isBiometricEnabled = newVal
-                        biometricEnabled = newVal
-                    }
-                }
-            }
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
-                    .clickable { onToggleBiometric() }
-                    .padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(14.dp)
-            ) {
+                if (bioHardwareAvailable) {
+                    SettingsDivider()
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onToggleBiometric() }
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(14.dp)
+                    ) {
                 Box(
                     Modifier.size(40.dp).clip(CircleShape).background(
                         if (biometricEnabled) MaterialTheme.colorScheme.primaryContainer
@@ -487,6 +455,7 @@ fun SettingsScreen(
                             checkedTrackColor = MaterialTheme.colorScheme.primaryContainer
                         )
                     )
+                }
                 }
         }
 
