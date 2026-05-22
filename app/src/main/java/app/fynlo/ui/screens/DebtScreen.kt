@@ -92,6 +92,7 @@ val debts by viewModel.debts.collectAsState()
     Column(modifier = Modifier.fillMaxSize()) {
         PremiumScreenHeader("My Debts", "Loans you owe to others")
         Box(modifier = Modifier.weight(1f)) {
+        app.fynlo.ui.components.PullRefresh(viewModel) {
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp).imePadding(),
             contentPadding = PaddingValues(bottom = 100.dp)
@@ -192,6 +193,7 @@ val debts by viewModel.debts.collectAsState()
                     }
                 }
             }
+        }
         }
     }
 }

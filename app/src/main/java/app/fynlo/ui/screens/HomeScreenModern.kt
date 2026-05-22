@@ -130,6 +130,7 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
         }
     }
 
+    app.fynlo.ui.components.PullRefresh(viewModel) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -282,6 +283,7 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
         NeoInsightRow("Total Owed", fmt(summary.totalDebtPrincipal + summary.totalDebtInterest), SemanticRed) { onNavigateToScreen("debts") }
 
         Spacer(Modifier.height(120.dp))
+    }
     }
 }
 

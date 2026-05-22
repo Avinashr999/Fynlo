@@ -210,6 +210,7 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
     Column(modifier = Modifier.fillMaxSize()) {
         PremiumScreenHeader("Lending", "Interest loans & hand loans")
         Box(modifier = Modifier.weight(1f)) {
+        app.fynlo.ui.components.PullRefresh(viewModel) {
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp).imePadding(),
             verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -393,6 +394,7 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
                     }
                 }
             }
+        }
         }
         // FAB (inside Box for BoxScope.align)
         androidx.compose.material3.FloatingActionButton(

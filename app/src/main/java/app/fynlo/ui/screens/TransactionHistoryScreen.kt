@@ -274,6 +274,7 @@ fun TransactionHistoryScreen(viewModel: FinanceViewModel) {
         if (filteredHistory.isEmpty()) {
             EmptyTransactionState()
         } else {
+            app.fynlo.ui.components.PullRefresh(viewModel) {
             LazyColumn(
                 contentPadding = PaddingValues(bottom = 100.dp)
             ) {
@@ -333,7 +334,8 @@ fun TransactionHistoryScreen(viewModel: FinanceViewModel) {
                                         selectedIds - transaction.id
                                     else selectedIds + transaction.id
                                 },
-                                onEdit   = { viewModel.editTransaction(transaction, it) }
+                                onEdit   = { viewModel.editTransaction(transaction, it) },
+                                onDelete = { viewModel.deleteTransaction(transaction) }
                             )
                             if (idx < dayTxns.lastIndex) {
                                 HorizontalDivider(thickness = 0.5.dp, color = hairline,
@@ -342,6 +344,7 @@ fun TransactionHistoryScreen(viewModel: FinanceViewModel) {
                         }
                     }
                 }
+            }
             }
         }
     }
@@ -392,6 +395,7 @@ private fun HistorySoftField(
 fun TransactionItem(
     txn: Transaction,
     onEdit: (Transaction) -> Unit = {},
+    onDelete: () -> Unit = {},
     isSelected: Boolean = false,
     selectionMode: Boolean = false,
     currencySymbol: String = "₹",
@@ -412,6 +416,7 @@ fun TransactionItem(
     }
     val locale = java.util.Locale.getDefault()
     var showEditDialog by remember { mutableStateOf(false) }
+    var showDeleteConfirm by remember { mutableStateOf(false) }
 
     if (showEditDialog) {
         app.fynlo.ui.components.EditTransactionDialog(
@@ -420,7 +425,53 @@ fun TransactionItem(
             onConfirm   = { updated -> onEdit(updated); showEditDialog = false }
         )
     }
+    if (showDeleteConfirm) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirm = false },
+            title = { Text("Delete transaction?") },
+            text  = { Text("Delete $currencySymbol${String.format(locale, "%,.0f", txn.amount)} ${txn.category}? This reverses the account balance.") },
+            confirmButton = {
+                Button(onClick = { showDeleteConfirm = false; onDelete() },
+                    colors = ButtonDefaults.buttonColors(containerColor = SemanticRed),
+                    shape = RoundedCornerShape(14.dp)) { Text("Delete") }
+            },
+            dismissButton = { TextButton(onClick = { showDeleteConfirm = false }) { Text("Cancel") } }
+        )
+    }
 
+    val swipeState = rememberSwipeToDismissBoxState(
+        confirmValueChange = { v ->
+            when (v) {
+                SwipeToDismissBoxValue.StartToEnd -> { showEditDialog = true; false }
+                SwipeToDismissBoxValue.EndToStart -> { showDeleteConfirm = true; false }
+                else -> false
+            }
+        }
+    )
+
+    SwipeToDismissBox(
+        state = swipeState,
+        enableDismissFromStartToEnd = !selectionMode,
+        enableDismissFromEndToStart = !selectionMode,
+        backgroundContent = {
+            val dir = swipeState.dismissDirection
+            val bg = when (dir) {
+                SwipeToDismissBoxValue.StartToEnd -> SemanticBlue.copy(alpha = 0.18f)
+                SwipeToDismissBoxValue.EndToStart -> SemanticRed.copy(alpha = 0.18f)
+                else -> androidx.compose.ui.graphics.Color.Transparent
+            }
+            Box(
+                Modifier.fillMaxSize().background(bg).padding(horizontal = 24.dp),
+                contentAlignment = if (dir == SwipeToDismissBoxValue.StartToEnd) Alignment.CenterStart else Alignment.CenterEnd
+            ) {
+                when (dir) {
+                    SwipeToDismissBoxValue.StartToEnd -> Icon(Icons.Default.Edit, "Edit", tint = SemanticBlue)
+                    SwipeToDismissBoxValue.EndToStart -> Icon(Icons.Default.Delete, "Delete", tint = SemanticRed)
+                    else -> {}
+                }
+            }
+        }
+    ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -430,7 +481,7 @@ fun TransactionItem(
             )
             .background(
                 if (isSelected) rowColor.copy(alpha = 0.10f)
-                else androidx.compose.ui.graphics.Color.Transparent
+                else MaterialTheme.colorScheme.background
             )
             .padding(vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -487,6 +538,7 @@ fun TransactionItem(
             style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.ExtraBold),
             color = rowColor
         )
+    }
     }
 }
 

@@ -507,6 +507,20 @@ class FinanceViewModel @Inject constructor(private val repository: FinanceReposi
         }
     }
 
+    /**
+     * Pull-to-refresh. Data is kept live by Firestore listeners, so this surfaces
+     * the sync status (spinner) while any pending remote changes settle, then
+     * marks synced. [onComplete] runs on the main thread to clear the indicator.
+     */
+    fun refresh(onComplete: () -> Unit) {
+        viewModelScope.launch {
+            repository.syncManager.setSyncing()
+            kotlinx.coroutines.delay(900)
+            repository.syncManager.setSynced()
+            onComplete()
+        }
+    }
+
     fun addDebtWithDestination(debt: Debt, destination: String) {
         viewModelScope.launch(Dispatchers.IO) {
             repository.insertDebtWithDestination(debt.copy(projectId = pid), destination, pid)

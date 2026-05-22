@@ -268,6 +268,7 @@ val currentProject by viewModel.currentProject.collectAsState()
         if (investments.isEmpty()) {
             EmptyInvestState(onAdd = { editingInvest = Investment(id = "", name = "", type = "", invested = 0.0, currentVal = 0.0, date = "", notes = "", projectId = "") })
         } else {
+            app.fynlo.ui.components.PullRefresh(viewModel) {
             LazyColumn(
                 modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
                 contentPadding = PaddingValues(bottom = 100.dp)
@@ -287,6 +288,7 @@ val currentProject by viewModel.currentProject.collectAsState()
                             color = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f))
                     }
                 }
+            }
             }
         }
         FloatingActionButton(
