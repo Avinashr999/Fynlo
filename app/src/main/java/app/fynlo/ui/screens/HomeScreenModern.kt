@@ -231,7 +231,7 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
                 Text("Assets", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text(fmt(summary.totalAssets), style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold))
             }
-            Column(Modifier.clip(RoundedCornerShape(10.dp)).clickable { onNavigateToScreen("debts") }.padding(vertical = 2.dp, horizontal = 2.dp)) {
+            Column(Modifier.clip(RoundedCornerShape(10.dp)).clickable { onNavigateToScreen("loans_hub?tab=1") }.padding(vertical = 2.dp, horizontal = 2.dp)) {
                 Text("Liabilities", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text(fmt(summary.totalDebtPrincipal + summary.totalDebtInterest),
                     style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold))
@@ -249,7 +249,7 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
         Row(Modifier.fillMaxWidth(), Arrangement.spacedBy(10.dp)) {
             NeoAction("Expense", Icons.Default.Remove, SemanticRed, Modifier.weight(1f)) { addTxnIncome = false; showAddTxn = true }
             NeoAction("Income", Icons.Default.Add, Emerald500, Modifier.weight(1f)) { addTxnIncome = true; showAddTxn = true }
-            NeoAction("Lend", Icons.Default.Handshake, SemanticBlue, Modifier.weight(1f)) { onNavigateToScreen("lending") }
+            NeoAction("Lend", Icons.Default.Handshake, SemanticBlue, Modifier.weight(1f)) { onNavigateToScreen("loans_hub") }
             NeoAction("History", Icons.Default.History, Carbon500, Modifier.weight(1f)) { onNavigateToScreen("history") }
         }
 
@@ -280,7 +280,7 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
         HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f))
         NeoInsightRow("Hand Loans", fmt(summary.totalHandLoans), Carbon500) { activeBreakdownType = BreakdownType.HAND_LOANS }
         HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f))
-        NeoInsightRow("Total Owed", fmt(summary.totalDebtPrincipal + summary.totalDebtInterest), SemanticRed) { onNavigateToScreen("debts") }
+        NeoInsightRow("Total Owed", fmt(summary.totalDebtPrincipal + summary.totalDebtInterest), SemanticRed) { onNavigateToScreen("loans_hub?tab=1") }
 
         Spacer(Modifier.height(120.dp))
     }

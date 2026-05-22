@@ -31,6 +31,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import androidx.navigation.NavType
+import androidx.navigation.navArgument
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -155,8 +157,10 @@ fun MainNavigation(viewModel: FinanceViewModel) {
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
-    
-    val showFab = when (currentRoute) {
+    // Strip any query args (e.g. "loans_hub?tab=1") so route comparisons still match.
+    val baseRoute = currentRoute?.substringBefore("?")
+
+    val showFab = when (baseRoute) {
         Screen.Settings.route, Screen.About.route, Screen.People.route,
         Screen.Profile.route, Screen.Lending.route, Screen.Debts.route,
         Screen.Loans.route, Screen.Invest.route,
@@ -437,9 +441,9 @@ fun MainNavigation(viewModel: FinanceViewModel) {
                         NavigationBarItem(
                             icon     = { Icon(screen.icon, contentDescription = screen.label) },
                             label    = { Text(screen.label) },
-                            selected = currentRoute == screen.route,
+                            selected = baseRoute == screen.route,
                             onClick  = {
-                                if (currentRoute != screen.route) {
+                                if (baseRoute != screen.route) {
                                     val isHome = screen.route == Screen.Home.route
                                     navController.navigate(screen.route) {
                                         // Pop everything up to Home (clears Settings, History,
@@ -545,11 +549,15 @@ fun MainNavigation(viewModel: FinanceViewModel) {
                     )
                 }
                 composable(Screen.History.route) { TransactionHistoryScreen(viewModel) }
-                composable(Screen.Loans.route) {
+                composable(
+                    route = "loans_hub?tab={tab}",
+                    arguments = listOf(navArgument("tab") { type = NavType.IntType; defaultValue = 0 })
+                ) { backStackEntry ->
                     LoansHubScreen(
                         viewModel = viewModel,
                         onNavigateToDetail = { id -> navController.navigate("customer/$id") },
-                        onNavigateToCalendar = { navController.navigate(Screen.Calendar.route) }
+                        onNavigateToCalendar = { navController.navigate(Screen.Calendar.route) },
+                        initialTab = backStackEntry.arguments?.getInt("tab") ?: 0
                     )
                 }
                 composable(Screen.Lending.route) {
