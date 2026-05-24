@@ -617,12 +617,14 @@ class FinanceViewModel @Inject constructor(private val repository: FinanceReposi
             }
 
             // 3. PIN / biometric + any legacy SharedPreferences.
+            //    commit() (not apply()) — AppRestarter kills the process right
+            //    after, which would drop apply()'s queued async write.
             runCatching {
-                app.fynlo.data.PinManager(context).clearPin()
+                app.fynlo.data.PinManager(context).clearPinSync()
                 context.getSharedPreferences("fynlo_prefs", android.content.Context.MODE_PRIVATE)
-                    .edit().clear().apply()
+                    .edit().clear().commit()
                 context.getSharedPreferences("theme_prefs", android.content.Context.MODE_PRIVATE)
-                    .edit().clear().apply()
+                    .edit().clear().commit()
             }
 
             // 4. Sign out of Google / Firebase Auth.

@@ -35,6 +35,16 @@ class PinManager(context: Context) {
             .apply()
     }
 
+    /**
+     * Synchronous clear for the Reset-All-Data path, which restarts the process
+     * immediately after. apply()'s async write would be dropped by the hard
+     * Runtime.exit() before it reaches disk, so we commit() here. Clears every
+     * key (pin_hash + biometric_enabled).
+     */
+    fun clearPinSync() {
+        prefs.edit().clear().commit()
+    }
+
     private fun hash(input: String): String {
         val digest = MessageDigest.getInstance("SHA-256")
         val bytes  = digest.digest(input.toByteArray())

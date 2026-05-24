@@ -1078,6 +1078,13 @@ class FinanceRepository(
      * that deleteDatabase fallback.
      */
     suspend fun resetAllData(context: android.content.Context) {
+        // 0. Stop Firestore listeners FIRST. Several collection listeners
+        //    (accounts, investments, debts, people, projects) have no REMOVED
+        //    handler and re-insert from the change document on every event — if
+        //    left running they would race the wipe and re-add the docs we delete
+        //    below back into Room. Stopping them makes the wipe deterministic.
+        runCatching { syncManager.stopListening() }
+
         // 1. Firestore — delete the whole user tree before auth is cleared.
         val uid = syncManager.userId
         if (uid.isNotBlank()) {

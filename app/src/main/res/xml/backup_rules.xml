@@ -1,7 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  The app's own data is intentionally NOT included in Android Auto Backup.
+  Cloud restore happens through Firestore (sign in) and the in-app JSON
+  export/restore (see SettingsScreen). Auto-backing-up the Room DB caused old
+  data to reappear on a fresh reinstall and could undo "Reset All Data", so the
+  database — along with the PIN and DataStore prefs — is excluded. Everything
+  not listed here (Firebase/analytics internals) is regenerated on launch.
+  Used on Android 11 and below (fullBackupContent).
+-->
 <full-backup-content>
-    <!-- Back up the Room database and its journal/wal files -->
-    <include domain="database" path="Fynlo_database" />
-    <include domain="database" path="Fynlo_database-shm" />
-    <include domain="database" path="Fynlo_database-wal" />
+    <exclude domain="database"  path="Fynlo_database" />
+    <exclude domain="database"  path="Fynlo_database-shm" />
+    <exclude domain="database"  path="Fynlo_database-wal" />
+    <exclude domain="sharedpref" path="Fynlo_pin.xml" />
+    <exclude domain="file"       path="datastore" />
 </full-backup-content>
