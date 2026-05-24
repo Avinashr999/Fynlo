@@ -1068,6 +1068,65 @@ class FinanceRepository(
         }
     }
 
+    /**
+     * Reset All Data — the user-facing "start completely fresh" wipe.
+     *
+     * Deletes the user's entire Firestore document tree (while we still hold a
+     * uid), then clears every Room table. If the per-table DAO clear throws for
+     * any reason, falls back to deleting the underlying database file so the app
+     * still relaunches from a truly empty state. [context] is needed only for
+     * that deleteDatabase fallback.
+     */
+    suspend fun resetAllData(context: android.content.Context) {
+        // 1. Firestore — delete the whole user tree before auth is cleared.
+        val uid = syncManager.userId
+        if (uid.isNotBlank()) {
+            val fs = com.google.firebase.firestore.FirebaseFirestore.getInstance()
+            val userDoc = fs.collection("users").document(uid)
+            val collections = listOf(
+                "accounts", "transactions", "borrowers", "investments", "debts",
+                "people", "payments", "debt_payments", "budgets", "goals",
+                "projects", "backup_meta", "backups", "net_worth_snapshots",
+                "investment_valuations"
+            )
+            collections.forEach { colName ->
+                try {
+                    val snapshot = userDoc.collection(colName).get().await()
+                    snapshot.documents.forEach { it.reference.delete().await() }
+                } catch (e: Exception) {
+                    android.util.Log.e("Reset", "Failed to wipe Firestore $colName: ${e.message}")
+                }
+            }
+            // Best-effort: drop the user root document too.
+            runCatching { userDoc.delete().await() }
+        }
+
+        // 2. Room — clear every table; on any failure, drop the whole DB file.
+        try {
+            db.withTransaction {
+                dao.deleteAllAccounts()
+                dao.deleteAllTransactions()
+                dao.deleteAllBorrowers()
+                dao.deleteAllPayments()
+                dao.deleteAllInvestments()
+                dao.deleteAllDebts()
+                dao.deleteAllDebtPayments()
+                dao.deleteAllPeople()
+                dao.deleteAllProjects()
+                dao.deleteAllBudgets()
+                dao.deleteAllGoals()
+                dao.deleteAllValuations()
+                dao.deleteAllRecurringTransactions()
+                dao.deleteAllNetWorthSnapshots()
+                dao.deleteAllFlowTemplates()
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("Reset", "DAO clear failed — deleting database file: ${e.message}")
+            runCatching { db.close() }
+            runCatching { context.deleteDatabase("Fynlo_database") }
+        }
+    }
+
 
     suspend fun getAllDataAsJson(): String {
         val data = BackupData(

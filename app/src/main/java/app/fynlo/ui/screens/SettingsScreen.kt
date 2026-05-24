@@ -98,6 +98,23 @@ fun SettingsScreen(
         }
     }}}
 
+    // ── Danger Zone — Reset All Data flow state ───────────────────────────────
+    var showResetPinGate by remember { mutableStateOf(false) }
+    var showResetWarning by remember { mutableStateOf(false) }
+    var isResetting      by remember { mutableStateOf(false) }
+
+    // PIN/biometric gate (same full-screen check as the lock screen) shown before
+    // the destructive warning. Returns early so it fills the screen regardless of
+    // how far the settings list is scrolled.
+    if (showResetPinGate) {
+        PinScreen(
+            mode      = PinMode.ENTER,
+            onSuccess = { showResetPinGate = false; showResetWarning = true },
+            onSkip    = { showResetPinGate = false }
+        )
+        return
+    }
+
     Column(modifier = Modifier.fillMaxSize()) {
         PremiumScreenHeader("Settings", "App preferences & data management")
         Column(
@@ -624,6 +641,113 @@ fun SettingsScreen(
         }
 
         // â"€â"€ Version â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
+        // ── Danger Zone ──────────────────────────────────────────────────────
+        Spacer(Modifier.height(16.dp))
+        Row(
+            Modifier.padding(start = 2.dp, bottom = 8.dp, top = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Box(Modifier.size(4.dp).clip(CircleShape).background(Red))
+            Text(
+                "Danger Zone",
+                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                color = Red
+            )
+        }
+        Column(
+            Modifier.fillMaxWidth()
+                .clip(RoundedCornerShape(20.dp))
+                .background(Red.copy(alpha = 0.08f))
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Box(
+                    Modifier.size(40.dp).clip(RoundedCornerShape(11.dp)).background(Red.copy(0.12f)),
+                    Alignment.Center
+                ) {
+                    Icon(Icons.Default.DeleteForever, null, Modifier.size(22.dp), tint = Red)
+                }
+                Column(Modifier.weight(1f)) {
+                    Text("Reset All Data",
+                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold))
+                    Text("Permanently erase everything and start fresh",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+            OutlinedButton(
+                onClick = {
+                    // Gate behind PIN/biometric (same check as the lock screen)
+                    // when a PIN is set, otherwise go straight to the warning.
+                    if (pinManager.isPinSet) showResetPinGate = true
+                    else showResetWarning = true
+                },
+                modifier = Modifier.fillMaxWidth(),
+                colors   = ButtonDefaults.outlinedButtonColors(contentColor = Red),
+                border   = androidx.compose.foundation.BorderStroke(1.dp, Red)
+            ) {
+                Icon(Icons.Default.DeleteForever, null, Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text("Reset All Data", fontWeight = FontWeight.SemiBold)
+            }
+        }
+
+        // Confirmation warning — shown after the PIN gate (if any).
+        if (showResetWarning) {
+            AlertDialog(
+                onDismissRequest = { showResetWarning = false },
+                icon  = { Icon(Icons.Default.Warning, null, tint = Red) },
+                title = { Text("Reset All Data?") },
+                text  = {
+                    Text(
+                        "This will permanently delete ALL your data — transactions, " +
+                        "loans, debts, investments, accounts, budgets and goals. " +
+                        "This cannot be undone."
+                    )
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            showResetWarning = false
+                            isResetting = true
+                            val authManager =
+                                (context.applicationContext as app.fynlo.FynloApplication).authManager
+                            viewModel.resetAllData(context, authManager) {
+                                app.fynlo.util.AppRestarter.restart(context)
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = Red)
+                    ) { Text("Yes, Reset Everything") }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showResetWarning = false }) { Text("Cancel") }
+                }
+            )
+        }
+
+        // Blocking progress while the wipe runs — restart kills the process.
+        if (isResetting) {
+            AlertDialog(
+                onDismissRequest = { },
+                confirmButton = { },
+                title = { Text("Resetting…") },
+                text = {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        CircularProgressIndicator(Modifier.size(24.dp), color = Red)
+                        Text("Erasing all data and restarting")
+                    }
+                }
+            )
+        }
+
         Spacer(Modifier.height(24.dp))
         Text(
             "Version ${app.fynlo.BuildConfig.VERSION_NAME} (${app.fynlo.BuildConfig.VERSION_CODE})",

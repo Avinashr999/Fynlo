@@ -591,6 +591,51 @@ class FinanceViewModel @Inject constructor(private val repository: FinanceReposi
     }
 
     /**
+     * Reset All Data — wipes Firestore + Room, clears all preferences, removes
+     * the PIN, signs out of Google/Firebase and cancels background work so the
+     * app relaunches in a clean first-run state. [authManager] is passed in
+     * because the ViewModel doesn't own it (same pattern as
+     * [deleteAccountPermanently]). [onComplete] runs on the main thread once
+     * everything is cleared — the caller uses it to restart the app process.
+     */
+    fun resetAllData(
+        context: android.content.Context,
+        authManager: app.fynlo.data.AuthManager,
+        onComplete: () -> Unit
+    ) {
+        viewModelScope.launch(Dispatchers.IO) {
+            // 1. Firestore + Room (with deleteDatabase fallback).
+            runCatching { repository.resetAllData(context) }
+                .onFailure { android.util.Log.e("Reset", "resetAllData failed: ${it.message}") }
+
+            // 2. DataStore preferences — then re-assert the first-run gates so the
+            //    onboarding + setup wizard show again on next launch.
+            runCatching {
+                app.fynlo.data.UserPreferences.clearAll(context)
+                app.fynlo.data.UserPreferences.setSetupDone(context, false)
+                app.fynlo.data.UserPreferences.setOnboardingDone(context, false)
+            }
+
+            // 3. PIN / biometric + any legacy SharedPreferences.
+            runCatching {
+                app.fynlo.data.PinManager(context).clearPin()
+                context.getSharedPreferences("fynlo_prefs", android.content.Context.MODE_PRIVATE)
+                    .edit().clear().apply()
+                context.getSharedPreferences("theme_prefs", android.content.Context.MODE_PRIVATE)
+                    .edit().clear().apply()
+            }
+
+            // 4. Sign out of Google / Firebase Auth.
+            runCatching { authManager.signOut() }
+
+            // 5. Stop recurring jobs (reminders etc.).
+            runCatching { androidx.work.WorkManager.getInstance(context).cancelAllWork() }
+
+            kotlinx.coroutines.withContext(Dispatchers.Main) { onComplete() }
+        }
+    }
+
+    /**
      * Right-to-erasure: wipe all data (Room + Firestore) then delete the
      * Firebase Auth user. authManager is passed in because the ViewModel
      * doesn't own it. onResult(true) = fully erased; onResult(false) = data

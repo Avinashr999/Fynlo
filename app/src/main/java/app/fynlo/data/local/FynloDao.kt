@@ -378,6 +378,12 @@ interface FynloDao {
     @Query("DELETE FROM recurring_transactions")
     suspend fun deleteAllRecurringTransactions()
 
+    @Query("DELETE FROM net_worth_snapshots")
+    suspend fun deleteAllNetWorthSnapshots()
+
+    @Query("DELETE FROM flow_templates")
+    suspend fun deleteAllFlowTemplates()
+
     // ─── Delete-by-id (for Firestore REMOVED sync events) ─────────────────────
     @Query("DELETE FROM payments WHERE id = :id")
     suspend fun deletePaymentById(id: String)

@@ -116,4 +116,9 @@ object UserPreferences {
     suspend fun setDateFormat(context: Context, format: String) {
         context.dataStore.edit { it[DATE_FORMAT] = format }
     }
+
+    /** Wipes every stored preference — used by Reset All Data. */
+    suspend fun clearAll(context: Context) {
+        context.dataStore.edit { it.clear() }
+    }
 }
