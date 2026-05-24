@@ -9,6 +9,7 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt.android.plugin)
+    alias(libs.plugins.baselineprofile)
 }
 
 android {
@@ -48,8 +49,8 @@ android {
         applicationId = "app.fynlo"
         minSdk = 26
         targetSdk = 36
-        versionCode = 123
-        versionName = "3.2.0"
+        versionCode = 124
+        versionName = "3.2.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -99,6 +100,18 @@ android {
         }
         debug {
             isDebuggable = true
+        }
+        // Release-shaped build used by :macrobenchmark. Not debuggable
+        // (Macrobenchmark refuses to run against a debuggable APK) but the
+        // `<profileable>` marker in AndroidManifest.xml lets the harness read
+        // tracing data. signingConfig fallback to debug so no keystore is required.
+        create("benchmark") {
+            initWith(getByName("release"))
+            signingConfig = signingConfigs.getByName("debug")
+            matchingFallbacks += listOf("release")
+            isDebuggable = false
+            isMinifyEnabled = true
+            isShrinkResources = true
         }
     }
     compileOptions {
@@ -172,6 +185,10 @@ dependencies {
     implementation("androidx.appcompat:appcompat:1.7.0")
     implementation(libs.google.signin)
     implementation("com.android.billingclient:billing-ktx:7.1.1")
+
+    // Baseline Profile installer (consumes profile produced by :macrobenchmark)
+    implementation(libs.androidx.profileinstaller)
+    "baselineProfile"(project(":macrobenchmark"))
 
     testImplementation(libs.junit)
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0")

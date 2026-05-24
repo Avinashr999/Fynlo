@@ -24,3 +24,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "Fynlo"
 include(":app")
+include(":macrobenchmark")

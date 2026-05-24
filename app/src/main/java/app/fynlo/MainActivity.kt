@@ -1,12 +1,15 @@
 package app.fynlo
 
 import android.os.Bundle
+import androidx.activity.compose.ReportDrawnWhen
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Modifier
 import androidx.fragment.app.FragmentActivity
 import app.fynlo.ui.MainNavigation
@@ -32,6 +35,11 @@ class MainActivity : FragmentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background,
                 ) {
+                    // Signals to Macrobenchmark that the app is "fully drawn"
+                    // for TTFD measurement — fires once initial data has loaded.
+                    val ready by viewModel.isSyncReady.collectAsState()
+                    ReportDrawnWhen { ready }
+
                     MainNavigation(viewModel)
                 }
             }

@@ -4,6 +4,8 @@
 /local.properties
 /build/
 /app/build/
+/macrobenchmark/build/
+**/build/
 /captures/
 .externalNativeBuild/
 .cxx/

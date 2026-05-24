@@ -20,6 +20,10 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Fynlo">
 
+        <!-- Allows Macrobenchmark to read tracing data from release-shaped builds
+             without making the app debuggable. Safe for production. -->
+        <profileable android:shell="true" tools:targetApi="29" />
+
         <!-- Crashlytics ANR tracking -->
         <meta-data android:name="firebase_crashlytics_collection_enabled" android:value="true" />
         <meta-data android:name="com.google.firebase.crashlytics.useAnrTracking" android:value="true" />

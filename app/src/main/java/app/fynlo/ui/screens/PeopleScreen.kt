@@ -31,6 +31,10 @@ import app.fynlo.data.model.Person
 import app.fynlo.ui.theme.*
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.ExperimentalComposeUiApi
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.testTagsAsResourceId
 
 
 // ── Country code data ─────────────────────────────────────────────────────────
@@ -74,6 +78,7 @@ fun parsePhone(saved: String): Pair<CountryCode, String> {
 
 // ── Screens ───────────────────────────────────────────────────────────────────
 
+@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun PeopleScreen(viewModel: FinanceViewModel) {
     val haptic = LocalHapticFeedback.current
@@ -118,7 +123,9 @@ fun PeopleScreen(viewModel: FinanceViewModel) {
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 16.dp),
+                .padding(horizontal = 16.dp)
+                .semantics { testTagsAsResourceId = true }
+                .testTag("people_list"),
             verticalArrangement = Arrangement.spacedBy(4.dp),
             contentPadding = PaddingValues(bottom = 100.dp)
         ) {
