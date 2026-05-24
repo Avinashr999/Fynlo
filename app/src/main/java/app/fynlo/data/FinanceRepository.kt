@@ -5,6 +5,7 @@ import app.fynlo.data.local.FynloDatabase
 import app.fynlo.data.model.*
 import app.fynlo.data.remote.FirestoreRepository
 import app.fynlo.data.remote.SyncManager
+import app.fynlo.data.remote.deleteFirestoreUserTree
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -1086,26 +1087,13 @@ class FinanceRepository(
         runCatching { syncManager.stopListening() }
 
         // 1. Firestore — delete the whole user tree before auth is cleared.
+        //    Logic lives in deleteFirestoreUserTree so it can be exercised
+        //    against the Firebase emulator by FirestoreResetTest.
         val uid = syncManager.userId
         if (uid.isNotBlank()) {
-            val fs = com.google.firebase.firestore.FirebaseFirestore.getInstance()
-            val userDoc = fs.collection("users").document(uid)
-            val collections = listOf(
-                "accounts", "transactions", "borrowers", "investments", "debts",
-                "people", "payments", "debt_payments", "budgets", "goals",
-                "projects", "recurring_transactions", "backup_meta", "backups",
-                "net_worth_snapshots", "investment_valuations"
+            deleteFirestoreUserTree(
+                com.google.firebase.firestore.FirebaseFirestore.getInstance(), uid
             )
-            collections.forEach { colName ->
-                try {
-                    val snapshot = userDoc.collection(colName).get().await()
-                    snapshot.documents.forEach { it.reference.delete().await() }
-                } catch (e: Exception) {
-                    android.util.Log.e("Reset", "Failed to wipe Firestore $colName: ${e.message}")
-                }
-            }
-            // Best-effort: drop the user root document too.
-            runCatching { userDoc.delete().await() }
         }
 
         // 2. Room — clear every table; on any failure, drop the whole DB file.

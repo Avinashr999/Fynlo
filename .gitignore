@@ -36,3 +36,9 @@ google-services.json
 # Do NOT add /app/schemas to .gitignore
 .claude/settings.local.json
 secrets/
+
+# Firebase emulator runtime logs / data
+firebase-debug.log
+firestore-debug.log
+*-debug.log
+.firebase/

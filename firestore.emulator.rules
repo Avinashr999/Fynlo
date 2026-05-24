@@ -1,0 +1,12 @@
+rules_version = '2';
+
+// TEST-ONLY rules for the local Firestore emulator. They are deliberately open
+// so FirestoreResetTest can seed and delete documents without wiring up the Auth
+// emulator. NEVER deploy these — production rules live in firestore.rules.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if true;
+    }
+  }
+}
