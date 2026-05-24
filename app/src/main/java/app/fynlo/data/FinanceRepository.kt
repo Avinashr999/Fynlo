@@ -1093,8 +1093,8 @@ class FinanceRepository(
             val collections = listOf(
                 "accounts", "transactions", "borrowers", "investments", "debts",
                 "people", "payments", "debt_payments", "budgets", "goals",
-                "projects", "backup_meta", "backups", "net_worth_snapshots",
-                "investment_valuations"
+                "projects", "recurring_transactions", "backup_meta", "backups",
+                "net_worth_snapshots", "investment_valuations"
             )
             collections.forEach { colName ->
                 try {
