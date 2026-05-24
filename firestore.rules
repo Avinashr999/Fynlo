@@ -147,20 +147,21 @@ service cloud.firestore {
         allow delete: if isOwner(userId);
       }
 
-      // ── Backups (read-only after creation, never deletable from client) ───
+      // ── Backups (immutable summaries; owner may delete for Reset All Data) ─
       match /backups/{date} {
         allow read: if isOwner(userId);
-        // Only allow create (not update/delete) to protect backup integrity
+        // Allow create + same-day overwrite, but no arbitrary edits.
         allow create: if isOwner(userId)
           && hasFields(['date', 'netWorth', 'createdAt']);
         allow update: if isOwner(userId);  // allow same-day overwrite
-        allow delete: if false;  // Backups cannot be deleted from client
+        allow delete: if isOwner(userId);  // owner may wipe backups (Reset All Data)
 
         // Backup sub-collections (accounts, borrowers snapshots)
         match /{collection}/{docId} {
           allow read: if isOwner(userId);
           allow create: if isOwner(userId);
-          allow update, delete: if false;  // Immutable
+          allow update: if false;            // snapshots stay immutable
+          allow delete: if isOwner(userId);  // owner may wipe (Reset All Data)
         }
       }
 
