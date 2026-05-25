@@ -129,6 +129,11 @@ android {
 
     lint {
         disable += "ExtraTranslation"
+        // Adopt lint on the existing codebase: record current issues as a baseline
+        // so CI fails only on NEW lint errors. Regenerate with:
+        //   ./gradlew :app:updateLintBaselineProdRelease
+        // Tracked as INF02 in UX_AUDIT_2026-05-25.md (burn the baseline down over time).
+        baseline = file("lint-baseline.xml")
     }
 
     // Room schema export for migration validation

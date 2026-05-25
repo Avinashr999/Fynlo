@@ -22,7 +22,7 @@ jobs:
   # Job 1: Lint & static analysis
   # =============================================================
   lint:
-    name: Lint (Detekt + Android Lint)
+    name: Lint (Android Lint)
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -40,20 +40,14 @@ jobs:
         with:
           gradle-home-cache-cleanup: true
 
-      # Detekt — Fynlo custom rules from LINT_RULES.md
-      - name: Run Detekt
-        run: ./gradlew detekt --no-daemon
-        continue-on-error: false
-
-      - name: Upload Detekt report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: detekt-report
-          path: '**/build/reports/detekt/'
-          retention-days: 14
+      # NOTE: Detekt was wired up here but never actually configured in the build
+      # (no Detekt Gradle plugin or `detekt` task exists), so `./gradlew detekt`
+      # failed with "Task 'detekt' not found" on every run. Removed to unblock CI.
+      # To reinstate: apply the Detekt plugin with the Fynlo rules from
+      # LINT_RULES.md, then re-add the step. Tracked as INF03 in UX_AUDIT_2026-05-25.md.
 
       # Android Lint — built-in + content-description checks
+      # (existing issues are recorded in app/lint-baseline.xml; see INF02)
       - name: Run Android Lint
         run: ./gradlew :app:lintProdRelease --no-daemon
         continue-on-error: false
@@ -89,11 +83,11 @@ jobs:
       - name: Run unit tests
         run: ./gradlew testProdDebugUnitTest --no-daemon
 
-      # Critical: data-integrity tests must always pass.
-      # These are tagged in the test source with @Tag("data-integrity").
-      # If this job fails, the PR cannot merge.
-      - name: Run data-integrity tests explicitly
-        run: ./gradlew testProdDebugUnitTest --tests '*DataIntegrity*' --tests '*Recalculate*' --tests '*Backup*' --no-daemon
+      # NOTE: a dedicated data-integrity filter ran here, but NO unit tests
+      # currently match *DataIntegrity* / *Recalculate* / *Backup*, so Gradle
+      # failed the step with "No tests found for given includes". The unit test
+      # run above already executes every existing test. Re-add a filtered gate
+      # once such tests exist. Tracked as INF04 in UX_AUDIT_2026-05-25.md.
 
       - name: Upload test reports
         if: always()
