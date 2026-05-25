@@ -593,7 +593,7 @@ fun MainNavigation(viewModel: FinanceViewModel) {
                 composable(Screen.People.route) { PeopleScreen(viewModel) }
                 composable(Screen.Budgets.route) { BudgetScreen(viewModel) }
                 composable(Screen.Goals.route) { GoalScreen(viewModel) }
-                composable(Screen.Profile.route) { ProfileScreen(onLogout = { isLoggedIn = false }, viewModel = viewModel) }
+                composable(Screen.Profile.route) { ProfileScreen(onLogout = { isLoggedIn = false }, onNavigateToUpgrade = { navController.navigate(Screen.UpgradePro.route) }, viewModel = viewModel) }
                 composable(Screen.Projects.route) { ProjectsScreen(viewModel, onNavigateToUpgrade = { navController.navigate(Screen.UpgradePro.route) }) }
                 composable(Screen.Recurring.route)  { RecurringScreen(viewModel) }
                 composable(Screen.Monthly.route)    { MonthlySummaryScreen(viewModel) }

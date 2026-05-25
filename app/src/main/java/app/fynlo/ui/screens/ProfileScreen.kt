@@ -1,14 +1,18 @@
 package app.fynlo.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.draw.clip
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Cloud
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Fingerprint
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
@@ -20,6 +24,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.fynlo.FynloApplication
+import app.fynlo.billing.BillingManager
 import app.fynlo.data.PinManager
 import app.fynlo.ui.screens.PinMode
 import app.fynlo.ui.theme.*
@@ -28,24 +33,78 @@ import app.fynlo.ui.theme.*
 fun ProfileScreen(
     onLogout: () -> Unit,
     onSignOut: () -> Unit = {},
+    onNavigateToUpgrade: () -> Unit = {},
     viewModel: app.fynlo.FinanceViewModel? = null
 ) {
     val context = LocalContext.current
     val app     = context.applicationContext as FynloApplication
+    val isPro by BillingManager.isPro.collectAsState()
     val pinManager = remember { PinManager(context) }
-    var showPinSetup by remember { mutableStateOf(false) }
+    var pinSet           by remember { mutableStateOf(pinManager.isPinSet) }
+    var biometricEnabled by remember { mutableStateOf(pinManager.isBiometricEnabled) }
+    var showPinSetup     by remember { mutableStateOf(false) }
+    var showRemovePinConfirm by remember { mutableStateOf(false) }
     val isGoogle = app.authManager.isSignedInWithGoogle
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var deleting by remember { mutableStateOf(false) }
 
+    // Full-screen PIN set/change flow (same as the lock screen).
     if (showPinSetup) {
         PinScreen(
-            mode      = if (pinManager.isPinSet) PinMode.SET else PinMode.SET,
-            onSuccess = { showPinSetup = false },
+            mode      = PinMode.SET,
+            onSuccess = { pinSet = pinManager.isPinSet; showPinSetup = false },
             onSkip    = { showPinSetup = false }
         )
         return
     }
+
+    // Remove PIN confirmation dialog
+    if (showRemovePinConfirm) {
+        AlertDialog(
+            onDismissRequest = { showRemovePinConfirm = false },
+            title = { Text("Remove PIN?") },
+            text  = { Text("The app will no longer be locked when you switch away. Biometric unlock will also be disabled.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    pinManager.clearPin()
+                    pinSet = false
+                    biometricEnabled = false
+                    showRemovePinConfirm = false
+                }, colors = ButtonDefaults.textButtonColors(contentColor = SemanticRed)) {
+                    Text("Remove")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showRemovePinConfirm = false }) { Text("Cancel") }
+            }
+        )
+    }
+
+    val bioStatus = remember { biometricStatus(context) }
+    val bioHardwareAvailable = bioStatus == androidx.biometric.BiometricManager.BIOMETRIC_SUCCESS ||
+                               bioStatus == androidx.biometric.BiometricManager.BIOMETRIC_ERROR_NONE_ENROLLED
+    val onToggleBiometric = {
+        when {
+            !isPro -> { onNavigateToUpgrade() }
+            !pinSet -> { showPinSetup = true }
+            bioStatus == androidx.biometric.BiometricManager.BIOMETRIC_ERROR_NONE_ENROLLED -> {
+                val intent = android.content.Intent(android.provider.Settings.ACTION_BIOMETRIC_ENROLL).apply {
+                    putExtra(android.provider.Settings.EXTRA_BIOMETRIC_AUTHENTICATORS_ALLOWED,
+                        androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_STRONG or
+                        androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_WEAK)
+                }
+                try { context.startActivity(intent) } catch (e: Exception) {
+                    context.startActivity(android.content.Intent(android.provider.Settings.ACTION_SECURITY_SETTINGS))
+                }
+            }
+            else -> {
+                val newVal = !biometricEnabled
+                pinManager.isBiometricEnabled = newVal
+                biometricEnabled = newVal
+            }
+        }
+    }
+
     val email    = app.authManager.userEmail
     val name     = app.authManager.userName
     val uid      = app.authManager.userId
@@ -115,26 +174,116 @@ fun ProfileScreen(
 
         Spacer(Modifier.height(16.dp))
 
-        // ── Security card ─────────────────────────────────────────────────────
+        // ── Security card (PIN + biometric) ───────────────────────────────────
+        Text(
+            "Security",
+            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+            color = Emerald500,
+            modifier = Modifier.align(Alignment.Start).padding(start = 2.dp, bottom = 8.dp)
+        )
         Column(
-            modifier = Modifier.fillMaxWidth()
-                .clip(RoundedCornerShape(20.dp))
+            Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp))
                 .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
-                .padding(16.dp)
         ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Lock, contentDescription = null, tint = MaterialTheme.colorScheme.secondary)
-                    Spacer(Modifier.width(12.dp))
-                    Text("Security", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
+            // PIN Lock — tap anywhere to toggle on/off
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { if (pinSet) showRemovePinConfirm = true else showPinSetup = true }
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                Box(
+                    Modifier.size(40.dp).clip(CircleShape).background(
+                        if (pinSet) MaterialTheme.colorScheme.primaryContainer
+                        else MaterialTheme.colorScheme.surfaceVariant
+                    ), Alignment.Center
+                ) {
+                    Icon(Icons.Default.Lock, null, Modifier.size(20.dp),
+                        tint = if (pinSet) MaterialTheme.colorScheme.primary
+                               else MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                Spacer(Modifier.height(12.dp))
-                Text("Current security mode is PIN protected.", style = MaterialTheme.typography.bodySmall)
-                Spacer(Modifier.height(12.dp))
-                Button(onClick = { showPinSetup = true },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape    = RoundedCornerShape(8.dp)
-                ) { Text("Change Login PIN") }
+                Column(Modifier.weight(1f)) {
+                    Text("PIN Lock",
+                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold))
+                    Text(
+                        if (pinSet) "App locks when you switch away"
+                        else "Tap to set a 4-digit PIN",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Switch(
+                    checked = pinSet,
+                    onCheckedChange = null,
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = MaterialTheme.colorScheme.primary,
+                        checkedTrackColor = MaterialTheme.colorScheme.primaryContainer
+                    )
+                )
             }
+            // Change PIN — only when a PIN is set
+            if (pinSet) {
+                HorizontalDivider(Modifier.padding(horizontal = 16.dp))
+                TextButton(
+                    onClick = { showPinSetup = true },
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp)
+                ) {
+                    Icon(Icons.Default.Edit, null, Modifier.size(16.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("Change PIN")
+                }
+            }
+            // Biometric Unlock — only when hardware is present
+            if (bioHardwareAvailable) {
+                HorizontalDivider(Modifier.padding(horizontal = 16.dp))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onToggleBiometric() }
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
+                    Box(
+                        Modifier.size(40.dp).clip(CircleShape).background(
+                            if (biometricEnabled) MaterialTheme.colorScheme.primaryContainer
+                            else MaterialTheme.colorScheme.surfaceVariant
+                        ), Alignment.Center
+                    ) {
+                        Icon(Icons.Default.Fingerprint, null, Modifier.size(20.dp),
+                            tint = if (biometricEnabled) MaterialTheme.colorScheme.primary
+                                   else MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    Column(Modifier.weight(1f)) {
+                        Text("Biometric Unlock",
+                            style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold))
+                        Text(
+                            when {
+                                !pinSet -> "Set a PIN first to enable biometric"
+                                bioStatus == androidx.biometric.BiometricManager.BIOMETRIC_ERROR_NONE_ENROLLED ->
+                                    "No biometrics enrolled — tap to set up"
+                                biometricEnabled -> "Fingerprint / face unlock active"
+                                else -> "Tap to enable fingerprint / face unlock"
+                            },
+                            style = MaterialTheme.typography.bodySmall,
+                            color = if (!pinSet) MaterialTheme.colorScheme.error.copy(alpha = 0.7f)
+                                    else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Switch(
+                        checked = biometricEnabled,
+                        onCheckedChange = null,
+                        enabled = bioHardwareAvailable && pinSet,
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = MaterialTheme.colorScheme.primary,
+                            checkedTrackColor = MaterialTheme.colorScheme.primaryContainer
+                        )
+                    )
+                }
+            }
+        }
 
         Spacer(Modifier.height(24.dp))
 
@@ -215,11 +364,3 @@ fun ProfileScreen(
     }
     }
 }
-
-
-
-
-
-
-
-
