@@ -42,3 +42,6 @@ firebase-debug.log
 firestore-debug.log
 *-debug.log
 .firebase/
+
+# Node deps for the Firestore rules tests
+firestore-tests/node_modules/

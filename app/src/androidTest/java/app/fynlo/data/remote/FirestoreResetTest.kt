@@ -58,10 +58,21 @@ class FirestoreResetTest {
         }
         userDoc.set(mapOf("seeded" to true)).await()
 
+        // Legacy nested backup snapshots (accounts/borrowers under a daily doc).
+        LEGACY_BACKUP_SUBCOLLECTIONS.forEach { sub ->
+            userDoc.collection("backups").document("a")
+                .collection(sub).document("x").set(mapOf("v" to 1)).await()
+        }
+
         // Precondition: the data is really there (read from the server, not cache).
         USER_FIRESTORE_COLLECTIONS.forEach { col ->
             val n = userDoc.collection(col).get(Source.SERVER).await().size()
             assertEquals("seed should create 2 docs in $col", 2, n)
+        }
+        LEGACY_BACKUP_SUBCOLLECTIONS.forEach { sub ->
+            val n = userDoc.collection("backups").document("a")
+                .collection(sub).get(Source.SERVER).await().size()
+            assertEquals("seed should create nested backups/$sub", 1, n)
         }
 
         // Act: the exact function Reset All Data uses.
@@ -71,6 +82,11 @@ class FirestoreResetTest {
         USER_FIRESTORE_COLLECTIONS.forEach { col ->
             val n = userDoc.collection(col).get(Source.SERVER).await().size()
             assertEquals("$col should be empty after reset", 0, n)
+        }
+        LEGACY_BACKUP_SUBCOLLECTIONS.forEach { sub ->
+            val n = userDoc.collection("backups").document("a")
+                .collection(sub).get(Source.SERVER).await().size()
+            assertEquals("nested backups/$sub should be empty after reset", 0, n)
         }
         assertFalse(
             "user root doc should be deleted",

@@ -1,0 +1,14 @@
+{
+  "name": "fynlo-firestore-rules-tests",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Firestore security-rules unit tests for Fynlo. Run via firebase emulators:exec (needs JDK 21+ for the emulator).",
+  "scripts": {
+    "test": "firebase emulators:exec --only firestore --project demo-fynlo --config ../firebase.json \"node backups.rules.test.mjs\""
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^5.0.1",
+    "firebase": "^12.13.0"
+  }
+}
