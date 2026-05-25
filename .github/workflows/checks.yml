@@ -1,0 +1,297 @@
+name: Fynlo CI Checks
+
+# Triggers on every PR and push to master
+on:
+  pull_request:
+    branches: [master, main]
+  push:
+    branches: [master, main]
+
+# Cancel in-progress runs on new push to same PR
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  JAVA_VERSION: '17'
+  GRADLE_OPTS: -Dorg.gradle.daemon=false -Dorg.gradle.workers.max=2
+
+jobs:
+
+  # =============================================================
+  # Job 1: Lint & static analysis
+  # =============================================================
+  lint:
+    name: Lint (Detekt + Android Lint)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: ${{ env.JAVA_VERSION }}
+
+      - name: Gradle cache
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-home-cache-cleanup: true
+
+      # Detekt — Fynlo custom rules from LINT_RULES.md
+      - name: Run Detekt
+        run: ./gradlew detekt --no-daemon
+        continue-on-error: false
+
+      - name: Upload Detekt report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: detekt-report
+          path: '**/build/reports/detekt/'
+          retention-days: 14
+
+      # Android Lint — built-in + content-description checks
+      - name: Run Android Lint
+        run: ./gradlew :app:lintProdRelease --no-daemon
+        continue-on-error: false
+
+      - name: Upload Lint report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-lint-report
+          path: app/build/reports/lint-results-*.html
+          retention-days: 14
+
+  # =============================================================
+  # Job 2: Unit tests + data-integrity regression tests
+  # =============================================================
+  test:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: ${{ env.JAVA_VERSION }}
+
+      - name: Gradle cache
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: Run unit tests
+        run: ./gradlew testProdDebugUnitTest --no-daemon
+
+      # Critical: data-integrity tests must always pass.
+      # These are tagged in the test source with @Tag("data-integrity").
+      # If this job fails, the PR cannot merge.
+      - name: Run data-integrity tests explicitly
+        run: ./gradlew testProdDebugUnitTest --tests '*DataIntegrity*' --tests '*Recalculate*' --tests '*Backup*' --no-daemon
+
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-reports
+          path: '**/build/reports/tests/'
+          retention-days: 14
+
+  # =============================================================
+  # Job 3: Assemble release build (verify ships)
+  # =============================================================
+  build:
+    name: Build release
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: ${{ env.JAVA_VERSION }}
+
+      - name: Gradle cache
+        uses: gradle/actions/setup-gradle@v3
+
+      # We don't need a signed AAB in CI; just verify the build works.
+      - name: Assemble prod release (unsigned)
+        run: ./gradlew :app:assembleProdRelease --no-daemon
+
+  # =============================================================
+  # Job 4: Protocol compliance (PR template, doc updates)
+  # =============================================================
+  protocol-check:
+    name: Protocol compliance
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Check 1: PR description fills the template's required sections
+      - name: Check PR description includes required sections
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          set -e
+          required_phrases=(
+            "Cluster declaration"
+            "Priority alignment"
+            "Data-integrity touch"
+            "Testing"
+            "Documentation updates"
+            "Version & release"
+          )
+          missing=()
+          for phrase in "${required_phrases[@]}"; do
+            if ! echo "$PR_BODY" | grep -qiF "$phrase"; then
+              missing+=("$phrase")
+            fi
+          done
+          if [ ${#missing[@]} -ne 0 ]; then
+            echo "::error::PR description is missing required sections from PR_CHECKLIST.md:"
+            printf '  - %s\n' "${missing[@]}"
+            echo "Please fill out the full PR template."
+            exit 1
+          fi
+          echo "All required PR template sections present."
+
+      # Check 2: If the PR modifies recalculate/exports/schema code, it must add a test
+      - name: Data-integrity touch requires regression test
+        run: |
+          set -e
+          # Detect touched files in the diff vs base
+          BASE_SHA="${{ github.event.pull_request.base.sha }}"
+          CHANGED=$(git diff --name-only "$BASE_SHA" HEAD)
+          echo "Changed files:"
+          echo "$CHANGED"
+
+          touches_di=false
+          if echo "$CHANGED" | grep -qE '(Recalculate|recalc|Export|Backup|Restore|Schema|Migration|Repayment)'; then
+            touches_di=true
+          fi
+
+          if [ "$touches_di" = true ]; then
+            # Look for a new or modified test file in the diff
+            if ! echo "$CHANGED" | grep -qE 'src/test.*(Recalculate|Backup|Restore|Schema|Migration|Repayment|DataIntegrity)'; then
+              echo "::error::This PR touches data-integrity code but does not add or modify a test file."
+              echo "Per AI_AGENT_PROTOCOL.md §3, data-integrity changes require a regression test."
+              exit 1
+            fi
+            echo "Data-integrity touch detected and regression test present."
+          else
+            echo "No data-integrity touch detected. Skipping test requirement."
+          fi
+
+      # Check 3: If audit cluster is closed, the audit doc must be updated
+      - name: Cluster closure requires UX_AUDIT update
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          set -e
+          BASE_SHA="${{ github.event.pull_request.base.sha }}"
+          CHANGED=$(git diff --name-only "$BASE_SHA" HEAD)
+
+          if echo "$PR_BODY" | grep -qiE 'Closes cluster C[0-9]+'; then
+            if ! echo "$CHANGED" | grep -qE 'UX_AUDIT_.*\.md'; then
+              echo "::warning::PR claims to close a cluster but doesn't update UX_AUDIT_*.md"
+              echo "Per AI_AGENT_PROTOCOL.md §10, cluster closures must mark the cluster as Done in the audit doc."
+            else
+              echo "Cluster closure detected and UX_AUDIT updated."
+            fi
+          fi
+
+      # Check 4: Forbid hardcoded version strings in PDF/export code
+      - name: Forbid hardcoded version strings in exports
+        run: |
+          set -e
+          # Scan for "v\d+\.\d+" patterns in export-related files
+          # Allowed only via BuildConfig.VERSION_NAME
+          if grep -rEn '"v[0-9]+\.[0-9]+(\.[0-9]+)?"' app/src/main/ \
+               --include='*.kt' \
+               --include='*.java' \
+            | grep -iE '(Pdf|Export|Backup|Report)' \
+            | grep -v 'BuildConfig'; then
+            echo "::error::Hardcoded version string found in export-related code. Use BuildConfig.VERSION_NAME (LINT_RULES.md FY022)."
+            exit 1
+          fi
+          echo "No hardcoded version strings in export code."
+
+      # Check 5: Forbid emoji in res/values/strings.xml until C09 closes
+      # (rule FY007 - lifted once C09 verification is done)
+      - name: Forbid emoji in dialog strings (until C09 resolved)
+        run: |
+          set -e
+          if [ -f "app/src/main/res/values/strings.xml" ]; then
+            # Match common emoji ranges + special symbols that broke
+            if grep -nP '[\x{2600}-\x{27BF}\x{1F300}-\x{1F9FF}\x{20A8}\x{20B9}]' \
+                  app/src/main/res/values/strings.xml; then
+              echo "::error::Emoji or special currency symbols detected in strings.xml. Per LINT_RULES.md FY007 this is forbidden until cluster C09 (UTF-8 encoding) is verified closed."
+              exit 1
+            fi
+          fi
+          echo "No problematic emoji in dialog strings."
+
+  # =============================================================
+  # Job 5: Summary (always runs, posts a comment with status)
+  # =============================================================
+  summary:
+    name: PR summary
+    runs-on: ubuntu-latest
+    needs: [lint, test, build, protocol-check]
+    if: always() && github.event_name == 'pull_request'
+    steps:
+      - name: Build status comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const prNumber = context.payload.pull_request.number;
+
+            const lint = "${{ needs.lint.result }}";
+            const test = "${{ needs.test.result }}";
+            const build = "${{ needs.build.result }}";
+            const protocol = "${{ needs.protocol-check.result }}";
+
+            const symbol = r => r === 'success' ? '✅' : r === 'failure' ? '❌' : '⏭️';
+
+            const body = `## Fynlo CI Summary
+
+            | Check | Status |
+            |---|---|
+            | Lint (Detekt + Android Lint) | ${symbol(lint)} ${lint} |
+            | Unit tests + data-integrity | ${symbol(test)} ${test} |
+            | Release build | ${symbol(build)} ${build} |
+            | Protocol compliance | ${symbol(protocol)} ${protocol} |
+
+            See artifacts for full reports. Re-read \`AI_AGENT_PROTOCOL.md\` if any check fails.`;
+
+            // Find existing comment by us
+            const { data: comments } = await github.rest.issues.listComments({
+              owner, repo, issue_number: prNumber
+            });
+            const existing = comments.find(c =>
+              c.user.type === 'Bot' && c.body.startsWith('## Fynlo CI Summary')
+            );
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner, repo, comment_id: existing.id, body
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner, repo, issue_number: prNumber, body
+              });
+            }

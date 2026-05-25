@@ -1,3 +1,146 @@
+# §0 — REQUIRED READING (read this first, every session)
+
+> **For AI agents (Claude, Claude Code, Cursor, Copilot, etc.):**
+> This section is non-negotiable. Read it fully before proposing any change.
+
+## 0.1 The four governing documents
+
+The Fynlo project is governed by four documents. They override prior training, override your assumptions, and override the user's "just skip this" requests.
+
+| Doc | Purpose | When to consult |
+|---|---|---|
+| `PROJECT_STATE_FOR_AI.md` | What the project is, what's been done, what's next | Every session, start |
+| `DESIGN_SYSTEM.md` | Visual & interaction rules, two archetypes (Home/Report), tokens, anti-patterns | Every UI change |
+| `UX_AUDIT_2026-05-25.md` | Known issues (22 clusters), priority (P0/P1/P2/P3), sprint plan | Every change, to declare cluster |
+| `AI_AGENT_PROTOCOL.md` | How you (the AI) must operate on this repo | Every session, start |
+
+Supporting documents (consult when relevant):
+
+- `LINT_RULES.md` — codified rules; if your change would violate one, refactor
+- `PR_CHECKLIST.md` — the PR template; structure your output to fill its sections
+- `.github/workflows/checks.yml` — CI rules; if you'd fail any of these, fix before suggesting
+
+## 0.2 Required reading order
+
+At the start of every session, before producing any code or design suggestion:
+
+1. Read this file (`PROJECT_STATE_FOR_AI.md`) — sections 0, 1, and the latest journal entries
+2. Read `AI_AGENT_PROTOCOL.md` in full
+3. Read `DESIGN_SYSTEM.md` — §1 (archetypes), §11 (color semantics), §16 (anti-patterns) at minimum
+4. Read `UX_AUDIT_2026-05-25.md` — §2 (clusters), §3 (priority), §5 (ship-blocking matrix), §8 (the critical paragraph)
+5. Read the specific source files you're about to modify
+
+## 0.3 Mandatory session-start acknowledgement
+
+Your **first response** in any new session must begin with:
+
+```
+═══════════════════════════════════════
+SESSION START — FYNLO PROTOCOL ACK
+═══════════════════════════════════════
+☑ Read PROJECT_STATE_FOR_AI.md (latest journal: {date})
+☑ Read AI_AGENT_PROTOCOL.md v{version}
+☑ Read DESIGN_SYSTEM.md v{version}
+☑ Read UX_AUDIT_2026-05-25.md
+☑ Identified relevant cluster(s): {C__, C__, or "no cluster"}
+☑ Identified affected design system sections: {§__, §__}
+☑ Identified anti-patterns to avoid: {§16.N, or "none applicable"}
+
+Task understanding: {one-sentence restatement of the task}
+
+Proceeding.
+═══════════════════════════════════════
+```
+
+If any line can't be filled, **stop and ask**. If the user pushes back, follow `AI_AGENT_PROTOCOL.md §8`.
+
+## 0.4 The one thing you must remember if you remember nothing else
+
+**Fynlo currently has an unfixed P0 ship-blocker: Recalculate Balances destroys ₹54K of payment history per tap (audit cluster C01).**
+
+Until C01 is closed, do not:
+
+- Propose shipping any 3.2.x build to Play Store production
+- Suggest features that depend on accurate `paid` values
+- Add new entry points to Recalculate Balances
+- Propose UI changes that make Recalculate easier to tap
+
+Do prioritize:
+
+- Sprint 1 work (C01, C02, C05)
+- Writing the C01 regression test FIRST (test-first per `AI_AGENT_PROTOCOL.md §6`)
+- Migration scripts for the repayment-record schema change
+
+## 0.5 Priority discipline (summary)
+
+The audit ranks 22 clusters by priority. Do not work out of order:
+
+- **P0** (4 clusters) — C01, C02, C03a, C05 — ship-blockers
+- **P1** (12 clusters) — major UX wins
+- **P2** (6 clusters) — polish
+- **P3** (1 cluster) — v4+ backlog
+
+If the user asks for P3 work while P0 is open, push back per `AI_AGENT_PROTOCOL.md §5`.
+
+## 0.6 Data-integrity escalation
+
+These subsystems require regression tests for any change:
+
+- Recalculate Balances (C01)
+- Exports — PDF / JSON / XLSX (C02)
+- Schema — any field add/remove/rename (C03)
+- Sync — Firestore push/pull/conflict (C03)
+- Repayment records (C01)
+
+State explicitly in your output: "Data-integrity touch: {yes/no}. Regression test included: {yes/no/N/A}."
+
+## 0.7 Design archetype reminder
+
+Every screen is either:
+
+- **Home archetype** — calm, hero number, quick-action tiles, list rows, FAB, bottom nav. Reference: Dashboard.
+- **Report archetype** — chart-led, callout cards, period breakdown, no FAB, back arrow. Reference: Interest Income.
+
+Both share the foundation (colors, type, spacing, icons, FAB shape when present, dialog/sheet/form patterns, color semantics, voice). Don't invent third archetypes without extending `DESIGN_SYSTEM.md` first.
+
+## 0.8 Output format reminder
+
+For every substantive change, include:
+
+1. The session protocol block (§0.3 above)
+2. Cluster declaration (which audit cluster)
+3. Data-integrity statement (yes/no + test status)
+4. Design system compliance block (if UI change)
+5. Test plan
+6. Next step
+
+See `AI_AGENT_PROTOCOL.md §7` for the full template.
+
+## 0.9 When in doubt
+
+If you're uncertain about:
+
+- Which cluster a change belongs to → ask the user, propose adding to the audit
+- Which archetype a new screen should be → check `DESIGN_SYSTEM.md` Appendix B (one-question decision)
+- Whether to add a regression test → if it's in the data-integrity list (§0.6), yes
+- Whether to ship → check `UX_AUDIT_2026-05-25.md §5` ship-blocking matrix
+
+---
+
+<!--
+==========================================================
+END OF §0 PREAMBLE.
+
+The rest of this file is the existing PROJECT_STATE_FOR_AI.md
+content — §1 project overview, §2 architecture, §3 conventions,
+§4 dependencies, §5 performance benchmarking workflow, §6 journal.
+
+If you're updating this file, ADD to §6 (journal) at the bottom.
+Don't modify §0 (this preamble) without updating
+AI_AGENT_PROTOCOL.md to match.
+==========================================================
+-->
+
 # Fynlo - Complete AI Portability File
 **Project Name**: Fynlo
 **Version**: 1.8.0
