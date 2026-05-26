@@ -82,6 +82,8 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
         AddTransactionDialog(
             onDismiss = { showAddTxn = false },
             onConfirm = { txn -> haptic.performHapticFeedback(HapticFeedbackType.LongPress); viewModel.addTransaction(txn); showAddTxn = false },
+            rememberLastCategory = { isIncome -> viewModel.rememberLastTransactionCategory(isIncome) },
+            onRecordCategory = { isIncome, cat -> viewModel.recordTransactionCategory(isIncome, cat) },
             initialIsIncome = addTxnIncome
         )
     }

@@ -205,7 +205,9 @@ fun MainNavigation(viewModel: FinanceViewModel) {
                 viewModel.addTransaction(txn)
                 showExpenseDialog = false
             },
-            initialIsIncome = addTxnIsIncome
+            initialIsIncome = addTxnIsIncome,
+            rememberLastCategory = { isIncome -> viewModel.rememberLastTransactionCategory(isIncome) },
+            onRecordCategory = { isIncome, cat -> viewModel.recordTransactionCategory(isIncome, cat) },
         )
     }
     

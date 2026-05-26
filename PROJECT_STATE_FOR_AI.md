@@ -346,6 +346,24 @@ in the APK).
 
 **Newest first.** Each entry: date · cluster(s) closed/touched · commit(s) · one-paragraph why-and-what.
 
+### 2026-05-26 — C04 Stage 2 landed (AddTransactionDialog category prefill)
+
+**Cluster:** C04 (P1, Sprint 2, smart defaults). Stage 2 of 3: the highest-impact UI site — `AddTransactionDialog` — now reads from and writes to the recency tracker. Stage 3 (Recurring + Budget + currency + recently-used picker group rendering) is the remaining work for cluster closure.
+**Internal milestone:** still `3.2.5` (no bump — cluster closure pending Stage 3 + Stage 2.5 custom-value handling).
+
+- `FinanceViewModel` constructor now takes `RecentlyUsedTracker` alongside `FinanceRepository` and `RecalcCoordinator`. Two new methods exposed:
+  - `suspend rememberLastTransactionCategory(isIncome: Boolean): String?` — picks the correct `CATEGORY_INCOME` or `CATEGORY_EXPENSE` slot and returns `tracker.last(...)`.
+  - `recordTransactionCategory(isIncome: Boolean, category: String)` — fire-and-forget; blank values dropped.
+- `AddTransactionDialog` signature gained two optional lambdas with no-op defaults: `rememberLastCategory` (suspend) and `onRecordCategory`. The default no-ops preserve the dialog's preview/test composability — call sites can adopt smart defaults incrementally.
+- The C05 `LaunchedEffect(isIncome) { selectedCategory = "" }` now asks the recency layer first: `selectedCategory = recent.takeIf { it in categories } ?: ""`. The submit path records the final category (post-Custom-unwrapping) before invoking `onConfirm`.
+- All four `AddTransactionDialog` call sites wired with viewModel-bound lambdas: `Navigation.kt`, `SpendScreen.kt`, `HomeScreenModern.kt`, `HomeScreen.kt`.
+
+**Known gaps for Stage 2.5 (small follow-up):** if the user's most-recently-used category is a Custom-typed value like "Charity" (not in `Categories.INCOME`/`EXPENSE`), it's silently dropped from the prefill. Setting `selectedCategory = "Custom"` AND `customCategory = recent` together would re-prefill the text input below the chip row — minor UX polish, ~10 lines.
+
+**No new tests this commit** — the data layer's contract is already covered by `RecentlyUsedDataIntegrityTest` (12 cases from Stage 1). The Stage 2 wiring is UI plumbing that Compose UI tests would assert; deferring those to when CI runs instrumented tests (INF05). Data-integrity gate count unchanged at **51 across 6 classes**.
+
+**Next:** Stage 3 — Recurring + Budget + currency picker + recently-used-group-at-top-of-picker UX. Or Stage 2.5 first to close the custom-value gap.
+
 ### 2026-05-26 — C04 Stage 1 landed (smart-defaults data abstraction)
 
 **Cluster:** C04 (P1, Sprint 2, smart defaults). Stage 1 of 3: the data layer alone, no UI changes. Sprint 2 has formally started — first P1 cluster work after all P0s closed.

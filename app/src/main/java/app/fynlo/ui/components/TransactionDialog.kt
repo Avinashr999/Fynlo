@@ -31,7 +31,16 @@ import java.util.*
 fun AddTransactionDialog(
     onDismiss: () -> Unit,
     onConfirm: (Transaction) -> Unit,
-    initialIsIncome: Boolean = false
+    initialIsIncome: Boolean = false,
+    // C04: optional recency hooks. Default no-ops keep the dialog
+    // testable and previewable without a ViewModel; production call
+    // sites wire `viewModel::rememberLastTransactionCategory` and
+    // `viewModel::recordTransactionCategory` to enable the smart
+    // defaults behaviour. The boolean argument is `isIncome` so the
+    // tracker can scope category recency by transaction type — same
+    // boundary C05 enforces on the chip list itself.
+    rememberLastCategory: suspend (Boolean) -> String? = { null },
+    onRecordCategory: (Boolean, String) -> Unit = { _, _ -> },
 ) {
     var isIncome by remember { mutableStateOf(initialIsIncome) }
     var amount by remember { mutableStateOf("") }
@@ -51,7 +60,19 @@ fun AddTransactionDialog(
          else          app.fynlo.data.Categories.EXPENSE) + "Custom"
     }
     var selectedCategory by remember { mutableStateOf("") }
-    LaunchedEffect(isIncome) { selectedCategory = "" }
+    // C04 (subsuming C05's reset): on every toggle flip — and on initial
+    // open — ask the recency layer for the user's most-recently-used
+    // category for the new type. If it's still in the curated chip list
+    // (`Categories.INCOME` / `Categories.EXPENSE`), pre-select it;
+    // otherwise fall back to blank ("user picks fresh"). Note that a
+    // recent value that isn't a chip-list entry (e.g. a user-typed
+    // "Charity" via Custom) is silently dropped here — re-prefilling
+    // Custom values is a Stage 2.5 follow-up that needs to set
+    // `customCategory` and switch `selectedCategory` to "Custom" together.
+    LaunchedEffect(isIncome) {
+        val recent = rememberLastCategory(isIncome)
+        selectedCategory = if (recent != null && recent in categories) recent else ""
+    }
 
     val sources = listOf("Cash", "Bank", "Investment", "Debts", "Custom")
     var selectedSrc by remember { mutableStateOf(sources[0]) }
@@ -184,17 +205,26 @@ fun AddTransactionDialog(
                             "Custom" -> sourceDetailName
                             else -> sourceDetailName.ifEmpty { selectedSrc }
                         }
+                        val finalCategory =
+                            if (selectedCategory == "Custom") customCategory else selectedCategory
                         val txn = Transaction(
                             id = UUID.randomUUID().toString(),
                             date = DateUtils.parseInput(date),
                             type = if (isIncome) "Income" else "Expense",
                             amount = amount.toDoubleOrNull() ?: 0.0,
-                            category = if (selectedCategory == "Custom") customCategory else selectedCategory,
+                            category = finalCategory,
                             desc = desc,
                             notes = notes,
                             fromAcct = if (isIncome) "" else finalAccount,
                             toAcct = if (isIncome) finalAccount else ""
                         )
+                        // C04: record this category as the most-recently-used for the
+                        // current transaction type so the NEXT Add Transaction pre-selects
+                        // it. Records the FINAL value (e.g., "Charity" for a Custom pick),
+                        // not the chip-list sentinel ("Custom"). Default no-op lambda
+                        // means dialogs constructed without the recency wiring (tests,
+                        // previews) still submit cleanly.
+                        onRecordCategory(isIncome, finalCategory)
                         onConfirm(txn)
                     },
                     enabled = (amount.toDoubleOrNull() ?: 0.0) > 0.0,

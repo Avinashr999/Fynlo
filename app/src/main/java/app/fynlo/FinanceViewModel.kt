@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.fynlo.data.FinanceRepository
 import app.fynlo.data.RecalcCoordinator
+import app.fynlo.data.RecentlyUsedTracker
 import app.fynlo.data.SyncStatus
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -21,6 +22,7 @@ import java.time.format.DateTimeFormatter
 class FinanceViewModel @Inject constructor(
     private val repository: FinanceRepository,
     private val recalcCoordinator: RecalcCoordinator,
+    private val recentlyUsedTracker: RecentlyUsedTracker,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<UiState>(UiState.Initial)
@@ -282,6 +284,47 @@ class FinanceViewModel @Inject constructor(
      */
     fun recalculateAllBalances() {
         viewModelScope.launch(Dispatchers.IO) { recalcCoordinator.runAndStamp() }
+    }
+
+    // ── C04: smart defaults for Add Transaction ───────────────────────────────
+    // Reads from / writes to RecentlyUsedTracker so the next time the user
+    // opens AddTransactionDialog, the category for the current type is
+    // pre-selected without them tapping. Category recency is split by type
+    // (CATEGORY_INCOME / CATEGORY_EXPENSE) so e.g. "Salary" never bleeds
+    // into the Expense picker — same boundary C05 enforced for the chip
+    // list itself.
+
+    /**
+     * Returns the most-recently-used category for an Add Transaction of
+     * the given type, or `null` if the user has never submitted one yet.
+     * Called from `AddTransactionDialog`'s on-open prefill.
+     */
+    suspend fun rememberLastTransactionCategory(isIncome: Boolean): String? {
+        val fieldId = if (isIncome) RecentlyUsedTracker.FieldIds.CATEGORY_INCOME
+                      else          RecentlyUsedTracker.FieldIds.CATEGORY_EXPENSE
+        return recentlyUsedTracker.last(
+            RecentlyUsedTracker.FormIds.ADD_TRANSACTION,
+            fieldId,
+        )
+    }
+
+    /**
+     * Records the user's category choice after they submit an Add
+     * Transaction. Fire-and-forget — the write is fast and a transient
+     * failure shouldn't block the UI. Blank values are dropped by the
+     * tracker so picker fields with no selection don't pollute recency.
+     */
+    fun recordTransactionCategory(isIncome: Boolean, category: String) {
+        if (category.isBlank()) return
+        viewModelScope.launch(Dispatchers.IO) {
+            val fieldId = if (isIncome) RecentlyUsedTracker.FieldIds.CATEGORY_INCOME
+                          else          RecentlyUsedTracker.FieldIds.CATEGORY_EXPENSE
+            recentlyUsedTracker.record(
+                RecentlyUsedTracker.FormIds.ADD_TRANSACTION,
+                fieldId,
+                category,
+            )
+        }
     }
 
     /**

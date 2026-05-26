@@ -70,7 +70,9 @@ val transactions by viewModel.transactions.collectAsState()
     if (showDialog) {
         AddTransactionDialog(
             onDismiss = { showDialog = false },
-            onConfirm = { txn -> haptic.performHapticFeedback(HapticFeedbackType.LongPress); viewModel.addTransaction(txn); showDialog = false }
+            onConfirm = { txn -> haptic.performHapticFeedback(HapticFeedbackType.LongPress); viewModel.addTransaction(txn); showDialog = false },
+            rememberLastCategory = { isIncome -> viewModel.rememberLastTransactionCategory(isIncome) },
+            onRecordCategory = { isIncome, cat -> viewModel.recordTransactionCategory(isIncome, cat) },
         )
     }
 
