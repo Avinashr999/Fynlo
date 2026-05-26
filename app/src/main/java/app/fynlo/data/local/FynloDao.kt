@@ -62,18 +62,23 @@ interface FynloDao {
     @Query("UPDATE borrowers SET paid = paidPrincipal + paidInterest")
     suspend fun recalculateBorrowerPaid()
 
+    // C01 fix (decisions/2026-05-26-c01-fix-strategy.md): drop the WHERE EXISTS
+    // gate (which kept legacy `paid > 0 && no payments` rows un-rebuilt and
+    // therefore destroyed by the now-removed recalculateBorrowerPaid query),
+    // and wrap each sum in COALESCE(...,0) so brand-new borrowers with zero
+    // payments correctly get paid = 0. After the v15→v16 backfill migration,
+    // every borrower with `paid > 0` has at least one payment row, so SUM is
+    // never NULL for those.
     @Query("""UPDATE borrowers SET
-        paid          = (SELECT SUM(amount)   FROM payments WHERE loanId = borrowers.id),
-        paidPrincipal = (SELECT SUM(CASE WHEN type='Interest Only' THEN 0 WHEN principal > 0 THEN principal ELSE amount END) FROM payments WHERE loanId = borrowers.id),
-        paidInterest  = (SELECT SUM(CASE WHEN type='Interest Only' AND interest=0 THEN amount ELSE interest END) FROM payments WHERE loanId = borrowers.id)
-        WHERE EXISTS (SELECT 1 FROM payments WHERE loanId = borrowers.id)""")
+        paid          = COALESCE((SELECT SUM(amount) FROM payments WHERE loanId = borrowers.id), 0),
+        paidPrincipal = COALESCE((SELECT SUM(CASE WHEN type='Interest Only' THEN 0 WHEN principal > 0 THEN principal ELSE amount END) FROM payments WHERE loanId = borrowers.id), 0),
+        paidInterest  = COALESCE((SELECT SUM(CASE WHEN type='Interest Only' AND interest=0 THEN amount ELSE interest END) FROM payments WHERE loanId = borrowers.id), 0)""")
     suspend fun rebuildBorrowerPaidFromPayments()
 
     @Query("""UPDATE debts SET
-        paid          = (SELECT SUM(amount)   FROM debt_payments WHERE debtId = debts.id),
-        paidPrincipal = (SELECT SUM(CASE WHEN type='Interest Only' THEN 0 WHEN principal > 0 THEN principal ELSE amount END) FROM debt_payments WHERE debtId = debts.id),
-        paidInterest  = (SELECT SUM(CASE WHEN type='Interest Only' AND interest=0 THEN amount ELSE interest END) FROM debt_payments WHERE debtId = debts.id)
-        WHERE EXISTS (SELECT 1 FROM debt_payments WHERE debtId = debts.id)""")
+        paid          = COALESCE((SELECT SUM(amount) FROM debt_payments WHERE debtId = debts.id), 0),
+        paidPrincipal = COALESCE((SELECT SUM(CASE WHEN type='Interest Only' THEN 0 WHEN principal > 0 THEN principal ELSE amount END) FROM debt_payments WHERE debtId = debts.id), 0),
+        paidInterest  = COALESCE((SELECT SUM(CASE WHEN type='Interest Only' AND interest=0 THEN amount ELSE interest END) FROM debt_payments WHERE debtId = debts.id), 0)""")
     suspend fun rebuildDebtPaidFromDebtPayments()
 
     @Query("UPDATE debts SET paid = paidPrincipal + paidInterest")

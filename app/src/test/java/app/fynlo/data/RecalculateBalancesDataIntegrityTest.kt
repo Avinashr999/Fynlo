@@ -5,64 +5,47 @@ import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import app.fynlo.data.local.FynloDatabase
 import app.fynlo.data.model.Borrower
+import app.fynlo.data.model.Payment
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Before
-import org.junit.Ignore
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * C01 — Recalculate Balances data destruction
- * (UX_AUDIT_2026-05-25.md §C01).
+ * C01 — Recalculate Balances data integrity
+ * (UX_AUDIT_2026-05-25.md §C01,
+ *  decisions/2026-05-26-c01-fix-strategy.md).
  *
- * Regression test called for in C01 Fix step 5:
- *   "Add a unit test that runs Recalculate against a fixture with known
- *    `paid` values and asserts the sums are preserved."
+ * Was the regression test for the runtime destruction bug; is now the
+ * standing data-integrity gate that proves `recalculateAllBalances()` is
+ * a pure derive-from-truth pass. The destructive DAO queries
+ * (`recalculateBorrowerPaid` / `recalculateDebtPaid` — UPDATE borrowers
+ * SET paid = paidPrincipal + paidInterest) have been removed from the
+ * orchestrator (`FinanceRepository.recalculateAllBalances()`); the test
+ * exercises the EXACT new sequence and asserts `paid` survives every
+ * variant of the legacy → current → empty data shape.
  *
- * Also satisfies the data-integrity Gradle filter referenced by INF04 in
- * UX_AUDIT §9 — both `*Recalculate*` and `*DataIntegrity*` match this class.
- *
- * ── THE BUG ──────────────────────────────────────────────────────────────
- * FynloDao.kt line 62:
- *     @Query("UPDATE borrowers SET paid = paidPrincipal + paidInterest")
- *     suspend fun recalculateBorrowerPaid()
- *
- * For a borrower in the "legacy" state (paidPrincipal = 0, paidInterest = 0,
- * paid > 0, and NO `payments` rows reference them — exactly what happens
- * when partial repayment was only ever written to the cumulative field),
- * the SQL above zeroes `paid`. The follow-up DAO call
- * `rebuildBorrowerPaidFromPayments` is gated by `WHERE EXISTS (payments)`,
- * so it does not restore the value. Hence the ₹54K destruction described
- * in the audit.
- *
- * ── THE FIX (per C01 steps 1–3) ──────────────────────────────────────────
- *   1. Add a real `loanRepayments[]` table; derive `paid` from sum.
- *   2. Migrate existing cumulative `paid` into one repayment row dated
- *      `loanDate`.
- *   3. NEVER overwrite `paid` from `paidPrincipal + paidInterest`.
- *
- * Until that fix lands this test is RED.
+ * Matches both `*Recalculate*` and `*DataIntegrity*` Gradle test filters
+ * (INF04). Re-enabled in `.github/workflows/checks.yml` as part of the
+ * Sprint 1 PR that landed this fix.
  *
  * ── HOW THIS TEST WORKS ──────────────────────────────────────────────────
- * Spins up an in-memory FynloDatabase via Robolectric (because Room's
- * Android-style builder needs a Context, and `testImplementation` doesn't
- * include the instrumented test runner), inserts the legacy fixture, then
- * runs the EXACT DAO sequence from FinanceRepository.recalculateAllBalances()
- * and asserts `paid` survives.
+ * Spins up an in-memory `FynloDatabase` via Robolectric and exercises the
+ * exact DAO sequence from `FinanceRepository.recalculateAllBalances()`.
+ * The in-memory builder skips migrations (it creates the schema at the
+ * latest version), so the v15→v16 backfill is simulated by manually
+ * inserting the synthetic Payment row the migration would have written.
  *
- * `@Config(sdk = [34])` pins Robolectric to a supported framework level —
- * `compileSdk = 36` is fine at compile time, but Robolectric's bundled
- * Android jars top out at 34/35 depending on version (we're on 4.14.1).
+ * `@Config(application = android.app.Application::class)` overrides the
+ * manifest's `@HiltAndroidApp` class so Firebase initialisation doesn't
+ * run during the unit test (no google-services credentials in the JVM).
  *
- * `application = android.app.Application::class` overrides the manifest's
- * `@HiltAndroidApp` class so Firebase/Crashlytics/Analytics initialisation
- * doesn't run during the unit test (it requires real google-services
- * credentials and an Android Application context, neither of which exists
- * here). This is a Room-only test — no DI graph needed.
+ * `@Config(sdk = [34])` pins Robolectric to a framework level it has
+ * bundled jars for. `compileSdk = 36` is fine at compile time.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34], application = android.app.Application::class)
@@ -83,18 +66,22 @@ class RecalculateBalancesDataIntegrityTest {
         db.close()
     }
 
+    /** Exact DAO sequence from `FinanceRepository.recalculateAllBalances()`. */
+    private suspend fun recalculateAllBalances() {
+        db.dao().backfillBorrowerSourceAccount()
+        db.dao().rebuildBorrowerPaidFromPayments()
+        db.dao().rebuildDebtPaidFromDebtPayments()
+    }
+
+    /**
+     * The original C01 fixture: a borrower with `paid = ₹50,000`,
+     * `paidPrincipal = 0`, `paidInterest = 0`, and (after the v15→v16
+     * backfill migration) one synthetic Payment row pinning that history
+     * into the source-of-truth table. Recalc must derive `paid = 50000`
+     * back into the borrower row.
+     */
     @Test
-    @Ignore(
-        "Pending C01 fix — see UX_AUDIT_2026-05-25.md §C01 and INF04. " +
-            "Remove this @Ignore to see RED, then drive the fix until it goes GREEN. " +
-            "Validated locally: this test fails today with " +
-            "`expected:<50000.0> but was:<0.0>` because FynloDao.recalculateBorrowerPaid()'s " +
-            "SQL zeroes `paid` for legacy borrowers."
-    )
-    fun `recalculateAllBalances must preserve paid for legacy borrower with no Payment rows (C01)`() = runBlocking {
-        // Legacy fixture: ₹50,000 of partial repayment recorded only on the
-        // cumulative `paid` field. The principal/interest split was never
-        // populated, and no Payment rows reference this borrower.
+    fun `recalculateAllBalances preserves paid for legacy borrower after v16 backfill (C01)`() = runBlocking {
         val legacy = Borrower(
             id = "c01-fixture-legacy-borrower",
             name = "C01 Test Borrower",
@@ -107,40 +94,50 @@ class RecalculateBalancesDataIntegrityTest {
         )
         db.dao().insertBorrower(legacy)
 
-        // EXACT sequence from FinanceRepository.recalculateAllBalances():
-        //
-        //     dao.recalculateBorrowerPaid()           // <- the destruction
-        //     dao.recalculateDebtPaid()
-        //     dao.backfillBorrowerSourceAccount()
-        //     dao.rebuildBorrowerPaidFromPayments()   // <- WHERE EXISTS gate, no-op here
-        //     dao.rebuildDebtPaidFromDebtPayments()
-        db.dao().recalculateBorrowerPaid()
-        db.dao().recalculateDebtPaid()
-        db.dao().backfillBorrowerSourceAccount()
-        db.dao().rebuildBorrowerPaidFromPayments()
-        db.dao().rebuildDebtPaidFromDebtPayments()
+        // Simulate the v15 → v16 backfill migration (FynloDatabase.kt
+        // MIGRATION_15_16): one synthetic Payment row per legacy borrower,
+        // amount = previous cumulative `paid`, principal = amount,
+        // interest = 0, dated borrowers.date, type = "Legacy backfill".
+        db.dao().insertPayment(
+            Payment(
+                id = "legacy-bf-${legacy.id}",
+                loanId = legacy.id,
+                name = legacy.name,
+                date = legacy.date,
+                type = "Legacy backfill",
+                amount = legacy.paid,
+                principal = legacy.paid,
+                interest = 0.0,
+                notes = "Imported from legacy schema; actual repayment date unknown",
+            )
+        )
+
+        recalculateAllBalances()
 
         val after = db.dao().getBorrowerById(legacy.id)
             ?: error("borrower row vanished after recalculate")
 
         assertEquals(
-            "C01 regression: recalculateAllBalances destroyed ₹${"%.2f".format(legacy.paid)} " +
-                "of payment history (paid: ${legacy.paid} → ${after.paid}). " +
-                "FynloDao.recalculateBorrowerPaid()'s SQL " +
-                "(UPDATE borrowers SET paid = paidPrincipal + paidInterest) zeroed `paid` " +
-                "because the principal/interest split was never populated and no Payment rows exist. " +
-                "See UX_AUDIT_2026-05-25.md §C01 fix steps 1–3.",
-            50_000.0,         // expected: paid preserved
-            after.paid,       // actual under current SQL: 0.0
+            "C01 invariant: paid must equal SUM(payments) after recalc " +
+                "(legacy borrower with backfilled Payment).",
+            50_000.0,
+            after.paid,
             0.0,
         )
+        // The migration also seeds paidPrincipal = paid; the rebuild then
+        // sums principal from payments (= paid for the backfill row).
+        assertEquals(50_000.0, after.paidPrincipal, 0.0)
+        assertEquals(0.0, after.paidInterest, 0.0)
     }
 
+    /**
+     * Current-schema borrower with the principal/interest split kept in
+     * sync at write time (i.e., a `Payment` row was inserted by
+     * `insertPaymentWithDest` when the user collected the repayment).
+     * Recalc must reproduce the same values from the payments table.
+     */
     @Test
-    fun `recalculateAllBalances is a no-op when paidPrincipal + paidInterest already equals paid`() = runBlocking {
-        // Boundary case: newer borrower where the split was kept in sync.
-        // The buggy SQL happens to be harmless here. Documents the safe
-        // case so a future fix doesn't accidentally regress it.
+    fun `recalculateAllBalances is consistent for current-schema borrower with split Payment row`() = runBlocking {
         val current = Borrower(
             id = "c01-fixture-current-borrower",
             name = "C01 Test Borrower (current schema)",
@@ -152,21 +149,58 @@ class RecalculateBalancesDataIntegrityTest {
             paidInterest = 20_000.0,
         )
         db.dao().insertBorrower(current)
+        db.dao().insertPayment(
+            Payment(
+                id = "p-current-1",
+                loanId = current.id,
+                name = current.name,
+                date = "2024-06-01",
+                type = "Both",
+                amount = 50_000.0,
+                principal = 30_000.0,
+                interest = 20_000.0,
+            )
+        )
 
-        db.dao().recalculateBorrowerPaid()
-        db.dao().recalculateDebtPaid()
-        db.dao().backfillBorrowerSourceAccount()
-        db.dao().rebuildBorrowerPaidFromPayments()
-        db.dao().rebuildDebtPaidFromDebtPayments()
+        recalculateAllBalances()
 
         val after = db.dao().getBorrowerById(current.id)
             ?: error("borrower row vanished after recalculate")
 
-        assertEquals(
-            "Recalculate must be a no-op when paidPrincipal + paidInterest already equals paid.",
-            current.paid,
-            after.paid,
-            0.0,
+        assertEquals(50_000.0, after.paid, 0.0)
+        assertEquals(30_000.0, after.paidPrincipal, 0.0)
+        assertEquals(20_000.0, after.paidInterest, 0.0)
+    }
+
+    /**
+     * Brand-new borrower with no payments at all. This is the case the
+     * old `WHERE EXISTS (payments)` gate was protecting against; after
+     * the C01 rewrite the gate is gone and the rebuild query uses
+     * `COALESCE(SUM(...), 0)` so `paid` lands at 0 (not NULL) for a row
+     * with zero repayments. Documents that the COALESCE handles the
+     * empty case correctly.
+     */
+    @Test
+    fun `recalculateAllBalances leaves paid=0 for new borrower with no payments`() = runBlocking {
+        val fresh = Borrower(
+            id = "c01-fixture-new-borrower",
+            name = "C01 Test Borrower (no repayments yet)",
+            amount = 100_000.0,
+            rate = 12.0,
+            date = "2024-01-01",
+            paid = 0.0,
+            paidPrincipal = 0.0,
+            paidInterest = 0.0,
         )
+        db.dao().insertBorrower(fresh)
+
+        recalculateAllBalances()
+
+        val after = db.dao().getBorrowerById(fresh.id)
+            ?: error("borrower row vanished after recalculate")
+
+        assertEquals(0.0, after.paid, 0.0)
+        assertEquals(0.0, after.paidPrincipal, 0.0)
+        assertEquals(0.0, after.paidInterest, 0.0)
     }
 }

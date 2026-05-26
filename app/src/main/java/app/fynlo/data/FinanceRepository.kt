@@ -282,13 +282,22 @@ class FinanceRepository(
     }
 
     suspend fun recalculateAllBalances() {
-        // Fix borrower and debt paid fields only.
+        // C01 fix — Sprint 1 (decisions/2026-05-26-c01-fix-strategy.md).
+        // Derives `paid` / `paidPrincipal` / `paidInterest` from the
+        // `payments` and `debt_payments` tables (the single source of truth).
+        // The previously-called dao.recalculateBorrowerPaid() /
+        // recalculateDebtPaid() queries (UPDATE ... SET paid =
+        // paidPrincipal + paidInterest) silently zeroed legacy rows whose
+        // principal/interest split was never populated and whose only
+        // repayment record lived on the cumulative `paid` field. They are
+        // intentionally NOT called here. The v15→v16 backfill migration
+        // (FynloDatabase.kt) ensures every legacy row has at least one
+        // Payment row before this code can run on an upgraded install.
+        //
         // Account balances are NOT recomputed from transactions because:
         // 1. Opening balances have no corresponding transaction record
         // 2. Starting from current balance + replaying transactions = double-counting
-        // Account balances are always kept correct in real-time by individual operations.
-        dao.recalculateBorrowerPaid()
-        dao.recalculateDebtPaid()
+        // Account balances are kept correct in real-time by individual operations.
         dao.backfillBorrowerSourceAccount()
         dao.rebuildBorrowerPaidFromPayments()
         dao.rebuildDebtPaidFromDebtPayments()

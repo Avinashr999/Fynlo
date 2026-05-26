@@ -25,7 +25,7 @@ import app.fynlo.data.model.FlowTemplate
         NetWorthSnapshot::class,
         InvestmentValuation::class
     ],
-    version = 15,
+    version = 16,
     exportSchema = true
 )
 abstract class FynloDatabase : RoomDatabase() {
@@ -159,6 +159,80 @@ val MIGRATION_13_14 = object : Migration(13, 14) {
                 (SELECT fromAcct FROM transactions
                  WHERE ref = borrowers.id AND type = 'Expense' AND category = 'Lending'
                  ORDER BY updatedAt DESC LIMIT 1), '')
+        """.trimIndent())
+    }
+}
+
+// C01 fix — Sprint 1 (UX_AUDIT §C01, decisions/2026-05-26-c01-fix-strategy.md).
+// For every borrower/debt where `paid > 0` but no rows in payments/debt_payments
+// reference it (the legacy data shape, where partial repayment lived only on the
+// cumulative `paid` field), insert ONE synthetic Payment row dated `loanDate`
+// with `principal = paid, interest = 0, type = "Legacy backfill"`. After this
+// migration, `payments`/`debt_payments` are the authoritative repayment history
+// for every borrower/debt and `recalculateAllBalances()` can safely derive
+// `paid` from SUM(payments) without losing legacy data.
+val MIGRATION_15_16 = object : Migration(15, 16) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        val now = System.currentTimeMillis()
+
+        // 1. Borrowers → payments
+        db.execSQL("""
+            INSERT INTO payments
+                (id, loanId, name, date, type, amount, principal, interest, mode, notes, projectId, updatedAt, createdAt)
+            SELECT
+                'legacy-bf-' || b.id,
+                b.id,
+                b.name,
+                b.date,
+                'Legacy backfill',
+                b.paid,
+                b.paid,
+                0,
+                '',
+                'Imported from legacy schema; actual repayment date unknown',
+                b.projectId,
+                $now,
+                $now
+            FROM borrowers b
+            WHERE b.paid > 0
+              AND NOT EXISTS (SELECT 1 FROM payments p WHERE p.loanId = b.id)
+        """.trimIndent())
+
+        // 2. Debts → debt_payments (same shape)
+        db.execSQL("""
+            INSERT INTO debt_payments
+                (id, debtId, name, date, type, amount, principal, interest, mode, notes, projectId, updatedAt, createdAt)
+            SELECT
+                'legacy-bf-' || d.id,
+                d.id,
+                d.name,
+                d.date,
+                'Legacy backfill',
+                d.paid,
+                d.paid,
+                0,
+                '',
+                'Imported from legacy schema; actual repayment date unknown',
+                d.projectId,
+                $now,
+                $now
+            FROM debts d
+            WHERE d.paid > 0
+              AND NOT EXISTS (SELECT 1 FROM debt_payments dp WHERE dp.debtId = d.id)
+        """.trimIndent())
+
+        // 3. Seed the split fields so `paid == paidPrincipal + paidInterest`
+        //    holds immediately after this migration — same fix pattern as
+        //    migration 11→12, but scoped only to the rows we just backfilled.
+        db.execSQL("""
+            UPDATE borrowers
+            SET paidPrincipal = paid
+            WHERE paid > 0 AND paidPrincipal = 0 AND paidInterest = 0
+        """.trimIndent())
+        db.execSQL("""
+            UPDATE debts
+            SET paidPrincipal = paid
+            WHERE paid > 0 AND paidPrincipal = 0 AND paidInterest = 0
         """.trimIndent())
     }
 }

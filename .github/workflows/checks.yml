@@ -93,11 +93,16 @@ jobs:
       - name: Run unit tests
         run: ./gradlew testProdDebugUnitTest --no-daemon
 
-      # NOTE: a dedicated data-integrity filter ran here, but NO unit tests
-      # currently match *DataIntegrity* / *Recalculate* / *Backup*, so Gradle
-      # failed the step with "No tests found for given includes". The unit test
-      # run above already executes every existing test. Re-add a filtered gate
-      # once such tests exist. Tracked as INF04 in UX_AUDIT_2026-05-25.md.
+      # Data-integrity gate (re-enabled by C01 Sprint 1; closes INF04).
+      # Re-runs the subset of unit tests matching *DataIntegrity* / *Recalculate*
+      # as an EXPLICIT gate — the `Run unit tests` step above already runs
+      # them once, but the dedicated invocation makes a failure here
+      # impossible to miss in the job log and gives the PR review a clear
+      # checkbox for "data integrity preserved".
+      # Currently matches RecalculateBalancesDataIntegrityTest. Add a
+      # *Backup* filter once Backup-related regression tests exist.
+      - name: Run data-integrity tests explicitly
+        run: ./gradlew :app:testProdDebugUnitTest --tests '*DataIntegrity*' --tests '*Recalculate*' --no-daemon
 
       - name: Upload test reports
         if: always()
