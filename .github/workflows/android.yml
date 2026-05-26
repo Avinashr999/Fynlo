@@ -83,11 +83,4 @@ jobs:
         run: chmod +x ./gradlew
 
       - name: Assemble prod release (unsigned)
-        run: ./gradlew assembleProdRelease --no-daemon
-
-      - name: Upload release APK artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: fynlo-prod-release-${{ github.run_number }}
-          path: app/build/outputs/apk/prod/release/*.apk
-          retention-days: 30
+        run: ./gradlew :app:assembleProdRelease

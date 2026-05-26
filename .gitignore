@@ -19,8 +19,9 @@
 *.keystore
 keystore.properties
 
-# Gradle wrapper jar (optional – keeps repo lighter)
-gradle/wrapper/gradle-wrapper.jar
+# NOTE: gradle/wrapper/gradle-wrapper.jar IS committed — it's the version-pinned
+# Gradle bootstrap that ./gradlew needs to run. Excluding it breaks CI and any
+# fresh clone (see INF01 in UX_AUDIT_2026-05-25.md).
 
 # OS
 Thumbs.db
