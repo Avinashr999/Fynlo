@@ -20,5 +20,6 @@ data class RecurringTransaction(
     val isActive    : Boolean = true,
     val lastRun     : String  = "",          // yyyy-MM-dd of last auto-log
     val projectId   : String  = "personal",
-    val updatedAt   : Long    = 0L
+    val updatedAt   : Long    = 0L,
+    val createdAt   : Long    = 0L,           // added v16→v17 (C03a Stage 2; UX_AUDIT §C03 item #2)
 )

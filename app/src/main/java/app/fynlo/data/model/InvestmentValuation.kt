@@ -16,5 +16,7 @@ data class InvestmentValuation(
     val date: String,
     val value: Double,
     val notes: String = "",
-    val updatedAt: Long = System.currentTimeMillis()
+    val projectId: String = "personal",   // added v16→v17 (C03a Stage 2; UX_AUDIT §C03 item #3 — was the only scoped sub-entity without projectId)
+    val updatedAt: Long = System.currentTimeMillis(),
+    val createdAt: Long = 0L,             // added v16→v17 (C03a Stage 2; UX_AUDIT §C03 item #2)
 )

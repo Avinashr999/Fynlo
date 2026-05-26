@@ -360,12 +360,15 @@ class FynloDatabaseMigrationTest {
      * Full Room re-open after migration: validates that the migrated
      * database actually opens cleanly with the full `FynloDatabase` schema
      * declarations, all migrations registered. Catches problems where the
-     * migration leaves the schema in a state that doesn't match the v16
-     * entities (would surface as Room schema-validation crash).
+     * migration leaves the schema in a state that doesn't match the
+     * current entities (would surface as a Room schema-validation crash).
+     *
+     * Test migrates `v15 → CURRENT` so every migration in the chain runs,
+     * not just the one being added in this PR.
      */
     @Test
     @Throws(IOException::class)
-    fun migrate15to16_resultingDatabaseOpensCleanlyWithFullRoom() {
+    fun migrate15toCurrent_resultingDatabaseOpensCleanlyWithFullRoom() {
         helper.createDatabase(TEST_DB, 15).close()
 
         val context = InstrumentationRegistry.getInstrumentation().targetContext
@@ -374,7 +377,7 @@ class FynloDatabaseMigrationTest {
                 MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7,
                 MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11,
                 MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14,
-                MIGRATION_14_15, MIGRATION_15_16,
+                MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17,
             )
             .build()
         try {
@@ -385,6 +388,164 @@ class FynloDatabaseMigrationTest {
         } finally {
             db.close()
         }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // C03a Stage 2 — v16 → v17 migration tests (UX_AUDIT §C03 stage 3a).
+    // ─────────────────────────────────────────────────────────────────────
+
+    /**
+     * The four entities missed by the v14→v15 `createdAt` rollout must all
+     * have the column added by `MIGRATION_16_17`. Backfill rules:
+     *   - flow_templates / investment_valuations / recurring_transactions
+     *     → `createdAt := updatedAt` (best-available proxy).
+     *   - net_worth_snapshots → `createdAt := strftime(date) * 1000`
+     *     because this entity has no `updatedAt` column.
+     */
+    @Test
+    @Throws(IOException::class)
+    fun migrate16to17_addsCreatedAtToTheFourMissedEntitiesAndBackfillsFromUpdatedAt() {
+        helper.createDatabase(TEST_DB, 16).use { db ->
+            // flow_templates: has updatedAt — should backfill.
+            db.execSQL("""
+                INSERT INTO flow_templates (id, name, eventType, category, fromAccount, toAccount, projectId, updatedAt)
+                VALUES ('ft1', 'Monthly Rent', 'Spent', 'Housing', 'HDFC', '', 'personal', 1700000000000)
+            """.trimIndent())
+
+            // investment_valuations: has updatedAt — should backfill.
+            db.execSQL("""
+                INSERT INTO investment_valuations (id, investmentId, date, value, notes, updatedAt)
+                VALUES ('iv1', 'inv-A', '2026-01-01', 50000.0, '', 1700000001000)
+            """.trimIndent())
+
+            // recurring_transactions: has updatedAt — should backfill.
+            db.execSQL("""
+                INSERT INTO recurring_transactions
+                    (id, name, type, amount, category, fromAcct, toAcct, frequency, dayOfMonth, notes, isActive, lastRun, projectId, updatedAt)
+                VALUES ('rt1', 'Monthly Salary', 'Income', 60000.0, 'Salary', '', 'HDFC', 'Monthly', 1, '', 1, '', 'personal', 1700000002000)
+            """.trimIndent())
+
+            // net_worth_snapshots: no updatedAt — should backfill from `date`.
+            db.execSQL("""
+                INSERT INTO net_worth_snapshots (date, netWorth, totalAssets, totalLiabilities, projectId)
+                VALUES ('2026-01-15', 100000.0, 500000.0, 400000.0, 'personal')
+            """.trimIndent())
+        }
+
+        val db = helper.runMigrationsAndValidate(TEST_DB, 17, true, MIGRATION_16_17)
+
+        // Three rows backfilled from updatedAt — non-zero.
+        for ((table, key, expectedCreatedAt) in listOf(
+            Triple("flow_templates",         "ft1", 1700000000000L),
+            Triple("investment_valuations",  "iv1", 1700000001000L),
+            Triple("recurring_transactions", "rt1", 1700000002000L),
+        )) {
+            db.query("SELECT createdAt FROM $table WHERE id = ?", arrayOf(key)).use { c ->
+                assertTrue("Row $table.$key must still exist after migration.", c.moveToFirst())
+                assertEquals(
+                    "createdAt on $table must backfill from updatedAt.",
+                    expectedCreatedAt, c.getLong(0),
+                )
+            }
+        }
+
+        // net_worth_snapshots row: createdAt = strftime('%s', '2026-01-15') * 1000
+        // 2026-01-15 00:00:00 UTC = epoch sec 1768435200 → ms 1768435200000.
+        db.query(
+            "SELECT createdAt FROM net_worth_snapshots WHERE date = ?",
+            arrayOf("2026-01-15"),
+        ).use { c ->
+            assertTrue(c.moveToFirst())
+            assertEquals(1768435200000L, c.getLong(0))
+        }
+    }
+
+    /**
+     * `investment_valuations` was the only scoped sub-entity missing
+     * `projectId`. The migration adds the column and backfills from the
+     * parent investment's `projectId` so multi-project users keep their
+     * valuations correctly scoped.
+     */
+    @Test
+    @Throws(IOException::class)
+    fun migrate16to17_backfillsInvestmentValuationProjectIdFromParentInvestment() {
+        helper.createDatabase(TEST_DB, 16).use { db ->
+            // Parent investment scoped to a non-default project. Column
+            // list mirrors the Investment entity's full @Entity shape so
+            // the INSERT is independent of default-value drift.
+            db.execSQL("""
+                INSERT INTO investments
+                    (id, name, type, subtype, invested, currentVal, date, maturityDate, rate, realized, withdrawn, notes, projectId, updatedAt, fundingSource, sourceType, linkedDebtId, createdAt)
+                VALUES ('inv-side', 'Side Project Investment', 'Stocks', '', 10000.0, 12000.0, '2025-09-01', '', 0.0, 0.0, 0.0, '', 'side-project', 1700000000000, '', '', '', 1700000000000)
+            """.trimIndent())
+            // Valuation children — should inherit the parent's projectId.
+            db.execSQL("""
+                INSERT INTO investment_valuations (id, investmentId, date, value, notes, updatedAt)
+                VALUES ('iv-side-1', 'inv-side', '2025-12-01', 11000.0, '', 1700000003000),
+                       ('iv-side-2', 'inv-side', '2026-03-01', 12000.0, '', 1700000004000)
+            """.trimIndent())
+            // Orphan valuation (parent doesn't exist) — should fall back to 'personal'.
+            db.execSQL("""
+                INSERT INTO investment_valuations (id, investmentId, date, value, notes, updatedAt)
+                VALUES ('iv-orphan', 'inv-vanished', '2026-04-01', 999.0, '', 1700000005000)
+            """.trimIndent())
+        }
+
+        val db = helper.runMigrationsAndValidate(TEST_DB, 17, true, MIGRATION_16_17)
+
+        db.query("SELECT id, projectId FROM investment_valuations ORDER BY id").use { c ->
+            val seen = mutableMapOf<String, String>()
+            while (c.moveToNext()) seen[c.getString(0)] = c.getString(1)
+            assertEquals("side-project", seen["iv-side-1"])
+            assertEquals("side-project", seen["iv-side-2"])
+            assertEquals("Orphan must fall back to 'personal' rather than failing.", "personal", seen["iv-orphan"])
+        }
+    }
+
+    /**
+     * C03a item #5: historical rows with `category` = the literal "Expense"
+     * / "Income" / "Transfer" must be rewritten to "Uncategorized" by the
+     * one-shot UPDATE in `MIGRATION_16_17`. Legitimate categories must
+     * pass through unchanged.
+     */
+    @Test
+    @Throws(IOException::class)
+    fun migrate16to17_rewritesForbiddenLegacyCategoryLiteralsToUncategorized() {
+        helper.createDatabase(TEST_DB, 16).use { db ->
+            // Three bad rows — one for each forbidden literal.
+            db.execSQL("""
+                INSERT INTO transactions (id, date, type, amount, fromAcct, toAcct, category, subcat, person, desc, ref, notes, tags, projectId, updatedAt, createdAt)
+                VALUES
+                    ('bad-expense',  '2026-05-20', 'Expense',  2000.0, 'Cash', '',     'Expense',  '', '', 'Misc',  '', '', '', 'personal', 1700000000000, 1700000000000),
+                    ('bad-income',   '2026-05-21', 'Income',    500.0, '',     'Cash', 'Income',   '', '', 'Gift',  '', '', '', 'personal', 1700000000001, 1700000000001),
+                    ('bad-transfer', '2026-05-22', 'Transfer', 1000.0, 'A',    'B',    'Transfer', '', '', 'Move',  '', '', '', 'personal', 1700000000002, 1700000000002)
+            """.trimIndent())
+            // A legitimate row that must NOT be touched.
+            db.execSQL("""
+                INSERT INTO transactions (id, date, type, amount, fromAcct, toAcct, category, subcat, person, desc, ref, notes, tags, projectId, updatedAt, createdAt)
+                VALUES ('good', '2026-05-23', 'Expense', 100.0, 'Cash', '', 'Food', '', '', 'Dinner', '', '', '', 'personal', 1700000000003, 1700000000003)
+            """.trimIndent())
+            // A row whose category just CONTAINS one of the forbidden words but isn't an exact match.
+            db.execSQL("""
+                INSERT INTO transactions (id, date, type, amount, fromAcct, toAcct, category, subcat, person, desc, ref, notes, tags, projectId, updatedAt, createdAt)
+                VALUES ('borderline', '2026-05-24', 'Expense', 50.0, 'Cash', '', 'Income Tax', '', '', 'Q1', '', '', '', 'personal', 1700000000004, 1700000000004)
+            """.trimIndent())
+        }
+
+        val db = helper.runMigrationsAndValidate(TEST_DB, 17, true, MIGRATION_16_17)
+
+        val rows = mutableMapOf<String, String>()
+        db.query("SELECT id, category FROM transactions").use { c ->
+            while (c.moveToNext()) rows[c.getString(0)] = c.getString(1)
+        }
+        assertEquals("bad-expense must be rewritten.",  "Uncategorized", rows["bad-expense"])
+        assertEquals("bad-income must be rewritten.",   "Uncategorized", rows["bad-income"])
+        assertEquals("bad-transfer must be rewritten.", "Uncategorized", rows["bad-transfer"])
+        assertEquals("Legitimate category must pass through unchanged.", "Food", rows["good"])
+        assertEquals(
+            "Substring match must NOT trigger — exact-match only on the three literals.",
+            "Income Tax", rows["borderline"],
+        )
     }
 
     @After

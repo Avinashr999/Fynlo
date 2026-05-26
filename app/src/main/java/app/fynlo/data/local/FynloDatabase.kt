@@ -25,7 +25,7 @@ import app.fynlo.data.model.FlowTemplate
         NetWorthSnapshot::class,
         InvestmentValuation::class
     ],
-    version = 16,
+    version = 17,
     exportSchema = true
 )
 abstract class FynloDatabase : RoomDatabase() {
@@ -159,6 +159,75 @@ val MIGRATION_13_14 = object : Migration(13, 14) {
                 (SELECT fromAcct FROM transactions
                  WHERE ref = borrowers.id AND type = 'Expense' AND category = 'Lending'
                  ORDER BY updatedAt DESC LIMIT 1), '')
+        """.trimIndent())
+    }
+}
+
+// C03a Stage 2 — additive schema fields + legacy category cleanup
+// (UX_AUDIT §C03 Stage 3a items #2, #3, #5).
+//
+// The v14→v15 migration added `createdAt` to the 10 main tables, but four
+// auxiliary entities created in earlier migrations were missed:
+//   - flow_templates       (v4→v5)
+//   - investment_valuations (v7→v8)
+//   - net_worth_snapshots  (v6→v7)
+//   - recurring_transactions (v5→v6)
+// This migration adds `createdAt` to all four. For the three that have an
+// `updatedAt` column, `createdAt` is backfilled from it (best-available
+// proxy for "when created"). `net_worth_snapshots` has no `updatedAt`, so
+// we backfill from the `date` field instead (parsed as `yyyy-MM-dd` via
+// SQLite's `strftime`, multiplied to ms).
+//
+// Item #3: `InvestmentValuation` was the only scoped entity missing
+// `projectId`. Added with default `'personal'`; backfilled from the
+// parent investment's `projectId` so multi-project users keep their
+// valuations correctly scoped.
+//
+// Item #5: a one-shot cleanup of historical transactions whose `category`
+// is the literal `'Expense'` / `'Income'` / `'Transfer'` (a UX bug —
+// those are TYPES, not categories — surfaced in the C03 audit). Repointed
+// to `'Uncategorized'`. The runtime guard in `TransactionValidator`
+// prevents this state from being re-introduced.
+val MIGRATION_16_17 = object : Migration(16, 17) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        // ── createdAt on the four missed entities ───────────────────────
+        db.execSQL("ALTER TABLE flow_templates ADD COLUMN createdAt INTEGER NOT NULL DEFAULT 0")
+        db.execSQL("UPDATE flow_templates SET createdAt = updatedAt WHERE createdAt = 0")
+
+        db.execSQL("ALTER TABLE investment_valuations ADD COLUMN createdAt INTEGER NOT NULL DEFAULT 0")
+        db.execSQL("UPDATE investment_valuations SET createdAt = updatedAt WHERE createdAt = 0")
+
+        db.execSQL("ALTER TABLE net_worth_snapshots ADD COLUMN createdAt INTEGER NOT NULL DEFAULT 0")
+        // net_worth_snapshots has no `updatedAt`; backfill from `date` (yyyy-MM-dd).
+        db.execSQL("""
+            UPDATE net_worth_snapshots
+            SET createdAt = CAST(strftime('%s', date) AS INTEGER) * 1000
+            WHERE createdAt = 0
+        """.trimIndent())
+
+        db.execSQL("ALTER TABLE recurring_transactions ADD COLUMN createdAt INTEGER NOT NULL DEFAULT 0")
+        db.execSQL("UPDATE recurring_transactions SET createdAt = updatedAt WHERE createdAt = 0")
+
+        // ── projectId on InvestmentValuation ────────────────────────────
+        db.execSQL("ALTER TABLE investment_valuations ADD COLUMN projectId TEXT NOT NULL DEFAULT 'personal'")
+        // Backfill from the parent investment so multi-project users keep scoping.
+        db.execSQL("""
+            UPDATE investment_valuations
+            SET projectId = COALESCE(
+                (SELECT projectId FROM investments WHERE investments.id = investment_valuations.investmentId),
+                'personal'
+            )
+        """.trimIndent())
+
+        // ── C03a item #5: clean up legacy "Expense"/"Income"/"Transfer" category literals ──
+        // These were never valid categories — the dropdown bug let users pick
+        // them, but Expense/Income/Transfer are TYPES. Repoint to a sentinel
+        // so users can pick a real category on next edit. The TransactionValidator
+        // guard prevents re-introduction at insert/edit time.
+        db.execSQL("""
+            UPDATE transactions
+            SET category = 'Uncategorized'
+            WHERE category IN ('Expense', 'Income', 'Transfer')
         """.trimIndent())
     }
 }

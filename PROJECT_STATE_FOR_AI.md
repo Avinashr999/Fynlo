@@ -151,7 +151,7 @@ AI_AGENT_PROTOCOL.md to match.
 
 # Fynlo - Complete AI Portability File
 **Project Name**: Fynlo
-**Version**: 3.2.3 on `master` (`versionName = "3.2.3"`, `versionCode = 126`). C01 closed at 3.2.2; C02 closed at 3.2.3. Internal milestone markers only — per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens until every `UX_AUDIT` cluster is closed.
+**Version**: 3.2.4 on `master` (`versionName = "3.2.4"`, `versionCode = 127`). C01 closed at 3.2.2 → C02 closed at 3.2.3 → C03a closed at 3.2.4. Internal milestone markers only — per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens until every `UX_AUDIT` cluster is closed.
 **Platform**: Android (Kotlin, Jetpack Compose, Room — Gradle 9.4.1, AGP 9.2.1, Room 2.8.4, KSP 2.3.7, Kotlin 2.2.10)
 
 ## 1. Project Overview
@@ -338,6 +338,33 @@ in the APK).
 ## 6. Journal
 
 **Newest first.** Each entry: date · cluster(s) closed/touched · commit(s) · one-paragraph why-and-what.
+
+### 2026-05-26 — C03a closed (both stages)
+
+**Cluster:** C03a (P0, schema integrity — additive). Fully closed alongside C01 and C02.
+**Internal milestone:** `versionName = "3.2.4"`, `versionCode = 127`. P0 progress now **3 of 4 closed** (C01, C02, C03a). C05 is the one remaining P0.
+
+**Stage 2 summary (this section; Stage 1 lives below):**
+
+- `MIGRATION_16_17` lands the four missed `createdAt` columns (`flow_templates`, `investment_valuations`, `net_worth_snapshots`, `recurring_transactions`) and the missing `projectId` on `investment_valuations`. Backfills are zone-aware: from `updatedAt` for the three entities that have it, from `strftime('%s', date) * 1000` for `net_worth_snapshots` (which lacks `updatedAt`). The `InvestmentValuation` `projectId` is backfilled from the parent `Investment`'s `projectId` (orphans fall back to `"personal"`).
+- The four entity classes updated to add their new fields. Schema export `app/schemas/.../17.json` committed (37,661 bytes — larger than v16 by the five new columns).
+- `AppModule` registers `MIGRATION_16_17` in the migration list.
+- NEW `app.fynlo.data.TransactionValidator` (pure `object`) — `sanitizeCategory(String): String` rewrites the three forbidden literal categories (`"Expense"` / `"Income"` / `"Transfer"`) to `"Uncategorized"`. Applied at every Transaction write site: `FinanceRepository.insertTransaction` and the new-side of `editTransaction`. Matching is case-sensitive and exact-string only — substring matches like `"Income Tax"` and `"Expense Reimbursement"` pass through unchanged. A one-shot UPDATE inside `MIGRATION_16_17` fixes any existing rows from the old dropdown bug.
+- `TransactionValidatorDataIntegrityTest` adds 9 pure-function cases. JVM data-integrity gate count: **21 → 30** (3 C01 + 8 C02 + 10 C03a-Stage-1 + 9 C03a-Stage-2).
+- `FynloDatabaseMigrationTest` extends with 3 new instrumented cases for v16 → v17 (createdAt backfill, projectId backfill from parent, forbidden-literal-category rewrite). Plus the existing `migrate15toCurrent_resultingDatabaseOpensCleanlyWithFullRoom` test updated to chain through `MIGRATION_16_17` too. All 8 instrumented cases pass on CPH2767 / Android 16.
+
+**Status post-C03a:**
+
+| Cluster | Priority | Status |
+|---|---|---|
+| C01 Recalculate destroys payments | P0 | ✅ Closed |
+| C02 Stale exports / no auto-recalc | P0 | ✅ Closed |
+| C03a Schema integrity — additive | P0 | ✅ Closed |
+| C05 Category bleed Income/Expense | P0 | ⚠️ Open — the last P0 |
+| C03b Schema integrity — breaking | P1 (Sprint 3) | Not started |
+| C04 / C06–C22 | P1/P2/P3 | Not started |
+
+**Next cluster to pick up:** C05 (category bleed Income/Expense) — the final P0. The audit description is short: P0, low effort. After C05 closes, all four Sprint-1-scope P0 clusters are done in a single session.
 
 ### 2026-05-26 — C03a Stage 1 landed (backup format hardening)
 

@@ -85,10 +85,13 @@ class FinanceRepository(
         dao.deleteProject(project); sync { deleteProject(project.id) }
     }
     suspend fun insertTransaction(transaction: Transaction) {
+        // C03a Stage 2: scrub forbidden literal categories ("Expense" / "Income"
+        // / "Transfer" — those are types, not categories) before persisting.
+        val sanitized = TransactionValidator.sanitize(transaction)
         val affectedAccounts = mutableListOf<String>()
         db.withTransaction {
             val now = System.currentTimeMillis()
-            val t = transaction.copy(updatedAt = now, createdAt = if (transaction.createdAt == 0L) now else transaction.createdAt)
+            val t = sanitized.copy(updatedAt = now, createdAt = if (sanitized.createdAt == 0L) now else sanitized.createdAt)
             dao.insertTransaction(t)
             when (transaction.type.lowercase()) {
                 "expense"  -> { dao.updateAccountBalance(transaction.fromAcct, -transaction.amount); affectedAccounts += transaction.fromAcct }
@@ -101,7 +104,12 @@ class FinanceRepository(
         // Sync AFTER withTransaction commits so we push the updated balance
         affectedAccounts.forEach { syncAccountByName(it) }
     }
-    suspend fun editTransaction(old: Transaction, new: Transaction) {
+    suspend fun editTransaction(old: Transaction, newRaw: Transaction) {
+        // C03a Stage 2: scrub forbidden literal categories from the new
+        // value before applying the edit. `old` is read-only — its
+        // category is just used for the old-side Payment-row lookup and
+        // doesn't get re-written, so no sanitization needed there.
+        val new = TransactionValidator.sanitize(newRaw)
         db.withTransaction {
             // 1. Reverse old transaction effect
             when (old.type.lowercase()) {

@@ -2,6 +2,37 @@
 
 All notable changes to Fynlo are documented here.
 
+## [3.2.4] - 2026-05-26 *(Development milestone — C03a closure; not promoted per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`)*
+
+### Fixed
+- **C03a — schema integrity (additive fields).** Closes 3 of 4 P0 ship-blockers from the audit's Sprint-1 scope (C01 + C02 + C03a all done; C05 is the lone P0 remaining). Five-part audit fix list:
+  1. **Backup root carries provenance.** `BackupData` now has `schemaVersion: Int = 1` (v2 on new exports), `appVersion = BuildConfig.VERSION_NAME`, `exportedAt = Instant.now().toString()` (UTC ISO-8601), `userId` (caller-provided Firebase UID, blank if signed out), `deviceName = android.os.Build.MODEL`. All five fields are populated by `FinanceRepository.getAllDataAsJson()`. *(Stage 1.)*
+  2. **`createdAt` on the four missed entities.** `MIGRATION_16_17` adds `createdAt INTEGER NOT NULL DEFAULT 0` to `flow_templates`, `investment_valuations`, `net_worth_snapshots`, `recurring_transactions`. Three are backfilled from `updatedAt`; `net_worth_snapshots` (no `updatedAt`) is backfilled from `strftime('%s', date) * 1000`. The v14→v15 migration covered the 10 main tables; this catches the four auxiliary entities it missed. *(Stage 2.)*
+  3. **`projectId` on the one missed scoped entity.** `MIGRATION_16_17` adds `projectId TEXT NOT NULL DEFAULT 'personal'` to `investment_valuations` and backfills from the parent `investments` row's `projectId` so multi-project users keep their valuations correctly scoped. Orphan valuations (parent investment missing) fall back to `'personal'`. *(Stage 2.)*
+  4. **SHA-256 content hash on backup root.** `BackupData.contentHash` is a 64-char lowercase hex digest over the canonical JSON form of the entire object with `contentHash` set to `""`. Computed at export, embedded as the last serialise step. Verified at import via `BackupIntegrity.check()` — restore refuses to proceed on hash mismatch (`IllegalStateException` thrown **before** `db.withTransaction` opens, so the DB never sees a tampered/corrupted backup). Forward-compat: `schemaVersion > 2` rejected with `UnsupportedVersion(N)`. Backwards-compat: v1 legacy backups (no metadata, no hash) accepted unconditionally — defaults on the new fields mean old JSONs still decode. *(Stage 1.)*
+  5. **Forbidden literal categories rewritten to `"Uncategorized"`.** A historical UX bug let the category dropdown include `"Expense"` / `"Income"` / `"Transfer"` as options — but those are transaction TYPES, not categories. NEW `app.fynlo.data.TransactionValidator.sanitize(Transaction)` rewrites any of those three to `"Uncategorized"` at every write site (`insertTransaction` + the new-side of `editTransaction`). Matching is **case-sensitive and exact-string only** — `"Income Tax"` and `"Expense Reimbursement"` pass through unchanged. A one-shot `UPDATE transactions SET category = 'Uncategorized' WHERE category IN ('Expense','Income','Transfer')` inside `MIGRATION_16_17` fixes existing rows produced by the old dropdown. *(Stage 2.)*
+
+### Added
+- **`app.fynlo.data.BackupIntegrity`** (pure-function `object`): `computeHash(BackupData): String` (64-char lowercase hex; strips `contentHash` before computing for symmetry between export/import), `check(BackupData): Check` (sealed-class outcome: `Ok` / `UnsupportedVersion(N)` / `HashMismatch`), `CURRENT_SCHEMA_VERSION = 2` constant.
+- **`app.fynlo.data.TransactionValidator`** (pure-function `object`): `FORBIDDEN_CATEGORIES = {"Expense","Income","Transfer"}` set, `FALLBACK_CATEGORY = "Uncategorized"` constant, `sanitizeCategory(String): String` and `sanitize(Transaction): Transaction` helpers (the latter returns the same instance fast-path when input is valid, to save GC pressure in the hot write paths).
+- **`MIGRATION_16_17`** in `FynloDatabase.kt` — additive column adds + the legacy-category cleanup UPDATE. Schema export `app/schemas/.../17.json` committed.
+- Entity additions: `FlowTemplate.createdAt`, `InvestmentValuation.projectId` + `InvestmentValuation.createdAt`, `NetWorthSnapshot.createdAt`, `RecurringTransaction.createdAt`. All `Long = 0L` or `String = "personal"` defaults so existing in-memory construction call sites stay source-compatible.
+- **`BackupDataIntegrityTest`** — 10 pure-function cases (Stage 1). Matches the `*DataIntegrity*` filter.
+- **`TransactionValidatorDataIntegrityTest`** — 9 pure-function cases (Stage 2). Same filter.
+- **`FynloDatabaseMigrationTest`** — extended with 3 new instrumented `migrate16to17_*` cases (`createdAt` backfill / `projectId` backfill from parent / legacy category rewrite) and the existing `migrate15toCurrent` test updated to chain through `MIGRATION_16_17`. All 8 cases pass on CPH2767 / Android 16.
+
+### Changed
+- **`versionName`** `3.2.3` → `3.2.4`, **`versionCode`** `126` → `127`. C03a-closure internal milestone marker. Per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens here.
+- **`FinanceRepository.getAllDataAsJson()`** now takes an optional `userId: String = ""` parameter, populates the metadata block, and embeds the SHA-256 hash as the final pre-encode step.
+- **`FinanceRepository.restoreDataFromJson()`** runs `BackupIntegrity.check()` **before** opening `db.withTransaction`. Throws `IllegalStateException` with a user-readable message on `UnsupportedVersion` or `HashMismatch` so the DB never sees a bad backup.
+- **`FinanceRepository.insertTransaction()` and `editTransaction()`** apply `TransactionValidator.sanitize()` at the function boundary. `editTransaction`'s `new` parameter renamed to `newRaw` so the existing body's references to `new` rebind cleanly to the sanitized version.
+
+### CI data-integrity gate progression
+- C01 closure: 0 → 3 tests
+- C02 closure: 3 → 11 tests
+- C03a Stage 1: 11 → 21 tests
+- **C03a Stage 2 (this entry): 21 → 30 tests** (across 4 test classes — `RecalculateBalancesDataIntegrityTest`, `AutoRecalcDataIntegrityTest`, `BackupDataIntegrityTest`, `TransactionValidatorDataIntegrityTest`).
+
 ## [3.2.3] - 2026-05-26 *(Development milestone — C02 closure; not promoted per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`)*
 
 ### Fixed
