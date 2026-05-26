@@ -158,7 +158,7 @@ AI_AGENT_PROTOCOL.md to match.
 
 # Fynlo - Complete AI Portability File
 **Project Name**: Fynlo
-**Version**: 3.2.7 on `master` (`versionName = "3.2.7"`, `versionCode = 130`). C01 closed at 3.2.2 → C02 at 3.2.3 → C03a at 3.2.4 → C05 at 3.2.5 (all four Sprint-1 P0 clusters closed) → C04 at 3.2.6 (first P1 Sprint 2 cluster closed) → **3.2.7 = C04 smoke follow-up + two RecurringScreen surface fixes**. Internal milestone markers only — per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens until every `UX_AUDIT` cluster (P0 through P3) is closed. Next P1: the C06 / C07 FAB-ownership pair (they share the same Scaffold-vs-screen question so they close as a unit).
+**Version**: 3.2.8 on `master` (`versionName = "3.2.8"`, `versionCode = 131`). C01 closed at 3.2.2 → C02 at 3.2.3 → C03a at 3.2.4 → C05 at 3.2.5 (all four Sprint-1 P0 clusters closed) → C04 at 3.2.6 (first P1 Sprint 2 cluster closed) → 3.2.7 = C04 smoke follow-up + two RecurringScreen surface fixes → **3.2.8 = re-smoke fix for SegmentedButton 'Monthly' clipping**. Internal milestone markers only — per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens until every `UX_AUDIT` cluster (P0 through P3) is closed. Next P1: the C06 / C07 FAB-ownership pair (they share the same Scaffold-vs-screen question so they close as a unit).
 **Platform**: Android (Kotlin, Jetpack Compose, Room — Gradle 9.4.1, AGP 9.2.1, Room 2.8.4, KSP 2.3.7, Kotlin 2.2.10)
 
 ## 1. Project Overview
@@ -345,6 +345,14 @@ in the APK).
 ## 6. Journal
 
 **Newest first.** Each entry: date · cluster(s) closed/touched · commit(s) · one-paragraph why-and-what.
+
+### 2026-05-27 — 3.2.8 (re-smoke fix: SegmentedButton 'Monthly' clipping)
+
+**Type:** one-line tweak surfaced by re-smoking 3.2.7's frequency-picker fix. The 3.2.7 switch to `SingleChoiceSegmentedButtonRow` improved the visual over the prior cramped chip row, but Material 3's default `SegmentedButton.icon` parameter renders a checkmark on the selected segment (`SegmentedButtonDefaults.Icon(active = selected)`) which consumes ~24dp of each segment's width. With 4 segments inside an AlertDialog, "Monthly" — the longest label — was getting clipped. Fix: pass `icon = {}` to suppress the checkmark. Selection state is still visually communicated by the segment's filled background colour; the checkmark was redundant signalling.
+
+**Internal milestone:** `3.2.8` / `versionCode = 131`. No Play Console upload per release-cadence ADR. No test gate change (pure visual tweak).
+
+**Pattern note for future SegmentedButton use:** in any AlertDialog or narrow-width container, default to `icon = {}` on `SegmentedButton` unless you specifically need the leading icon affordance. Material's default is sized for full-width screen surfaces, not constrained dialog widths.
 
 ### 2026-05-27 — 3.2.7 (C04 smoke follow-up + RecurringScreen polish)
 

@@ -2,6 +2,17 @@
 
 All notable changes to Fynlo are documented here.
 
+## [3.2.8] - 2026-05-27 *(Development milestone — 3.2.7 re-smoke fix; not promoted per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`)*
+
+### Fixed
+- **`AddRecurringDialog` frequency picker — 'Monthly' label clipped.** The 3.2.7 switch to `SingleChoiceSegmentedButtonRow` improved visual weight over the prior cramped `FilterChip` row, but the M3 default `SegmentedButton` renders a checkmark icon on the selected segment (`SegmentedButtonDefaults.Icon(active = selected)`) which eats ~24dp of label width. With 4 segments inside an AlertDialog, the longest label ('Monthly') got clipped. Fix: pass `icon = {}` to suppress the checkmark. Selection is still visually carried by the segment's filled background colour. Surfaced by re-smoke of 3.2.7.
+
+### Changed
+- **`versionName`** `3.2.7` → `3.2.8`, **`versionCode`** `130` → `131`. Re-smoke fix milestone marker. Per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens here.
+
+### Data-integrity gate
+Unchanged at **79 tests across 8 classes**, 0 failures (no logic change — pure visual tweak to a Compose widget).
+
 ## [3.2.7] - 2026-05-27 *(Development milestone — C04 smoke follow-up; not promoted per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`)*
 
 ### Fixed

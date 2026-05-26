@@ -331,6 +331,14 @@ private fun AddRecurringDialog(
                             selected = frequency == f,
                             onClick = { frequency = f },
                             shape = SegmentedButtonDefaults.itemShape(index, frequencyOptions.size),
+                            // 3.2.8 fix: suppress the default checkmark icon
+                            // (`SegmentedButtonDefaults.Icon(active = selected)`)
+                            // because it eats ~24dp of each segment's width.
+                            // With 4 segments inside an AlertDialog, that
+                            // clipped 'Monthly' (smoke-test finding on 3.2.7).
+                            // Selection is still visually carried by the
+                            // segment's filled background colour difference.
+                            icon = {},
                             label = { Text(f, style = MaterialTheme.typography.labelMedium) },
                         )
                     }
