@@ -2,6 +2,28 @@
 
 All notable changes to Fynlo are documented here.
 
+## [3.2.13] - 2026-05-27 *(Development milestone — C08 Stage 1: CurrencyFormatter foundation; not promoted per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`)*
+
+### Added
+- **C08 Stage 1 — NEW `app.fynlo.logic.CurrencyFormatter`** with the six audit-specified display styles (UX_AUDIT §C08). Stage 2+ migrates the ~257 call sites this object replaces; this file lands first so the migration has a stable target.
+  - **`hero(amount, currencyCode, locale)`** — full amount, no decimals, locale-correct grouping. INR/NPR/LKR/BDT use lakh-crore grouping (`₹2,41,663`); others use Western thousand-comma (`$241,663`).
+  - **`detail(...)`** — alias for Hero with intent-documenting name.
+  - **`chartHero(...)`** — Hero unless ≥10 chars, then abbreviates via `listRow`. Saves chart-axis space.
+  - **`listRow(...)`** — always abbreviates: K/L/Cr for INR-family, K/M/B for others. For dense list rows.
+  - **`input(amount): String`** — raw integer, no symbol, no commas. For text-field state during typing.
+  - **`negative(amount, currencyCode, locale)`** — Hero with audit-mandated `−` en-dash prefix (U+2212, NOT ASCII hyphen).
+- **`CurrencyFormatterDataIntegrityTest`** — 33 cases pinning the contract: Indian grouping correctness across thousand/lakh/crore boundaries, Western grouping for non-INR, NPR/LKR/BDT inheriting Indian grouping with their symbols, K/L/Cr/K/M/B abbreviation boundaries, ChartHero's 10-char threshold, Input contract (no comma, no symbol, integer-truncation), Negative en-dash invariant (never ASCII hyphen), NaN/Infinity defensive paths, `NEGATIVE_PREFIX` constant lockdown.
+
+### Notes
+- **Indian grouping implementation choice.** First implementation attempt used `NumberFormat.getInstance(Locale("en","IN"))` — fails on the JVM the unit tests run on (CLDR data varies across JDK / ICU versions; some runtimes silently use Western grouping). Second attempt used `DecimalFormat` with the `#,##,###` pattern — also unreliable, Java's pattern parser handles secondary grouping inconsistently across versions. **Final**: hand-rolled `formatLakhCrore` string-manipulation routine. Pure Kotlin, no JDK pattern parser involved, identical output on every Android device and every test JVM.
+- **No call sites migrated yet.** That's Stage 2 (Hero / ListRow / Negative + truncation fixes — ~51 sites) and Stage 3 (Detail sweep — ~189 sites). Stage 4 will handle the PDF + XLSX exporters (XLSX numeric-cell fix is the load-bearing one — currently stored as strings, breaking Excel formulas).
+
+### Changed
+- **`versionName`** `3.2.12` → `3.2.13`, **`versionCode`** `135` → `136`. C08 Stage 1 milestone marker. Per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens here.
+
+### Data-integrity gate
+**79 → 112 tests across 9 classes** (+33 from `CurrencyFormatterDataIntegrityTest`), 0 failures.
+
 ## [3.2.12] - 2026-05-27 *(Development milestone — C06 + C07 closure; not promoted per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`)*
 
 ### Fixed

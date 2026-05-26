@@ -158,7 +158,7 @@ AI_AGENT_PROTOCOL.md to match.
 
 # Fynlo - Complete AI Portability File
 **Project Name**: Fynlo
-**Version**: 3.2.12 on `master` (`versionName = "3.2.12"`, `versionCode = 135`). All four Sprint-1 P0 clusters closed (C01 / C02 / C03a / C05). **Three P1 Sprint 2 clusters now closed: C04 at 3.2.6, C06 + C07 at 3.2.12.** Internal milestone markers only — per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens until every `UX_AUDIT` cluster (P0 through P3) is closed. Next P1: C08 (number formatting — biggest remaining UX consistency win), then C09 (UTF-8 in dialogs), then C12-C15 / C18 / C21.
+**Version**: 3.2.13 on `master` (`versionName = "3.2.13"`, `versionCode = 136`). All four Sprint-1 P0 clusters closed (C01 / C02 / C03a / C05). Three P1 Sprint 2 clusters closed (C04 at 3.2.6, C06 + C07 at 3.2.12). **C08 in flight — Stage 1 (CurrencyFormatter foundation + 33 tests) shipped at 3.2.13. Stages 2-4 (51 + 189 call-site migrations + export fixes) ship as 3.2.14, 3.2.15, 3.2.16.** Internal milestone markers only — per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens until every `UX_AUDIT` cluster (P0 through P3) is closed.
 **Platform**: Android (Kotlin, Jetpack Compose, Room — Gradle 9.4.1, AGP 9.2.1, Room 2.8.4, KSP 2.3.7, Kotlin 2.2.10)
 
 ## 1. Project Overview
@@ -345,6 +345,39 @@ in the APK).
 ## 6. Journal
 
 **Newest first.** Each entry: date · cluster(s) closed/touched · commit(s) · one-paragraph why-and-what.
+
+### 2026-05-27 — 3.2.13 (C08 Stage 1: CurrencyFormatter foundation)
+
+**Type:** Stage 1 of 4 for C08 (number formatting consistency across the app). This file lands the unified formatter that Stages 2-4 will sweep call sites into. No call sites migrated yet — by design, the foundation ships first so the migration has a stable target.
+
+**Internal milestone:** `3.2.13` / `versionCode = 136`. No Play Console upload per release-cadence ADR.
+
+**Survey context:** Explore agent counted **257 currency / number formatting call sites across 119 files** before this commit. Breakdown:
+- 189 Detail (most common — list items, cards, dialogs)
+- 24 Hero (dashboard cards)
+- 21 ListRow (K/L abbreviation)
+- 8 Input (text-field defaults)
+- 6 PDF / 8 XLSX (with the XLSX strings-instead-of-numeric-cells bug breaking Excel summation)
+- 3 Negative + 7 unclassified + 3 silent truncation violations
+- 178 sites hardcode `₹` (multi-currency broken for those)
+
+**What landed (Stage 1):**
+
+NEW `app.fynlo.logic.CurrencyFormatter` with 6 styles:
+- `hero(amount, currencyCode, locale)` — full amount, no decimals, locale-correct grouping. INR/NPR/LKR/BDT → lakh-crore (`₹2,41,663`); others → Western (`$241,663`).
+- `detail(...)` — alias for Hero with intent-documenting name.
+- `chartHero(...)` — Hero unless rendered string is ≥10 chars, then abbreviates via listRow.
+- `listRow(...)` — always abbreviates. K/L/Cr for INR-family, K/M/B for others.
+- `input(amount): String` — raw integer, no symbol, no commas. For text-field state.
+- `negative(amount, ...)` — Hero with `−` (U+2212 en-dash) prefix; NOT ASCII hyphen.
+
+NEW `CurrencyFormatterDataIntegrityTest` — 33 cases pinning the contract.
+
+**Implementation note (load-bearing detail):** First two implementations of Indian grouping (`NumberFormat.getInstance(Locale("en","IN"))` then `DecimalFormat("#,##,##0", ...)`) both failed unit tests on the test JVM — `NumberFormat` because CLDR data for `en_IN` is unreliable across JDK / ICU versions; `DecimalFormat` because Java's pattern parser handles secondary-grouping inconsistently. **Final implementation hand-rolls the lakh-crore grouping** via string manipulation in `formatLakhCrore(absAmount, decimals)`. Pure Kotlin, no JDK pattern parser involved, identical output on every Android device and every test JVM. This is a documented gotcha for anyone tempted to "simplify" it back to `DecimalFormat`.
+
+**Data-integrity gate state:** 79 → **112 tests across 9 classes** (+33 from `CurrencyFormatterDataIntegrityTest`), 0 failures.
+
+**Next:** Stage 2 — parallel-agent migration of the 51 highest-impact call sites (Hero / ListRow / Negative + truncation fixes). Then Stage 3 (Detail sweep, 189 sites — multiple parallel agents grouped by domain). Then Stage 4 (PDF + XLSX export fixes).
 
 ### 2026-05-27 — 3.2.12 (C06 + C07 dual-cluster closure — FAB ownership + empty-state CTAs)
 
