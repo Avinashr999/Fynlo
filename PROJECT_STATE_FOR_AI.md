@@ -158,7 +158,7 @@ AI_AGENT_PROTOCOL.md to match.
 
 # Fynlo - Complete AI Portability File
 **Project Name**: Fynlo
-**Version**: 3.2.6 on `master` (`versionName = "3.2.6"`, `versionCode = 129`). C01 closed at 3.2.2 → C02 at 3.2.3 → C03a at 3.2.4 → C05 at 3.2.5 (all four Sprint-1 P0 clusters closed) → **C04 at 3.2.6 = first P1 Sprint 2 cluster closed**. Internal milestone markers only — per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens until every `UX_AUDIT` cluster (P0 through P3) is closed. Next P1: the C06 / C07 FAB-ownership pair (they share the same Scaffold-vs-screen question so they close as a unit).
+**Version**: 3.2.7 on `master` (`versionName = "3.2.7"`, `versionCode = 130`). C01 closed at 3.2.2 → C02 at 3.2.3 → C03a at 3.2.4 → C05 at 3.2.5 (all four Sprint-1 P0 clusters closed) → C04 at 3.2.6 (first P1 Sprint 2 cluster closed) → **3.2.7 = C04 smoke follow-up + two RecurringScreen surface fixes**. Internal milestone markers only — per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens until every `UX_AUDIT` cluster (P0 through P3) is closed. Next P1: the C06 / C07 FAB-ownership pair (they share the same Scaffold-vs-screen question so they close as a unit).
 **Platform**: Android (Kotlin, Jetpack Compose, Room — Gradle 9.4.1, AGP 9.2.1, Room 2.8.4, KSP 2.3.7, Kotlin 2.2.10)
 
 ## 1. Project Overview
@@ -345,6 +345,36 @@ in the APK).
 ## 6. Journal
 
 **Newest first.** Each entry: date · cluster(s) closed/touched · commit(s) · one-paragraph why-and-what.
+
+### 2026-05-27 — 3.2.7 (C04 smoke follow-up + RecurringScreen polish)
+
+**Type:** post-closure point release surfaced by the C04 device smoke. Three discrete fixes — one is a genuine C04 heuristic flaw, two are pre-existing UX bugs that the smoke happened to surface because we were rendering RecurringScreen for the first time in this session.
+
+**Internal milestone:** `3.2.7` / `versionCode = 130`. No Play Console upload per release-cadence ADR.
+
+**Fix 1 — `BudgetSuggestion` excludes non-discretionary categories.**
+The 3.2.6 heuristic was structurally correct ("highest-spend uncapped EXPENSE wins") but produced a confusing result for users with lending activity: `FinanceRepository.insertBorrowerWithSource` auto-creates an Expense transaction with `category = "Lending"`, so a user who has lent ₹50k will see "Lending" suggested as the next category to budget. That's the opposite of what a "what should I budget?" answer should say — the money is expected back.
+
+Added `NON_DISCRETIONARY_CATEGORIES: Set<String>` constant in `BudgetSuggestion.kt` containing the five system / auto-generated EXPENSE categories that should never be auto-suggested:
+- `"Lending"` — outbound loan
+- `"Investment"` — asset purchase (still owned, just transformed)
+- `"Interest Expense"` — accrued from interest engine, `journal_only`
+- `"Balance Correction"` — `quickEditBalance` internal book-keeping
+- `"Bad Debt"` — borrower write-off journal entry
+
+Filter applied in `suggest()` as `cat !in NON_DISCRETIONARY_CATEGORIES`. Users can still pick any of these manually from the AddBudget chip list — the filter is **suggestion-only**, not chip-list exclusion. Tests: +8 cases in `BudgetSuggestionDataIntegrityTest` (12 → 20). One per excluded category to lock down individual exclusion, plus an "all uncapped are non-discretionary → null" case (chained-fallback correctly moves on to recency), plus a "user-budgeted Lending stays excluded as a normal capped category" case, plus a lockdown test on the set's exact membership.
+
+**Fix 2 — `RecurringScreen` header `+` button visibility.**
+The header `IconButton` used `tint = Color.White` against `PremiumScreenHeader`'s plain surface background → invisible in light mode. Pre-existing bug; surfaced when the user tried to add a second recurring transaction and couldn't find the button. Fix: `FilledTonalIconButton` (theme-aware secondary container background + properly-tinted icon), no hardcoded `Color.White`. **Same bug pattern exists in `CollectionCalendarScreen:120` for the back arrow** — logged in this entry for follow-up, NOT fixed here (out of scope for the smoke follow-up; will land alongside C06/C07 FAB work).
+
+**Fix 3 — `AddRecurringDialog` frequency picker spacing.**
+Four `FilterChip`s with `weight(1f)` + `labelSmall` in a 6dp-spaced `Row` were too cramped at AlertDialog width. Replaced with `SingleChoiceSegmentedButtonRow` — the M3 widget designed for 2-4 mutually-exclusive options. Added a `"Frequency"` section label above for consistency with the existing `"Category"` label.
+
+**Data-integrity gate state:** 71 → **79 tests across 8 classes**, 0 failures (only `BudgetSuggestionDataIntegrityTest` grew).
+
+**Implicitly verified by smoke (user did not report broken):** AddTransactionDialog Stage 2.5 Custom-value re-prefill, RecurringScreen chip picker conversion, RecurringScreen Income/Expense recency split, AddBudget chip-picker conversion, currency picker locale default + "Recently used" sub-group. The fixes in this release address what the smoke explicitly flagged; the rest of C04 is presumed passing.
+
+**Next P1:** C06 (FAB overlap) + C07 (duplicate FAB) — and as part of that, replace `tint = Color.White` in `CollectionCalendarScreen` with the same `FilledTonalIconButton` pattern used here.
 
 ### 2026-05-27 — C04 closed in 3.2.6 (Stage 3 + Stage 2.5)
 

@@ -2,6 +2,26 @@
 
 All notable changes to Fynlo are documented here.
 
+## [3.2.7] - 2026-05-27 *(Development milestone — C04 smoke follow-up; not promoted per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`)*
+
+### Fixed
+- **C04 smoke follow-up — `BudgetSuggestion` excludes non-discretionary categories.** The 3.2.6 heuristic correctly picked "highest-spend uncapped EXPENSE" but produced a confusing result for users with lending activity: `FinanceRepository.insertBorrowerWithSource` auto-creates an Expense transaction with `category = "Lending"`, so a user who had lent ₹50k saw "Lending" suggested as the next category to budget. NEW `BudgetSuggestion.NON_DISCRETIONARY_CATEGORIES: Set<String>` constant containing the five system / auto-generated EXPENSE categories never to auto-suggest: `"Lending"` (outbound loan), `"Investment"` (asset purchase, still owned), `"Interest Expense"` (accrued from interest engine), `"Balance Correction"` (`quickEditBalance` internal), `"Bad Debt"` (borrower write-off). Filter applied in `suggest()`. Users can still pick any of these manually from the AddBudget chip list — the filter is suggestion-only.
+- **`RecurringScreen` header `+` button visibility.** Pre-existing bug surfaced by C04 smoke: header `IconButton` used `tint = Color.White` against `PremiumScreenHeader`'s plain surface background → invisible in light mode. The user tried to add a second recurring transaction and couldn't find the button. Replaced with `FilledTonalIconButton` (theme-aware secondary container + properly-tinted icon, no hardcoded colour). Same bug exists in `CollectionCalendarScreen:120` for the back arrow — logged for follow-up under C06/C07 FAB work, not fixed here.
+- **`AddRecurringDialog` frequency picker spacing.** Four `FilterChip`s with `weight(1f)` + `labelSmall` in a 6dp-spaced `Row` were cramped at AlertDialog width. Replaced with `SingleChoiceSegmentedButtonRow` (M3 widget for 2-4 mutually-exclusive options). Added a `"Frequency"` section label above for consistency with the existing `"Category"` label.
+
+### Added
+- **8 new `BudgetSuggestionDataIntegrityTest` cases** (12 → 20):
+  - Per-category exclusion: `Lending` / `Investment` / `Interest Expense` / `Balance Correction` / `Bad Debt` is never suggested.
+  - All-uncapped-are-non-discretionary returns null (chained-fallback correctly moves on to recency).
+  - Non-discretionary categories can still be manually budgeted (capped-set semantics unchanged).
+  - `NON_DISCRETIONARY_CATEGORIES` set membership lockdown test (failure here when someone adds/removes prompts a doc update in `BudgetSuggestion.kt`).
+
+### Changed
+- **`versionName`** `3.2.6` → `3.2.7`, **`versionCode`** `129` → `130`. C04 smoke follow-up milestone marker. Per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens here.
+
+### Data-integrity gate
+71 → **79 tests across 8 classes**, 0 failures (only `BudgetSuggestionDataIntegrityTest` grew, 12 → 20).
+
 ## [3.2.6] - 2026-05-27 *(Development milestone — C04 closure; not promoted per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`)*
 
 ### Fixed

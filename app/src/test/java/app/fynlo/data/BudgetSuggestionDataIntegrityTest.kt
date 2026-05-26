@@ -226,4 +226,131 @@ class BudgetSuggestionDataIntegrityTest {
         )
         assertEquals("Food", result)
     }
+
+    // ── 3.2.7: non-discretionary categories excluded from suggestion ──────
+    // Smoke-test finding on 3.2.6 install: the heuristic correctly picked
+    // "Lending" as the highest-spend uncapped category because the user had
+    // lent money (auto-creates an Expense txn with category="Lending"), but
+    // that's the OPPOSITE of what a "what should I budget?" answer should
+    // be — lending money isn't discretionary spend.
+
+    @Test
+    fun `Lending is never suggested even when it is the highest spend`() {
+        // The exact 3.2.6 smoke-test scenario: user has lent ₹50k, eaten
+        // ₹3.5k. Pre-fix, "Lending" wins the max-by. Post-fix, "Food" wins.
+        val result = BudgetSuggestion.suggest(
+            cappedCategories = emptySet(),
+            expenseAnalytics = mapOf(
+                "Lending"  to 50_000.0,
+                "Food"     to  3_500.0,
+            ),
+        )
+        assertEquals(
+            "Lending (outbound loans) must NEVER appear as a budget suggestion — money's coming back.",
+            "Food",
+            result,
+        )
+    }
+
+    @Test
+    fun `Investment is never suggested even when it is the highest spend`() {
+        // Same rationale — the user "spent" ₹100k on a Gold ETF, but the
+        // money is still owned. Asset purchase, not consumption.
+        val result = BudgetSuggestion.suggest(
+            cappedCategories = emptySet(),
+            expenseAnalytics = mapOf(
+                "Investment" to 100_000.0,
+                "Food"       to   1_200.0,
+            ),
+        )
+        assertEquals("Food", result)
+    }
+
+    @Test
+    fun `Interest Expense is never suggested`() {
+        // Auto-created as a journal_only entry by the interest engine.
+        // Can't "spend less" on accrued interest within a month — it's
+        // mechanical, not behavioural.
+        val result = BudgetSuggestion.suggest(
+            cappedCategories = emptySet(),
+            expenseAnalytics = mapOf(
+                "Interest Expense" to 12_000.0,
+                "Food"             to    800.0,
+            ),
+        )
+        assertEquals("Food", result)
+    }
+
+    @Test
+    fun `Balance Correction is never suggested`() {
+        // Internal book-keeping from `quickEditBalance`, never user-facing.
+        val result = BudgetSuggestion.suggest(
+            cappedCategories = emptySet(),
+            expenseAnalytics = mapOf(
+                "Balance Correction" to 20_000.0,
+                "Food"               to    800.0,
+            ),
+        )
+        assertEquals("Food", result)
+    }
+
+    @Test
+    fun `Bad Debt is never suggested`() {
+        // Borrower write-off journal entry. Loss accounting.
+        val result = BudgetSuggestion.suggest(
+            cappedCategories = emptySet(),
+            expenseAnalytics = mapOf(
+                "Bad Debt" to 5_000.0,
+                "Food"     to   800.0,
+            ),
+        )
+        assertEquals("Food", result)
+    }
+
+    @Test
+    fun `all uncapped categories are non-discretionary returns null`() {
+        // User has only lending + investment activity and no real
+        // discretionary spend yet. Heuristic yields → chained-fallback
+        // moves on to recency, then blank. Matches the "fresh user who
+        // only uses Fynlo for tracking lends/investments" persona.
+        assertNull(
+            "When every uncapped category is non-discretionary, fall through to recency.",
+            BudgetSuggestion.suggest(
+                cappedCategories = emptySet(),
+                expenseAnalytics = mapOf(
+                    "Lending"    to 50_000.0,
+                    "Investment" to 30_000.0,
+                ),
+            ),
+        )
+    }
+
+    @Test
+    fun `non-discretionary categories can still be manually budgeted via capped set`() {
+        // If a user explicitly DOES budget for Lending (the chip list lets
+        // them — this filter is suggestion-only), the heuristic just skips
+        // it on subsequent opens like any other capped category. We verify
+        // that having Lending in cappedCategories doesn't break anything.
+        val result = BudgetSuggestion.suggest(
+            cappedCategories = setOf("Lending"),
+            expenseAnalytics = mapOf(
+                "Lending" to 50_000.0,
+                "Food"    to  1_200.0,
+            ),
+        )
+        assertEquals("Food", result)
+    }
+
+    @Test
+    fun `NON_DISCRETIONARY_CATEGORIES set contains the five expected entries`() {
+        // Lockdown test — adding to this set is fine (we'll get a test
+        // failure here when we do, prompting whoever adds to also add a
+        // case above proving the new entry is excluded). Removing without
+        // updating the docs in BudgetSuggestion is the failure mode this
+        // catches.
+        assertEquals(
+            setOf("Lending", "Investment", "Interest Expense", "Balance Correction", "Bad Debt"),
+            BudgetSuggestion.NON_DISCRETIONARY_CATEGORIES,
+        )
+    }
 }

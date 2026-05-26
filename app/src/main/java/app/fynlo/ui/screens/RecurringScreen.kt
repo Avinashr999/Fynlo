@@ -81,8 +81,15 @@ fun RecurringScreen(viewModel: FinanceViewModel) {
                                 color = Color.White)
                         }
                     }
-                    IconButton(onClick = { showAddDialog = true }) {
-                        Icon(Icons.Default.Add, "Add", tint = Color.White)
+                    // 3.2.7 fix: was `IconButton + tint = Color.White` against
+                    // the plain surface background of `PremiumScreenHeader` —
+                    // invisible in light mode (smoke-test finding on 3.2.6).
+                    // `FilledTonalIconButton` paints a theme-aware secondary
+                    // container behind a properly-tinted icon, so it stays
+                    // legible in both light and dark themes without needing a
+                    // hardcoded colour.
+                    FilledTonalIconButton(onClick = { showAddDialog = true }) {
+                        Icon(Icons.Default.Add, "Add recurring transaction")
                     }
                 }
             }
@@ -306,11 +313,26 @@ private fun AddRecurringDialog(
                     label = { Text("Account (e.g. HDFC Bank)") }, singleLine = true,
                     modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp))
 
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    listOf("Daily","Weekly","Monthly","Yearly").forEach { f ->
-                        FilterChip(selected = frequency == f, onClick = { frequency = f },
-                            label = { Text(f, style = MaterialTheme.typography.labelSmall) },
-                            modifier = Modifier.weight(1f))
+                // 3.2.7 fix: was four `FilterChip`s with weight(1f) + labelSmall
+                // in a 6dp-spaced Row — at AlertDialog width that compressed each
+                // chip so tightly the labels rendered cramped against the
+                // chip edges (smoke-test finding on 3.2.6). `SingleChoiceSegmentedButtonRow`
+                // is the M3 widget designed exactly for 2-4 mutually-exclusive
+                // options like this: each segment occupies its natural label
+                // width with proper internal padding, and the selected one
+                // visually carries the choice without needing the chip-style
+                // affordance.
+                Text("Frequency", style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                val frequencyOptions = listOf("Daily", "Weekly", "Monthly", "Yearly")
+                SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                    frequencyOptions.forEachIndexed { index, f ->
+                        SegmentedButton(
+                            selected = frequency == f,
+                            onClick = { frequency = f },
+                            shape = SegmentedButtonDefaults.itemShape(index, frequencyOptions.size),
+                            label = { Text(f, style = MaterialTheme.typography.labelMedium) },
+                        )
                     }
                 }
 
