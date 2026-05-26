@@ -30,20 +30,15 @@ interface FynloDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertBorrower(borrower: Borrower)
 
-    @Query("UPDATE borrowers SET paid = paid + :amount WHERE id = :borrowerId")
-    suspend fun updateBorrowerPaidAmount(borrowerId: String, amount: Double)
-
-    @Query("UPDATE borrowers SET paidPrincipal = paidPrincipal + :amount, paid = paid + :amount WHERE id = :borrowerId")
-    suspend fun updateBorrowerPaidPrincipal(borrowerId: String, amount: Double)
-
-    @Query("UPDATE borrowers SET paidInterest = paidInterest + :amount, paid = paid + :amount WHERE id = :borrowerId")
-    suspend fun updateBorrowerPaidInterest(borrowerId: String, amount: Double)
-
-    @Query("UPDATE borrowers SET paidPrincipal = paid WHERE paidPrincipal = 0 AND paidInterest = 0 AND paid > 0")
-    suspend fun seedPaidPrincipalFromPaid()
-
-    @Query("UPDATE debts SET paidPrincipal = paid WHERE paidPrincipal = 0 AND paidInterest = 0 AND paid > 0")
-    suspend fun seedDebtPaidPrincipalFromPaid()
+    // C01 Sprint 1 Stage 2 (decisions/2026-05-26-c01-fix-strategy.md):
+    // updateBorrowerPaid{Amount,Principal,Interest} were the direct
+    // paid-mutating writers that broke the invariant paid == SUM(payments).
+    // The `payments` table is now the single source of truth — callers
+    // insertPayment / deletePayment and then rebuildBorrowerPaidFromPayments().
+    //
+    // seedPaidPrincipalFromPaid and seedDebtPaidPrincipalFromPaid were
+    // unused (their logic lives inline in MIGRATION_11_12 / 12_13 / 15_16).
+    // Removed as dead code in the same pass.
 
     @Query("""UPDATE borrowers SET sourceAccount = COALESCE(
         (SELECT fromAcct FROM transactions
@@ -59,8 +54,10 @@ interface FynloDao {
         WHERE sourceAccount = '' """)
     suspend fun backfillBorrowerSourceAccount()
 
-    @Query("UPDATE borrowers SET paid = paidPrincipal + paidInterest")
-    suspend fun recalculateBorrowerPaid()
+    // recalculateBorrowerPaid removed by C01 Sprint 1 Stage 2 — its SQL
+    // (UPDATE borrowers SET paid = paidPrincipal + paidInterest) is the
+    // destructive query the entire C01 ADR is about. Use
+    // rebuildBorrowerPaidFromPayments() instead.
 
     // C01 fix (decisions/2026-05-26-c01-fix-strategy.md): drop the WHERE EXISTS
     // gate (which kept legacy `paid > 0 && no payments` rows un-rebuilt and
@@ -81,8 +78,8 @@ interface FynloDao {
         paidInterest  = COALESCE((SELECT SUM(CASE WHEN type='Interest Only' AND interest=0 THEN amount ELSE interest END) FROM debt_payments WHERE debtId = debts.id), 0)""")
     suspend fun rebuildDebtPaidFromDebtPayments()
 
-    @Query("UPDATE debts SET paid = paidPrincipal + paidInterest")
-    suspend fun recalculateDebtPaid()
+    // recalculateDebtPaid removed by C01 Sprint 1 Stage 2 (twin of
+    // recalculateBorrowerPaid). Use rebuildDebtPaidFromDebtPayments().
 
     @Query("UPDATE borrowers SET status = :status, defaultDate = :defaultDate, frozenInterest = :frozenInterest WHERE id = :id")
     suspend fun updateBorrowerDefaultStatus(id: String, status: String, defaultDate: String, frozenInterest: Double)
@@ -198,14 +195,8 @@ interface FynloDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertDebt(debt: Debt)
 
-    @Query("UPDATE debts SET paid = paid + :amount WHERE id = :debtId")
-    suspend fun updateDebtPaidAmount(debtId: String, amount: Double)
-
-    @Query("UPDATE debts SET paidPrincipal = paidPrincipal + :amount, paid = paid + :amount WHERE id = :debtId")
-    suspend fun updateDebtPaidPrincipal(debtId: String, amount: Double)
-
-    @Query("UPDATE debts SET paidInterest = paidInterest + :amount, paid = paid + :amount WHERE id = :debtId")
-    suspend fun updateDebtPaidInterest(debtId: String, amount: Double)
+    // updateDebtPaid{Amount,Principal,Interest} removed by C01 Sprint 1
+    // Stage 2 (debts twin of the borrower removals above).
 
     @Query("SELECT * FROM debts WHERE id = :id LIMIT 1")
     suspend fun getDebtById(id: String): Debt?

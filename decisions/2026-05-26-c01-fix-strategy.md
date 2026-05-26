@@ -1,15 +1,16 @@
 # C01 fix strategy — Payments as the single source of truth
 
 **Date:** 2026-05-26
-**Status:** Accepted (Stage 1 implemented 2026-05-26 — Stage 2 pending)
+**Status:** Accepted (Stage 1 + Stage 2 both implemented 2026-05-26)
 **Affects clusters:** C01 (Recalculate destroys payment history), C02 (stale exports), C03 (schema integrity), INF04 (data-integrity test gate)
 **Sprint:** 1
 **Supersedes:** —
 
 > **Implementation status:**
+>
 > **Stage 1 (landed)** — C01 runtime destruction stopped. Backfill migration `v15 → v16` lands the synthetic Payment row for every legacy borrower/debt; `FinanceRepository.recalculateAllBalances()` no longer calls the destructive DAO queries and only derives `paid` from `payments` / `debt_payments` via the rebuild queries (whose `WHERE EXISTS` gate is removed and whose `SUM(...)` is wrapped in `COALESCE(..., 0)`). `RecalculateBalancesDataIntegrityTest` covers three cases (legacy-with-backfill, current-schema, brand-new) and the `checks.yml` data-integrity gate is re-enabled (closes INF04).
 >
-> **Stage 2 (follow-up PR)** — port `editTransaction` (`FinanceRepository.kt:127–142`) to mutate the matching Payment row rather than `paid` directly; delete the `updateBorrowerPaidAmount` / `updateBorrowerPaidPrincipal` / `updateBorrowerPaidInterest` queries (+ debt twins) once nothing calls them; delete the `recalculateBorrowerPaid` / `recalculateDebtPaid` DAO queries that this ADR's Decision §2 mandates. The destructive queries are intentionally left in the DAO interface in Stage 1 (uncalled, but still compilable) to keep the PR scope-bounded; the latent `editTransaction` issue is now visible (edits to repayment transactions get reset by the next recalc) but is strictly less destructive than the bug we fixed.
+> **Stage 2 (landed)** — the invariant `paid == SUM(payments)` is now structurally enforced. `editTransaction` (`FinanceRepository.kt`) replaces its direct `updateBorrowerPaidAmount` / `updateDebtPaidAmount` calls with delete-old-Payment + insert-new-Payment + `rebuildBorrowerPaidFromPayments()` (and the debt twin). `deleteTransaction`'s "no matching Payment" fallback that mutated `paid` directly is removed — when there's no Payment to delete, `paid` is left as-is. `insertPaymentWithDest` and `insertDebtPaymentWithSource` replace their conditional principal/interest direct-writers with a single `rebuildBorrowerPaidFromPayments()` / `rebuildDebtPaidFromDebtPayments()` call after the Payment row is inserted. Ten DAO queries and their repository wrappers are deleted: `updateBorrowerPaid{Amount,Principal,Interest}`, `updateDebtPaid{Amount,Principal,Interest}`, `recalculateBorrowerPaid`, `recalculateDebtPaid`, and the dead-code `seedPaidPrincipalFromPaid` / `seedDebtPaidPrincipalFromPaid`. After this stage, the only writer of `paid` / `paidPrincipal` / `paidInterest` is the rebuild query — there is no way for new code to violate the invariant without re-introducing one of the deleted methods.
 
 ---
 

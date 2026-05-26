@@ -123,22 +123,95 @@ class FinanceRepository(
                 }
             }
 
-            // 3. Sync Borrower/Debt paid amounts if it's a repayment edit
+            // 3. Sync Borrower/Debt paid amounts via the payments tables
+            //    (single source of truth per decisions/2026-05-26-c01-fix-strategy.md
+            //    Stage 2). The old matching Payment / DebtPayment row is deleted
+            //    when the edit moves away from a repayment category; a new row
+            //    is inserted when the edit moves toward a repayment category.
+            //    `paid` / `paidPrincipal` / `paidInterest` are re-derived at the
+            //    end via the rebuild queries — never mutated directly.
+            val touchedBorrowers = mutableSetOf<String>()
+            val touchedDebts     = mutableSetOf<String>()
+
             if (old.category == "Loan Repayment" && old.ref.isNotBlank()) {
-                dao.updateBorrowerPaidAmount(old.ref, -old.amount)
+                val matching = dao.getPaymentsForLoanOnce(old.ref)
+                    .filter { it.amount == old.amount && it.date == old.date }
+                    .maxByOrNull { it.updatedAt }
+                if (matching != null) {
+                    dao.deletePayment(matching)
+                    sync { deletePayment(matching.id) }
+                }
+                touchedBorrowers += old.ref
             }
             if (new.category == "Loan Repayment" && new.ref.isNotBlank()) {
-                dao.updateBorrowerPaidAmount(new.ref, new.amount)
-                val b = dao.getBorrowerById(new.ref)
-                sync { b?.let { setBorrower(it) } }
+                val borrower = dao.getBorrowerById(new.ref)
+                if (borrower != null) {
+                    val now = System.currentTimeMillis()
+                    val p = Payment(
+                        id        = java.util.UUID.randomUUID().toString(),
+                        loanId    = new.ref,
+                        name      = borrower.name,
+                        date      = new.date,
+                        type      = "Both",
+                        amount    = new.amount,
+                        principal = 0.0,
+                        interest  = 0.0,
+                        mode      = "",
+                        notes     = new.notes,
+                        projectId = new.projectId,
+                        updatedAt = now,
+                        createdAt = now,
+                    )
+                    dao.insertPayment(p)
+                    sync { setPayment(p) }
+                }
+                touchedBorrowers += new.ref
             }
             if (old.category == "Debt Repayment" && old.ref.isNotBlank()) {
-                dao.updateDebtPaidAmount(old.ref, -old.amount)
+                val matching = dao.getDebtPaymentsForDebtOnce(old.ref)
+                    .filter { it.amount == old.amount && it.date == old.date }
+                    .maxByOrNull { it.updatedAt }
+                if (matching != null) {
+                    dao.deleteDebtPayment(matching)
+                    sync { deleteDebtPayment(matching.id) }
+                }
+                touchedDebts += old.ref
             }
             if (new.category == "Debt Repayment" && new.ref.isNotBlank()) {
-                dao.updateDebtPaidAmount(new.ref, new.amount)
-                val d = dao.getDebtById(new.ref)
-                sync { d?.let { setDebt(it) } }
+                val debt = dao.getDebtById(new.ref)
+                if (debt != null) {
+                    val now = System.currentTimeMillis()
+                    val p = DebtPayment(
+                        id        = java.util.UUID.randomUUID().toString(),
+                        debtId    = new.ref,
+                        name      = debt.name,
+                        date      = new.date,
+                        type      = "Both",
+                        amount    = new.amount,
+                        principal = 0.0,
+                        interest  = 0.0,
+                        mode      = "",
+                        notes     = new.notes,
+                        projectId = new.projectId,
+                        updatedAt = now,
+                        createdAt = now,
+                    )
+                    dao.insertDebtPayment(p)
+                    sync { setDebtPayment(p) }
+                }
+                touchedDebts += new.ref
+            }
+            if (touchedBorrowers.isNotEmpty()) {
+                dao.rebuildBorrowerPaidFromPayments()
+                touchedBorrowers.forEach { id ->
+                    dao.getBorrowerById(id)?.let { b -> sync { setBorrower(b) } }
+                }
+            }
+            if (touchedDebts.isNotEmpty()) {
+                dao.rebuildDebtPaidFromDebtPayments()
+                touchedDebts.forEach { id ->
+                    dao.getDebtById(id)?.let { d -> sync { setDebt(d) } }
+                }
             }
 
             dao.insertTransaction(new)
@@ -174,29 +247,29 @@ class FinanceRepository(
             // IMPORTANT: also delete the Payment record from payments table so that
             // rebuildBorrowerPaidFromPayments() recalculates correctly on next startup.
             if (transaction.category == "Loan Repayment" && transaction.ref.isNotBlank()) {
-                // Find and delete the matching payment record (same loanId, amount, date)
+                // Find and delete the matching payment record (same loanId, amount, date).
+                // If no matching Payment exists, `paid` is left as-is to preserve
+                // the invariant paid == SUM(payments). (Pre-C01 this branch
+                // reversed `paid` directly via updateBorrowerPaidAmount, which
+                // broke the invariant — see decisions/2026-05-26-c01-fix-strategy.md
+                // Stage 2.)
                 val matchingPayment = dao.getPaymentsForLoanOnce(transaction.ref)
                     .filter { it.amount == transaction.amount && it.date == transaction.date }
-                    .maxByOrNull { it.updatedAt }  // most recent if duplicates
+                    .maxByOrNull { it.updatedAt }
                 if (matchingPayment != null) {
                     dao.deletePayment(matchingPayment)
-                } else {
-                    // Fallback: reverse paid amount directly (legacy path)
-                    dao.updateBorrowerPaidAmount(transaction.ref, -transaction.amount)
+                    sync { deletePayment(matchingPayment.id) }
                 }
-                // Rebuild paid fields from remaining payments
                 dao.rebuildBorrowerPaidFromPayments()
                 val b = dao.getBorrowerById(transaction.ref)
                 sync { b?.let { setBorrower(it) } }
             } else if (transaction.category == "Debt Repayment" && transaction.ref.isNotBlank()) {
-                // Find and delete the matching debt payment record
                 val matchingPayment = dao.getDebtPaymentsForDebtOnce(transaction.ref)
                     .filter { it.amount == transaction.amount && it.date == transaction.date }
                     .maxByOrNull { it.updatedAt }
                 if (matchingPayment != null) {
                     dao.deleteDebtPayment(matchingPayment)
-                } else {
-                    dao.updateDebtPaidAmount(transaction.ref, -transaction.amount)
+                    sync { deleteDebtPayment(matchingPayment.id) }
                 }
                 dao.rebuildDebtPaidFromDebtPayments()
                 val d = dao.getDebtById(transaction.ref)
@@ -625,18 +698,11 @@ class FinanceRepository(
             // Credit the destination account with full payment amount
             dao.updateAccountBalance(destinationAccount, payment.amount)
 
-            // Update principal and interest separately on the borrower.
-            // NOTE: updateBorrowerPaidPrincipal and updateBorrowerPaidInterest both already
-            // increment the `paid` column, so we do NOT call updateBorrowerPaidAmount here.
-            val principalPaid = payment.principal.coerceAtLeast(0.0)
-            val interestPaid  = payment.interest.coerceAtLeast(0.0)
-            // If both are 0 (legacy payment with no split), fall back to total amount
-            if (principalPaid == 0.0 && interestPaid == 0.0) {
-                dao.updateBorrowerPaidAmount(payment.loanId, payment.amount)
-            } else {
-                if (principalPaid > 0) dao.updateBorrowerPaidPrincipal(payment.loanId, principalPaid)
-                if (interestPaid  > 0) dao.updateBorrowerPaidInterest(payment.loanId, interestPaid)
-            }
+            // Derive paid / paidPrincipal / paidInterest from the payments
+            // table (single source of truth per
+            // decisions/2026-05-26-c01-fix-strategy.md Stage 2). The Payment
+            // row was just inserted above, so the rebuild query picks it up.
+            dao.rebuildBorrowerPaidFromPayments()
 
             // Main repayment transaction (full amount received)
             val t = Transaction(
@@ -674,17 +740,17 @@ class FinanceRepository(
             // Debit source account with full payment amount
             dao.updateAccountBalance(sourceAccount, -payment.amount)
 
-            // Update principal and interest separately on the debt.
-            // updateDebtPaidPrincipal and updateDebtPaidInterest already increment paid,
-            // so we must NOT also call updateDebtPaidAmount to avoid double-counting.
-            val principalPaid = payment.principal.coerceAtLeast(0.0)
-            val interestPaid  = payment.interest.coerceAtLeast(0.0)
-            if (principalPaid == 0.0 && interestPaid == 0.0) {
-                dao.updateDebtPaidAmount(payment.debtId, payment.amount)
-            } else {
-                if (principalPaid > 0) dao.updateDebtPaidPrincipal(payment.debtId, principalPaid)
-                if (interestPaid  > 0) dao.updateDebtPaidInterest(payment.debtId, interestPaid)
-            }
+            // Derive paid / paidPrincipal / paidInterest from debt_payments
+            // (single source of truth per
+            // decisions/2026-05-26-c01-fix-strategy.md Stage 2). The
+            // DebtPayment row was just inserted above, so the rebuild picks
+            // it up.
+            dao.rebuildDebtPaidFromDebtPayments()
+
+            // interestPaid is still needed below for the auto-split
+            // "Interest Expense" Transaction (an interest-only debt payment
+            // shows up in P&L as a cost-of-borrowing line).
+            val interestPaid = payment.interest.coerceAtLeast(0.0)
 
             // Main repayment transaction (full amount paid)
             val t = Transaction(

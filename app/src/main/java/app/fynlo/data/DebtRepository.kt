@@ -69,23 +69,14 @@ class DebtRepository constructor(
         recordOnFail("getDebtPaymentsForDebtOnce") { dao.getDebtPaymentsForDebtOnce(debtId) }
     }
 
-    suspend fun updateDebtPaidAmount(debtId: String, amount: Double) = withContext(Dispatchers.IO) {
-        recordOnFail("updateDebtPaidAmount") { dao.updateDebtPaidAmount(debtId, amount) }
-    }
-
-    suspend fun updateDebtPaidPrincipal(debtId: String, amount: Double) = withContext(Dispatchers.IO) {
-        recordOnFail("updateDebtPaidPrincipal") { dao.updateDebtPaidPrincipal(debtId, amount) }
-    }
-
-    suspend fun updateDebtPaidInterest(debtId: String, amount: Double) = withContext(Dispatchers.IO) {
-        recordOnFail("updateDebtPaidInterest") { dao.updateDebtPaidInterest(debtId, amount) }
-    }
+    // updateDebtPaid{Amount,Principal,Interest} and recalculateDebtPaid
+    // removed by C01 Sprint 1 Stage 2
+    // (decisions/2026-05-26-c01-fix-strategy.md). `paid` is derived from
+    // the `debt_payments` table — never written directly. Use
+    // rebuildDebtPaidFromDebtPayments() (kept) or
+    // FinanceRepository.recalculateAllBalances() for a derive-from-truth pass.
 
     suspend fun rebuildDebtPaidFromDebtPayments() = withContext(Dispatchers.IO) {
         recordOnFail("rebuildDebtPaidFromDebtPayments") { dao.rebuildDebtPaidFromDebtPayments() }
-    }
-
-    suspend fun recalculateDebtPaid() = withContext(Dispatchers.IO) {
-        recordOnFail("recalculateDebtPaid") { dao.recalculateDebtPaid() }
     }
 }

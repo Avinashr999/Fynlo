@@ -68,17 +68,11 @@ class LendingRepository constructor(
 
     fun getPaymentsForLoan(loanId: String): Flow<List<Payment>> = dao.getPaymentsForLoan(loanId)
 
-    suspend fun updateBorrowerPaidAmount(borrowerId: String, amount: Double) = withContext(Dispatchers.IO) {
-        recordOnFail("updateBorrowerPaidAmount") { dao.updateBorrowerPaidAmount(borrowerId, amount) }
-    }
-
-    suspend fun updateBorrowerPaidPrincipal(borrowerId: String, amount: Double) = withContext(Dispatchers.IO) {
-        recordOnFail("updateBorrowerPaidPrincipal") { dao.updateBorrowerPaidPrincipal(borrowerId, amount) }
-    }
-
-    suspend fun updateBorrowerPaidInterest(borrowerId: String, amount: Double) = withContext(Dispatchers.IO) {
-        recordOnFail("updateBorrowerPaidInterest") { dao.updateBorrowerPaidInterest(borrowerId, amount) }
-    }
+    // updateBorrowerPaid{Amount,Principal,Interest} removed by C01 Sprint 1
+    // Stage 2 (decisions/2026-05-26-c01-fix-strategy.md). `paid` and its
+    // split are derived from the `payments` table — never written directly.
+    // Callers must insertPayment / deletePayment and then call
+    // rebuildBorrowerPaidFromPayments().
 
     suspend fun updateBorrowerDefaultStatus(id: String, status: String, defaultDate: String, frozenInterest: Double) = withContext(Dispatchers.IO) {
         recordOnFail("updateBorrowerDefaultStatus") {
@@ -94,9 +88,11 @@ class LendingRepository constructor(
         recordOnFail("backfillBorrowerSourceAccount") { dao.backfillBorrowerSourceAccount() }
     }
 
-    suspend fun recalculateBorrowerPaid() = withContext(Dispatchers.IO) {
-        recordOnFail("recalculateBorrowerPaid") { dao.recalculateBorrowerPaid() }
-    }
+    // recalculateBorrowerPaid removed by C01 Sprint 1 Stage 2 — the SQL it
+    // wrapped (UPDATE borrowers SET paid = paidPrincipal + paidInterest) was
+    // the destructive query that motivated the entire C01 ADR. Use
+    // rebuildBorrowerPaidFromPayments() / FinanceRepository.recalculateAllBalances()
+    // for the safe derive-from-truth pass.
 
     /** Wrapper for explicit "payment collected" call sites — counts as an analytics event. */
     suspend fun collectPayment(payment: Payment) = withContext(Dispatchers.IO) {
