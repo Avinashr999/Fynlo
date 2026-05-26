@@ -141,6 +141,13 @@ android {
         arg("room.schemaLocation", "$projectDir/schemas")
         arg("room.incremental", "true")
     }
+
+    // Unit-test config — Robolectric needs Android resources to spin up
+    // an in-memory Room database (FynloDatabase). Used by data-integrity
+    // tests in app/src/test/java/app/fynlo/data/.
+    testOptions {
+        unitTests.isIncludeAndroidResources = true
+    }
 }
 
 dependencies {
@@ -199,6 +206,14 @@ dependencies {
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0")
     testImplementation("io.mockk:mockk:1.13.14")
     testImplementation("app.cash.turbine:turbine:1.2.0")
+    // Robolectric + AndroidX test core — lets JVM unit tests spin up an
+    // in-memory Room database (FynloDatabase needs a Context, which
+    // Robolectric provides). Used by RecalculateBalancesDataIntegrityTest
+    // and any future C01/C02-style real-SQL regression tests.
+    testImplementation("org.robolectric:robolectric:4.14.1")
+    testImplementation("androidx.test:core:1.6.1")
+    testImplementation("androidx.test.ext:junit:1.3.0")
+    testImplementation("androidx.room:room-testing:2.8.4")
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     androidTestImplementation(libs.androidx.espresso.core)
