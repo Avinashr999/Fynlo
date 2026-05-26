@@ -139,18 +139,17 @@ fun InterestIncomeScreen(
         ) {
             Spacer(Modifier.height(4.dp))
 
-            // ── Range selector ───────────────────────────────────────────────
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                listOf(6, 12, 24).forEach { m ->
-                    val selected = rangeMonths == m
-                    FilterChip(
-                        selected = selected,
-                        onClick  = { rangeMonths = m },
-                        label    = { Text("${m}M") },
-                        modifier = Modifier.weight(1f)
+            // 3.2.11 chip-sweep: 3-option range toggle (6M/12M/24M) → SegmentedButtonRow.
+            // `icon = {}` per the 3.2.8 lesson.
+            val rangeOptions = listOf(6, 12, 24)
+            SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                rangeOptions.forEachIndexed { idx, m ->
+                    SegmentedButton(
+                        selected = rangeMonths == m,
+                        onClick = { rangeMonths = m },
+                        shape = SegmentedButtonDefaults.itemShape(idx, rangeOptions.size),
+                        icon = {},
+                        label = { Text("${m}M") },
                     )
                 }
             }

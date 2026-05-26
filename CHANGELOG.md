@@ -2,6 +2,32 @@
 
 All notable changes to Fynlo are documented here.
 
+## [3.2.11] - 2026-05-27 *(Development milestone — chip→better-widget moderate sweep; not promoted per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`)*
+
+### Changed
+- **App-wide chip sweep — apply the 3.2.10 design rule.** Per the rule established at 3.2.10 ("constrained-width pickers use dropdown, browse-and-pick scenarios stay as chips, 2-3 option toggles use SegmentedButtonRow"), Explore-agent surveyed all 13 chip groups across the app and recommended a moderate sweep: 7 toggles converted to `SingleChoiceSegmentedButtonRow`, 1 large picker converted to `ExposedDropdownMenuBox`, 1 mis-used chip converted to `FilledTonalButton`. The 5 large chip groups (category / account / person / horizontal filter rows) are correctly chips per the rule and were left as-is.
+  - **`AddRecurringDialog` Income/Expense toggle** (`RecurringScreen.kt`) — 2-option `Row<FilterChip>` → `SegmentedButtonRow`. Matches the same toggle at the top of `AddTransactionDialog`.
+  - **Settings → Theme picker** (`SettingsScreen.kt`) — 3-option (System / Light / Dark) `Row<FilterChip>` → `SegmentedButtonRow`.
+  - **Settings → Date Format picker** (`SettingsScreen.kt`) — 3-option (dd-MM-yyyy / MM-dd-yyyy / yyyy-MM-dd) `Row<FilterChip>` → `SegmentedButtonRow`.
+  - **LendingScreen EMI calculator → Method picker** (`LendingScreen.kt`) — 3-option (Reducing / Simple / Compound) `Row<FilterChip>` → `SegmentedButtonRow`. The underlying `useReducing` / `useSimple` Boolean state encoding is preserved so all downstream branching that reads those flags continues to work; the SegmentedButton onClicks map to the same 2-bit encoding.
+  - **LoanCalculatorScreen tenure unit picker** (`LoanCalculatorScreen.kt`) — 2-option (Months / Years) `Column<FilterChip>` (awkward vertical stacking) → horizontal `SegmentedButtonRow` that now sits beside the Tenure number input.
+  - **InterestIncomeScreen range picker** (`InterestIncomeScreen.kt`) — 3-option (6M / 12M / 24M) `Row<FilterChip>` → `SegmentedButtonRow`.
+  - **TransactionHistoryScreen type filter** (`TransactionHistoryScreen.kt`) — `Row<FilterChip>` for All/Income/Expense → `SegmentedButtonRow`. The semantically-different "Dates" toggle chip in the same row is now a `FilledTonalButton` with the DateRange leading icon (M3 affordance for "tap to open panel").
+  - **TransactionHistoryScreen quick date presets** (`TransactionHistoryScreen.kt`) — 7-option `FlowRow<FilterChip>` (Today / Yesterday / Last 7d / Last 30d / This Month / Last Month / This Year) → `ExposedDropdownMenuBox`. Saves significant vertical space inside the date filter panel; shows "Custom range" as the field text when no preset is active. Selecting a preset still populates the existing custom-range `DatePickerField`s below, so the user can fine-tune from there.
+- All `SegmentedButton`s use `icon = {}` to suppress the default checkmark per the 3.2.8 lesson (the checkmark eats ~24dp of label width per segment for redundant signalling — selection is already carried by the segment's filled background).
+
+### Unchanged on purpose (chips kept where they belong)
+- **`AddTransactionDialog` category + account pickers** (`TransactionDialog.kt`) — large category list + 5 account chips with semantic identity. Browse-and-pick is the right pattern.
+- **`AddRecurringDialog` / `AddBudgetDialog` category pickers** — same reason.
+- **`LendingDialog` borrower / source / interest type pickers** — dynamic person lists + browse-and-pick.
+- **`MoneyFlowScreen` / `ReportsHubScreen` horizontal filter rows** — `LazyRow<FilterChip>` is the correct pattern for screen-level filter bars; users expect horizontal scroll there.
+
+### Changed (versioning)
+- **`versionName`** `3.2.10` → `3.2.11`, **`versionCode`** `133` → `134`. Per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens here.
+
+### Data-integrity gate
+Unchanged at **79 tests across 8 classes**, 0 failures (pure widget swap — no logic change).
+
 ## [3.2.10] - 2026-05-27 *(Development milestone — frequency picker widget swap; not promoted per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`)*
 
 ### Fixed

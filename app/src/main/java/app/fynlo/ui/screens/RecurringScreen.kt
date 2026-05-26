@@ -275,10 +275,20 @@ private fun AddRecurringDialog(
                     label = { Text("Name (e.g. Monthly Rent)") }, singleLine = true,
                     modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp))
 
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    listOf("Income", "Expense").forEach { t ->
-                        FilterChip(selected = type == t, onClick = { type = t },
-                            label = { Text(t) }, modifier = Modifier.weight(1f))
+                // 3.2.11 chip-sweep: 2-option mutually-exclusive toggle → SegmentedButtonRow
+                // (matches the Income/Expense toggle at the top of AddTransactionDialog).
+                // `icon = {}` per the 3.2.8 lesson — checkmark eats label width
+                // unnecessarily when selection is already carried by the filled background.
+                val typeOptions = listOf("Income", "Expense")
+                SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                    typeOptions.forEachIndexed { idx, t ->
+                        SegmentedButton(
+                            selected = type == t,
+                            onClick = { type = t },
+                            shape = SegmentedButtonDefaults.itemShape(idx, typeOptions.size),
+                            icon = {},
+                            label = { Text(t) },
+                        )
                     }
                 }
 

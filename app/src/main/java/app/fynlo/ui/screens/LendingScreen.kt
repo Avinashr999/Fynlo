@@ -881,29 +881,30 @@ fun EmiCalculatorDialog(onDismiss: () -> Unit) {
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp), colors = emiFieldColors)
 
-                // Method toggle
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    FilterChip(
-                        selected = useReducing,
-                        onClick  = { useReducing = true; useSimple = false },
-                        label    = { Text("Reducing", style = MaterialTheme.typography.labelSmall) },
-                        colors   = emiChipColors,
-                        modifier = Modifier.weight(1f)
-                    )
-                    FilterChip(
-                        selected = useSimple,
-                        onClick  = { useReducing = false; useSimple = true },
-                        label    = { Text("Simple", style = MaterialTheme.typography.labelSmall) },
-                        colors   = emiChipColors,
-                        modifier = Modifier.weight(1f)
-                    )
-                    FilterChip(
-                        selected = !useReducing && !useSimple,
-                        onClick  = { useReducing = false; useSimple = false },
-                        label    = { Text("Compound", style = MaterialTheme.typography.labelSmall) },
-                        colors   = emiChipColors,
-                        modifier = Modifier.weight(1f)
-                    )
+                // 3.2.11 chip-sweep: 3-option mutually-exclusive EMI method toggle → SegmentedButtonRow.
+                // State remains as two Booleans (useReducing / useSimple) to preserve the
+                // downstream branching logic that uses them; the SegmentedButton onClicks
+                // map cleanly to the same 2-bit encoding (Reducing/Simple/Compound).
+                // `icon = {}` per the 3.2.8 lesson.
+                val emiMethodOptions = listOf("Reducing", "Simple", "Compound")
+                val emiSelected = when {
+                    useReducing -> "Reducing"
+                    useSimple -> "Simple"
+                    else -> "Compound"
+                }
+                SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                    emiMethodOptions.forEachIndexed { idx, method ->
+                        SegmentedButton(
+                            selected = emiSelected == method,
+                            onClick = {
+                                useReducing = (method == "Reducing")
+                                useSimple = (method == "Simple")
+                            },
+                            shape = SegmentedButtonDefaults.itemShape(idx, emiMethodOptions.size),
+                            icon = {},
+                            label = { Text(method, style = MaterialTheme.typography.labelSmall) },
+                        )
+                    }
                 }
 
                 // Show due date field only for Compound mode

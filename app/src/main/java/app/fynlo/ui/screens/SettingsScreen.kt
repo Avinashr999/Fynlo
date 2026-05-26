@@ -180,20 +180,23 @@ fun SettingsScreen(
             Text("Theme", style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(start = 4.dp, bottom = 6.dp))
-            Row(
-                Modifier.fillMaxWidth().padding(horizontal = 4.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            // 3.2.11 chip-sweep: 3-option mutually-exclusive theme toggle → SegmentedButtonRow.
+            // `icon = {}` per the 3.2.8 lesson.
+            val themeOptions = listOf(
+                null  to "System",
+                false to "Light",
+                true  to "Dark",
+            )
+            SingleChoiceSegmentedButtonRow(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp)
             ) {
-                listOf(
-                    null  to "System",
-                    false to "Light",
-                    true  to "Dark"
-                ).forEach { (value, label) ->
-                    FilterChip(
+                themeOptions.forEachIndexed { idx, (value, label) ->
+                    SegmentedButton(
                         selected = ThemeController.darkModeOverride == value,
-                        onClick  = { ThemeController.darkModeOverride = value; ThemeController.save(context) },
-                        label    = { Text(label) },
-                        modifier = Modifier.weight(1f)
+                        onClick = { ThemeController.darkModeOverride = value; ThemeController.save(context) },
+                        shape = SegmentedButtonDefaults.itemShape(idx, themeOptions.size),
+                        icon = {},
+                        label = { Text(label) },
                     )
                 }
             }
@@ -433,12 +436,19 @@ fun SettingsScreen(
             HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
             // Date Format
             Text("Date Format", style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
-            Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(bottom = 12.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                listOf("dd-MM-yyyy", "MM-dd-yyyy", "yyyy-MM-dd").forEach { fmt ->
-                    FilterChip(
+            // 3.2.11 chip-sweep: 3-option mutually-exclusive date format → SegmentedButtonRow.
+            // `icon = {}` per the 3.2.8 lesson.
+            val dateFormatOptions = listOf("dd-MM-yyyy", "MM-dd-yyyy", "yyyy-MM-dd")
+            SingleChoiceSegmentedButtonRow(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(bottom = 12.dp)
+            ) {
+                dateFormatOptions.forEachIndexed { idx, fmt ->
+                    SegmentedButton(
                         selected = dateFormat == fmt,
-                        onClick  = { scope.launch { UserPreferences.setDateFormat(context, fmt) } },
-                        label    = { Text(fmt, style = MaterialTheme.typography.labelSmall) }
+                        onClick = { scope.launch { UserPreferences.setDateFormat(context, fmt) } },
+                        shape = SegmentedButtonDefaults.itemShape(idx, dateFormatOptions.size),
+                        icon = {},
+                        label = { Text(fmt, style = MaterialTheme.typography.labelSmall) },
                     )
                 }
             }

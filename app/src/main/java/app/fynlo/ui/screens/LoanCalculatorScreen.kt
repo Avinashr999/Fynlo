@@ -148,13 +148,18 @@ fun LoanCalculatorScreen(viewModel: FinanceViewModel? = null) {
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp), singleLine = true
                     )
-                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        listOf("Months", "Years").forEach { unit ->
-                            FilterChip(
+                    // 3.2.11 chip-sweep: tenure unit was a vertical Column of 2 fillMaxWidth chips
+                    // (awkward stacked layout) — now a horizontal SegmentedButtonRow that sits
+                    // beside the Tenure number input. `icon = {}` per the 3.2.8 lesson.
+                    val tenureUnits = listOf("Months", "Years")
+                    SingleChoiceSegmentedButtonRow(modifier = Modifier.weight(1f)) {
+                        tenureUnits.forEachIndexed { idx, unit ->
+                            SegmentedButton(
                                 selected = tenureUnit == unit,
-                                onClick  = { tenureUnit = unit },
-                                label    = { Text(unit) },
-                                modifier = Modifier.fillMaxWidth()
+                                onClick = { tenureUnit = unit },
+                                shape = SegmentedButtonDefaults.itemShape(idx, tenureUnits.size),
+                                icon = {},
+                                label = { Text(unit, style = MaterialTheme.typography.labelSmall) },
                             )
                         }
                     }

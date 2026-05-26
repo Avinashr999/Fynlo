@@ -158,7 +158,7 @@ AI_AGENT_PROTOCOL.md to match.
 
 # Fynlo - Complete AI Portability File
 **Project Name**: Fynlo
-**Version**: 3.2.10 on `master` (`versionName = "3.2.10"`, `versionCode = 133`). C01 closed at 3.2.2 → C02 at 3.2.3 → C03a at 3.2.4 → C05 at 3.2.5 (all four Sprint-1 P0 clusters closed) → C04 at 3.2.6 (first P1 Sprint 2 cluster closed) → 3.2.7 = C04 smoke follow-up + two RecurringScreen surface fixes → 3.2.8 = re-smoke fix for SegmentedButton 'Monthly' clipping → 3.2.9 = intermediate FlowRow attempt that lost 'Yearly' → **3.2.10 = ExposedDropdownMenuBox for frequency picker — establishes the design rule "constrained-width pickers use dropdown, not chips"**. Internal milestone markers only — per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens until every `UX_AUDIT` cluster (P0 through P3) is closed. Next P1: the C06 / C07 FAB-ownership pair (they share the same Scaffold-vs-screen question so they close as a unit).
+**Version**: 3.2.11 on `master` (`versionName = "3.2.11"`, `versionCode = 134`). C01 closed at 3.2.2 → C02 at 3.2.3 → C03a at 3.2.4 → C05 at 3.2.5 (all four Sprint-1 P0 clusters closed) → C04 at 3.2.6 (first P1 Sprint 2 cluster closed) → 3.2.7 = C04 smoke follow-up + two RecurringScreen surface fixes → 3.2.8 = re-smoke fix for SegmentedButton 'Monthly' clipping → 3.2.9 = intermediate FlowRow attempt that lost 'Yearly' → 3.2.10 = ExposedDropdownMenuBox for frequency picker — establishes the design rule "constrained-width pickers use dropdown, not chips" → **3.2.11 = app-wide chip→better-widget moderate sweep (8 conversions across 6 screens)**. Internal milestone markers only — per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens until every `UX_AUDIT` cluster (P0 through P3) is closed. Next P1: the C06 / C07 FAB-ownership pair (they share the same Scaffold-vs-screen question so they close as a unit).
 **Platform**: Android (Kotlin, Jetpack Compose, Room — Gradle 9.4.1, AGP 9.2.1, Room 2.8.4, KSP 2.3.7, Kotlin 2.2.10)
 
 ## 1. Project Overview
@@ -345,6 +345,38 @@ in the APK).
 ## 6. Journal
 
 **Newest first.** Each entry: date · cluster(s) closed/touched · commit(s) · one-paragraph why-and-what.
+
+### 2026-05-27 — 3.2.11 (chip→better-widget moderate sweep applying the 3.2.10 design rule)
+
+**Type:** app-wide pattern application driven by the user's request "can we apply [the dropdown pattern] where ever multiple chips in whichever screens is there to make app look better." An Explore agent surveyed all 13 chip use sites across the app and produced a categorized triage. The user picked the "Moderate" sweep size from a 3-option AskUserQuestion — 8 conversions, leaving the 5 large chip groups (category / account / person / horizontal filter rows) as-is because they're correctly chips per the established design rule.
+
+**8 conversions landed:**
+
+| Site | Before | After | Why |
+|---|---|---|---|
+| `RecurringScreen.kt` AddRecurring Income/Expense | `Row<FilterChip>` × 2 | `SegmentedButtonRow` | Matches AddTransactionDialog's same toggle |
+| `SettingsScreen.kt` Theme | `Row<FilterChip>` × 3 | `SegmentedButtonRow` | 3-option mutex |
+| `SettingsScreen.kt` Date Format | `Row<FilterChip>` × 3 | `SegmentedButtonRow` | 3-option mutex |
+| `LendingScreen.kt` EMI Method | `Row<FilterChip>` × 3 | `SegmentedButtonRow` | 3-option mutex; `useReducing`/`useSimple` Boolean state encoding preserved |
+| `LoanCalculatorScreen.kt` Tenure Unit | `Column<FilterChip>` × 2 (awkward stack) | `SegmentedButtonRow` (horizontal) | Replaces vertical stacking with natural horizontal toggle |
+| `InterestIncomeScreen.kt` Range | `Row<FilterChip>` × 3 (6M/12M/24M) | `SegmentedButtonRow` | 3-option mutex |
+| `TransactionHistoryScreen.kt` Type filter | `Row<FilterChip>` × 3 | `SegmentedButtonRow` | 3-option mutex |
+| `TransactionHistoryScreen.kt` Dates toggle (in same row) | toggle `FilterChip` with leading icon | `FilledTonalButton` with leading icon | Semantic mismatch — toggle ≠ "pick one of N". M3 affordance for "tap to open panel" is a tonal button |
+| `TransactionHistoryScreen.kt` Quick date presets | `FlowRow<FilterChip>` × 7 (wrapping to 2-3 rows) | `ExposedDropdownMenuBox` | 7 options in constrained panel — dropdown saves vertical space, always fits |
+
+**Pattern consistency:** every `SegmentedButton` uses `icon = {}` per the 3.2.8 lesson — the default checkmark eats ~24dp of label width per segment for redundant signalling (selection is already carried by the filled background colour). Skipping this gives the labels their full natural width.
+
+**Kept as chips** (left alone — they're correctly chips):
+- `AddTransactionDialog` category + account pickers — large list + browse-and-pick
+- `AddRecurringDialog` / `AddBudgetDialog` category pickers — same reason
+- `LendingDialog` borrower / source / interest type pickers — dynamic person lists
+- `MoneyFlowScreen` / `ReportsHubScreen` horizontal filter rows — `LazyRow<FilterChip>` is correct for screen-level filter bars
+
+**Internal milestone:** `3.2.11` / `versionCode = 134`. No Play Console upload per release-cadence ADR. No test gate change (pure widget swap — 79 tests across 8 classes still pass).
+
+**Smoke-test recommendation:** the user should re-open each of the 6 screens and verify the new widgets behave correctly. The mechanical part (selection state binding) is preserved in every conversion; only the visual presentation changes. If any conversion looks wrong, the per-site Edit is small enough to revert in isolation.
+
+**Lesson for future cluster work:** when the user asks "apply this pattern wherever X" — survey first, triage with rationale, ask for sweep scope. Don't assume "apply everywhere" literally; the user usually wants principled consistency, not a blanket rewrite.
 
 ### 2026-05-27 — 3.2.10 (frequency picker → dropdown; design rule established)
 

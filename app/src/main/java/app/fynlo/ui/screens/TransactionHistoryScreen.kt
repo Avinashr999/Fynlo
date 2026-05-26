@@ -174,44 +174,47 @@ fun TransactionHistoryScreen(viewModel: FinanceViewModel) {
 
             Spacer(Modifier.height(12.dp))
 
-            // ── Type chips + date toggle ───────────────────────────────────────
+            // 3.2.11 chip-sweep: type filter chips → SegmentedButtonRow.
+            // The Dates affordance is semantically a TOGGLE (show / hide the
+            // date filter panel), not a "pick one of N" — so it becomes a
+            // FilledTonalButton with the DateRange leading icon, which is the
+            // M3 affordance for "tap to open a panel" actions. The button's
+            // tonal weight communicates the active state when the panel is
+            // open OR a date is currently selected, replacing the chip's
+            // selected-colour treatment.
             Row(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                types.forEach { type ->
-                    FilterChip(
-                        selected = selectedType == type,
-                        onClick = { selectedType = type },
-                        label = { Text(type) },
-                        shape = RoundedCornerShape(12.dp),
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = Emerald500.copy(alpha = 0.16f),
-                            selectedLabelColor = Emerald500
-                        ),
-                        border = FilterChipDefaults.filterChipBorder(
-                            enabled = true, selected = selectedType == type,
-                            borderColor = hairline, selectedBorderColor = androidx.compose.ui.graphics.Color.Transparent
+                SingleChoiceSegmentedButtonRow(modifier = Modifier.weight(1f)) {
+                    types.forEachIndexed { idx, type ->
+                        SegmentedButton(
+                            selected = selectedType == type,
+                            onClick = { selectedType = type },
+                            shape = SegmentedButtonDefaults.itemShape(idx, types.size),
+                            icon = {},
+                            colors = SegmentedButtonDefaults.colors(
+                                activeContainerColor = Emerald500.copy(alpha = 0.16f),
+                                activeContentColor = Emerald500,
+                            ),
+                            label = { Text(type) },
                         )
-                    )
+                    }
                 }
-                Spacer(Modifier.weight(1f))
-                FilterChip(
-                    selected = showDateFilter || fromDate.isNotBlank(),
+                val datesActive = showDateFilter || fromDate.isNotBlank()
+                FilledTonalButton(
                     onClick = { showDateFilter = !showDateFilter },
-                    label = { Text("Dates") },
-                    leadingIcon = { Icon(Icons.Default.DateRange, null, Modifier.size(16.dp)) },
                     shape = RoundedCornerShape(12.dp),
-                    colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = Emerald500.copy(alpha = 0.16f),
-                        selectedLabelColor = Emerald500,
-                        selectedLeadingIconColor = Emerald500
-                    ),
-                    border = FilterChipDefaults.filterChipBorder(
-                        enabled = true, selected = showDateFilter || fromDate.isNotBlank(),
-                        borderColor = hairline, selectedBorderColor = androidx.compose.ui.graphics.Color.Transparent
-                    )
-                )
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+                    colors = if (datesActive) ButtonDefaults.filledTonalButtonColors(
+                        containerColor = Emerald500.copy(alpha = 0.16f),
+                        contentColor = Emerald500,
+                    ) else ButtonDefaults.filledTonalButtonColors(),
+                ) {
+                    Icon(Icons.Default.DateRange, null, Modifier.size(16.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text("Dates", style = MaterialTheme.typography.labelMedium)
+                }
             }
 
             // ── Flat date filter (no card) ─────────────────────────────────────
@@ -219,34 +222,55 @@ fun TransactionHistoryScreen(viewModel: FinanceViewModel) {
                 val today = java.time.LocalDate.now()
                 val displayFmt = java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy")
                 Spacer(Modifier.height(12.dp))
-                Text("Quick select", style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Spacer(Modifier.height(8.dp))
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    listOf(
-                        "Today"      to (today to today),
-                        "Yesterday"  to (today.minusDays(1) to today.minusDays(1)),
-                        "Last 7d"    to (today.minusDays(6) to today),
-                        "Last 30d"   to (today.minusDays(29) to today),
-                        "This Month" to (today.withDayOfMonth(1) to today),
-                        "Last Month" to (today.minusMonths(1).withDayOfMonth(1) to today.minusMonths(1).withDayOfMonth(today.minusMonths(1).lengthOfMonth())),
-                        "This Year"  to (today.withDayOfYear(1) to today)
-                    ).forEach { (label, range) ->
-                        val sel = fromDate == range.first.format(displayFmt) && toDate == range.second.format(displayFmt)
-                        FilterChip(
-                            selected = sel,
-                            onClick  = { fromDate = range.first.format(displayFmt); toDate = range.second.format(displayFmt) },
-                            label    = { Text(label, style = MaterialTheme.typography.labelSmall) },
-                            shape = RoundedCornerShape(10.dp),
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = Emerald500.copy(alpha = 0.16f),
-                                selectedLabelColor = Emerald500
-                            ),
-                            border = FilterChipDefaults.filterChipBorder(
-                                enabled = true, selected = sel,
-                                borderColor = hairline, selectedBorderColor = androidx.compose.ui.graphics.Color.Transparent
+                // 3.2.11 chip-sweep: 7 date-preset FilterChips wrapped to 2-3 lines
+                // depending on screen width, taking significant vertical space and not
+                // always discoverable. Now an ExposedDropdownMenuBox — same widget the
+                // C04 currency picker uses, same widget the AddRecurring frequency
+                // picker uses (3.2.10). One row, always fits. Selecting a preset still
+                // populates fromDate/toDate so the existing custom-range DatePickerFields
+                // below show the resolved dates (and the user can edit them from there).
+                val datePresets = listOf(
+                    "Today"      to (today to today),
+                    "Yesterday"  to (today.minusDays(1) to today.minusDays(1)),
+                    "Last 7d"    to (today.minusDays(6) to today),
+                    "Last 30d"   to (today.minusDays(29) to today),
+                    "This Month" to (today.withDayOfMonth(1) to today),
+                    "Last Month" to (today.minusMonths(1).withDayOfMonth(1) to today.minusMonths(1).withDayOfMonth(today.minusMonths(1).lengthOfMonth())),
+                    "This Year"  to (today.withDayOfYear(1) to today),
+                )
+                val activePresetLabel = datePresets.firstOrNull { (_, range) ->
+                    fromDate == range.first.format(displayFmt) && toDate == range.second.format(displayFmt)
+                }?.first
+                var presetExpanded by remember { mutableStateOf(false) }
+                ExposedDropdownMenuBox(
+                    expanded = presetExpanded,
+                    onExpandedChange = { presetExpanded = !presetExpanded },
+                ) {
+                    OutlinedTextField(
+                        value = activePresetLabel ?: "Custom range",
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Quick select") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = presetExpanded) },
+                        modifier = Modifier
+                            .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, true)
+                            .fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                    )
+                    ExposedDropdownMenu(
+                        expanded = presetExpanded,
+                        onDismissRequest = { presetExpanded = false },
+                    ) {
+                        datePresets.forEach { (label, range) ->
+                            DropdownMenuItem(
+                                text = { Text(label) },
+                                onClick = {
+                                    fromDate = range.first.format(displayFmt)
+                                    toDate = range.second.format(displayFmt)
+                                    presetExpanded = false
+                                },
                             )
-                        )
+                        }
                     }
                 }
                 Spacer(Modifier.height(12.dp))
