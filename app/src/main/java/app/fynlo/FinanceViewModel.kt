@@ -3,6 +3,7 @@ package app.fynlo
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.fynlo.data.FinanceRepository
+import app.fynlo.data.RecalcCoordinator
 import app.fynlo.data.SyncStatus
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -17,7 +18,10 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
 @HiltViewModel
-class FinanceViewModel @Inject constructor(private val repository: FinanceRepository) : ViewModel() {
+class FinanceViewModel @Inject constructor(
+    private val repository: FinanceRepository,
+    private val recalcCoordinator: RecalcCoordinator,
+) : ViewModel() {
 
     private val _uiState = MutableStateFlow<UiState>(UiState.Initial)
     val uiState: StateFlow<UiState> = _uiState.asStateFlow()
@@ -270,8 +274,14 @@ class FinanceViewModel @Inject constructor(private val repository: FinanceReposi
     fun writeOffBorrower(borrower: app.fynlo.data.model.Borrower) {
         viewModelScope.launch(Dispatchers.IO) { repository.writeOffBorrower(borrower) }
     }
+    /**
+     * Manual recalc from Settings. Routed through `RecalcCoordinator` so
+     * `lastRecalcAt` (the value that drives the Dashboard "Last updated"
+     * subtitle and the launch-time debouncer) is kept consistent with
+     * whatever code path triggered the recalc.
+     */
     fun recalculateAllBalances() {
-        viewModelScope.launch(Dispatchers.IO) { repository.recalculateAllBalances() }
+        viewModelScope.launch(Dispatchers.IO) { recalcCoordinator.runAndStamp() }
     }
 
     fun addBorrowerWithSource(borrower: Borrower, source: String) {
@@ -731,7 +741,15 @@ class FinanceViewModel @Inject constructor(private val repository: FinanceReposi
         }
     }
 
+    /**
+     * All exports below recalc-then-export per UX_AUDIT §C02: "PDF, JSON,
+     * XLSX must invoke recalc as a pre-step." `recalcCoordinator.runAndStamp()`
+     * stamps `lastRecalcAt` so the timestamp embedded in the export header
+     * (added in C02 Stage 2) reflects when the data was actually computed.
+     */
+
     suspend fun exportAllData(): String {
+        recalcCoordinator.runAndStamp()
         val json = repository.getAllDataAsJson()
         app.fynlo.data.Analytics.dataExported("json")
         return json
@@ -741,7 +759,8 @@ class FinanceViewModel @Inject constructor(private val repository: FinanceReposi
         viewModelScope.launch(Dispatchers.IO) { repository.restoreDataFromJson(json) }
     }
 
-    fun exportToCSV(): String {
+    suspend fun exportToCSV(): String {
+        recalcCoordinator.runAndStamp()
         val csv = app.fynlo.logic.ExportUtility.generateCSV(
             transactions.value, borrowers.value, investments.value
         )
@@ -749,12 +768,35 @@ class FinanceViewModel @Inject constructor(private val repository: FinanceReposi
         return csv
     }
 
-    fun exportToPDF(outputStream: java.io.OutputStream) {
+    suspend fun exportToPDF(outputStream: java.io.OutputStream) {
+        recalcCoordinator.runAndStamp()
         app.fynlo.logic.ExportUtility.generatePDF(
             outputStream, financialSummary.value,
             transactions.value, borrowers.value, investments.value
         )
         app.fynlo.data.Analytics.dataExported("pdf")
+    }
+
+    /**
+     * XLSX export wrapper. Previously the SettingsScreen launcher called
+     * `ExcelExportUtility.generateFullBackup` directly, bypassing any
+     * ViewModel-level pre-step. Routing through here gives XLSX the same
+     * recalc-stamp contract as PDF / CSV / JSON (closes the C02 "all
+     * formats" gap explicitly).
+     */
+    suspend fun exportToXLSX(outputStream: java.io.OutputStream) {
+        recalcCoordinator.runAndStamp()
+        app.fynlo.logic.ExcelExportUtility.generateFullBackup(
+            outputStream,
+            accounts.value,
+            transactions.value,
+            borrowers.value,
+            debts.value,
+            investments.value,
+            payments.value,
+            debtPayments.value,
+        )
+        app.fynlo.data.Analytics.dataExported("xlsx")
     }
 
     fun getNetWorthSnapshots() = repository.getNetWorthSnapshots(pid)

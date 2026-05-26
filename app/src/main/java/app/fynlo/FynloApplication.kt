@@ -5,6 +5,7 @@ import android.util.Log
 import app.fynlo.data.Analytics
 import app.fynlo.data.AuthManager
 import app.fynlo.data.FinanceRepository
+import app.fynlo.data.RecalcCoordinator
 import app.fynlo.data.local.FynloDao
 import app.fynlo.data.local.FynloDatabase
 import app.fynlo.data.remote.FirestoreRepository
@@ -28,6 +29,7 @@ class FynloApplication : Application() {
     @Inject lateinit var database: FynloDatabase
     @Inject lateinit var repository: FinanceRepository
     @Inject lateinit var dao: FynloDao
+    @Inject lateinit var recalcCoordinator: RecalcCoordinator
 
     val authManager: AuthManager by lazy { AuthManager() }
 
@@ -70,6 +72,17 @@ class FynloApplication : Application() {
         startupTrace.stop()
 
         appScope.launch {
+            // C02 (UX_AUDIT §C02): auto-recalc on launch, debounced to once
+            // per calendar day. After C01's structural fix, recalc is safe
+            // and idempotent — this just keeps the derived `paid` columns
+            // and the Dashboard's "Last updated" timestamp fresh without
+            // requiring the user to tap Settings → Recalculate Balances.
+            // Failure is non-fatal: the app continues with whatever state
+            // existed before, and the user can still recalc manually.
+            try { recalcCoordinator.runIfStaleOnLaunch() } catch (e: Exception) {
+                Log.e("FynloApp", "Auto-recalc on launch failed: ${e.message}", e)
+            }
+
             // Scheduling periodic work initializes the WorkManager subsystem
             // (its own DB + executors). Kept OFF the main thread so it never
             // delays the first frame.

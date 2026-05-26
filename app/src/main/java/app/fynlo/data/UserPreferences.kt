@@ -5,6 +5,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
@@ -33,6 +34,11 @@ object UserPreferences {
     private val DEFAULT_CURRENCY = stringPreferencesKey("default_currency")
     private val DATE_FORMAT = stringPreferencesKey("date_format")
 
+    /** Last time recalculateAllBalances() ran (epoch millis). 0L = never.
+     *  Used by C02 (UX_AUDIT §C02) for auto-recalc-on-launch debouncing and
+     *  the "Last updated X ago" subtitle on Dashboard. */
+    private val LAST_RECALC_AT = longPreferencesKey("last_recalc_at")
+
     // ── Read (Flow-based, reactive) ──────────────────────────────────────
 
     fun onboardingDone(context: Context): Flow<Boolean> =
@@ -58,6 +64,10 @@ object UserPreferences {
 
     fun dateFormat(context: Context): Flow<String> =
         context.dataStore.data.map { it[DATE_FORMAT] ?: "dd-MM-yyyy" }
+
+    /** Last successful recalc time as epoch millis; `0L` until the first recalc. */
+    fun lastRecalcAt(context: Context): Flow<Long> =
+        context.dataStore.data.map { it[LAST_RECALC_AT] ?: 0L }
 
     // ── Read (blocking, for one-time checks like Navigation init) ────────
 
@@ -115,6 +125,11 @@ object UserPreferences {
 
     suspend fun setDateFormat(context: Context, format: String) {
         context.dataStore.edit { it[DATE_FORMAT] = format }
+    }
+
+    /** Stamps the recalc time (epoch millis). Only called from `RecalcCoordinator`. */
+    suspend fun setLastRecalcAt(context: Context, epochMillis: Long) {
+        context.dataStore.edit { it[LAST_RECALC_AT] = epochMillis }
     }
 
     /** Wipes every stored preference — used by Reset All Data. */

@@ -339,6 +339,30 @@ in the APK).
 
 **Newest first.** Each entry: date · cluster(s) closed/touched · commit(s) · one-paragraph why-and-what.
 
+### 2026-05-26 — C02 Stage 1 landed (auto-recalc data path)
+
+**Cluster:** C02 (P0 ship-blocker, stale exports / no auto-recalc).
+**Stage 1 of 2:** items #1 (auto-recalc on launch, daily-debounced) and #2 (auto-recalc before every export) from the audit's 5-step fix list. Stage 2 (Dashboard "Last updated" subtitle, before/after dialog on manual recalc, timestamp embedded in exports) is the UI layer and lands in a separate PR.
+
+**Commits:** *(to be filled in once landed)*
+
+- New `app.fynlo.data.RecalcCoordinator` (`@Singleton`) wraps `FinanceRepository.recalculateAllBalances()` and stamps `UserPreferences.lastRecalcAt` after every successful run. The companion exposes a pure `shouldRecalcOnLaunch(lastRecalcAt, now, zone)` predicate — calendar-day boundary in the user's local zone, NOT a 24h sliding window.
+- `FynloApplication.onCreate` post-init coroutine calls `recalcCoordinator.runIfStaleOnLaunch()` — fire-and-forget; failure is non-fatal and logged.
+- `FinanceViewModel`'s four export methods (`exportAllData` JSON, `exportToCSV`, `exportToPDF`, new `exportToXLSX`) all route through `recalcCoordinator.runAndStamp()` before generating output. XLSX was previously skipped because the launcher invoked `ExcelExportUtility.generateFullBackup` directly — now routed through the ViewModel for one consistent recalc-then-export contract across all four formats.
+- `AutoRecalcDataIntegrityTest` (8 cases) covers the debounce predicate's edge cases without Robolectric (pure-function test). Picked up by the `checks.yml` data-integrity CI gate.
+
+**Net effect:** opening the app once per day silently keeps `paid` / `paidPrincipal` / `paidInterest` in sync with the `payments` table (defensive — post-C01, recalc is idempotent so this is mostly a no-op, but it also stamps `lastRecalcAt` which the UI will consume in Stage 2). Exporting any format from Settings now guarantees the exported numbers match what's about to land on disk, regardless of how stale the in-memory state had drifted.
+
+**Status against the audit's 5-step C02 fix:**
+
+| # | Step | Stage 1 | Stage 2 |
+|---|---|---|---|
+| 1 | Auto-recalc on launch (daily debounce) | ✅ | — |
+| 2 | Auto-recalc before every export | ✅ | — |
+| 3 | "Last updated X ago" subtitle on Dashboard | — | ⏳ |
+| 4 | Before/after dialog on manual recalc | — | ⏳ |
+| 5 | Timestamp embedded in PDF/XLSX exports | — | ⏳ |
+
 ### 2026-05-26 — C01 closed (Sprint 1)
 
 **Cluster:** C01 (P0 ship-blocker, Recalculate destroys payment history).

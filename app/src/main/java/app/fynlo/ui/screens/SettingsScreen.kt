@@ -75,25 +75,24 @@ fun SettingsScreen(
 
     val pdfLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("application/pdf")
-    ) { uri -> uri?.let {
+    ) { uri -> uri?.let { scope.launch(Dispatchers.IO) {
+        // exportToPDF is now suspend (C02 — runs recalcCoordinator.runAndStamp()
+        // first so the PDF reflects fresh state, not whatever was in memory).
         context.contentResolver.openOutputStream(it)?.use { os -> viewModel.exportToPDF(os) }
-    }}
+    }}}
 
     val xlsxLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument(
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
     ) { uri -> uri?.let { scope.launch(Dispatchers.IO) {
+        // Route XLSX through viewModel.exportToXLSX so it gets the same
+        // recalc-then-export contract as PDF / CSV / JSON. Previously this
+        // launcher called ExcelExportUtility.generateFullBackup directly and
+        // bypassed any pre-step — that's the C02 gap closed.
         runCatching {
             context.contentResolver.openOutputStream(it)?.use { os ->
-                app.fynlo.logic.ExcelExportUtility.generateFullBackup(
-                    os,
-                    viewModel.accounts.value, viewModel.transactions.value,
-                    viewModel.borrowers.value, viewModel.debts.value,
-                    viewModel.investments.value, viewModel.payments.value,
-                    viewModel.debtPayments.value
-                )
-                app.fynlo.data.Analytics.dataExported("xlsx")
+                viewModel.exportToXLSX(os)
             }
         }
     }}}
