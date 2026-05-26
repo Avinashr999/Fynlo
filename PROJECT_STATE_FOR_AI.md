@@ -158,7 +158,7 @@ AI_AGENT_PROTOCOL.md to match.
 
 # Fynlo - Complete AI Portability File
 **Project Name**: Fynlo
-**Version**: 3.2.17 on `master` (`versionName = "3.2.17"`, `versionCode = 140`). All four Sprint-1 P0 clusters closed (C01 / C02 / C03a / C05). Three P1 Sprint 2 clusters closed (C04 at 3.2.6, C06 + C07 at 3.2.12). C08 Stages 1-3 done (3.2.13 / 3.2.14 / 3.2.15); 3.2.16 = EMI Calculator visual polish; **3.2.17 = EMI Calculator navigation entries (latent-orphan fix surfaced by smoke). C08 Stage 4 (PDF + XLSX export migration) deferred to 3.2.18.** Internal milestone markers only — per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens until every `UX_AUDIT` cluster (P0 through P3) is closed.
+**Version**: 3.2.18 on `master` (`versionName = "3.2.18"`, `versionCode = 141`). All four Sprint-1 P0 clusters closed (C01 / C02 / C03a / C05). **Four P1 Sprint 2 clusters closed: C04 at 3.2.6, C06 + C07 at 3.2.12, C08 at 3.2.18 (Stages 1-4 across 3.2.13 / .14 / .15 / .18, with 3.2.16 + 3.2.17 as out-of-band EMI Calculator polish + nav fix).** Remaining P1: C09 (UTF-8 in dialogs), C12-C15 (screen redesigns), C18 (Settings cleanup), C21 (PDF/XLSX export quality polish — page breaks, group totals, embedded glyphs). Internal milestone markers only — per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens until every `UX_AUDIT` cluster (P0 through P3) is closed.
 **Platform**: Android (Kotlin, Jetpack Compose, Room — Gradle 9.4.1, AGP 9.2.1, Room 2.8.4, KSP 2.3.7, Kotlin 2.2.10)
 
 ## 1. Project Overview
@@ -345,6 +345,29 @@ in the APK).
 ## 6. Journal
 
 **Newest first.** Each entry: date · cluster(s) closed/touched · commit(s) · one-paragraph why-and-what.
+
+### 2026-05-27 — 3.2.18 (C08 Stage 4 + C08 CLOSURE: PDF + XLSX export migration)
+
+**Type:** Stage 4 of 4 for C08. Final commit closing the cluster. Two changes — one is plumbing, one is genuinely load-bearing for Excel spreadsheet workflows.
+
+**Internal milestone:** `3.2.18` / `versionCode = 141`. No Play Console upload per release-cadence ADR. Data-integrity gate unchanged at 112 tests / 9 classes.
+
+**PDF migration** (`ExportUtility.kt`): private `fmt(v)` helper that hardcoded `₹` and `.2f` precision → delegates to `CurrencyFormatter.detail(v, currencyCode, locale)`. Threaded `currencyCode` through all 3 PDF generators (`generatePDF` / `generateMoneyFlowPDF` / `generateLoanStatementPDF`) + the `generateMoneyFlowCSV` text export. Caller updates: `FinanceViewModel.exportToPDF` reads `currentProject.value?.currency`; `CustomerDetailScreen.kt:148` and `MoneyFlowScreen.kt:189/205` pass existing `currencyCode` derivation. Visible: PDF cards + tables now render Indian lakh-crore grouping for INR projects, Western grouping for others.
+
+**XLSX load-bearing numeric-cell fix** (`ExcelExportUtility.kt`): pre-3.2.18 every cell emitted as `<c t="s"><v>idx</v></c>` (shared-string lookup) — even numeric amount fields. Excel/Sheets saw amounts as text → SUM returned 0, sorting was alphabetic, charts couldn't plot the column. The fix:
+- NEW `Cell` sealed class with `Cell.Text(String)` and `Cell.Number(Double)`.
+- Row model changed from `List<String>` to `List<Cell>`. Every sheet builder updated: amounts go through `n(value)` shorthand → `Cell.Number`; labels through `t(value)` → `Cell.Text`.
+- `buildSheet` emits text via `<c t="s" s="N"><v>idx</v></c>` (shared-string lookup, header style for row 0); numbers via `<c t="n" s="2"><v>15000.00</v></c>` (raw double, US-locale decimal, references number-format style).
+- `STYLES_XML` gained `numFmt numFmtId="164" formatCode="#,##0.00"` + corresponding cell-XF style (`s="2" = STYLE_NUMBER`).
+- All 8 sheets updated: Accounts.Balance, Transactions.Amount, Lending.Principal/Rate/Paid, Debts.Principal/Rate/Paid, Investments.Invested/CurrentValue/Growth/Growth%, Loan Repayments.Amount, Debt Repayments.Amount. Metadata sheet stays all-Text (its values are timestamps/labels, not numbers).
+
+**Design choice on XLSX currency display:** the cell format is locale-neutral `#,##0.00` (no currency symbol prefix). Users can apply lakh-crore grouping or currency symbol via Excel/Sheets cell formatting. The load-bearing change is that the underlying value is a number; format is the user's preference. Could later add currency-specific `numFmt` entries (one per supported currency code) — not blocking, logged as a follow-up if needed.
+
+**Cumulative C08 totals:** 4 stages across 4 sub-versions (3.2.13 / .14 / .15 / .18). ~216 sites migrated app-wide. Plus the `formatAmount` helper deletion + `fmtK` helper deletion + 4 critical truncation fixes + 1 latent `AccountGrowthIndicator` bug fix. 33 new tests in `CurrencyFormatterDataIntegrityTest` pinning the contract. **C08 CLOSED at 3.2.18.** 4th P1 Sprint 2 cluster done.
+
+**Process retrospective for C08:** the 4-stage approach worked well. Stage 1 alone (foundation + tests) shipped fast; Stages 2-3 leveraged parallel agents (4 + 6 respectively); Stage 4 was small enough to do serially. The user's mid-stream smoke iteration (3.2.16 / 3.2.17 EMI Calculator interruptions) didn't derail C08 progress — kept the multi-stage plan intact while servicing the immediate user need.
+
+**Next:** C09 (UTF-8 in dialogs) is the next P1, but small. Then the bigger remaining work: C12-C15 (screen redesigns — sizable, like C04 was), C18 (Settings cleanup), C21 (PDF/XLSX polish — page breaks, group totals, glyph embedding). After all P1s: P2 clusters (C10/C11/C16/C17/C19/C20). Then C22 P3 backlog before first public release per cadence ADR.
 
 ### 2026-05-27 — 3.2.17 (EMI Calculator navigation entries — latent orphan fix)
 

@@ -2,6 +2,37 @@
 
 All notable changes to Fynlo are documented here.
 
+## [3.2.18] - 2026-05-27 *(Development milestone — C08 Stage 4 + C08 CLOSURE: PDF + XLSX export migration; not promoted per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`)*
+
+### Fixed
+- **C08 Stage 4 — PDF + XLSX export migration. CLOSES C08.** Final stage of the number-formatting consistency cluster. Two changes, one is load-bearing for Excel users.
+
+  - **PDF (`ExportUtility.kt`) — currency-aware formatting.** The private `fmt(v) = "₹${String.format(locale, "%,.2f", v)}"` helper hardcoded ₹ and `.2f` precision regardless of project currency. Now delegates to `CurrencyFormatter.detail(v, currencyCode, locale)`. Threaded `currencyCode` through all 3 PDF generators (`generatePDF`, `generateMoneyFlowPDF`, `generateLoanStatementPDF`) plus the `generateMoneyFlowCSV` text export. Callers updated: `FinanceViewModel.exportToPDF` reads `currentProject.value?.currency ?: "INR"`; `CustomerDetailScreen.kt:148` (loan statement) and `MoneyFlowScreen.kt:189` + `:205` (money flow CSV + PDF) pass their existing `currencyCode` derivation. Visible result: Indian lakh-crore grouping (`₹2,41,663`) for INR/NPR/LKR/BDT projects in PDF cards/tables; Western grouping for other currencies; no decimals per Detail spec.
+
+  - **XLSX (`ExcelExportUtility.kt`) — load-bearing numeric-cell fix.** Pre-3.2.18 every cell emitted as `<c t="s"><v>idx</v></c>` (shared-string lookup). Even numeric amount fields. Excel saw amounts as text → `SUM()` returned 0, sorting was alphabetic, charts couldn't plot the column. Migration:
+    - NEW `Cell` sealed class — `Cell.Text(String)` for strings (still goes through shared-string interning), `Cell.Number(Double)` for amounts.
+    - Row model changed from `List<String>` to `List<Cell>`. Every per-sheet builder updated: amounts go through `n(value)` shorthand (→ `Cell.Number`), labels through `t(value)` (→ `Cell.Text`).
+    - `buildSheet` now emits the right cell type: text → `<c t="s" s="..."><v>idx</v></c>` (shared-string lookup); number → `<c t="n" s="2"><v>15000.00</v></c>` (raw double value with US-locale decimal, referencing the new number-format style).
+    - `STYLES_XML` gained a custom `numFmt` (`numFmtId="164"`, `formatCode="#,##0.00"`) and a corresponding cell-XF style (`s="2"` = `STYLE_NUMBER`). Excel renders the column as comma-grouped numbers; users can apply their own currency symbol via cell formatting if they want lakh-crore or specific currency display.
+    - All 8 sheets updated: Accounts (Balance), Transactions (Amount), Lending (Principal/Rate/Paid), Debts (Principal/Rate/Paid), Investments (Invested/CurrentValue/Growth/Growth%), Loan Repayments (Amount), Debt Repayments (Amount). The Metadata sheet stays all-Text since its values are timestamps/labels.
+
+### Closes
+- **UX_AUDIT §C08 — Number formatting inconsistency** (4-stage migration across 4 sub-versions: 3.2.13 / .14 / .15 / .18). 4th P1 Sprint 2 cluster closed.
+
+### Notes
+- Sites migrated through C08: ~216 total (~33 foundation tests + 52 Hero/ListRow/Negative + 147 Detail + ~14 export sites + helper deletions). Sites NOT migrated (correctly excluded): `OutlinedTextField` `value =` raw-state strings (would break IME mid-typing) and percentage / ratio formatting (not currency).
+- **Audit's Detekt lint rule deferred** to INF backlog. Adding a Detekt custom rule that fails on `String.format("%.2f", amount)` patterns is workable but not blocking — every existing site is migrated; the rule would only catch regressions.
+- **XLSX columns can be re-formatted by user.** The `#,##0.00` format is locale-neutral. If the user wants lakh-crore grouping or a currency-symbol prefix in their spreadsheet, they apply it via Excel/Sheets cell formatting. The load-bearing change is that the underlying value is now a number, not a string.
+
+### Changed
+- **`versionName`** `3.2.17` → `3.2.18`, **`versionCode`** `140` → `141`. C08 closure milestone.
+
+### Data-integrity gate
+Unchanged at **112 tests across 9 classes**, 0 failures (Stage 4 is pure refactor at the export boundary; the XLSX numeric-cell change has no business-logic delta, and the PDF change is plumbing `currencyCode` through existing well-tested formatting).
+
+### Sprint 2 P1 milestone
+After this commit, **four P1 Sprint 2 clusters are CLOSED**: C04 at 3.2.6, C06 + C07 at 3.2.12, **C08 at 3.2.18**. Remaining P1: C09 (UTF-8 in dialogs), C12-C15 (screen redesigns), C18 (Settings cleanup), C21 (PDF/XLSX export quality proper — mostly the export-related design work like proper page breaks, group totals, embedded fonts for ₹/अ glyphs).
+
 ## [3.2.17] - 2026-05-27 *(Development milestone — EMI Calculator navigation entries; not promoted per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`)*
 
 ### Fixed

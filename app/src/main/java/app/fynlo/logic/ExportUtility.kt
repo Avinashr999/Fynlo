@@ -23,7 +23,21 @@ import java.util.Locale
 object ExportUtility {
 
     private val locale = Locale.getDefault()
-    private fun fmt(v: Double) = "₹${String.format(locale, "%,.2f", v)}"
+
+    /**
+     * C08 Stage 4 (3.2.18) — currency-aware number formatting for PDF cells.
+     * Pre-3.2.18 this was a private `fmt(v) = "₹${String.format(locale, "%,.2f", v)}"`
+     * helper that hardcoded ₹ and `.2f` precision regardless of project
+     * currency. Now delegates to [CurrencyFormatter.detail] which gives:
+     *   - Indian lakh-crore grouping (`₹2,41,663`) for INR/NPR/LKR/BDT.
+     *   - Western thousand-comma (`$241,663`) for other currencies.
+     *   - No decimals (audit Detail spec).
+     *
+     * [currencyCode] threads through every public PDF generator function
+     * so the PDF reflects the project's currency, not a hardcoded `₹`.
+     */
+    private fun fmt(v: Double, currencyCode: String) =
+        CurrencyFormatter.detail(v, currencyCode, locale)
 
     // A4 at 72 DPI
     private const val PAGE_W = 595
@@ -150,6 +164,11 @@ object ExportUtility {
         // when the numbers were last computed (not just when the file was
         // produced). 0L = no recalc has ever run; rendered as "—".
         lastRecalcAt: Long = 0L,
+        // C08 Stage 4: project currency so amounts render in the user's
+        // configured format (INR → ₹2,41,663, USD → $241,663, etc.).
+        // Default INR preserves backwards-compat with any caller that
+        // hasn't migrated.
+        currencyCode: String = "INR",
     ) {
         val pdf = PdfDocument()
         val b = PdfBuilder(pdf, outputStream)
@@ -179,10 +198,10 @@ object ExportUtility {
         // Summary cards — 4 across
         val cardW = (PAGE_W - MARGIN * 2) / 4f
         val cards = listOf(
-            Triple("NET WORTH",     fmt(summary.netWorth),         if (summary.netWorth >= 0) COLOR_GREEN else COLOR_RED),
-            Triple("TOTAL ASSETS",  fmt(summary.totalAssets),       COLOR_PRIMARY),
-            Triple("TOTAL CASH",    fmt(summary.totalCash),         COLOR_PRIMARY),
-            Triple("INVEST GROWTH", fmt(summary.investmentGrowth),  COLOR_GREEN)
+            Triple("NET WORTH",     fmt(summary.netWorth, currencyCode),         if (summary.netWorth >= 0) COLOR_GREEN else COLOR_RED),
+            Triple("TOTAL ASSETS",  fmt(summary.totalAssets, currencyCode),       COLOR_PRIMARY),
+            Triple("TOTAL CASH",    fmt(summary.totalCash, currencyCode),         COLOR_PRIMARY),
+            Triple("INVEST GROWTH", fmt(summary.investmentGrowth, currencyCode),  COLOR_GREEN)
         )
         val cardTop = b.y - LINE_H + 2f
         cards.forEachIndexed { i, (label, value, color) ->
@@ -199,7 +218,7 @@ object ExportUtility {
             val aw = listOf((PAGE_W - MARGIN * 2) * 0.6f, (PAGE_W - MARGIN * 2) * 0.4f)
             b.drawTableRow(listOf("Account", "Balance"), aw, isHeader = true)
             summary.accountBreakdown.entries.forEachIndexed { i, (name, bal) ->
-                b.drawTableRow(listOf(name, fmt(bal)), aw, altBg = i % 2 == 0)
+                b.drawTableRow(listOf(name, fmt(bal, currencyCode)), aw, altBg = i % 2 == 0)
             }
         }
 
@@ -223,7 +242,7 @@ object ExportUtility {
                 val statusColor = if (bo.status == "Overdue") COLOR_RED else COLOR_BLACK
                 b.drawTableRow(
                     listOf(
-                        bo.name, fmt(bo.amount), fmt(bo.paid), "${bo.rate}%",
+                        bo.name, fmt(bo.amount, currencyCode), fmt(bo.paid, currencyCode), "${bo.rate}%",
                         bo.date, bo.due.ifBlank{"-"}, bo.status, bo.notes,
                     ),
                     lw, altBg = i % 2 == 0,
@@ -244,7 +263,7 @@ object ExportUtility {
             investments.forEachIndexed { i, inv ->
                 val growth = inv.currentVal - inv.invested
                 b.drawTableRow(
-                    listOf(inv.name, inv.type, fmt(inv.invested), fmt(inv.currentVal), fmt(growth), inv.date),
+                    listOf(inv.name, inv.type, fmt(inv.invested, currencyCode), fmt(inv.currentVal, currencyCode), fmt(growth, currencyCode), inv.date),
                     iw, altBg = i % 2 == 0,
                     colors = listOf(COLOR_BLACK, COLOR_GRAY, COLOR_BLACK, COLOR_BLACK, if(growth>=0) COLOR_GREEN else COLOR_RED, COLOR_GRAY)
                 )
@@ -261,7 +280,7 @@ object ExportUtility {
             recent.forEachIndexed { i, t ->
                 val amtColor = if (t.type.equals("income", ignoreCase = true)) COLOR_GREEN else COLOR_RED
                 b.drawTableRow(
-                    listOf(t.date, t.type, t.category, t.desc, fmt(t.amount), t.fromAcct.ifBlank{t.toAcct}),
+                    listOf(t.date, t.type, t.category, t.desc, fmt(t.amount, currencyCode), t.fromAcct.ifBlank{t.toAcct}),
                     tw, altBg = i % 2 == 0,
                     colors = listOf(COLOR_BLACK,COLOR_GRAY,COLOR_BLACK,COLOR_BLACK, amtColor, COLOR_GRAY)
                 )
@@ -283,7 +302,11 @@ object ExportUtility {
     // ═══════════════════════════════════════════════════════════════════════════
     // PUBLIC: Money Flow PDF
     // ═══════════════════════════════════════════════════════════════════════════
-    fun generateMoneyFlowPDF(outputStream: OutputStream, flows: List<FlowEntry>) {
+    fun generateMoneyFlowPDF(
+        outputStream: OutputStream,
+        flows: List<FlowEntry>,
+        currencyCode: String = "INR",
+    ) {
         val pdf = PdfDocument()
         val b = PdfBuilder(pdf, outputStream)
         b.startPage()
@@ -303,10 +326,10 @@ object ExportUtility {
         // Summary cards
         val cardW = (PAGE_W - MARGIN * 2) / 4f
         val cards = listOf(
-            Triple("TOTAL INFLOW",  fmt(totalIn),  COLOR_GREEN),
-            Triple("TOTAL OUTFLOW", fmt(totalOut), COLOR_RED),
-            Triple("LENT OUT",      fmt(lentOut),  COLOR_PRIMARY),
-            Triple("NET FLOW",      fmt(net),      if (net >= 0) COLOR_GREEN else COLOR_RED)
+            Triple("TOTAL INFLOW",  fmt(totalIn, currencyCode),  COLOR_GREEN),
+            Triple("TOTAL OUTFLOW", fmt(totalOut, currencyCode), COLOR_RED),
+            Triple("LENT OUT",      fmt(lentOut, currencyCode),  COLOR_PRIMARY),
+            Triple("NET FLOW",      fmt(net, currencyCode),      if (net >= 0) COLOR_GREEN else COLOR_RED)
         )
         val ct = b.y - LINE_H + 2f
         cards.forEachIndexed { i, (label, value, color) ->
@@ -329,7 +352,7 @@ object ExportUtility {
                 else                  -> COLOR_PRIMARY
             }
             b.drawTableRow(
-                listOf(f.date, f.flowType.name, f.from, f.to, f.label, fmt(f.amount)),
+                listOf(f.date, f.flowType.name, f.from, f.to, f.label, fmt(f.amount, currencyCode)),
                 fw, altBg = i % 2 == 0,
                 colors = listOf(COLOR_BLACK,COLOR_GRAY,COLOR_BLACK,COLOR_BLACK,COLOR_BLACK, color)
             )
@@ -347,7 +370,8 @@ object ExportUtility {
         borrower: Borrower,
         repayments: List<Transaction>,
         interest: Double,
-        outstanding: Double
+        outstanding: Double,
+        currencyCode: String = "INR",
     ) {
         val pdf = PdfDocument()
         val b = PdfBuilder(pdf, outputStream)
@@ -369,11 +393,11 @@ object ExportUtility {
             "Phone"           to borrower.phone.ifBlank { "-" },
             "Loan Date"       to borrower.date,
             "Due Date"        to borrower.due.ifBlank { "Not specified" },
-            "Principal"       to fmt(borrower.amount),
+            "Principal"       to fmt(borrower.amount, currencyCode),
             "Interest Rate"   to "${borrower.rate}% p.a. (${borrower.type})",
-            "Interest Accrued" to fmt(interest),
-            "Total Paid"      to fmt(borrower.paid),
-            "Outstanding"     to fmt(outstanding)
+            "Interest Accrued" to fmt(interest, currencyCode),
+            "Total Paid"      to fmt(borrower.paid, currencyCode),
+            "Outstanding"     to fmt(outstanding, currencyCode)
         )
         details.forEachIndexed { i, (label, value) ->
             if (i % 2 == 0) b.rect(MARGIN, b.y - 12f, PAGE_W - MARGIN.toFloat(), b.y + 4f, Color.rgb(249,250,251))
@@ -390,7 +414,7 @@ object ExportUtility {
             val rw = listOf(usable * 0.25f, usable * 0.25f, usable * 0.50f)
             b.drawTableRow(listOf("Date", "Amount", "Notes"), rw, isHeader = true)
             repayments.sortedByDescending { it.date }.forEachIndexed { i, t ->
-                b.drawTableRow(listOf(t.date, fmt(t.amount), t.notes.ifBlank{"-"}), rw, altBg = i % 2 == 0)
+                b.drawTableRow(listOf(t.date, fmt(t.amount, currencyCode), t.notes.ifBlank{"-"}), rw, altBg = i % 2 == 0)
             }
         } else {
             b.canvas().drawText("No repayments recorded yet.", MARGIN, b.y, bodyPaint(COLOR_GRAY, 10f))
@@ -440,7 +464,10 @@ object ExportUtility {
         return sb.toString()
     }
 
-    fun generateMoneyFlowCSV(flows: List<FlowEntry>): String {
+    fun generateMoneyFlowCSV(
+        flows: List<FlowEntry>,
+        currencyCode: String = "INR",
+    ): String {
         val sb = StringBuilder()
         sb.append("Fynlo - MONEY FLOW REPORT\n")
         sb.append("Generated: ${LocalDate.now()}\n\n")
@@ -453,8 +480,8 @@ object ExportUtility {
         val totalOut = flows.filter { it.flowType == FlowType.EXPENSE || it.flowType == FlowType.DEBT_REPAY    }.sumOf { it.amount }
         val lentOut  = flows.filter { it.flowType == FlowType.LENDING }.sumOf { it.amount }
         sb.append("\n--- SUMMARY ---\n")
-        sb.append("Total Inflow,${fmt(totalIn)}\nTotal Outflow,${fmt(totalOut)}\n")
-        sb.append("Lent Out,${fmt(lentOut)}\nNet Flow,${fmt(totalIn - totalOut)}\n")
+        sb.append("Total Inflow,${fmt(totalIn, currencyCode)}\nTotal Outflow,${fmt(totalOut, currencyCode)}\n")
+        sb.append("Lent Out,${fmt(lentOut, currencyCode)}\nNet Flow,${fmt(totalIn - totalOut, currencyCode)}\n")
         return sb.toString()
     }
 }

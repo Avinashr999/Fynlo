@@ -146,7 +146,8 @@ val borrowers by viewModel.borrowers.collectAsState()
                         )
                         file.outputStream().use { os ->
                             app.fynlo.logic.ExportUtility.generateLoanStatementPDF(
-                                os, borrower, emptyList(), interest, totalOutstanding
+                                os, borrower, emptyList(), interest, totalOutstanding,
+                                currencyCode = currencyCode,
                             )
                         }
                         val uri = androidx.core.content.FileProvider.getUriForFile(

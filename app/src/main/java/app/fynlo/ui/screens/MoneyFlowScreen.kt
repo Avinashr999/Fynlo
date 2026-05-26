@@ -186,7 +186,7 @@ fun MoneyFlowScreen(viewModel: FinanceViewModel) {
                             leadingIcon = { Icon(Icons.Default.TableChart, null) },
                             onClick = {
                                 showExportMenu = false
-                                val csv  = ExportUtility.generateMoneyFlowCSV(allFlows)
+                                val csv  = ExportUtility.generateMoneyFlowCSV(allFlows, currencyCode)
                                 val file = File(context.cacheDir, "money_flow_${java.time.LocalDate.now()}.csv")
                                 file.writeText(csv)
                                 val uri  = FileProvider.getUriForFile(context, "${context.packageName}.provider", file)
@@ -202,7 +202,7 @@ fun MoneyFlowScreen(viewModel: FinanceViewModel) {
                             onClick = {
                                 showExportMenu = false
                                 val file = File(context.cacheDir, "money_flow_${java.time.LocalDate.now()}.pdf")
-                                file.outputStream().use { ExportUtility.generateMoneyFlowPDF(it, allFlows) }
+                                file.outputStream().use { ExportUtility.generateMoneyFlowPDF(it, allFlows, currencyCode) }
                                 val uri  = FileProvider.getUriForFile(context, "${context.packageName}.provider", file)
                                 context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply {
                                     type = "application/pdf"; putExtra(Intent.EXTRA_STREAM, uri)

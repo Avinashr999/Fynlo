@@ -952,10 +952,16 @@ class FinanceViewModel @Inject constructor(
 
     suspend fun exportToPDF(outputStream: java.io.OutputStream) {
         val recalcAt = recalcCoordinator.runAndStamp()
+        // C08 Stage 4: project currency threads through so the PDF cards +
+        // tables render amounts in the user's configured format
+        // (₹2,41,663 / $241,663 / etc.) instead of the pre-3.2.18
+        // hardcoded "₹X,XXX.XX".
+        val currencyCode = currentProject.value?.currency ?: "INR"
         app.fynlo.logic.ExportUtility.generatePDF(
             outputStream, financialSummary.value,
             transactions.value, borrowers.value, investments.value,
             lastRecalcAt = recalcAt,
+            currencyCode = currencyCode,
         )
         app.fynlo.data.Analytics.dataExported("pdf")
     }
