@@ -2,6 +2,45 @@
 
 All notable changes to Fynlo are documented here.
 
+## [3.2.14] - 2026-05-27 *(Development milestone — C08 Stage 2: Hero/ListRow/Negative + truncation fixes; not promoted per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`)*
+
+### Fixed
+- **C08 Stage 2 — highest-impact display migrations.** Four parallel agents migrated the most-visible currency-formatting call sites to `CurrencyFormatter` (landed in 3.2.13). Visible result: every dashboard hero number now renders with **Indian lakh-crore grouping** (`₹2,41,663` not `₹241,663`), all over-budget / loss / trend-down indicators use the audit-mandated **`−` en-dash** (U+2212, not ASCII hyphen), and three silent `.toInt()` data-truncation bugs are gone.
+  - **Dashboard hero sites (Agent A) — 14 direct + ~12 transitive via helper functions:**
+    - `HomeScreen.kt` — net worth tile, assets/liabilities sub-tiles, 4 metric cards (Idle Cash / Growing Assets / Hand Loans / Total Owed), per-account balance card, and the trend sparkline (Negative path now uses formatter's en-dash).
+    - `HomeScreenModern.kt` — 42sp net-worth hero, the screen's local `fmt(v)` helper (which transitively migrates Assets/Liabilities, account rows, insight rows), and the trend pill (Negative).
+    - `NetWorthHistoryScreen.kt` — Current Net Worth hero (was `%,.2f`, now no-decimal Hero per design spec), Highest/Lowest stat cards.
+    - `ReportsHubScreen.kt` — local `fmt(v)` helper (transitively migrates Income/Expenses/Net Cash Flow display, badges, category breakdowns) and the Net Worth Trend mid-label.
+  - **Detail-card Hero + critical truncation fixes (Agent B):**
+    - `AccountStatementScreen.kt:83` — Account balance header (was `%,.2f`).
+    - `CustomerDetailScreen.kt:187` — Total Outstanding hero.
+    - `CustomerDetailScreen.kt:199-201` — **CRITICAL silent data loss fix.** `borrower.amount.toInt()`, `interest.toInt()`, `borrower.paid.toInt()` were dropping decimal precision (user with `₹1499.50` outstanding saw `₹1499` and thought they owed a rupee less than they actually did). Now uses `CurrencyFormatter.detail(...)` which preserves full precision.
+    - `DebtScreen.kt:122` — Total Outstanding hero.
+  - **ListRow K/L abbreviation + duplicate-helper deletion + Analytics truncation (Agent C):**
+    - `InterestIncomeScreen.kt` — **deleted the duplicate `fmtK()` helper** (lines 494-496, pre-dated `CurrencyFormatter`). Migrated its 3 call sites to `CurrencyFormatter.listRow(...)`.
+    - `AnalyticsComponents.kt:50` — **CRITICAL truncation fix.** Spending breakdown card was using `amount.toInt()` (silent decimal drop); now uses `CurrencyFormatter.listRow(...)` which both preserves precision AND switches to K/L abbreviation appropriate for a list-row analytics breakdown.
+  - **Negative-sign correctness + InvestmentDialog truncation (Agent D):**
+    - `BudgetScreen.kt:278` — Over-budget Remaining display. Was using ASCII hyphen prefix; now uses `CurrencyFormatter.negative(...)` with U+2212 en-dash.
+    - `InvestmentScreen.kt:374-375` — Gain/loss display. Profit gets literal `+` + Hero; loss gets Negative formatter (en-dash). Replaces the inconsistent inline `+`/empty prefix on absolute value.
+    - `InvestmentDialog.kt:62` — **CRITICAL truncation fix.** Amount text-field initializer was using `.toInt().toString()` (drops decimal precision on edit). Now uses `CurrencyFormatter.input(...)` which uses `.toLong()` internally (full Double range).
+
+### Visible UX changes worth noting
+- **Indian grouping everywhere.** Dashboard net-worth, total assets, total liabilities, account balances, customer outstanding, debt outstanding — all switch from `₹241,663` (Western 3-digit grouping) to `₹2,41,663` (Indian lakh-crore grouping) when project currency is INR / NPR / LKR / BDT.
+- **`.2f` precision dropped to `.0f`** on `NetWorthHistoryScreen` Current Net Worth and `AccountStatementScreen` Current Balance. Per audit's design-system spec (`Hero = no decimals`). If you see this on smoke and want the cents back, that's a design-system tweak (single Hero method signature change) — but the audit was explicit.
+- **`−` en-dash on every negative** instead of mixed hyphen / `(parens)` / `(empty)` prefixes. Renders more legibly and is unambiguous against punctuation hyphens.
+- **No more silent decimal truncation** on the 3 critical sites — your `₹1499.50` outstanding now shows as `₹1,500` (rounded for Hero/Detail display) instead of `₹1499` (truncated).
+
+### Notes for future stages
+- Each migrated screen now has `currencyCode` derived alongside the existing `currencySymbol` variable. `currencySymbol` was kept in scope because other code paths in those screens (Detail-style body text) still consume it. **Stage 3 will remove `currencySymbol` from these screens** once every call site is migrated.
+- Several Compose components (`AnalyticsComponents.SpendingAnalyticsCard`, `InvestmentCard`, `BudgetCard`) gained a new `currencyCode: String` parameter with a `"INR"` default. Defaults preserve preview/test composability; production call sites already pass the proper value where it was a required param.
+- Stage 3 (Detail sweep, ~189 sites) and Stage 4 (PDF + XLSX export fixes) still to come.
+
+### Changed
+- **`versionName`** `3.2.13` → `3.2.14`, **`versionCode`** `136` → `137`. C08 Stage 2 milestone marker. Per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens here.
+
+### Data-integrity gate
+Unchanged at **112 tests across 9 classes**, 0 failures (pure call-site refactor — no logic change; `CurrencyFormatter` itself was already fully tested in Stage 1).
+
 ## [3.2.13] - 2026-05-27 *(Development milestone — C08 Stage 1: CurrencyFormatter foundation; not promoted per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`)*
 
 ### Added

@@ -24,6 +24,7 @@ import androidx.compose.ui.window.DialogProperties
 import app.fynlo.data.model.Account
 import app.fynlo.data.model.Debt
 import app.fynlo.data.model.Investment
+import app.fynlo.logic.CurrencyFormatter
 import app.fynlo.logic.DateUtils
 import java.util.*
 import app.fynlo.ui.theme.*
@@ -58,7 +59,7 @@ fun AddInvestmentDialog(
     val isNew = initialInvestment == null || initialInvestment.id.isBlank()
 
     var name     by remember { mutableStateOf(initialInvestment?.name     ?: "") }
-    var amount   by remember { mutableStateOf(initialInvestment?.invested?.let { if (it > 0) it.toInt().toString() else "" } ?: "") }
+    var amount   by remember { mutableStateOf(initialInvestment?.invested?.let { if (it > 0) CurrencyFormatter.input(it) else "" } ?: "") }
     var date     by remember { mutableStateOf(initialInvestment?.date?.let { DateUtils.formatToDisplay(it) } ?: java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy"))) }
     var type     by remember { mutableStateOf(initialInvestment?.type     ?: "Stocks") }
     var notes    by remember { mutableStateOf(initialInvestment?.notes    ?: "") }

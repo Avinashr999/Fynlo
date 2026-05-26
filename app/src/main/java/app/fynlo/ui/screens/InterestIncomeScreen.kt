@@ -28,6 +28,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.fynlo.FinanceViewModel
+import app.fynlo.logic.CurrencyFormatter
 import app.fynlo.logic.InterestEngine
 import app.fynlo.ui.theme.*
 import java.time.LocalDate
@@ -96,7 +97,8 @@ fun InterestIncomeScreen(
 ) {
     val borrowers by viewModel.borrowers.collectAsState()
     val currentProject by viewModel.currentProject.collectAsState()
-    val currencySymbol = app.fynlo.logic.CurrencyUtils.symbolFor(currentProject?.currency ?: "INR")
+    val currencyCode = currentProject?.currency ?: "INR"
+    val currencySymbol = app.fynlo.logic.CurrencyUtils.symbolFor(currencyCode)
     val locale = Locale.getDefault()
 
     var rangeMonths by remember { mutableIntStateOf(12) }
@@ -161,19 +163,19 @@ fun InterestIncomeScreen(
             ) {
                 InterestStatCard(
                     label = "${rangeMonths}M Interest",
-                    value = "$currencySymbol${fmtK(totalInterest, locale)}",
+                    value = CurrencyFormatter.listRow(totalInterest, currencyCode, locale),
                     color = barColor,
                     modifier = Modifier.weight(1f)
                 )
                 InterestStatCard(
                     label = "Avg / Month",
-                    value = "$currencySymbol${fmtK(avgMonthly, locale)}",
+                    value = CurrencyFormatter.listRow(avgMonthly, currencyCode, locale),
                     color = barColor,
                     modifier = Modifier.weight(1f)
                 )
                 InterestStatCard(
                     label = "Outstanding",
-                    value = "$currencySymbol${fmtK(currentPrincipal, locale)}",
+                    value = CurrencyFormatter.listRow(currentPrincipal, currencyCode, locale),
                     color = lineColor,
                     modifier = Modifier.weight(1f)
                 )
@@ -490,8 +492,3 @@ private fun MonthRow(
     HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f))
 }
 
-private fun fmtK(v: Double, locale: Locale): String = when {
-    v >= 100_000 -> String.format(locale, "%.1fL", v / 100_000)
-    v >= 1_000   -> String.format(locale, "%.1fK", v / 1_000)
-    else         -> String.format(locale, "%,.0f", v)
-}

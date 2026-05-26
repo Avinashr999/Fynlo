@@ -21,6 +21,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import app.fynlo.FinanceViewModel
 import app.fynlo.data.model.Budget
+import app.fynlo.logic.CurrencyFormatter
 import java.time.LocalDate
 import java.util.Locale
 import app.fynlo.ui.theme.*
@@ -34,7 +35,8 @@ fun BudgetScreen(viewModel: FinanceViewModel) {
     val budgets  by viewModel.budgets.collectAsState()
     val expenses by viewModel.expenseAnalytics.collectAsState()
     val currentProject by viewModel.currentProject.collectAsState()
-    val currencySymbol = app.fynlo.logic.CurrencyUtils.symbolFor(currentProject?.currency ?: "INR")
+    val currencyCode   = currentProject?.currency ?: "INR"
+    val currencySymbol = app.fynlo.logic.CurrencyUtils.symbolFor(currencyCode)
     val locale   = remember { Locale.getDefault() }
     var showAddDialog by remember { mutableStateOf(false) }
 
@@ -149,7 +151,7 @@ fun BudgetScreen(viewModel: FinanceViewModel) {
             if (!budgets.isEmpty()) {
                 itemsIndexed(sorted, key = { _, b -> b.category }) { index, budget ->
                     val actualSpent = expenses[budget.category] ?: 0.0
-                    BudgetCard(budget, actualSpent, daysRemaining, daysPassed, currencySymbol, locale,
+                    BudgetCard(budget, actualSpent, daysRemaining, daysPassed, currencySymbol, currencyCode, locale,
                         onDelete = { viewModel.deleteBudget(budget) })
                     if (index < sorted.lastIndex) {
                         HorizontalDivider(thickness = 0.5.dp,
@@ -193,6 +195,7 @@ fun BudgetCard(
     daysRemaining: Int,
     daysPassed: Int,
     currencySymbol: String,
+    currencyCode: String,
     locale: Locale,
     onDelete: () -> Unit
 ) {
@@ -274,7 +277,7 @@ fun BudgetCard(
                     .padding(horizontal = 10.dp, vertical = 6.dp),
                 Arrangement.SpaceBetween
             ) {
-                    InfoItem("Remaining", if (isExceeded) "-$currencySymbol${String.format(locale, "%,.0f", -remaining)}"
+                    InfoItem("Remaining", if (isExceeded) CurrencyFormatter.negative(remaining, currencyCode, locale)
                         else "$currencySymbol${String.format(locale, "%,.0f", remaining)}",
                         if (isExceeded) SemanticRed else Emerald500)
                     InfoItem("Daily Budget", "$currencySymbol${String.format(locale, "%,.0f", dailyBudget)}",

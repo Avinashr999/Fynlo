@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import app.fynlo.FinanceViewModel
 import app.fynlo.data.model.Debt
 import app.fynlo.data.model.DebtPayment
+import app.fynlo.logic.CurrencyFormatter
 import app.fynlo.logic.DateUtils
 import app.fynlo.logic.InterestEngine
 import app.fynlo.ui.components.AddDebtDialog
@@ -47,7 +48,9 @@ fun DebtScreen(viewModel: FinanceViewModel, showHeader: Boolean = true) {
 val debts by viewModel.debts.collectAsState()
     val accounts by viewModel.accounts.collectAsState()
     val currentProject by viewModel.currentProject.collectAsState()
-    val currencySymbol = app.fynlo.logic.CurrencyUtils.symbolFor(currentProject?.currency ?: "INR")
+    val currencyCode = currentProject?.currency ?: "INR"
+    val currencySymbol = app.fynlo.logic.CurrencyUtils.symbolFor(currencyCode)
+    val locale = Locale.getDefault()
     var searchQuery by remember { mutableStateOf("") }
     val filteredDebts = remember(debts, searchQuery) {
         if (searchQuery.isBlank()) debts
@@ -119,7 +122,7 @@ val debts by viewModel.debts.collectAsState()
                 Column {
                     Text("Total Outstanding", style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text("$currencySymbol${String.format(java.util.Locale.getDefault(), "%,.0f", totalPrincipal)}",
+                    Text(CurrencyFormatter.hero(totalPrincipal, currencyCode, locale),
                         style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.ExtraBold),
                         color = SemanticRed)
                     Text("${debts.size} debt${if (debts.size != 1) "s" else ""}",

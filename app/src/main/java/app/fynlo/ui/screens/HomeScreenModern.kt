@@ -29,6 +29,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.fynlo.FinanceViewModel
+import app.fynlo.logic.CurrencyFormatter
 import app.fynlo.ui.components.AddTransactionDialog
 import app.fynlo.ui.components.PortfolioBreakdownSheet
 import app.fynlo.ui.theme.*
@@ -50,7 +51,8 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
     val currentProject    by viewModel.currentProject.collectAsState()
     val isSyncReady       by viewModel.isSyncReady.collectAsState()
     val locale            = Locale.getDefault()
-    val cs                = app.fynlo.logic.CurrencyUtils.symbolFor(currentProject?.currency ?: "INR")
+    val currencyCode      = currentProject?.currency ?: "INR"
+    val cs                = app.fynlo.logic.CurrencyUtils.symbolFor(currencyCode)
     var showAddTxn        by remember { mutableStateOf(false) }
     var addTxnIncome      by remember { mutableStateOf(false) }
     val netWorthSnapshots by viewModel.getNetWorthSnapshots().collectAsState(initial = emptyList())
@@ -64,7 +66,7 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
     val lastRecalcAt by app.fynlo.data.UserPreferences
         .lastRecalcAt(context).collectAsState(initial = 0L)
 
-    fun fmt(v: Double) = "$cs${String.format(locale, "%,.0f", v)}"
+    fun fmt(v: Double) = CurrencyFormatter.hero(v, currencyCode, locale)
 
     // Map account name → an icon based on its type (Bank/Cash/UPI/Trading)
     val typeByName = remember(accounts) { accounts.associate { it.name to it.type.lowercase() } }
@@ -191,7 +193,7 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.height(6.dp))
             Text(
-                text = "$cs ${String.format(locale, "%,.0f", summary.netWorth)}",
+                text = CurrencyFormatter.hero(summary.netWorth, currencyCode, locale),
                 fontSize = 42.sp,
                 fontWeight = FontWeight.ExtraBold,
                 color = MaterialTheme.colorScheme.onSurface
@@ -235,7 +237,9 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
                         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
                         Icon(if (up) Icons.Default.ArrowUpward else Icons.Default.ArrowDownward,
                             null, Modifier.size(13.dp), tint = trendColor)
-                        Text((if (up) "" else "-") + "$cs${String.format(locale, "%,.0f", kotlin.math.abs(trend))}",
+                        Text(
+                            if (up) "+${CurrencyFormatter.hero(trend, currencyCode, locale)}"
+                            else    CurrencyFormatter.hero(trend, currencyCode, locale),
                             style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold), color = trendColor)
                     }
                 }

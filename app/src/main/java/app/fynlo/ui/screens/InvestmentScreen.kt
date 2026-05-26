@@ -28,6 +28,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import app.fynlo.FinanceViewModel
 import app.fynlo.data.model.Investment
+import app.fynlo.logic.CurrencyFormatter
 import app.fynlo.logic.DateUtils
 import app.fynlo.ui.components.AddInvestmentDialog
 
@@ -47,7 +48,8 @@ fun InvestmentScreen(viewModel: FinanceViewModel) {
     val debts          by viewModel.debts.collectAsState()
         val haptic = LocalHapticFeedback.current
 val currentProject by viewModel.currentProject.collectAsState()
-    val currencySymbol = app.fynlo.logic.CurrencyUtils.symbolFor(currentProject?.currency ?: "INR")
+    val currencyCode   = currentProject?.currency ?: "INR"
+    val currencySymbol = app.fynlo.logic.CurrencyUtils.symbolFor(currencyCode)
 
     var editingInvest  by remember { mutableStateOf<Investment?>(null) }
     var updatingInvest by remember { mutableStateOf<Investment?>(null) }
@@ -277,6 +279,7 @@ val currentProject by viewModel.currentProject.collectAsState()
                     InvestmentCard(
                         invest   = invest,
                         currencySymbol = currencySymbol,
+                        currencyCode = currencyCode,
                         onDelete    = { deletingInvest = invest },
                         onWithdraw  = { withdrawingInvest = invest },
                         onEdit   = { editingInvest = invest },
@@ -301,7 +304,7 @@ val currentProject by viewModel.currentProject.collectAsState()
 }
 
 @Composable
-fun InvestmentCard(invest: Investment, currencySymbol: String = "₹", onDelete: () -> Unit, onEdit: () -> Unit, onUpdate: () -> Unit, onViewHistory: () -> Unit, onWithdraw: () -> Unit = {}) {
+fun InvestmentCard(invest: Investment, currencySymbol: String = "₹", currencyCode: String = "INR", onDelete: () -> Unit, onEdit: () -> Unit, onUpdate: () -> Unit, onViewHistory: () -> Unit, onWithdraw: () -> Unit = {}) {
     val growth = invest.currentVal - (invest.invested - invest.withdrawn)
     val growthPercent = if (invest.invested > 0) (growth / invest.invested) * 100 else 0.0
     val isProfit = growth >= 0
@@ -370,7 +373,8 @@ fun InvestmentCard(invest: Investment, currencySymbol: String = "₹", onDelete:
                     Text("Gain / Loss", style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text(
-                        "${if (isProfit) "+" else ""}$currencySymbol ${String.format(Locale.getDefault(), "%,.0f", kotlin.math.abs(growth))}",
+                        if (isProfit) "+${CurrencyFormatter.hero(growth, currencyCode)}"
+                        else          CurrencyFormatter.negative(growth, currencyCode),
                         style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                         color = if (isProfit) Emerald500 else SemanticRed
                     )

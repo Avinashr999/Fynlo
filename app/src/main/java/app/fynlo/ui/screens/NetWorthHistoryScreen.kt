@@ -24,6 +24,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.fynlo.FinanceViewModel
 import app.fynlo.data.model.NetWorthSnapshot
+import app.fynlo.logic.CurrencyFormatter
 import java.util.Locale
 import app.fynlo.ui.theme.*
 
@@ -32,7 +33,8 @@ fun NetWorthHistoryScreen(viewModel: FinanceViewModel) {
     val snapshots by viewModel.getNetWorthSnapshots().collectAsState(initial = emptyList())
     val summary   by viewModel.financialSummary.collectAsState()
     val currentProject by viewModel.currentProject.collectAsState()
-    val currencySymbol = app.fynlo.logic.CurrencyUtils.symbolFor(currentProject?.currency ?: "INR")
+    val currencyCode   = currentProject?.currency ?: "INR"
+    val currencySymbol = app.fynlo.logic.CurrencyUtils.symbolFor(currencyCode)
     val locale    = remember { Locale.getDefault() }
 
     // Save today's snapshot on screen open
@@ -54,7 +56,7 @@ fun NetWorthHistoryScreen(viewModel: FinanceViewModel) {
         Column(Modifier.fillMaxWidth().padding(top = 4.dp)) {
             Text("Current Net Worth", style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text("$currencySymbol ${String.format(locale, "%,.2f", summary.netWorth)}",
+            Text(CurrencyFormatter.hero(summary.netWorth, currencyCode, locale),
                 style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.ExtraBold),
                 color = if (summary.netWorth >= 0) Emerald500 else SemanticRed)
             Text("${sorted.size} snapshots recorded", style = MaterialTheme.typography.bodySmall,
@@ -125,8 +127,8 @@ fun NetWorthHistoryScreen(viewModel: FinanceViewModel) {
             val changePct = if (first != 0.0) (change / Math.abs(first)) * 100 else 0.0
 
             Row(Modifier.fillMaxWidth(), Arrangement.spacedBy(10.dp)) {
-                StatCard("Highest", "$currencySymbol${String.format(locale, "%,.0f", sorted.maxOf { it.netWorth })}", Emerald500, Modifier.weight(1f))
-                StatCard("Lowest",  "$currencySymbol${String.format(locale, "%,.0f", sorted.minOf { it.netWorth })}", SemanticRed, Modifier.weight(1f))
+                StatCard("Highest", CurrencyFormatter.hero(sorted.maxOf { it.netWorth }, currencyCode, locale), Emerald500, Modifier.weight(1f))
+                StatCard("Lowest",  CurrencyFormatter.hero(sorted.minOf { it.netWorth }, currencyCode, locale), SemanticRed, Modifier.weight(1f))
                 StatCard("Change",  "${if (change >= 0) "+" else ""}${String.format(locale, "%.1f", changePct)}%",
                     if (change >= 0) Emerald500 else SemanticRed, Modifier.weight(1f))
             }

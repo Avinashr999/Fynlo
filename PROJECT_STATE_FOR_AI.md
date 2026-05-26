@@ -158,7 +158,7 @@ AI_AGENT_PROTOCOL.md to match.
 
 # Fynlo - Complete AI Portability File
 **Project Name**: Fynlo
-**Version**: 3.2.13 on `master` (`versionName = "3.2.13"`, `versionCode = 136`). All four Sprint-1 P0 clusters closed (C01 / C02 / C03a / C05). Three P1 Sprint 2 clusters closed (C04 at 3.2.6, C06 + C07 at 3.2.12). **C08 in flight — Stage 1 (CurrencyFormatter foundation + 33 tests) shipped at 3.2.13. Stages 2-4 (51 + 189 call-site migrations + export fixes) ship as 3.2.14, 3.2.15, 3.2.16.** Internal milestone markers only — per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens until every `UX_AUDIT` cluster (P0 through P3) is closed.
+**Version**: 3.2.14 on `master` (`versionName = "3.2.14"`, `versionCode = 137`). All four Sprint-1 P0 clusters closed (C01 / C02 / C03a / C05). Three P1 Sprint 2 clusters closed (C04 at 3.2.6, C06 + C07 at 3.2.12). **C08 in flight — Stage 1 (CurrencyFormatter foundation + 33 tests) at 3.2.13, Stage 2 (Hero/ListRow/Negative + truncation fixes, ~34 sites + 6 truncation fixes across 12 files via 4 parallel agents) at 3.2.14. Stages 3-4 (Detail sweep ~189 sites + export fixes) still ahead as 3.2.15 / 3.2.16.** Internal milestone markers only — per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens until every `UX_AUDIT` cluster (P0 through P3) is closed.
 **Platform**: Android (Kotlin, Jetpack Compose, Room — Gradle 9.4.1, AGP 9.2.1, Room 2.8.4, KSP 2.3.7, Kotlin 2.2.10)
 
 ## 1. Project Overview
@@ -345,6 +345,45 @@ in the APK).
 ## 6. Journal
 
 **Newest first.** Each entry: date · cluster(s) closed/touched · commit(s) · one-paragraph why-and-what.
+
+### 2026-05-27 — 3.2.14 (C08 Stage 2: Hero/ListRow/Negative + truncation fixes — 4 parallel agents)
+
+**Type:** Stage 2 of 4 for C08. Highest-impact call-site migrations to the `CurrencyFormatter` foundation shipped in 3.2.13. Four parallel agents grouped by domain to keep file ownership clean.
+
+**Internal milestone:** `3.2.14` / `versionCode = 137`. No Play Console upload per release-cadence ADR.
+
+**Agent grouping (no file overlap, executed in parallel, all 4 BUILD SUCCESSFUL first try):**
+
+| Agent | Files | Migrations |
+|---|---|---|
+| A — Dashboard | HomeScreen, HomeScreenModern, NetWorthHistoryScreen, ReportsHubScreen | 14 direct Hero + ~12 transitive (via local `fmt(v)` helpers) + 2 Negative |
+| B — Detail cards + truncation | AccountStatementScreen, CustomerDetailScreen, DebtScreen | 3 Hero + 3 CRITICAL truncation fixes (`CustomerDetailScreen.kt:199-201` was dropping decimal precision via `.toInt()`) |
+| C — Interest + Analytics | InterestIncomeScreen, AnalyticsComponents | 3 ListRow + duplicate `fmtK()` helper deleted + 1 CRITICAL truncation fix |
+| D — Negative + InvestmentDialog | BudgetScreen, InvestmentScreen, InvestmentDialog | 2 Negative + 1 CRITICAL truncation fix |
+
+**Total sites:** ~34 direct migrations + ~12 transitive via helper functions + 6 truncation fixes = **~52 sites**.
+
+**Visible UX changes worth flagging on smoke:**
+
+1. **Indian lakh-crore grouping everywhere on Dashboard.** `₹241,663` → `₹2,41,663`. Applies to net worth, total assets/liabilities, account balances, customer outstanding, debt outstanding — anywhere the user has INR (or NPR/LKR/BDT) project currency.
+2. **`.2f` precision dropped to `.0f`** on `NetWorthHistoryScreen` Current Net Worth + `AccountStatementScreen` Current Balance. Per audit design-system spec (`Hero = no decimals`). If user wants cents back, that's a design-system signature tweak — but audit was explicit.
+3. **`−` en-dash on negatives** everywhere instead of mixed `-` / `(parens)` / inconsistent prefixes. Renders more legibly.
+4. **No more silent decimal truncation** on 3 critical sites:
+   - `CustomerDetailScreen.kt:199-201` — your `₹1499.50` outstanding now rounds to `₹1,500` for display (Detail style) instead of truncating to `₹1499`.
+   - `AnalyticsComponents.kt:50` — spending breakdown amounts.
+   - `InvestmentDialog.kt:62` — edit-amount text-field default.
+
+**Key architectural patterns established:**
+
+- **`currencyCode` lives alongside `currencySymbol`** in each migrated screen. Symbol is kept because Detail-style sites (Stage 3 scope) still use it. Stage 3 will prune `currencySymbol` once those last call sites migrate.
+- **Compose components got `currencyCode: String = "INR"` default params** (`AnalyticsComponents.SpendingAnalyticsCard`, `InvestmentCard`, `BudgetCard`). Default preserves preview/test composability; existing call sites unaffected.
+- **`fmt(v)` local helpers migrated once** in `HomeScreenModern` + `ReportsHubScreen` — single-point edit transitively migrates ~12 call sites per file. Pattern worth replicating in Stage 3 for screens with many similar sites.
+
+**Implementation gotcha (logged for Stage 3):** First incremental build after Stage 2 edits hit a transient Hilt/KSP cache glitch (`NoSuchFileException` on `app/build/generated/ksp/prodDebug/java/dagger`). A `--rerun-tasks` clean rebuild resolved. Stage 3 worker may see this on first run; just rebuild.
+
+**Data-integrity gate state:** unchanged at **112 tests across 9 classes**, 0 failures (pure call-site refactor — no logic change; `CurrencyFormatter` itself was already fully tested in Stage 1).
+
+**Next:** Stage 3 — the Detail sweep (~189 sites across the dialog files, list rows, card body text). Plan to split across more parallel agents (Lending/Debt dialogs 60+ sites alone). Then Stage 4: PDF + XLSX export migration (XLSX numeric-cell fix is the load-bearing one — currently stored as strings, breaking Excel formulas).
 
 ### 2026-05-27 — 3.2.13 (C08 Stage 1: CurrencyFormatter foundation)
 

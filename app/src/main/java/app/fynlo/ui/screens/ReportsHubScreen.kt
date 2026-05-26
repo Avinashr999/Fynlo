@@ -32,6 +32,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.fynlo.FinanceViewModel
+import app.fynlo.logic.CurrencyFormatter
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -51,7 +52,8 @@ fun ReportsHubScreen(
     val transactions  by viewModel.transactions.collectAsState()
     val summary       by viewModel.financialSummary.collectAsState()
     val currentProject by viewModel.currentProject.collectAsState()
-    val currencySymbol = app.fynlo.logic.CurrencyUtils.symbolFor(currentProject?.currency ?: "INR")
+    val currencyCode   = currentProject?.currency ?: "INR"
+    val currencySymbol = app.fynlo.logic.CurrencyUtils.symbolFor(currencyCode)
     val snapshots     by viewModel.getNetWorthSnapshots().collectAsState(initial = emptyList())
     val locale        = remember { Locale.getDefault() }
 
@@ -102,7 +104,7 @@ fun ReportsHubScreen(
     val red   = SemanticRed
     val blue  = SemanticBlue
 
-    fun fmt(v: Double) = "$currencySymbol${String.format(locale, "%,.0f", v)}"
+    fun fmt(v: Double) = CurrencyFormatter.hero(v, currencyCode, locale)
 
     Column(modifier = Modifier.fillMaxSize()) {
         PremiumScreenHeader("Reports", "Income, expenses & net worth")
@@ -238,7 +240,7 @@ fun ReportsHubScreen(
                     Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
                         Text(sortedSnaps.first().date, style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text("$currencySymbol${String.format(locale, "%,.0f", summary.netWorth)}",
+                        Text(CurrencyFormatter.hero(summary.netWorth, currencyCode, locale),
                             style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
                             color = green)
                         Text(sortedSnaps.last().date, style = MaterialTheme.typography.labelSmall,

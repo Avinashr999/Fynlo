@@ -17,6 +17,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import app.fynlo.FinanceViewModel
+import app.fynlo.logic.CurrencyFormatter
 import java.util.Locale
 import app.fynlo.ui.theme.*
 
@@ -30,7 +31,8 @@ fun AccountStatementScreen(
     val transactions by viewModel.transactions.collectAsState()
     val accounts     by viewModel.allAccountsUnfiltered.collectAsState()
     val currentProject by viewModel.currentProject.collectAsState()
-    val currencySymbol = app.fynlo.logic.CurrencyUtils.symbolFor(currentProject?.currency ?: "INR")
+    val currencyCode = currentProject?.currency ?: "INR"
+    val currencySymbol = app.fynlo.logic.CurrencyUtils.symbolFor(currencyCode)
     val account      = accounts.find { it.name == accountName }
     val locale       = remember { Locale.getDefault() }
 
@@ -80,7 +82,7 @@ fun AccountStatementScreen(
                     Text("Current Balance", style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text(
-                        "$currencySymbol${String.format(locale, "%,.2f", account.balance)}",
+                        CurrencyFormatter.hero(account.balance, currencyCode, locale),
                         style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.ExtraBold),
                         color = if (account.balance >= 0) Emerald500 else SemanticRed
                     )

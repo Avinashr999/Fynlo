@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import app.fynlo.FinanceViewModel
 import app.fynlo.data.model.Borrower
 import app.fynlo.data.model.Payment
+import app.fynlo.logic.CurrencyFormatter
 import app.fynlo.logic.DateUtils
 import app.fynlo.logic.InterestEngine
 import app.fynlo.ui.components.AddLendingDialog
@@ -46,7 +47,9 @@ val borrowers by viewModel.borrowers.collectAsState()
     val allPayments by viewModel.payments.collectAsState()
     val accounts by viewModel.accounts.collectAsState()
     val currentProject by viewModel.currentProject.collectAsState()
-    val currencySymbol = app.fynlo.logic.CurrencyUtils.symbolFor(currentProject?.currency ?: "INR")
+    val currencyCode = currentProject?.currency ?: "INR"
+    val currencySymbol = app.fynlo.logic.CurrencyUtils.symbolFor(currencyCode)
+    val locale = Locale.getDefault()
 
     val borrower = borrowers.find { it.id == borrowerId }
 
@@ -184,7 +187,7 @@ val borrowers by viewModel.borrowers.collectAsState()
                     Text("Current Balance", style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text(
-                        "$currencySymbol${String.format(Locale.getDefault(), "%,.0f", totalOutstanding)}",
+                        CurrencyFormatter.hero(totalOutstanding, currencyCode, locale),
                         style = MaterialTheme.typography.displaySmall.copy(
                             fontWeight = FontWeight.ExtraBold,
                             color = if (totalOutstanding > 0) MaterialTheme.colorScheme.error
@@ -196,9 +199,9 @@ val borrowers by viewModel.borrowers.collectAsState()
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        DetailItem("Principal", "$currencySymbol${borrower.amount.toInt()}")
-                        DetailItem("Interest",  "$currencySymbol${interest.toInt()}")
-                        DetailItem("Paid",      "$currencySymbol${borrower.paid.toInt()}")
+                        DetailItem("Principal", CurrencyFormatter.detail(borrower.amount, currencyCode, locale))
+                        DetailItem("Interest",  CurrencyFormatter.detail(interest, currencyCode, locale))
+                        DetailItem("Paid",      CurrencyFormatter.detail(borrower.paid, currencyCode, locale))
                     }
                     if (borrower.rate > 0) {
                         Spacer(Modifier.height(8.dp))

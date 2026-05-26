@@ -25,6 +25,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.fynlo.FinanceViewModel
+import app.fynlo.logic.CurrencyFormatter
 import app.fynlo.ui.components.AccountGrowthIndicator
 import app.fynlo.ui.components.WealthDistributionBar
 import app.fynlo.ui.components.ProjectSwitcherChip
@@ -43,7 +44,8 @@ fun HomeScreen(viewModel: FinanceViewModel, onNavigateToScreen: (String) -> Unit
     val currentProject   by viewModel.currentProject.collectAsState()
     val isSyncReady      by viewModel.isSyncReady.collectAsState()
     val locale           = java.util.Locale.getDefault()
-    val currencySymbol   = app.fynlo.logic.CurrencyUtils.symbolFor(currentProject?.currency ?: "INR")
+    val currencyCode     = currentProject?.currency ?: "INR"
+    val currencySymbol   = app.fynlo.logic.CurrencyUtils.symbolFor(currencyCode)
     var showAddTxn       by remember { mutableStateOf(false) }
     val netWorthSnapshots by viewModel.getNetWorthSnapshots().collectAsState(initial = emptyList())
 
@@ -182,7 +184,7 @@ fun HomeScreen(viewModel: FinanceViewModel, onNavigateToScreen: (String) -> Unit
                                 color = Emerald200.copy(alpha = 0.8f))
                             Spacer(Modifier.height(4.dp))
                             Text(
-                                text  = "$currencySymbol ${String.format(locale, "%,.0f", summary.netWorth)}",
+                                text  = CurrencyFormatter.hero(summary.netWorth, currencyCode, locale),
                                 style = MaterialTheme.typography.headlineLarge.copy(
                                     fontWeight = FontWeight.ExtraBold, color = Color.White)
                             )
@@ -193,7 +195,7 @@ fun HomeScreen(viewModel: FinanceViewModel, onNavigateToScreen: (String) -> Unit
                         Column {
                             Text("Assets", style = MaterialTheme.typography.labelSmall,
                                 color = Emerald200.copy(alpha = 0.6f))
-                            Text("$currencySymbol${String.format(locale, "%,.0f", summary.totalAssets)}",
+                            Text(CurrencyFormatter.hero(summary.totalAssets, currencyCode, locale),
                                 style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
                                 color = Color.White.copy(alpha = 0.9f))
                         }
@@ -202,7 +204,7 @@ fun HomeScreen(viewModel: FinanceViewModel, onNavigateToScreen: (String) -> Unit
                         Column {
                             Text("Liabilities", style = MaterialTheme.typography.labelSmall,
                                 color = Emerald200.copy(alpha = 0.6f))
-                            Text("$currencySymbol${String.format(locale, "%,.0f", summary.totalDebtPrincipal + summary.totalDebtInterest)}",
+                            Text(CurrencyFormatter.hero(summary.totalDebtPrincipal + summary.totalDebtInterest, currencyCode, locale),
                                 style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
                                 color = Color.White.copy(alpha = 0.9f))
                         }
@@ -243,7 +245,8 @@ fun HomeScreen(viewModel: FinanceViewModel, onNavigateToScreen: (String) -> Unit
                                 drawCircle(sparkColor, radius = 4.dp.toPx(), center = pts.last())
                             }
                             Column(horizontalAlignment = Alignment.End) {
-                                val trendStr = if (trend >= 0) "+₹${String.format("%,.0f", trend)}" else "-₹${String.format("%,.0f", -trend)}"
+                                val trendStr = if (trend >= 0) "+${CurrencyFormatter.hero(trend, currencyCode, locale)}"
+                                               else            CurrencyFormatter.hero(trend, currencyCode, locale)
                                 Text(trendStr, style = MaterialTheme.typography.labelSmall.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.Bold), color = sparkColor)
                                 Text("${recentSnaps.size}d trend", style = MaterialTheme.typography.labelSmall, color = Emerald200.copy(alpha = 0.5f))
                             }
@@ -288,7 +291,7 @@ fun HomeScreen(viewModel: FinanceViewModel, onNavigateToScreen: (String) -> Unit
                                 AccountGrowthIndicator(growth, currencySymbol, locale)
                             }
                         }
-                        Text("$currencySymbol ${String.format(locale, "%,.0f", balance)}",
+                        Text(CurrencyFormatter.hero(balance, currencyCode, locale),
                             style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.ExtraBold))
                     }
                 }
@@ -311,13 +314,13 @@ fun HomeScreen(viewModel: FinanceViewModel, onNavigateToScreen: (String) -> Unit
         Text("Portfolio Efficiency", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
         Spacer(Modifier.height(12.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            MetricCard("Idle Cash", "$currencySymbol${String.format(locale, "%,.0f", summary.totalCash)}", SemanticBlue, Modifier.weight(1f)) { activeBreakdownType = BreakdownType.IDLE_CASH }
-            MetricCard("Growing Assets", "$currencySymbol${String.format(locale, "%,.0f", summary.totalInvestments + summary.totalInterestLoans)}", SemanticAmber, Modifier.weight(1f)) { activeBreakdownType = BreakdownType.GROWING_ASSETS }
+            MetricCard("Idle Cash", CurrencyFormatter.hero(summary.totalCash, currencyCode, locale), SemanticBlue, Modifier.weight(1f)) { activeBreakdownType = BreakdownType.IDLE_CASH }
+            MetricCard("Growing Assets", CurrencyFormatter.hero(summary.totalInvestments + summary.totalInterestLoans, currencyCode, locale), SemanticAmber, Modifier.weight(1f)) { activeBreakdownType = BreakdownType.GROWING_ASSETS }
         }
         Spacer(Modifier.height(10.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            MetricCard("Hand Loans", "$currencySymbol${String.format(locale, "%,.0f", summary.totalHandLoans)}", Carbon500, Modifier.weight(1f)) { activeBreakdownType = BreakdownType.HAND_LOANS }
-            MetricCard("Total Owed", "$currencySymbol${String.format(locale, "%,.0f", summary.totalDebtPrincipal + summary.totalDebtInterest)}", SemanticRed, Modifier.weight(1f)) { onNavigateToScreen("debts") }
+            MetricCard("Hand Loans", CurrencyFormatter.hero(summary.totalHandLoans, currencyCode, locale), Carbon500, Modifier.weight(1f)) { activeBreakdownType = BreakdownType.HAND_LOANS }
+            MetricCard("Total Owed", CurrencyFormatter.hero(summary.totalDebtPrincipal + summary.totalDebtInterest, currencyCode, locale), SemanticRed, Modifier.weight(1f)) { onNavigateToScreen("debts") }
         }
 
         Spacer(Modifier.height(FabBottomPadding))

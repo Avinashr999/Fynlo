@@ -10,10 +10,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import app.fynlo.logic.CurrencyFormatter
 import app.fynlo.ui.theme.*
+import java.util.Locale
 
 @Composable
-fun SpendingAnalyticsCard(data: Map<String, Double>, currencySymbol: String = "₹") {
+fun SpendingAnalyticsCard(
+    data: Map<String, Double>,
+    currencySymbol: String = "₹",
+    currencyCode: String = "INR",
+    locale: Locale = Locale.getDefault(),
+) {
     if (data.isEmpty()) return
 
     val total = data.values.sum()
@@ -47,7 +54,7 @@ fun SpendingAnalyticsCard(data: Map<String, Double>, currencySymbol: String = "�
                             Spacer(Modifier.width(8.dp))
                             Text(category, style = MaterialTheme.typography.bodyMedium)
                         }
-                        Text("$currencySymbol${amount.toInt()} ($percent%)", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold))
+                        Text("${CurrencyFormatter.listRow(amount, currencyCode, locale)} ($percent%)", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold))
                     }
                     Spacer(modifier = Modifier.height(4.dp))
                     LinearProgressIndicator(
