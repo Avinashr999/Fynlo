@@ -149,7 +149,7 @@ AI_AGENT_PROTOCOL.md to match.
 
 # Fynlo - Complete AI Portability File
 **Project Name**: Fynlo
-**Version**: 3.2.1 on `master` (heading toward 3.2.2 — the C01-fix release; bump in `app/build.gradle.kts` `versionName` and `versionCode` is part of the 3.2.2 promotion checklist per `RELEASE_PROTOCOL.md §4`)
+**Version**: 3.2.2 on `master` (the C01-fix release — `versionName = "3.2.2"`, `versionCode = 125` in `app/build.gradle.kts`). Tag `v3.2.2` is not pushed yet; final smoke test (`RELEASE_PROTOCOL.md §3.5`) and macrobench re-run (§3.4) are the remaining gates before promotion to Play Store Internal Testing.
 **Platform**: Android (Kotlin, Jetpack Compose, Room — Gradle 9.4.1, AGP 9.2.1, Room 2.8.4, KSP 2.3.7, Kotlin 2.2.10)
 
 ## 1. Project Overview

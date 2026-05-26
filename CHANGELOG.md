@@ -53,10 +53,10 @@ All notable changes to Fynlo are documented here.
 ### Still TODO before 3.2.2 ships
 *(Not blockers for the changelog entry itself, but listed here so the release procedure has a single source of truth.)*
 
-- `app/build.gradle.kts` `versionName` / `versionCode` bump (`3.2.1` → `3.2.2`, `124` → `125`).
-- Instrumented migration test (`androidx.room:room-testing` `MigrationTestHelper` for `v15` → `v16`) — `RELEASE_PROTOCOL.md §8` gate 3.
+- ~~`app/build.gradle.kts` `versionName` / `versionCode` bump~~ ✅ done (`versionName = "3.2.2"`, `versionCode = 125`).
+- ~~Instrumented migration test~~ ✅ done — `FynloDatabaseMigrationTest` (5 cases, instrumented; passed on CPH2767 / Android 16, 2026-05-26). CI integration via Firebase Test Lab is a separate follow-up.
 - `UX_AUDIT_2026-05-25.md §C01` status flip to "Closed in 3.2.2" once the tag lands.
-- Macrobenchmark re-run + smoke test (`RELEASE_PROTOCOL.md §3.4`, §3.5).
+- Macrobenchmark re-run + manual smoke test (`RELEASE_PROTOCOL.md §3.4`, §3.5) — need a device.
 
 ## [3.2.0] - 2026-05-16
 
