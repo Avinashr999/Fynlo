@@ -158,7 +158,7 @@ AI_AGENT_PROTOCOL.md to match.
 
 # Fynlo - Complete AI Portability File
 **Project Name**: Fynlo
-**Version**: 3.2.5 on `master` (`versionName = "3.2.5"`, `versionCode = 128`). C01 closed at 3.2.2 → C02 at 3.2.3 → C03a at 3.2.4 → **C05 at 3.2.5 = all four Sprint-1 P0 clusters closed**. Internal milestone markers only — per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens until every `UX_AUDIT` cluster (P0 through P3) is closed. Next: Sprint 2 begins (P1 clusters — C04 smart defaults, C06 FAB overlap, C07 duplicate FAB, etc.).
+**Version**: 3.2.6 on `master` (`versionName = "3.2.6"`, `versionCode = 129`). C01 closed at 3.2.2 → C02 at 3.2.3 → C03a at 3.2.4 → C05 at 3.2.5 (all four Sprint-1 P0 clusters closed) → **C04 at 3.2.6 = first P1 Sprint 2 cluster closed**. Internal milestone markers only — per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens until every `UX_AUDIT` cluster (P0 through P3) is closed. Next P1: the C06 / C07 FAB-ownership pair (they share the same Scaffold-vs-screen question so they close as a unit).
 **Platform**: Android (Kotlin, Jetpack Compose, Room — Gradle 9.4.1, AGP 9.2.1, Room 2.8.4, KSP 2.3.7, Kotlin 2.2.10)
 
 ## 1. Project Overview
@@ -345,6 +345,31 @@ in the APK).
 ## 6. Journal
 
 **Newest first.** Each entry: date · cluster(s) closed/touched · commit(s) · one-paragraph why-and-what.
+
+### 2026-05-27 — C04 closed in 3.2.6 (Stage 3 + Stage 2.5)
+
+**Cluster:** C04 (P1 Sprint 2, smart defaults). First P1 cluster to close. Stages 1 (data layer, 3.2.5-era) and 2 (`AddTransactionDialog` recency wiring, commit `024cdfb`) shipped previously; this commit closes the cluster with Stage 3 (three remaining picker surfaces) + Stage 2.5 (the Custom-value re-prefill gap in `AddTransactionDialog`).
+**Internal milestone:** `3.2.6` / `versionCode = 129`. No Play Console upload per release-cadence ADR.
+
+**Three parallel-agent surfaces closed in Stage 3:**
+
+1. **RecurringScreen.AddRecurringDialog** — free-text category `OutlinedTextField` replaced with the C05-pattern `FlowRow` of `FilterChip`s + trailing "Custom" chip + conditional custom-name input. `LaunchedEffect(isIncome)` uses the same three-case `when` as `AddTransactionDialog` (null → blank both; recent in list → chip; recent not in list → "Custom" + restore text). Submit calls `viewModel.recordRecurringCategory(r.type == "Income", r.category)`. Keyed off `FormIds.ADD_RECURRING` to isolate from one-off AddTransaction. Split by type so Income recurring recency doesn't bleed into Expense. (This also resolves the C05 "Out-of-scope: Recurring still free-text" deferral.)
+
+2. **BudgetScreen.AddBudgetDialog** — chained-fallback prefill in `LaunchedEffect(Unit)`: (a) `viewModel.suggestBudgetCategory()` — the audit's load-bearing **highest-spend-uncapped** heuristic, NOT pure recency; (b) `viewModel.rememberLastBudgetCategory()` fallback when every spent-on category is already budget-capped; (c) blank on fresh install. Category input also converted from `LazyRow` + free-text to the C05 chip pattern.
+
+3. **SettingsScreen currency picker** — `ExposedDropdownMenuBox` extended. Initial selection via `viewModel.rememberLastCurrencyOrLocale(LocalConfiguration.current.locales[0])` — recency wins if any, otherwise `Currency.getInstance(locale).currencyCode`, with "INR" final fallback for locales without a country. Menu renders a conditional "Recently used" sub-header + ≤5 rows + `HorizontalDivider` above the full alphabetical list from `CurrencyUtils.supported`. Hidden when `observeRecentCurrencies()` is empty. Each `DropdownMenuItem` writes to both `UserPreferences.setDefaultCurrency` (canonical pref) AND `viewModel.recordCurrency(code)` (recency).
+
+**Stage 2.5 (folded in):** the C04 Stage 2 `LaunchedEffect(isIncome)` block silently dropped Custom-typed recency values like "Charity". Now a three-case `when`: null → blank both; recent in chip list → chip + clear customCategory; recent NOT in list → `selectedCategory = "Custom"` AND `customCategory = recent`, so the typed text re-renders below the chip row.
+
+**Pure-function extraction:** the budget heuristic lives in `app.fynlo.data.BudgetSuggestion.suggest(cappedCategories, expenseAnalytics)` — no Android, no coroutines, no Hilt. Testing the ViewModel method directly would have required a Room + StateFlow + Hilt harness for a function whose entire contract is "given two collections, pick a string." The pure helper got 12 exhaustive cases instead, in `BudgetSuggestionDataIntegrityTest`. The ViewModel method is a thin delegate.
+
+**Data-integrity gate state:** `*DataIntegrity*` + `*Recalculate*` filter now matches **71 tests across 8 classes** (+12 from `BudgetSuggestionDataIntegrityTest`, +8 from `CurrencyPickerOrderDataIntegrityTest`, the latter covering the flat-dedup display-order helper). Up from 39 / 5 at 3.2.5 → 51 / 6 mid-Stage 2 → 71 / 8 here. All pass.
+
+**No DB migration** in 3.2.6 — `@Database` version unchanged at 17, backup `schemaVersion` unchanged at 2. `RecentlyUsedSnapshot` JSON shape unchanged from Stage 1; only new slots inside it (`add_recurring → category_income/expense`, `add_budget → category_expense`, `settings_currency → currency`). Empty slots default to `[]` so installs that skip directly from a pre-C04 version read the empty snapshot cleanly.
+
+**Execution pattern note (for future cluster closures):** Phase 1 (orchestrator-serial: foundation in ViewModel + Stage 2.5 in TransactionDialog) → Phase 2 (three parallel general-purpose agents on RecurringScreen / BudgetScreen / SettingsScreen, one file each, zero merge risk) → Phase 3 (orchestrator-serial: verification + version + docs + commit). This is the highest-quality way to close a multi-surface cluster — each agent had a single screen to reason about, domain quality on the wiring was higher than one agent doing all three sequentially, and the build-success rate across the three was 3/3 first try.
+
+**Next P1:** C06 (FAB overlap) + C07 (duplicate FAB) — they share the same Scaffold-vs-screen ownership question so they close as a unit.
 
 ### 2026-05-26 — C04 Stage 2 landed (AddTransactionDialog category prefill)
 

@@ -60,18 +60,36 @@ fun AddTransactionDialog(
          else          app.fynlo.data.Categories.EXPENSE) + "Custom"
     }
     var selectedCategory by remember { mutableStateOf("") }
-    // C04 (subsuming C05's reset): on every toggle flip — and on initial
-    // open — ask the recency layer for the user's most-recently-used
-    // category for the new type. If it's still in the curated chip list
-    // (`Categories.INCOME` / `Categories.EXPENSE`), pre-select it;
-    // otherwise fall back to blank ("user picks fresh"). Note that a
-    // recent value that isn't a chip-list entry (e.g. a user-typed
-    // "Charity" via Custom) is silently dropped here — re-prefilling
-    // Custom values is a Stage 2.5 follow-up that needs to set
-    // `customCategory` and switch `selectedCategory` to "Custom" together.
+    // C04 (subsuming C05's reset, completed by Stage 2.5): on every toggle
+    // flip — and on initial open — ask the recency layer for the user's
+    // most-recently-used category for the new type. Three cases:
+    //   1. No recency yet (fresh install or first time using this type)
+    //      → leave both fields blank so the user picks fresh.
+    //   2. Recent value is in the curated chip list (`Categories.INCOME`
+    //      / `Categories.EXPENSE`) → pre-select the chip, clear any
+    //      lingering `customCategory` from a previous toggle flip.
+    //   3. Recent value is a Custom-typed string (e.g. user typed
+    //      "Charity") → set `selectedCategory = "Custom"` AND restore
+    //      `customCategory = recent` together so the user sees their
+    //      previously-typed value re-rendered in the text input below
+    //      the chip row. This is the Stage 2.5 fix; without it the
+    //      Custom-path recency was silently dropped.
     LaunchedEffect(isIncome) {
         val recent = rememberLastCategory(isIncome)
-        selectedCategory = if (recent != null && recent in categories) recent else ""
+        when {
+            recent == null -> {
+                selectedCategory = ""
+                customCategory = ""
+            }
+            recent in categories -> {
+                selectedCategory = recent
+                customCategory = ""
+            }
+            else -> {
+                selectedCategory = "Custom"
+                customCategory = recent
+            }
+        }
     }
 
     val sources = listOf("Cash", "Bank", "Investment", "Debts", "Custom")

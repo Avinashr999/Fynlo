@@ -327,6 +327,124 @@ class FinanceViewModel @Inject constructor(
         }
     }
 
+    // ── C04 Stage 3: recurring transaction category recency ───────────────
+    // Mirrors the AddTransaction methods but keyed off ADD_RECURRING so the
+    // user's "what category did I last assign to a recurring expense" memory
+    // doesn't bleed into / out of the one-off AddTransaction flow. Split by
+    // type for the same reason AddTransaction is — a recurring "Salary"
+    // income shouldn't prefill an "Expense" recurring as Salary.
+
+    suspend fun rememberLastRecurringCategory(isIncome: Boolean): String? {
+        val fieldId = if (isIncome) RecentlyUsedTracker.FieldIds.CATEGORY_INCOME
+                      else          RecentlyUsedTracker.FieldIds.CATEGORY_EXPENSE
+        return recentlyUsedTracker.last(
+            RecentlyUsedTracker.FormIds.ADD_RECURRING,
+            fieldId,
+        )
+    }
+
+    fun recordRecurringCategory(isIncome: Boolean, category: String) {
+        if (category.isBlank()) return
+        viewModelScope.launch(Dispatchers.IO) {
+            val fieldId = if (isIncome) RecentlyUsedTracker.FieldIds.CATEGORY_INCOME
+                          else          RecentlyUsedTracker.FieldIds.CATEGORY_EXPENSE
+            recentlyUsedTracker.record(
+                RecentlyUsedTracker.FormIds.ADD_RECURRING,
+                fieldId,
+                category,
+            )
+        }
+    }
+
+    // ── C04 Stage 3: budget category — heuristic-first prefill ────────────
+    // The audit's BudgetScreen criterion is "pre-select the category most
+    // likely to need a budget," which it defines as "the category with the
+    // biggest spend that doesn't already have a budget" — NOT pure recency.
+    // [suggestBudgetCategory] computes this; [rememberLastBudgetCategory]
+    // is the fallback used when there are no uncapped expenses (or no
+    // expenses at all). Callers should chain them:
+    //     viewModel.suggestBudgetCategory()
+    //         ?: viewModel.rememberLastBudgetCategory()
+    //         ?: ""   // fresh install, no spend, no recency
+
+    /**
+     * Highest-spend EXPENSE category that doesn't yet have a budget.
+     * `null` when every category the user has spent on is already
+     * budget-capped, or when there are no expense transactions at all.
+     */
+    fun suggestBudgetCategory(): String? =
+        app.fynlo.data.BudgetSuggestion.suggest(
+            cappedCategories = budgets.value.map { it.category }.toSet(),
+            expenseAnalytics = expenseAnalytics.value,
+        )
+
+    suspend fun rememberLastBudgetCategory(): String? =
+        recentlyUsedTracker.last(
+            RecentlyUsedTracker.FormIds.ADD_BUDGET,
+            RecentlyUsedTracker.FieldIds.CATEGORY_EXPENSE,
+        )
+
+    fun recordBudgetCategory(category: String) {
+        if (category.isBlank()) return
+        viewModelScope.launch(Dispatchers.IO) {
+            recentlyUsedTracker.record(
+                RecentlyUsedTracker.FormIds.ADD_BUDGET,
+                RecentlyUsedTracker.FieldIds.CATEGORY_EXPENSE,
+                category,
+            )
+        }
+    }
+
+    // ── C04 Stage 3: currency picker — locale-default-first prefill ───────
+    // On fresh install we have no recency, so the picker falls back to the
+    // device's locale-derived currency code (e.g., "INR" for an en_IN device,
+    // "USD" for en_US, "EUR" for fr_FR). Once the user has picked at least
+    // once, that pick wins — recency overrides locale, matching how every
+    // other recency-driven prefill in the app works.
+
+    /**
+     * Returns the user's most-recently-picked currency code, or the system
+     * locale's currency on first run. `Currency.getInstance(Locale)` can
+     * throw `IllegalArgumentException` for locales without a country
+     * (e.g., the bare `en` locale on some emulators); falls back to the
+     * existing app default ("INR") so the picker has *something* to render.
+     */
+    suspend fun rememberLastCurrencyOrLocale(
+        locale: java.util.Locale = java.util.Locale.getDefault(),
+    ): String {
+        recentlyUsedTracker.last(
+            RecentlyUsedTracker.FormIds.SETTINGS_CURRENCY,
+            RecentlyUsedTracker.FieldIds.CURRENCY,
+        )?.let { return it }
+        return runCatching { java.util.Currency.getInstance(locale).currencyCode }
+            .getOrDefault("INR")
+    }
+
+    fun recordCurrency(code: String) {
+        if (code.isBlank()) return
+        viewModelScope.launch(Dispatchers.IO) {
+            recentlyUsedTracker.record(
+                RecentlyUsedTracker.FormIds.SETTINGS_CURRENCY,
+                RecentlyUsedTracker.FieldIds.CURRENCY,
+                code,
+            )
+        }
+    }
+
+    // ── C04 Stage 3: top-N flows for grouped-picker UX ────────────────────
+    // For dropdowns (currency picker is the canonical case) — render a
+    // "Recently used" group at the top with these N entries, then the full
+    // alphabetical list below. Chip-based pickers (AddTransaction, Recurring,
+    // Budget) don't need this since FilterChip layout already shows every
+    // option equally; the prefill alone is the C04 win for those.
+
+    fun observeRecentCurrencies(n: Int = 5): kotlinx.coroutines.flow.Flow<List<String>> =
+        recentlyUsedTracker.observeTopN(
+            RecentlyUsedTracker.FormIds.SETTINGS_CURRENCY,
+            RecentlyUsedTracker.FieldIds.CURRENCY,
+            n,
+        )
+
     /**
      * C02 step 4: manual recalc that returns a before/after snapshot so the
      * Settings screen can show a result dialog ("Net worth: ₹268,081 → ₹241,663").

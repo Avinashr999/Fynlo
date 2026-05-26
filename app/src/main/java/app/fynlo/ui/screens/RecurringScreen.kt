@@ -19,6 +19,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import app.fynlo.FinanceViewModel
+import app.fynlo.data.Categories
 import app.fynlo.data.model.RecurringTransaction
 import app.fynlo.ui.theme.*
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -39,7 +40,16 @@ fun RecurringScreen(viewModel: FinanceViewModel) {
     if (showAddDialog) {
         AddRecurringDialog(
             onDismiss = { showAddDialog = false },
-            onConfirm = { r -> viewModel.addRecurringTransaction(r); showAddDialog = false }
+            onConfirm = { r ->
+                // C04 Stage 3: record recency BEFORE handing the txn over to
+                // the VM so the next dialog open prefills with this category.
+                // Records the FINAL resolved category (custom string when
+                // "Custom" was picked, else the chip label).
+                viewModel.recordRecurringCategory(r.type == "Income", r.category)
+                viewModel.addRecurringTransaction(r)
+                showAddDialog = false
+            },
+            rememberLastCategory = { isIncome -> viewModel.rememberLastRecurringCategory(isIncome) },
         )
     }
 
@@ -192,15 +202,62 @@ private fun RecurringCard(r: RecurringTransaction, isDue: Boolean = false, daysU
         }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun AddRecurringDialog(onDismiss: () -> Unit, onConfirm: (RecurringTransaction) -> Unit) {
+private fun AddRecurringDialog(
+    onDismiss: () -> Unit,
+    onConfirm: (RecurringTransaction) -> Unit,
+    // C04 Stage 3: optional recency hook. Default no-op keeps the dialog
+    // testable / previewable in isolation; the production call site wires
+    // `viewModel::rememberLastRecurringCategory`. Boolean arg mirrors the
+    // AddTransactionDialog contract so the tracker scopes recency by type.
+    rememberLastCategory: suspend (Boolean) -> String? = { null },
+) {
     var name       by remember { mutableStateOf("") }
     var type       by remember { mutableStateOf("Expense") }
     var amount     by remember { mutableStateOf("") }
-    var category   by remember { mutableStateOf("") }
+    var customCategory by remember { mutableStateOf("") }
     var fromAcct   by remember { mutableStateOf("") }
     var frequency  by remember { mutableStateOf("Monthly") }
     var dayOfMonth by remember { mutableStateOf("1") }
+
+    // C04 Stage 3: chip-picker category list, driven by the Income/Expense
+    // toggle. Mirrors AddTransactionDialog: curated list from `Categories`
+    // plus a trailing "Custom" sentinel for user-supplied values. Recomputed
+    // via `remember(type)` so toggling Income/Expense swaps the chip set
+    // immediately.
+    val isIncome = type == "Income"
+    val categories = remember(isIncome) {
+        (if (isIncome) Categories.INCOME else Categories.EXPENSE) + "Custom"
+    }
+    var selectedCategory by remember { mutableStateOf("") }
+
+    // C04 Stage 3: prefill the chip from recency on initial open and on every
+    // Income/Expense toggle flip. Three-case `when` mirrors Stage 2.5 logic
+    // from AddTransactionDialog:
+    //   1. null (no recency yet) → clear both fields, let the user pick fresh.
+    //   2. recent value is in the curated chip list → pre-select chip, clear
+    //      any lingering custom string from a prior toggle flip.
+    //   3. recent value is a user-typed Custom string → select "Custom" AND
+    //      restore the typed value into `customCategory` so it re-renders in
+    //      the text input below the chip row.
+    LaunchedEffect(isIncome) {
+        val recent = rememberLastCategory(isIncome)
+        when {
+            recent == null -> {
+                selectedCategory = ""
+                customCategory = ""
+            }
+            recent in categories -> {
+                selectedCategory = recent
+                customCategory = ""
+            }
+            else -> {
+                selectedCategory = "Custom"
+                customCategory = recent
+            }
+        }
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -223,9 +280,27 @@ private fun AddRecurringDialog(onDismiss: () -> Unit, onConfirm: (RecurringTrans
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp))
 
-                OutlinedTextField(value = category, onValueChange = { category = it },
-                    label = { Text("Category") }, singleLine = true,
-                    modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp))
+                // C04 Stage 3: replaced free-text "Category" OutlinedTextField
+                // with a chip-picker. "Custom" sentinel reveals the freeform
+                // input only when the user opts in, matching the AddTransaction
+                // dialog UX and keeping curated categories the default path.
+                Text("Category", style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    categories.forEach { cat ->
+                        FilterChip(
+                            selected = selectedCategory == cat,
+                            onClick = { selectedCategory = cat },
+                            label = { Text(cat) },
+                            shape = RoundedCornerShape(12.dp)
+                        )
+                    }
+                }
+                if (selectedCategory == "Custom") {
+                    OutlinedTextField(value = customCategory, onValueChange = { customCategory = it },
+                        label = { Text("Custom category name") }, singleLine = true,
+                        modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp))
+                }
 
                 OutlinedTextField(value = fromAcct, onValueChange = { fromAcct = it },
                     label = { Text("Account (e.g. HDFC Bank)") }, singleLine = true,
@@ -251,11 +326,19 @@ private fun AddRecurringDialog(onDismiss: () -> Unit, onConfirm: (RecurringTrans
             Button(
                 onClick = {
                     if (name.isNotBlank()) {
+                        // C04 Stage 3: resolve the final category — chip label
+                        // for curated picks, the user-typed string for Custom.
+                        // The outer call site uses this final value for both
+                        // the RecurringTransaction insert AND the recency
+                        // record so e.g. "Charity" (not "Custom") is what
+                        // re-prefills next time.
+                        val finalCategory =
+                            if (selectedCategory == "Custom") customCategory else selectedCategory
                         onConfirm(RecurringTransaction(
                             name       = name,
                             type       = type,
                             amount     = amount.toDoubleOrNull() ?: 0.0,
-                            category   = category,
+                            category   = finalCategory,
                             fromAcct   = if (type == "Expense") fromAcct else "",
                             toAcct     = if (type == "Income") fromAcct else "",
                             frequency  = frequency,

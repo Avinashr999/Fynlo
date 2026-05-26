@@ -2,6 +2,44 @@
 
 All notable changes to Fynlo are documented here.
 
+## [3.2.6] - 2026-05-27 *(Development milestone — C04 closure; not promoted per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`)*
+
+### Fixed
+- **C04 — smart defaults across picker surfaces.** First P1 Sprint 2 cluster closed. Three surfaces wired to `RecentlyUsedTracker` (Stage 1 data layer from 3.2.5's predecessor session), plus the AddTransactionDialog Stage 2.5 gap. Five-part fix list:
+  1. **AddTransactionDialog Stage 2.5.** `LaunchedEffect(isIncome)` is now a three-case `when`: (a) no recency → both fields blank; (b) recent in `Categories.INCOME` / `Categories.EXPENSE` → chip pre-selected, `customCategory` cleared; (c) recent is a Custom-typed string (e.g., "Charity") → `selectedCategory = "Custom"` AND `customCategory = recent` together, so the typed text re-renders below the chip row. Stage 2 (already in 3.2.5's tree) silently dropped case (c); this closes the gap.
+  2. **RecurringScreen.AddRecurringDialog → typed chip picker.** Free-text `OutlinedTextField` replaced with the C05-pattern `FlowRow` of `FilterChip`s from `Categories.INCOME` / `Categories.EXPENSE` + trailing "Custom" chip + conditional custom-name input. Same three-case `LaunchedEffect` prefill logic. `viewModel.rememberLastRecurringCategory(isIncome)` reads on open; `viewModel.recordRecurringCategory(r.type == "Income", r.category)` writes on submit. Keyed off `RecentlyUsedTracker.FormIds.ADD_RECURRING` so the Recurring slot is isolated from one-off AddTransaction. Split by type (income/expense) so a Salary recurring doesn't bleed into Expense recurring.
+  3. **BudgetScreen.AddBudgetDialog → chained-fallback heuristic prefill.** The audit's BudgetScreen criterion is **highest-spend-uncapped**, not pure recency. `LaunchedEffect(Unit)` resolves: (a) `viewModel.suggestBudgetCategory()` — highest-spend EXPENSE category not yet budget-capped; (b) if null, `viewModel.rememberLastBudgetCategory()` — pure-recency fallback for when every spent-on category is already capped; (c) if still null (fresh install), blank. Category input also converted from `LazyRow` + free-text to a `FlowRow` of `FilterChip`s + "Custom" trailing chip + conditional custom-name input — same C05 pattern as AddTransaction.
+  4. **SettingsScreen.kt currency picker → locale-default-first + "Recently used" sub-group.** `ExposedDropdownMenuBox` kept as the widget; menu content extended. Selection initialised via `viewModel.rememberLastCurrencyOrLocale(LocalConfiguration.current.locales[0])` — recency wins if any, otherwise `Currency.getInstance(locale).currencyCode` (e.g., `"INR"` for `en_IN`, `"USD"` for `en_US`, `"EUR"` for `fr_FR`), with `"INR"` as final fallback for locales without a country. Menu renders a conditional "Recently used" sub-header + ≤5 rows + `HorizontalDivider` above the full alphabetical list from `CurrencyUtils.supported`. Hidden entirely when `observeRecentCurrencies()` emits an empty list (fresh install). Each `DropdownMenuItem` writes to BOTH `UserPreferences.setDefaultCurrency` (canonical pref, unchanged) AND `viewModel.recordCurrency(code)` (recency layer).
+  5. **NEW `app.fynlo.data.BudgetSuggestion`** — pure `object BudgetSuggestion.suggest(cappedCategories: Set<String>, expenseAnalytics: Map<String, Double>): String?`. The Budget heuristic lives here as a pure function so it can be unit-tested without a Hilt + Room + StateFlow harness. `FinanceViewModel.suggestBudgetCategory()` is a thin delegate over it.
+
+### Added
+- **`app.fynlo.data.BudgetSuggestion`** (pure-function `object`) — see Fixed above.
+- **9 new methods on `FinanceViewModel`** (all keyed off `RecentlyUsedTracker` slots that already existed):
+  - `rememberLastRecurringCategory(isIncome) / recordRecurringCategory(isIncome, category)` — `FormIds.ADD_RECURRING`.
+  - `suggestBudgetCategory()` — delegates to `BudgetSuggestion.suggest(...)`.
+  - `rememberLastBudgetCategory() / recordBudgetCategory(category)` — `FormIds.ADD_BUDGET`.
+  - `rememberLastCurrencyOrLocale(locale = Locale.getDefault()) / recordCurrency(code)` — `FormIds.SETTINGS_CURRENCY`. Locale-fallback path uses `runCatching` to defend against locales without a country (some emulators).
+  - `observeRecentCurrencies(n = 5): Flow<List<String>>` — reactive top-N for the dropdown's "Recently used" group.
+- **`BudgetSuggestionDataIntegrityTest`** — 12 cases covering empty inputs, fully-capped state, mixed capped/uncapped (load-bearing), tie-break determinism, blank-category filter, zero/negative-spend filters, capped-set semantics.
+- **`CurrencyPickerOrderDataIntegrityTest`** — 8 cases covering the `buildCurrencyPickerOrder(recent, full)` helper that produces the dropdown's flat display order: empty-recent passthrough, recents-leading, dedup across both lists, recent-order preservation (most-recent-first, not alphabetical), full-list order preservation, blank stripping, intra-recent dedup, union-size invariant.
+
+### Changed
+- **`versionName`** `3.2.5` → `3.2.6`, **`versionCode`** `128` → `129`. C04-closure internal milestone marker. Per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens here.
+
+### Sprint 2 P1 milestone
+After this commit, **the first P1 Sprint 2 cluster (C04) is CLOSED.** All four P0 ship-blockers (C01 + C02 + C03a + C05) plus C04 are done. The CI data-integrity gate now runs **71 tests across 8 classes** on every push:
+
+  - `AutoRecalcDataIntegrityTest` (8)
+  - `BackupDataIntegrityTest` (10)
+  - `BudgetSuggestionDataIntegrityTest` (12) — new in 3.2.6
+  - `CategoriesDataIntegrityTest` (9)
+  - `CurrencyPickerOrderDataIntegrityTest` (8) — new in 3.2.6
+  - `RecalculateBalancesDataIntegrityTest` (3)
+  - `RecentlyUsedDataIntegrityTest` (12)
+  - `TransactionValidatorDataIntegrityTest` (9)
+
+Up from 39 tests / 5 classes at 3.2.5. Next P1 cluster up is the C06/C07 FAB-ownership pair.
+
 ## [3.2.5] - 2026-05-26 *(Development milestone — C05 closure; not promoted per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`)*
 
 ### Fixed

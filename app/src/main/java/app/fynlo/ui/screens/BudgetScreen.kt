@@ -4,7 +4,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
@@ -47,8 +46,25 @@ fun BudgetScreen(viewModel: FinanceViewModel) {
     if (showAddDialog) {
         AddBudgetDialog(
             currencySymbol = currencySymbol,
+            // C04 Stage 3: chained-fallback prefill. The audit's
+            // BudgetScreen criterion is the highest-uncapped-spend
+            // heuristic, NOT pure recency — "the category most likely
+            // to need a budget is the one with the biggest unmanaged
+            // spend, not the one most recently used." Recency is the
+            // fallback for when every spent-on category already has a
+            // budget (or there are no expenses), and blank is the
+            // last-resort for a fresh install. The dialog calls these
+            // suspend / sync hooks in a single LaunchedEffect(Unit) so
+            // the chip row renders pre-selected on first composition.
+            suggestCategory      = { viewModel.suggestBudgetCategory() },
+            rememberLastCategory = { viewModel.rememberLastBudgetCategory() },
             onDismiss = { showAddDialog = false },
             onConfirm = { budget ->
+                // Record the final pick on the recency layer so the
+                // fallback stays populated for the eventual case where
+                // every uncapped category gets a budget and the
+                // heuristic returns null.
+                viewModel.recordBudgetCategory(budget.category)
                 viewModel.addBudget(budget)
                 showAddDialog = false
             }
@@ -301,30 +317,99 @@ private fun OverviewChip(label: String, value: String, color: Color, modifier: M
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun AddBudgetDialog(currencySymbol: String, onDismiss: () -> Unit, onConfirm: (Budget) -> Unit) {
-    var category by remember { mutableStateOf("") }
-    var limit    by remember { mutableStateOf("") }
+fun AddBudgetDialog(
+    currencySymbol: String,
+    onDismiss: () -> Unit,
+    onConfirm: (Budget) -> Unit,
+    // C04 Stage 3: optional smart-default hooks. Defaults are no-ops so
+    // the dialog stays previewable / testable without a ViewModel. The
+    // production wiring above passes
+    //   viewModel::suggestBudgetCategory  (heuristic-first)
+    //   viewModel::rememberLastBudgetCategory  (recency fallback)
+    // and they're chained on dialog open inside the LaunchedEffect.
+    suggestCategory: () -> String? = { null },
+    rememberLastCategory: suspend () -> String? = { null },
+) {
     // C05: source from the shared expense list rather than a local hardcode.
     // Set Category Limit is expense-only by design — budgets gate outflows,
     // not inflows — so there's no Income/Expense toggle to bleed across.
-    val categories = app.fynlo.data.Categories.EXPENSE
+    // "Custom" is appended as the trailing chip so users can budget a
+    // user-defined category that isn't on the curated list (e.g. "Charity").
+    val categories = remember { app.fynlo.data.Categories.EXPENSE + "Custom" }
+
+    var selectedCategory by remember { mutableStateOf("") }
+    var customCategory   by remember { mutableStateOf("") }
+    var limit            by remember { mutableStateOf("") }
+
+    // C04 Stage 3: chained-fallback prefill, applied once on dialog open.
+    //   1. Try `suggestCategory()` — the highest-uncapped-spend heuristic.
+    //   2. If null (everything's already budgeted, or no expenses),
+    //      fall back to `rememberLastCategory()` (pure recency).
+    //   3. If still null (fresh install), leave blank.
+    // The audit's reasoning (UX_AUDIT §C04): "the category most likely to
+    // need a budget is the one with the biggest unmanaged spend, not the
+    // one most recently used." Recency is correct only as a *fallback*.
+    //
+    // Handles three mapping cases for the resolved value, the same way
+    // AddTransactionDialog does:
+    //   - blank   → leave both fields empty so the user picks fresh
+    //   - in curated list → select the chip, clear customCategory
+    //   - otherwise (a previously-recorded Custom-typed value) →
+    //     select the "Custom" chip and restore the typed string so
+    //     the text input below the chip row re-renders it
+    LaunchedEffect(Unit) {
+        val resolved = suggestCategory() ?: rememberLastCategory()
+        when {
+            resolved.isNullOrBlank() -> {
+                selectedCategory = ""
+                customCategory = ""
+            }
+            resolved in categories -> {
+                selectedCategory = resolved
+                customCategory = ""
+            }
+            else -> {
+                selectedCategory = "Custom"
+                customCategory = resolved
+            }
+        }
+    }
+
+    val finalCategory = if (selectedCategory == "Custom") customCategory else selectedCategory
 
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Set Category Limit") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    items(categories.size, key = { it }) { i ->
-                        FilterChip(selected = category == categories[i], onClick = { category = categories[i] },
-                            label = { Text(categories[i], style = MaterialTheme.typography.labelSmall) })
+                // C05-established chip-picker pattern (FlowRow of FilterChips)
+                // — same shape AddTransactionDialog uses, with "Custom" as
+                // the trailing affordance. Wraps onto multiple rows on
+                // narrow screens, unlike a single-row LazyRow.
+                androidx.compose.foundation.layout.FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    categories.forEach { cat ->
+                        FilterChip(
+                            selected = selectedCategory == cat,
+                            onClick = { selectedCategory = cat },
+                            label = { Text(cat, style = MaterialTheme.typography.labelSmall) },
+                            shape = RoundedCornerShape(12.dp),
+                        )
                     }
                 }
-                OutlinedTextField(value = category, onValueChange = { category = it },
-                    label = { Text("Category Name") }, singleLine = true,
-                    modifier = androidx.compose.ui.Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp))
+                if (selectedCategory == "Custom") {
+                    OutlinedTextField(
+                        value = customCategory,
+                        onValueChange = { customCategory = it },
+                        label = { Text("Custom category name") }, singleLine = true,
+                        modifier = androidx.compose.ui.Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                    )
+                }
                 OutlinedTextField(value = limit, onValueChange = { limit = it },
                     label = { Text("Monthly Limit ($currencySymbol)") }, singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
@@ -334,8 +419,8 @@ fun AddBudgetDialog(currencySymbol: String, onDismiss: () -> Unit, onConfirm: (B
         },
         confirmButton = {
             Button(
-                onClick = { onConfirm(Budget(category, limit.toDoubleOrNull() ?: 0.0)) },
-                enabled = category.isNotBlank() && (limit.toDoubleOrNull() ?: 0.0) > 0
+                onClick = { onConfirm(Budget(finalCategory, limit.toDoubleOrNull() ?: 0.0)) },
+                enabled = finalCategory.isNotBlank() && (limit.toDoubleOrNull() ?: 0.0) > 0
             ) { Text("Save") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }

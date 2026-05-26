@@ -20,11 +20,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.fynlo.FinanceViewModel
 import app.fynlo.data.UserPreferences
+import app.fynlo.logic.CurrencyUtils
 import app.fynlo.ui.theme.ThemeController
 import app.fynlo.ui.theme.*
 import kotlinx.coroutines.Dispatchers
@@ -52,6 +54,26 @@ fun SettingsScreen(
     val notifsEnabled      by UserPreferences.notificationsEnabled(context).collectAsState(initial = true)
     val defaultCurrency    by UserPreferences.defaultCurrency(context).collectAsState(initial = "INR")
     val dateFormat         by UserPreferences.dateFormat(context).collectAsState(initial = "dd-MM-yyyy")
+
+    // ── C04 Stage 3: currency picker — recency-then-locale prefill ────────
+    // Use `LocalConfiguration.current.locales[0]` so in-app language overrides
+    // (system per-app locale) are respected. The picker's selected row comes
+    // from `viewModel.rememberLastCurrencyOrLocale(...)` — the most-recent
+    // pick if any, otherwise the device locale's currency code with an "INR"
+    // fallback for locales without a country. The reactive top-N list drives
+    // the "Recently used" group at the top of the dropdown.
+    val pickerLocale = LocalConfiguration.current.locales[0]
+    var pickerCurrency by remember { mutableStateOf("") }
+    LaunchedEffect(pickerLocale, defaultCurrency) {
+        // Re-resolve whenever locale changes or the persisted default updates
+        // (e.g., from another surface). `defaultCurrency` is the canonical
+        // persisted value; the recency layer wins when present so subsequent
+        // picks survive re-open. Falls through to locale → "INR" on a fresh
+        // install where no pick has been recorded yet.
+        pickerCurrency = viewModel.rememberLastCurrencyOrLocale(pickerLocale)
+    }
+    val recentCurrencies by viewModel.observeRecentCurrencies()
+        .collectAsState(initial = emptyList())
 
     // Sync display name from flow on first load
     LaunchedEffect(displayNameFlow) { if (displayName.isEmpty()) displayName = displayNameFlow }
@@ -347,9 +369,18 @@ fun SettingsScreen(
         // ── Formatting ──────────────────────────────────────────────────────────
         SettingsSectionLabel("Formatting")
         SettingsCard {
-            // Currency
+            // Currency — C04 Stage 3 grouped picker (recently used at top,
+            // then full alphabetical list). The displayed/selected row comes
+            // from `pickerCurrency` (recency-then-locale resolver); selecting
+            // a row records into both the canonical pref and the recency
+            // tracker so the next open prefills with that pick.
             Text("Default Currency", style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
-            val currencies = listOf("INR", "USD", "EUR", "GBP", "AED", "SGD", "AUD", "CAD", "JPY")
+            val fullCurrencies = remember {
+                CurrencyUtils.supported.map { it.code }.sorted()
+            }
+            val groupedOrder = remember(recentCurrencies, fullCurrencies) {
+                buildCurrencyPickerOrder(recentCurrencies, fullCurrencies)
+            }
             var currencyExpanded by remember { mutableStateOf(false) }
             ExposedDropdownMenuBox(
                 expanded = currencyExpanded,
@@ -357,16 +388,43 @@ fun SettingsScreen(
                 modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 8.dp)
             ) {
                 OutlinedTextField(
-                    value = defaultCurrency, onValueChange = {}, readOnly = true,
+                    value = pickerCurrency.ifBlank { defaultCurrency },
+                    onValueChange = {}, readOnly = true,
                     label = { Text("Currency") },
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = currencyExpanded) },
                     modifier = Modifier.menuAnchor(androidx.compose.material3.ExposedDropdownMenuAnchorType.PrimaryNotEditable, true).fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp)
                 )
                 ExposedDropdownMenu(expanded = currencyExpanded, onDismissRequest = { currencyExpanded = false }) {
-                    currencies.forEach { code ->
+                    // "Recently used" group — hidden entirely on fresh install
+                    // (when `observeRecentCurrencies` emits an empty list).
+                    if (recentCurrencies.isNotEmpty()) {
+                        Text(
+                            "Recently used",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
+                        )
+                        recentCurrencies.forEach { code ->
+                            DropdownMenuItem(text = { Text(code) }, onClick = {
+                                pickerCurrency = code
+                                scope.launch { UserPreferences.setDefaultCurrency(context, code) }
+                                viewModel.recordCurrency(code)
+                                currencyExpanded = false
+                            })
+                        }
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                    }
+                    // Full alphabetical list (always shown). Recency-driven
+                    // entries appear in both groups — the audit's reference
+                    // UX explicitly keeps the canonical entry visible in the
+                    // main list so users don't have to scroll past their
+                    // recents to re-find a familiar code.
+                    fullCurrencies.forEach { code ->
                         DropdownMenuItem(text = { Text(code) }, onClick = {
+                            pickerCurrency = code
                             scope.launch { UserPreferences.setDefaultCurrency(context, code) }
+                            viewModel.recordCurrency(code)
                             currencyExpanded = false
                         })
                     }
@@ -681,6 +739,34 @@ private fun SettingsDivider() {
         thickness = 0.5.dp,
         color     = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
     )
+}
+
+/**
+ * C04 Stage 3 — pure helper for grouped currency-picker display order.
+ *
+ * Merges the user's recently-used currency codes (most-recent first) with the
+ * full curated list, producing a single flat sequence where:
+ *   1. Recent entries come first (preserving their order).
+ *   2. Then every entry from [full] that isn't already in [recent], in the
+ *      order [full] supplies (callers pass it alphabetically sorted).
+ *   3. No duplicates — a code in both [recent] and [full] appears exactly
+ *      once, in its recent-group position.
+ *
+ * Exposed for unit testing — see `CurrencyPickerOrderDataIntegrityTest`.
+ * The composable above keeps the two groups visually separated (with a
+ * divider) rather than using this flat form, but the dedupe/order contract
+ * is the load-bearing piece, hence the test coverage.
+ */
+fun buildCurrencyPickerOrder(recent: List<String>, full: List<String>): List<String> {
+    val seen = mutableSetOf<String>()
+    val out  = mutableListOf<String>()
+    for (code in recent) {
+        if (code.isNotBlank() && seen.add(code)) out += code
+    }
+    for (code in full) {
+        if (code.isNotBlank() && seen.add(code)) out += code
+    }
+    return out
 }
 
 @Composable
