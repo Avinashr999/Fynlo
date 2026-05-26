@@ -2,6 +2,35 @@
 
 All notable changes to Fynlo are documented here.
 
+## [3.2.5] - 2026-05-26 *(Development milestone — C05 closure; not promoted per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`)*
+
+### Fixed
+- **C05 — category bleed across Income/Expense.** The Add Transaction sheet's category chips no longer offer income-flavoured categories on an Expense transaction and vice versa. Closes the *fourth* and final P0 ship-blocker from Sprint 1; all four (C01 + C02 + C03a + C05) are now done in a single session against an audit estimate of C01-only. Fix:
+  1. NEW `app.fynlo.data.Categories` — typed `INCOME` (8 entries), `EXPENSE` (13 entries), `TRANSFER` (1 entry) lists, plus a `forType(type: String): List<String>` accessor that's case-insensitive on the three canonical type literals and falls back to `EXPENSE` for unknown / blank input (the conservative default — falling back to `INCOME` would re-risk the bug C05 fixes).
+  2. `TransactionDialog.kt` chip list rewritten as `remember(isIncome) { (if (isIncome) Categories.INCOME else Categories.EXPENSE) + "Custom" }`. `LaunchedEffect(isIncome) { selectedCategory = "" }` clears the selection every toggle flip. The historical hacky `if (selectedCategory == "Food") selectedCategory = "Salary"` special-case on the Income toggle button is gone.
+  3. `EditTransactionDialog.kt` chip list routes through `Categories.forType(transaction.type) + "Custom"`. Edit dialogs never change the transaction type so the list is keyed off the existing `transaction.type` value. **Bonus cleanup:** the hardcoded `"Expense"` and `"Balance Correction"` entries are dropped from the user-pickable list — the former is C03a's forbidden type-literal (now sanitized by `TransactionValidator`), the latter is an internal category set only by `FinanceRepository.quickEditBalance()` and shouldn't be user-selectable.
+  4. `BudgetScreen.AddBudgetDialog` refactored to source `Categories.EXPENSE` instead of inlining an expense-category list. No behaviour change (Set Category Limit is expense-only — no Income/Expense toggle present, so no bleed was possible — but consolidating keeps category vocabularies in sync as the lists evolve).
+
+### Added
+- **`app.fynlo.data.Categories`** (pure-constant `object`) — see Fixed above.
+- **`CategoriesDataIntegrityTest`** — 9 pure-function cases covering the core `INCOME ∩ EXPENSE = ∅` invariant, the audit's two acceptance scenarios ("Toggle Income → Salary/Freelance/Interest" + "Toggle Expense → Food/Fuel/Shopping/Bills"), case-insensitive `forType()` matching, the conservative-fallback contract, and the non-empty-list guard. Matches the `*DataIntegrity*` filter — picked up by `checks.yml`'s data-integrity CI gate.
+
+### Changed
+- **`versionName`** `3.2.4` → `3.2.5`, **`versionCode`** `127` → `128`. C05-closure internal milestone marker. Per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens here.
+
+### Out-of-scope for C05 (deliberate)
+- `RecurringScreen.kt` uses a free-text `OutlinedTextField` for category, not a chip picker. There's no list to swap, so no C05-style bleed is possible. Converting Recurring to a typed chip picker is UX work that belongs under **C04** (smart defaults) or a separate enhancement.
+
+### Sprint 1 P0 milestone
+After this commit, **all 4 P0 ship-blockers in the audit's Sprint-1 scope are CLOSED**:
+
+  - C01 (Recalculate destroys payments) at 3.2.2
+  - C02 (Stale exports / no auto-recalc) at 3.2.3
+  - C03a (Schema integrity — additive) at 3.2.4
+  - C05 (Category bleed Income/Expense) at 3.2.5
+
+The CI data-integrity gate now runs **39 tests across 5 classes** on every push: `RecalculateBalancesDataIntegrityTest` (3) + `AutoRecalcDataIntegrityTest` (8) + `BackupDataIntegrityTest` (10) + `TransactionValidatorDataIntegrityTest` (9) + `CategoriesDataIntegrityTest` (9).
+
 ## [3.2.4] - 2026-05-26 *(Development milestone — C03a closure; not promoted per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`)*
 
 ### Fixed

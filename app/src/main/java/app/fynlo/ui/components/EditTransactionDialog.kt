@@ -28,7 +28,19 @@ fun EditTransactionDialog(
     var date     by remember { mutableStateOf(DateUtils.formatToDisplay(transaction.date)) }
     var category by remember { mutableStateOf(transaction.category) }
 
-    val categories = listOf("Food","Rent","Fuel","Shopping","Salary","Investment","Lending","Expense","Balance Correction","Other")
+    // C05: route through the typed Categories list so an Income transaction
+    // shows ONLY income categories and an Expense transaction shows ONLY
+    // expense categories. Edit dialogs never change the transaction type,
+    // so the list is keyed off the original transaction.type and doesn't
+    // need to reset on toggle (there is no toggle). "Custom" appended for
+    // user-supplied values. The historical hardcoded "Expense" / "Balance
+    // Correction" entries are deliberately removed — "Expense" is the
+    // forbidden type-literal that C03a's TransactionValidator already
+    // scrubs; "Balance Correction" is an internal category set only by
+    // FinanceRepository.quickEditBalance() and shouldn't be user-pickable.
+    val categories = remember(transaction.type) {
+        app.fynlo.data.Categories.forType(transaction.type) + "Custom"
+    }
 
     Dialog(
         onDismissRequest = onDismiss,

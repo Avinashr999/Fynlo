@@ -56,7 +56,14 @@ If any line can't be filled, **stop and ask**. If the user pushes back, follow `
 
 ## 0.4 The one thing you must remember if you remember nothing else
 
-**C01 is CLOSED on `master`** (2026-05-26 — Stage 1 commit `331c1ae`, Stage 2 commit `5a00d4a`; ADR `decisions/2026-05-26-c01-fix-strategy.md`). Recalculate Balances no longer destroys payment history. The `payments` and `debt_payments` tables are the **single source of truth** and the invariant `paid == SUM(payments)` is structurally enforced — there is no longer any DAO method that lets new code violate it without first re-adding one of the ten queries Stage 2 deleted.
+**All four Sprint-1 P0 ship-blockers are CLOSED on `master`** (2026-05-26):
+
+- **C01** (Recalculate destroys payments) at `3.2.2` — commits `331c1ae` (Stage 1) + `5a00d4a` (Stage 2). ADR: `decisions/2026-05-26-c01-fix-strategy.md`. `payments` / `debt_payments` are the **single source of truth**; the invariant `paid == SUM(payments)` is structurally enforced — no DAO method lets new code violate it without first re-adding one of the ten queries Stage 2 deleted.
+- **C02** (Stale exports / no auto-recalc) at `3.2.3` — auto-recalc on launch (daily-debounced) + auto-recalc before every export + Dashboard "Last updated" subtitle + before/after dialog on manual recalc + timestamps in PDF/XLSX exports.
+- **C03a** (Schema integrity — additive) at `3.2.4` — backup format v2 with metadata + SHA-256 hash + `createdAt`/`projectId` on the previously-missed entities + `TransactionValidator` guard against the forbidden type-as-category literal.
+- **C05** (Category bleed Income/Expense) at `3.2.5` — typed `Categories.INCOME` / `Categories.EXPENSE` lists wired to the Income/Expense toggle; chip-picker switches and resets selection on toggle flip; `INCOME ∩ EXPENSE = ∅` enforced by 9 unit tests.
+
+**Sprint 1 was scoped to C01 only by the audit's original estimate; we landed all four P0 clusters in a single session.** The CI data-integrity gate now runs **39 tests across 5 classes** on every push.
 
 **Do NOT** (these would re-open C01):
 
@@ -83,7 +90,7 @@ C01-closure milestone is complete (✅ migration test, ✅ release-notes draft, 
 
 The audit ranks 22 clusters by priority. Do not work out of order:
 
-- **P0** (4 clusters) — ~~C01~~ ✅ closed 2026-05-26 · C02, C03a, C05 still open — ship-blockers
+- **P0** (4 clusters) — ~~C01 · C02 · C03a · C05~~ ✅ **ALL CLOSED 2026-05-26** — ship-blockers cleared
 - **P1** (12 clusters) — major UX wins
 - **P2** (6 clusters) — polish
 - **P3** (1 cluster) — v4+ backlog
@@ -151,7 +158,7 @@ AI_AGENT_PROTOCOL.md to match.
 
 # Fynlo - Complete AI Portability File
 **Project Name**: Fynlo
-**Version**: 3.2.4 on `master` (`versionName = "3.2.4"`, `versionCode = 127`). C01 closed at 3.2.2 → C02 closed at 3.2.3 → C03a closed at 3.2.4. Internal milestone markers only — per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens until every `UX_AUDIT` cluster is closed.
+**Version**: 3.2.5 on `master` (`versionName = "3.2.5"`, `versionCode = 128`). C01 closed at 3.2.2 → C02 at 3.2.3 → C03a at 3.2.4 → **C05 at 3.2.5 = all four Sprint-1 P0 clusters closed**. Internal milestone markers only — per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens until every `UX_AUDIT` cluster (P0 through P3) is closed. Next: Sprint 2 begins (P1 clusters — C04 smart defaults, C06 FAB overlap, C07 duplicate FAB, etc.).
 **Platform**: Android (Kotlin, Jetpack Compose, Room — Gradle 9.4.1, AGP 9.2.1, Room 2.8.4, KSP 2.3.7, Kotlin 2.2.10)
 
 ## 1. Project Overview
@@ -338,6 +345,38 @@ in the APK).
 ## 6. Journal
 
 **Newest first.** Each entry: date · cluster(s) closed/touched · commit(s) · one-paragraph why-and-what.
+
+### 2026-05-26 — C05 closed (category bleed eliminated; ALL Sprint-1 P0s now done)
+
+**Cluster:** C05 (P0, category bleed Income/Expense). Final P0 ship-blocker. Sprint 1's audit estimate was C01-only — landing C01 + C02 + C03a + C05 in a single session is a 4× scope expansion against the audit's plan.
+**Internal milestone:** `versionName = "3.2.5"`, `versionCode = 128`.
+
+- **NEW `app.fynlo.data.Categories`** — `INCOME` (8 entries: Salary, Freelance, Interest, Dividend, Loan Repayment, Refund, Gift Received, Other Income), `EXPENSE` (13 entries including Food, Fuel, Bills, Rent, Healthcare, Subscriptions, Lending, Investment, Other Expense), `TRANSFER` (1 entry). `forType(type: String): List<String>` is case-insensitive on the three canonical types and falls back to `EXPENSE` for unknown/blank (the conservative default per the kdoc).
+- **`TransactionDialog.kt`** — chip list now `remember(isIncome) { (if (isIncome) Categories.INCOME else Categories.EXPENSE) + "Custom" }`. `LaunchedEffect(isIncome) { selectedCategory = "" }` clears the selection every toggle flip. The hacky Food→Salary special-case on the Income button is gone (the LaunchedEffect makes it redundant).
+- **`EditTransactionDialog.kt`** — chip list routes through `Categories.forType(transaction.type) + "Custom"`. Edit dialogs never change type, so no toggle reset needed. **Bonus cleanup:** the hardcoded `"Expense"` and `"Balance Correction"` entries are removed from the user-pickable list (the former is C03a's forbidden type-literal, the latter is an internal repository-only category set by `FinanceRepository.quickEditBalance()`).
+- **`BudgetScreen.AddBudgetDialog`** — refactored to source `Categories.EXPENSE` instead of an inline literal. No behaviour change (Set Category Limit is expense-only — no bleed possible — but consolidating keeps category vocabularies in sync as the lists evolve).
+- **NOT done (out of C05 scope):** `RecurringScreen.kt` uses a free-text `OutlinedTextField` for category, not a chip picker. Converting it is UX work that belongs under C04 (smart defaults) — noted but not in this commit.
+
+**Test:** NEW `CategoriesDataIntegrityTest` (9 cases) covers the core `INCOME ∩ EXPENSE = ∅` invariant + the audit's acceptance scenarios + the conservative fallback for unknown types. JVM data-integrity CI gate count: **30 → 39 across 5 classes**.
+
+**Cluster dashboard post-Sprint-1:**
+
+| Cluster | Priority | Status |
+|---|---|---|
+| C01 Recalculate destroys payments | P0 | ✅ Closed (3.2.2) |
+| C02 Stale exports / no auto-recalc | P0 | ✅ Closed (3.2.3) |
+| C03a Schema integrity — additive | P0 | ✅ Closed (3.2.4) |
+| C05 Category bleed Income/Expense | P0 | ✅ Closed (3.2.5) |
+| C04 Smart defaults | P1 (Sprint 2) | Not started |
+| C06–C09 (P1 Sprint 2) | P1 | Not started |
+| C12–C15 (P1 Sprint 4) | P1 | Not started |
+| C03b Schema breaking migration | P1 (Sprint 6) | Not started |
+| C10/C11/C16/C17/C19/C20 polish | P2 | Not started |
+| C18 Settings cleanup | P1 (Sprint 3) | Not started |
+| C21 PDF/XLSX export quality | P1 (Sprint 5) | Two touches landed (C03a + smoke fixes); cluster proper not started |
+| C22 v4+ backlog | P3 | Per release-cadence ADR: required for first public release |
+
+**Sprint 2's natural starting point:** C04 (smart defaults — RecentlyUsedTracker, per-form per-field memory, picker dropdowns re-ordered recently-used first). Independent of any P0 work; mostly UI-state + DataStore plumbing.
 
 ### 2026-05-26 — C03a closed (both stages)
 

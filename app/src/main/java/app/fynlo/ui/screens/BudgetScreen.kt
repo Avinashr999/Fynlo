@@ -305,8 +305,10 @@ private fun OverviewChip(label: String, value: String, color: Color, modifier: M
 fun AddBudgetDialog(currencySymbol: String, onDismiss: () -> Unit, onConfirm: (Budget) -> Unit) {
     var category by remember { mutableStateOf("") }
     var limit    by remember { mutableStateOf("") }
-    val categories = listOf("Food", "Fuel", "Shopping", "Bills", "Entertainment",
-        "Health", "Education", "Transport", "Rent", "Other")
+    // C05: source from the shared expense list rather than a local hardcode.
+    // Set Category Limit is expense-only by design — budgets gate outflows,
+    // not inflows — so there's no Income/Expense toggle to bleed across.
+    val categories = app.fynlo.data.Categories.EXPENSE
 
     AlertDialog(
         onDismissRequest = onDismiss,

@@ -40,8 +40,18 @@ fun AddTransactionDialog(
     var date by remember { mutableStateOf(java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy"))) }
     var notes by remember { mutableStateOf("") }
 
-    val categories = listOf("Food", "Rent", "Fuel", "Shopping", "Salary", "Investment", "Lending", "Custom")
-    var selectedCategory by remember { mutableStateOf(if (initialIsIncome) "Salary" else categories[0]) }
+    // C05: the visible category list is driven by the Income/Expense toggle.
+    // Recomputed via `remember(isIncome)` so the chip row updates the moment
+    // the user flips the toggle, and the previously-selected value is cleared
+    // (see the LaunchedEffect below) so e.g. "Food" can't be carried into an
+    // Income transaction. "Custom" stays appended as the trailing affordance
+    // for user-supplied categories.
+    val categories = remember(isIncome) {
+        (if (isIncome) app.fynlo.data.Categories.INCOME
+         else          app.fynlo.data.Categories.EXPENSE) + "Custom"
+    }
+    var selectedCategory by remember { mutableStateOf("") }
+    LaunchedEffect(isIncome) { selectedCategory = "" }
 
     val sources = listOf("Cash", "Bank", "Investment", "Debts", "Custom")
     var selectedSrc by remember { mutableStateOf(sources[0]) }
@@ -83,7 +93,10 @@ fun AddTransactionDialog(
                     ) { Text("Expense") }
                     SegmentedButton(
                         selected = isIncome,
-                        onClick = { isIncome = true; if (selectedCategory == "Food") selectedCategory = "Salary" },
+                        // C05: the special-case Food→Salary swap that used to live here
+                        // is gone — the LaunchedEffect(isIncome) above resets selectedCategory
+                        // to "" on every toggle flip, so no cross-type bleed is possible.
+                        onClick = { isIncome = true },
                         shape = SegmentedButtonDefaults.itemShape(1, 2),
                         colors = SegmentedButtonDefaults.colors(
                             activeContainerColor = Emerald500.copy(alpha = 0.14f),
