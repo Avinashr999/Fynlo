@@ -158,7 +158,7 @@ AI_AGENT_PROTOCOL.md to match.
 
 # Fynlo - Complete AI Portability File
 **Project Name**: Fynlo
-**Version**: 3.2.16 on `master` (`versionName = "3.2.16"`, `versionCode = 139`). All four Sprint-1 P0 clusters closed (C01 / C02 / C03a / C05). Three P1 Sprint 2 clusters closed (C04 at 3.2.6, C06 + C07 at 3.2.12). C08 Stages 1-3 done (3.2.13 / 3.2.14 / 3.2.15); **Stage 4 paused after user surfaced EMI Calculator polish — shipped as 3.2.16 (visual polish only; features deferred). C08 Stage 4 (PDF + XLSX export migration) is the next planned commit as 3.2.17.** Internal milestone markers only — per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens until every `UX_AUDIT` cluster (P0 through P3) is closed.
+**Version**: 3.2.17 on `master` (`versionName = "3.2.17"`, `versionCode = 140`). All four Sprint-1 P0 clusters closed (C01 / C02 / C03a / C05). Three P1 Sprint 2 clusters closed (C04 at 3.2.6, C06 + C07 at 3.2.12). C08 Stages 1-3 done (3.2.13 / 3.2.14 / 3.2.15); 3.2.16 = EMI Calculator visual polish; **3.2.17 = EMI Calculator navigation entries (latent-orphan fix surfaced by smoke). C08 Stage 4 (PDF + XLSX export migration) deferred to 3.2.18.** Internal milestone markers only — per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens until every `UX_AUDIT` cluster (P0 through P3) is closed.
 **Platform**: Android (Kotlin, Jetpack Compose, Room — Gradle 9.4.1, AGP 9.2.1, Room 2.8.4, KSP 2.3.7, Kotlin 2.2.10)
 
 ## 1. Project Overview
@@ -345,6 +345,21 @@ in the APK).
 ## 6. Journal
 
 **Newest first.** Each entry: date · cluster(s) closed/touched · commit(s) · one-paragraph why-and-what.
+
+### 2026-05-27 — 3.2.17 (EMI Calculator navigation entries — latent orphan fix)
+
+**Type:** one-line nav-graph fix after the user's 3.2.16 smoke produced "where can I find" — investigation revealed the EMI Calculator screen has been a **navigation-graph orphan since 3.0+**: registered as a `composable(Screen.LoanCalc.route) { LoanCalculatorScreen() }` route but with **zero entry points anywhere in the UI**. Not in the drawer, not on the Reports hub, not as a deep-link from any other screen. 3.2.16's visual polish + rename made an unreachable screen prettier; this commit makes it reachable.
+
+**Internal milestone:** `3.2.17` / `versionCode = 140`. No Play Console upload per release-cadence ADR. No test gate change.
+
+**What landed:**
+- `Navigation.kt` drawer "Finance Tools" section gained an `EMI Calculator` entry (Calculate icon) after the Investments entry.
+- `ReportsHubScreen` gained an `onNavigateToLoanCalc` callback param (default `{}` for preview composability), wired in `Navigation.kt` to `navGated(Screen.LoanCalc.route)`.
+- `ReportsHubScreen` body now renders an "EMI Calculator" `ReportLinkCard` tile on a new third row of the report grid.
+
+**Audit confirms this was the only orphaned screen:** every other route (MoneyFlow / DebtPayoff / NetWorthH / InterestIncome / MonthlySummary / ProfitLoss reachable via Reports tab; Calendar via Lending screen; GlobalSearch via top-bar search; FlowWizard via Flow CTAs) has at least one entry point. **LoanCalc was the lone unreachable.**
+
+**Process lesson:** when adding a new screen and registering it as a `composable` route, verify at-least-one navigation entry point exists before considering the feature shipped. Worth a follow-up Detekt rule or simple grep check in CI: every `Screen.X.route` referenced in a `composable(Screen.X.route)` registration should also appear in at least one `navController.navigate(...)` call or callback wire-up. Logged as INF backlog candidate.
 
 ### 2026-05-27 — 3.2.16 (EMI Calculator visual polish — partial of C12-C15 P1 backlog)
 

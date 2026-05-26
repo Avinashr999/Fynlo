@@ -46,7 +46,8 @@ fun ReportsHubScreen(
     onNavigateToMoneyFlow: () -> Unit = {},
     onNavigateToInterest: () -> Unit = {},
     onNavigateToMonthly: () -> Unit = {},
-    onNavigateToDebtPayoff: () -> Unit = {}
+    onNavigateToDebtPayoff: () -> Unit = {},
+    onNavigateToLoanCalc: () -> Unit = {},
 ) {
     LaunchedEffect(Unit) { app.fynlo.data.Analytics.screenView("Reports") }
     val transactions  by viewModel.transactions.collectAsState()
@@ -338,6 +339,16 @@ fun ReportsHubScreen(
             ReportLinkCard("Interest Income", Icons.Default.AccountBalance, green, Modifier.weight(1f), onNavigateToInterest)
             ReportLinkCard("Monthly Summary", Icons.Default.DateRange, blue, Modifier.weight(1f), onNavigateToMonthly)
             ReportLinkCard("Debt Payoff", Icons.Default.Schedule, SemanticRed, Modifier.weight(1f), onNavigateToDebtPayoff)
+        }
+        Spacer(Modifier.height(10.dp))
+        // 3.2.17 — EMI Calculator tile added for cross-discovery. Also
+        // reachable from the side drawer's Finance Tools section.
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            ReportLinkCard("EMI Calculator", Icons.Default.Calculate, Carbon500, Modifier.weight(1f), onNavigateToLoanCalc)
+            // Placeholder weights so the single tile doesn't go full-width and
+            // look out of pattern with the rest of the 3-per-row grid above.
+            Spacer(Modifier.weight(1f))
+            Spacer(Modifier.weight(1f))
         }
 
         Spacer(Modifier.height(100.dp))

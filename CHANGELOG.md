@@ -2,6 +2,22 @@
 
 All notable changes to Fynlo are documented here.
 
+## [3.2.17] - 2026-05-27 *(Development milestone — EMI Calculator navigation entries; not promoted per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`)*
+
+### Fixed
+- **EMI Calculator — added missing navigation entry points (latent bug surfaced by 3.2.16 smoke).** User asked "where can I find" after the 3.2.16 visual polish + rename. Investigation: the `LoanCalc` screen has been **registered as a route since 3.0+ but had ZERO entry points in the UI** — not in the side drawer, not in the Reports hub tiles, not anywhere. Pure orphan. The 3.2.16 polish made an unreachable screen prettier; this commit makes it reachable.
+  - **Side drawer "Finance Tools" section** — new `DrawerItem(Icons.Default.Calculate, "EMI Calculator", ...)` placed after Investments. Conceptually correct grouping (calculator is a finance tool).
+  - **Reports hub** — new `ReportLinkCard("EMI Calculator", ...)` tile on a new third row. `ReportsHubScreen` signature gained an `onNavigateToLoanCalc: () -> Unit = {}` parameter (default no-op preserves preview composability); `Navigation.kt`'s `ReportsHubScreen` call wires it to `navGated(Screen.LoanCalc.route)`.
+
+### Notes
+- This is the **last known orphaned screen** in the navigation graph. Audit confirmed: every other route (MoneyFlow / DebtPayoff / NetWorthH / InterestIncome / MonthlySummary / ProfitLoss reachable via Reports tab; Calendar reachable via Lending screen; GlobalSearch via top-bar search icon; FlowWizard via Flow CTAs) has at least one entry point. LoanCalc was the lone unreachable.
+
+### Changed
+- **`versionName`** `3.2.16` → `3.2.17`, **`versionCode`** `139` → `140`.
+
+### Data-integrity gate
+Unchanged at **112 tests across 9 classes**, 0 failures (pure navigation plumbing).
+
 ## [3.2.16] - 2026-05-27 *(Development milestone — EMI Calculator visual polish; not promoted per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`)*
 
 ### Fixed

@@ -365,6 +365,16 @@ fun MainNavigation(viewModel: FinanceViewModel) {
                         navController.navigate(Screen.Invest.route)
                         scope.launch { drawerState.close() }
                     }
+                    // 3.2.17 — EMI Calculator was registered as a route since 3.0
+                    // but had ZERO entry points in the UI. User couldn't find it
+                    // even after the 3.2.16 polish + rename ("where can I find it?").
+                    // Adding here under Finance Tools, where it conceptually belongs.
+                    // Also exposed as a tile on the Reports hub for cross-discovery.
+                    DrawerItem(Icons.Default.Calculate, "EMI Calculator",
+                        currentRoute == Screen.LoanCalc.route) {
+                        navController.navigate(Screen.LoanCalc.route)
+                        scope.launch { drawerState.close() }
+                    }
 
                     DrawerDivider()
 
@@ -636,7 +646,8 @@ fun MainNavigation(viewModel: FinanceViewModel) {
                         onNavigateToMoneyFlow = { navGated(Screen.MoneyFlow.route) },
                         onNavigateToInterest  = { navGated(Screen.InterestIncome.route) },
                         onNavigateToMonthly   = { navGated(Screen.Monthly.route) },
-                        onNavigateToDebtPayoff = { navGated(Screen.DebtPayoff.route) }
+                        onNavigateToDebtPayoff = { navGated(Screen.DebtPayoff.route) },
+                        onNavigateToLoanCalc  = { navGated(Screen.LoanCalc.route) },
                     )
                 }
                 composable(Screen.InterestIncome.route) {
