@@ -2,6 +2,20 @@
 
 All notable changes to Fynlo are documented here.
 
+## [3.2.10] - 2026-05-27 *(Development milestone — frequency picker widget swap; not promoted per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`)*
+
+### Fixed
+- **`AddRecurringDialog` frequency picker — final fix after three failed attempts.** Iteration history: 3.2.7 cramped four `FilterChip`s in a `Row` with `weight(1f)`; 3.2.8 switched to `SingleChoiceSegmentedButtonRow` with `icon = {}` but "Monthly" still clipped (~45dp per label inside AlertDialog width is too narrow for 7-char labels with internal padding); 3.2.9 tried `FlowRow<FilterChip>` but on the user's device width "Yearly" overflowed off the second line. **3.2.10**: switched to `ExposedDropdownMenuBox` matching the C04 Stage 3 currency picker pattern in SettingsScreen. Dropdown always fits regardless of dialog width — establishes the design rule: "for `pick one of N` pickers inside constrained-width containers (AlertDialog, narrow Card, side-by-side layout), prefer dropdown over chips/segmented buttons. Reserve chips for `browse and pick` cases where seeing every option at a glance matters (Category, Account type)."
+
+### Changed
+- **`versionName`** `3.2.9` → `3.2.10`, **`versionCode`** `132` → `133`. Three intermediate bumps (3.2.7 → 3.2.8 → 3.2.9 → 3.2.10) reflect the iteration cycle of smoke-find-fix-resmoke; each version is the coherent state of one iteration. Per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens here.
+
+### Data-integrity gate
+Unchanged at **79 tests across 8 classes**, 0 failures (pure widget swap — no logic change).
+
+### Skipped from CHANGELOG
+3.2.9 was never tagged as a separate CHANGELOG entry — the `FlowRow<FilterChip>` attempt was made and immediately superseded by 3.2.10 without leaving its own intermediate documentation block. Git history (commits between f0bfeef and 3.2.10) preserves the full sequence for anyone reading the file.
+
 ## [3.2.8] - 2026-05-27 *(Development milestone — 3.2.7 re-smoke fix; not promoted per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`)*
 
 ### Fixed

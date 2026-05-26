@@ -158,7 +158,7 @@ AI_AGENT_PROTOCOL.md to match.
 
 # Fynlo - Complete AI Portability File
 **Project Name**: Fynlo
-**Version**: 3.2.8 on `master` (`versionName = "3.2.8"`, `versionCode = 131`). C01 closed at 3.2.2 → C02 at 3.2.3 → C03a at 3.2.4 → C05 at 3.2.5 (all four Sprint-1 P0 clusters closed) → C04 at 3.2.6 (first P1 Sprint 2 cluster closed) → 3.2.7 = C04 smoke follow-up + two RecurringScreen surface fixes → **3.2.8 = re-smoke fix for SegmentedButton 'Monthly' clipping**. Internal milestone markers only — per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens until every `UX_AUDIT` cluster (P0 through P3) is closed. Next P1: the C06 / C07 FAB-ownership pair (they share the same Scaffold-vs-screen question so they close as a unit).
+**Version**: 3.2.10 on `master` (`versionName = "3.2.10"`, `versionCode = 133`). C01 closed at 3.2.2 → C02 at 3.2.3 → C03a at 3.2.4 → C05 at 3.2.5 (all four Sprint-1 P0 clusters closed) → C04 at 3.2.6 (first P1 Sprint 2 cluster closed) → 3.2.7 = C04 smoke follow-up + two RecurringScreen surface fixes → 3.2.8 = re-smoke fix for SegmentedButton 'Monthly' clipping → 3.2.9 = intermediate FlowRow attempt that lost 'Yearly' → **3.2.10 = ExposedDropdownMenuBox for frequency picker — establishes the design rule "constrained-width pickers use dropdown, not chips"**. Internal milestone markers only — per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens until every `UX_AUDIT` cluster (P0 through P3) is closed. Next P1: the C06 / C07 FAB-ownership pair (they share the same Scaffold-vs-screen question so they close as a unit).
 **Platform**: Android (Kotlin, Jetpack Compose, Room — Gradle 9.4.1, AGP 9.2.1, Room 2.8.4, KSP 2.3.7, Kotlin 2.2.10)
 
 ## 1. Project Overview
@@ -345,6 +345,22 @@ in the APK).
 ## 6. Journal
 
 **Newest first.** Each entry: date · cluster(s) closed/touched · commit(s) · one-paragraph why-and-what.
+
+### 2026-05-27 — 3.2.10 (frequency picker → dropdown; design rule established)
+
+**Type:** widget swap after three failed iterations. The Iteration history:
+- **3.2.7**: `Row<FilterChip>` with `weight(1f)` + `labelSmall` — labels cramped.
+- **3.2.8**: `SingleChoiceSegmentedButtonRow` with `icon = {}` — "Monthly" still clipped (~45dp per label inside AlertDialog width).
+- **3.2.9**: `FlowRow<FilterChip>` — "Yearly" overflowed off the second line on the user's device width.
+- **3.2.10**: `ExposedDropdownMenuBox` — always fits, no clipping math.
+
+**Design rule established (codified in code comment and below):** for "pick one of N" pickers inside constrained-width containers (AlertDialog, narrow Card, side-by-side layout), prefer **dropdown** (`ExposedDropdownMenuBox`) over chips/segmented buttons. Reserve **chips** (`FlowRow<FilterChip>`) for "browse and pick" cases where seeing every option at a glance is the value — Category (12+ entries), Account type (5 entries with semantic icons). Reserve **segmented buttons** (`SingleChoiceSegmentedButtonRow`) for 2-3-option toggles on full-width screen scaffolds where space is plentiful (e.g., the Income/Expense toggle at the top of AddTransactionDialog — only 2 options, plenty of room).
+
+Matches the C04 Stage 3 currency picker pattern in SettingsScreen for visual consistency across the app.
+
+**Internal milestone:** `3.2.10` / `versionCode = 133`. No Play Console upload per release-cadence ADR. No test gate change (pure widget swap).
+
+**Audit follow-up logged:** the user asked "can we apply where ever multiple chips in whichever screens is there" — i.e., extend the dropdown pattern app-wide. Surveying chip use across all screens is the next step; not every chip group needs converting (Category picker stays as chips per the design rule above) but several narrow-dialog pickers likely do. Tracked separately so the audit retains the "what is this commit" / "what is the broader sweep" distinction.
 
 ### 2026-05-27 — 3.2.8 (re-smoke fix: SegmentedButton 'Monthly' clipping)
 

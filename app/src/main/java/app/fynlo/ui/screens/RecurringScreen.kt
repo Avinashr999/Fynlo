@@ -209,7 +209,7 @@ private fun RecurringCard(r: RecurringTransaction, isDue: Boolean = false, daysU
         }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
+@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable
 private fun AddRecurringDialog(
     onDismiss: () -> Unit,
@@ -313,34 +313,48 @@ private fun AddRecurringDialog(
                     label = { Text("Account (e.g. HDFC Bank)") }, singleLine = true,
                     modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp))
 
-                // 3.2.7 fix: was four `FilterChip`s with weight(1f) + labelSmall
-                // in a 6dp-spaced Row — at AlertDialog width that compressed each
-                // chip so tightly the labels rendered cramped against the
-                // chip edges (smoke-test finding on 3.2.6). `SingleChoiceSegmentedButtonRow`
-                // is the M3 widget designed exactly for 2-4 mutually-exclusive
-                // options like this: each segment occupies its natural label
-                // width with proper internal padding, and the selected one
-                // visually carries the choice without needing the chip-style
-                // affordance.
-                Text("Frequency", style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant)
-                val frequencyOptions = listOf("Daily", "Weekly", "Monthly", "Yearly")
-                SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-                    frequencyOptions.forEachIndexed { index, f ->
-                        SegmentedButton(
-                            selected = frequency == f,
-                            onClick = { frequency = f },
-                            shape = SegmentedButtonDefaults.itemShape(index, frequencyOptions.size),
-                            // 3.2.8 fix: suppress the default checkmark icon
-                            // (`SegmentedButtonDefaults.Icon(active = selected)`)
-                            // because it eats ~24dp of each segment's width.
-                            // With 4 segments inside an AlertDialog, that
-                            // clipped 'Monthly' (smoke-test finding on 3.2.7).
-                            // Selection is still visually carried by the
-                            // segment's filled background colour difference.
-                            icon = {},
-                            label = { Text(f, style = MaterialTheme.typography.labelMedium) },
-                        )
+                // 3.2.10 fix: switched to ExposedDropdownMenuBox after three
+                // failed attempts at fitting four labels horizontally inside
+                // an AlertDialog (3.2.7 cramped Row<FilterChip>, 3.2.8
+                // clipped 'Monthly' in a SegmentedButtonRow, 3.2.9 dropped
+                // 'Yearly' off-screen in a FlowRow<FilterChip>). Dropdown is
+                // the right pattern for any "pick one of N" picker inside a
+                // constrained-width container — it always fits regardless of
+                // dialog width, and it matches the C04 Stage 3 currency
+                // picker pattern in SettingsScreen for visual consistency.
+                // Reuse this same widget for future narrow-dialog
+                // mutually-exclusive pickers; reserve FilterChips for
+                // "browse and pick" cases where seeing every option at a
+                // glance matters (e.g. Category).
+                var frequencyExpanded by remember { mutableStateOf(false) }
+                ExposedDropdownMenuBox(
+                    expanded = frequencyExpanded,
+                    onExpandedChange = { frequencyExpanded = !frequencyExpanded },
+                ) {
+                    OutlinedTextField(
+                        value = frequency,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Frequency") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = frequencyExpanded) },
+                        modifier = Modifier
+                            .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, true)
+                            .fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                    )
+                    ExposedDropdownMenu(
+                        expanded = frequencyExpanded,
+                        onDismissRequest = { frequencyExpanded = false },
+                    ) {
+                        listOf("Daily", "Weekly", "Monthly", "Yearly").forEach { option ->
+                            DropdownMenuItem(
+                                text = { Text(option) },
+                                onClick = {
+                                    frequency = option
+                                    frequencyExpanded = false
+                                },
+                            )
+                        }
                     }
                 }
 
