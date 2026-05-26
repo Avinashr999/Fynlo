@@ -1198,8 +1198,19 @@ class FinanceRepository(
     }
 
 
-    suspend fun getAllDataAsJson(): String {
-        val data = BackupData(
+    /**
+     * Builds a v2 (C03a) backup JSON: data + metadata + SHA-256
+     * integrity hash. Caller passes [userId] (Firebase auth UID; empty
+     * if signed out) so the repository stays Context-free.
+     */
+    suspend fun getAllDataAsJson(userId: String = ""): String {
+        val draft = BackupData(
+            schemaVersion = BackupIntegrity.CURRENT_SCHEMA_VERSION,
+            appVersion    = app.fynlo.BuildConfig.VERSION_NAME,
+            exportedAt    = java.time.Instant.now().toString(),
+            userId        = userId,
+            deviceName    = android.os.Build.MODEL ?: "",
+            contentHash   = "",   // populated below after canonical-form hash
             accounts              = dao.getAllAccounts().first(),
             transactions          = dao.getAllTransactions().first(),
             borrowers             = dao.getAllBorrowers().first(),
@@ -1213,11 +1224,37 @@ class FinanceRepository(
             goals                 = dao.getAllGoals().first(),
             recurringTransactions = dao.getAllRecurringTransactionsOnce()
         )
-        return Json.encodeToString(data)
+        val hash = BackupIntegrity.computeHash(draft)
+        return Json.encodeToString(draft.copy(contentHash = hash))
     }
+
+    /**
+     * Restores from a v1 or v2 backup. Throws on:
+     *  - `IllegalStateException` for an unsupported (newer) backup format
+     *    — caller should surface "please update Fynlo".
+     *  - `IllegalStateException` for a hash mismatch on a v2 backup
+     *    — file is corrupted or modified; do not restore.
+     *
+     * If the integrity check passes, the existing data is wiped and the
+     * backup is loaded atomically inside `db.withTransaction`.
+     */
     suspend fun restoreDataFromJson(json: String) {
+        val data = Json.decodeFromString<BackupData>(json)
+        when (val verdict = BackupIntegrity.check(data)) {
+            is BackupIntegrity.Check.Ok -> { /* fall through to restore */ }
+            is BackupIntegrity.Check.UnsupportedVersion ->
+                throw IllegalStateException(
+                    "Backup format v${verdict.version} is newer than this " +
+                    "app supports (max v${BackupIntegrity.CURRENT_SCHEMA_VERSION}). " +
+                    "Update Fynlo and try again."
+                )
+            is BackupIntegrity.Check.HashMismatch ->
+                throw IllegalStateException(
+                    "Backup integrity check failed (SHA-256 hash mismatch). " +
+                    "The file may be corrupted or modified — not restoring."
+                )
+        }
         db.withTransaction {
-            val data = Json.decodeFromString<BackupData>(json)
             // Clear everything first so a restore is a true replace, not a merge.
             dao.deleteAllAccounts(); dao.deleteAllTransactions(); dao.deleteAllBorrowers()
             dao.deleteAllInvestments(); dao.deleteAllDebts(); dao.deleteAllPeople(); dao.deleteAllProjects()

@@ -339,6 +339,20 @@ in the APK).
 
 **Newest first.** Each entry: date · cluster(s) closed/touched · commit(s) · one-paragraph why-and-what.
 
+### 2026-05-26 — C03a Stage 1 landed (backup format hardening)
+
+**Cluster:** C03a (P0, schema integrity — additive). Stage 1 of 2: items #1 + #4 from the audit's five-step Stage 3a fix list. Items #2 + #3 (`createdAt`/`projectId` audit on 5 entities + `MIGRATION_16_17`) and item #5 ("Expense" category rejection) land in Stage 2.
+
+**Internal milestone:** still `3.2.3` — version bump deferred until C03a fully closes (matches the C02 pattern: bump once at cluster closure, not per stage).
+
+- `BackupData` extended with 6 metadata fields at the front: `schemaVersion: Int = 1`, `appVersion`, `exportedAt`, `userId`, `deviceName`, `contentHash` — all default to safe legacy values so 3.2.0-era JSON backups (which lack these fields) still decode and restore.
+- NEW `app.fynlo.data.BackupIntegrity` (pure-function `object`) — `computeHash(BackupData): String` produces a SHA-256 (64-char lower-case hex) over the canonical JSON form of the input with `contentHash = ""`. `check(BackupData): Check` is a sealed-class outcome: `Ok` / `UnsupportedVersion(version)` / `HashMismatch`. Version-pinning happens via `CURRENT_SCHEMA_VERSION = 2`.
+- `FinanceRepository.getAllDataAsJson()` now populates the metadata + the hash (using `BuildConfig.VERSION_NAME`, `Instant.now()`, `android.os.Build.MODEL`) and takes a `userId: String = ""` parameter that callers can thread through if they have access to the Firebase auth UID.
+- `FinanceRepository.restoreDataFromJson()` calls `BackupIntegrity.check()` *before* opening `db.withTransaction` — so a corrupted/tampered/future-version backup never reaches the DB. Throws `IllegalStateException` with a user-readable message for both rejection paths.
+- `BackupDataIntegrityTest` adds 10 pure-function cases (no Robolectric, no Room). Data-integrity CI gate count: **11 → 21** (3 C01 + 8 C02 + 10 C03a).
+
+**Audit data for Stage 2:** 4 entities still lack `createdAt` (`FlowTemplate`, `InvestmentValuation`, `NetWorthSnapshot`, `RecurringTransaction`), 1 entity still lacks `projectId` (`InvestmentValuation`). Plus the "Expense" category rejection. `MIGRATION_16_17` will add 5 columns total, all with safe defaults.
+
 ### 2026-05-26 — C02 closed (both stages)
 
 **Cluster:** C02 (P0 ship-blocker, stale exports / no auto-recalc) — now ✅ closed alongside C01.
