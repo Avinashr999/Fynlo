@@ -3,8 +3,17 @@ name: Android CI
 on:
   push:
     branches: [master]
+    # Don't burn CI minutes on documentation-only commits (governance docs,
+    # docs/ Pages site). The workflow files themselves are NOT ignored, so
+    # changes to .github/workflows/ still trigger validation runs.
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
   pull_request:
     branches: [master]
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
   workflow_dispatch:
 
 jobs:

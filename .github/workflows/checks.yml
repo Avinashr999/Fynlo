@@ -1,11 +1,21 @@
 name: Fynlo CI Checks
 
-# Triggers on every PR and push to master
+# Triggers on every PR and push to master/main
+# Documentation-only changes (governance .md files, docs/ Pages site) are
+# excluded — they have their own pages-build-and-deployment workflow.
+# Workflow files themselves are NOT ignored, so edits to .github/workflows/
+# still trigger validation runs.
 on:
   pull_request:
     branches: [master, main]
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
   push:
     branches: [master, main]
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
 
 # Cancel in-progress runs on new push to same PR
 concurrency:
