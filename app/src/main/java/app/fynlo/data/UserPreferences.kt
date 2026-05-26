@@ -8,10 +8,13 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import app.fynlo.data.model.RecentlyUsedSnapshot
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "fynlo_settings")
 
@@ -38,6 +41,13 @@ object UserPreferences {
      *  Used by C02 (UX_AUDIT §C02) for auto-recalc-on-launch debouncing and
      *  the "Last updated X ago" subtitle on Dashboard. */
     private val LAST_RECALC_AT = longPreferencesKey("last_recalc_at")
+
+    /** JSON-encoded `RecentlyUsedSnapshot`. Used by C04 (UX_AUDIT §C04) for
+     *  the per-form, per-field picker memory.  Single string key keeps the
+     *  whole picker-recency state addressable without needing a Room table
+     *  (the dataset is small — ≤5 entries × ~10 slots ≤ 50 entries total).
+     *  Empty / unset reads decode as an empty `RecentlyUsedSnapshot`. */
+    private val RECENTLY_USED = stringPreferencesKey("recently_used")
 
     // ── Read (Flow-based, reactive) ──────────────────────────────────────
 
@@ -68,6 +78,16 @@ object UserPreferences {
     /** Last successful recalc time as epoch millis; `0L` until the first recalc. */
     fun lastRecalcAt(context: Context): Flow<Long> =
         context.dataStore.data.map { it[LAST_RECALC_AT] ?: 0L }
+
+    /** Reactive [RecentlyUsedSnapshot]; empty snapshot until first record (C04).
+     *  Decoder is fault-tolerant: a corrupted / unparseable blob yields an
+     *  empty snapshot instead of crashing the UI. */
+    fun recentlyUsed(context: Context): Flow<RecentlyUsedSnapshot> =
+        context.dataStore.data.map { prefs ->
+            val raw = prefs[RECENTLY_USED] ?: return@map RecentlyUsedSnapshot()
+            runCatching { Json.decodeFromString<RecentlyUsedSnapshot>(raw) }
+                .getOrDefault(RecentlyUsedSnapshot())
+        }
 
     // ── Read (blocking, for one-time checks like Navigation init) ────────
 
@@ -130,6 +150,22 @@ object UserPreferences {
     /** Stamps the recalc time (epoch millis). Only called from `RecalcCoordinator`. */
     suspend fun setLastRecalcAt(context: Context, epochMillis: Long) {
         context.dataStore.edit { it[LAST_RECALC_AT] = epochMillis }
+    }
+
+    /** C04: atomic read-modify-write on the [RecentlyUsedSnapshot] blob.
+     *  Caller passes a pure function that takes the current snapshot and
+     *  returns the new one (use `RecentlyUsedLogic.add` for the standard
+     *  dedup-and-cap semantics). Only called from `RecentlyUsedTracker`. */
+    suspend fun editRecentlyUsed(
+        context: Context,
+        mutate: (RecentlyUsedSnapshot) -> RecentlyUsedSnapshot,
+    ) {
+        context.dataStore.edit { prefs ->
+            val current = prefs[RECENTLY_USED]
+                ?.let { runCatching { Json.decodeFromString<RecentlyUsedSnapshot>(it) }.getOrDefault(RecentlyUsedSnapshot()) }
+                ?: RecentlyUsedSnapshot()
+            prefs[RECENTLY_USED] = Json.encodeToString(mutate(current))
+        }
     }
 
     /** Wipes every stored preference — used by Reset All Data. */

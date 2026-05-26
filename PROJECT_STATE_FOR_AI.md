@@ -346,6 +346,19 @@ in the APK).
 
 **Newest first.** Each entry: date · cluster(s) closed/touched · commit(s) · one-paragraph why-and-what.
 
+### 2026-05-26 — C04 Stage 1 landed (smart-defaults data abstraction)
+
+**Cluster:** C04 (P1, Sprint 2, smart defaults). Stage 1 of 3: the data layer alone, no UI changes. Sprint 2 has formally started — first P1 cluster work after all P0s closed.
+**Internal milestone:** still `3.2.5` (version bump deferred to cluster closure per the C03a-Stage-1 pattern).
+
+- NEW `app.fynlo.data.RecentlyUsedTracker` (`@Singleton`, Hilt-injected). API: `record(formId, fieldId, value)`, `last(formId, fieldId)`, `observeTopN(formId, fieldId, n = 5)`. Two-level slot key (`formId/fieldId`) with category split by type (`CATEGORY_INCOME` / `CATEGORY_EXPENSE`) so recency can't leak across the same Income/Expense boundary C05 just enforced.
+- NEW `app.fynlo.data.RecentlyUsedLogic` — pure-function helpers (`add` / `last` / `topN` / `keyOf`). Dedup-and-cap semantics: blank values rejected, existing values bumped to top instead of duplicated, slot capped at `MAX_ENTRIES = 5`. Lives in its own object so unit tests cover the contract without Robolectric / DataStore.
+- NEW `app.fynlo.data.model.RecentlyUsedSnapshot` / `RecentEntry` — single JSON blob stored under `UserPreferences.RECENTLY_USED`. No new Room table or migration. Fault-tolerant decode: corrupted blob yields empty snapshot, doesn't crash.
+- `UserPreferences.recentlyUsed(ctx)` + `editRecentlyUsed(ctx, mutate)` — DataStore reader + atomic editor (Json encode/decode wrapped in `runCatching` for corrupted-blob resilience).
+- `RecentlyUsedDataIntegrityTest` adds 12 pure-function cases. JVM data-integrity gate count: **39 → 51** across 6 classes (`RecalculateBalancesDataIntegrityTest` 3 + `AutoRecalcDataIntegrityTest` 8 + `BackupDataIntegrityTest` 10 + `TransactionValidatorDataIntegrityTest` 9 + `CategoriesDataIntegrityTest` 9 + `RecentlyUsedDataIntegrityTest` 12).
+
+**Next:** C04 Stage 2 — wire the tracker into `AddTransactionDialog` (prefill category + account on open, record on submit; visually verify on device). Then Stage 3 applies to Recurring + Budget + currency.
+
 ### 2026-05-26 — C05 closed (category bleed eliminated; ALL Sprint-1 P0s now done)
 
 **Cluster:** C05 (P0, category bleed Income/Expense). Final P0 ship-blocker. Sprint 1's audit estimate was C01-only — landing C01 + C02 + C03a + C05 in a single session is a 4× scope expansion against the audit's plan.
