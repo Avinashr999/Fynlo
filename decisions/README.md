@@ -29,4 +29,5 @@ write a new ADR and mark the old one `Superseded by <new file>`.
 
 | Date | Title | Status | Affects |
 |---|---|---|---|
-| 2026-05-26 | [C01 fix strategy — Payments as the single source of truth](./2026-05-26-c01-fix-strategy.md) | Proposed | C01, C02, C03, INF04 |
+| 2026-05-26 | [C01 fix strategy — Payments as the single source of truth](./2026-05-26-c01-fix-strategy.md) | Accepted | C01, C02, C03, INF04 |
+| 2026-05-26 | [Release cadence — complete all clusters, then ship once](./2026-05-26-release-cadence-all-clusters-then-ship.md) | Accepted | every cluster + the whole RELEASE_PROTOCOL pipeline |

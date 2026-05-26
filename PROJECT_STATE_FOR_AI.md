@@ -70,12 +70,14 @@ If any line can't be filled, **stop and ask**. If the user pushes back, follow `
 - **C03a** — schema integrity additive fields (`schemaVersion`, `createdAt`, `projectId`, `userId`)
 - **C05** — category bleed Income / Expense
 
-**Before promoting `master` to 3.2.2 Production** (per `RELEASE_PROTOCOL.md §8`):
+**Release strategy (changed 2026-05-26):** no Play Console upload of *any* version until **every** cluster in `UX_AUDIT_2026-05-25.md` (C01–C22 + C03b, including the v4+ C22 backlog) is closed. See `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md` for the full reasoning. The C01-closure work below remains valid as a development milestone — code is on `master`, tests are green, release notes drafted — but the `RELEASE_PROTOCOL.md §4` pipeline is **dormant** and will execute *once*, at the final all-clusters launch, with a freshly-drafted Play Store copy.
 
-- ~~Add an instrumented migration test (`MigrationTestHelper` for `v15 → v16`)~~ ✅ done 2026-05-26 — `FynloDatabaseMigrationTest` in `app/src/androidTest/`, 5 cases all passing on real device (CPH2767, Android 16). Requires emulator/device locally; CI integration via Firebase Test Lab is a follow-up.
-- ~~Draft 3.2.2 release notes per `RELEASE_PROTOCOL.md §5`~~ ✅ `release_notes/3.2.2.md` + `CHANGELOG.md [3.2.2]`.
-- Manual smoke test (§3.5 of release protocol) — still TODO before tag.
-- `versionName` / `versionCode` bump in `app/build.gradle.kts` — still TODO before tag.
+What this means in practice for AI agents reading this file:
+- Do NOT propose tagging `v3.2.2` or running `:app:bundleProdRelease` for an upload.
+- DO continue per-cluster work; the structural-fix discipline from `decisions/2026-05-26-c01-fix-strategy.md` (test-first, structural enforcement, ADR for compound decisions) remains in force for every subsequent cluster.
+- The 3.2.2 release notes and `CHANGELOG [3.2.2]` are kept as development-milestone records, not shipping artifacts. Future cluster closures append to the journal (§6) and may bump internal `versionName` markers without triggering an upload.
+
+C01-closure milestone is complete (✅ migration test, ✅ release-notes draft, ✅ smoke test with PDF fixes, ✅ startup macrobench within ±5%, ✅ versionName/versionCode bumped). Next cluster to pick up is C02 (now a 5-line wrapper per the C01 ADR's Consequences section).
 
 ## 0.5 Priority discipline (summary)
 

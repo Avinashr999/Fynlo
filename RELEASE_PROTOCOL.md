@@ -1,5 +1,18 @@
 # Fynlo Release Protocol
 
+> ⚠️ **Pipeline currently DORMANT (as of 2026-05-26).** Per
+> [`decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`](decisions/2026-05-26-release-cadence-all-clusters-then-ship.md),
+> no Play Console upload happens until every `UX_AUDIT_2026-05-25.md`
+> cluster (C01–C22 + C03b) is closed. This document remains the
+> authoritative reference for *how* a release will happen; it does not
+> currently gate ongoing development. Cluster work continues on `master`
+> with normal commit / test / CI hygiene; release-readiness gates
+> (`§3.4`, `§3.5`) will be re-run once at launch time against the
+> all-clusters-complete state. Internal per-cluster `versionName`
+> bumps may continue (e.g., `3.2.2` for C01 closure) but produce no
+> uploaded artefact.
+
+
 **Version:** 1.0
 **Last updated:** 2026-05-25
 **Authority:** Defines how Fynlo ships from merged code to users' devices. Binding for every release.
