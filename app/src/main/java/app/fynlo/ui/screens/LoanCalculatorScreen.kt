@@ -22,8 +22,45 @@ import java.util.Locale
 import kotlin.math.pow
 import app.fynlo.FinanceViewModel
 import app.fynlo.logic.CurrencyFormatter
+import app.fynlo.ui.components.DatePickerField
 import app.fynlo.ui.theme.*
 
+/**
+ * EMI Calculator (renamed from "Loan Calculator" in 3.2.16 per user feedback
+ * that the screen *is* an EMI calculator — that's the canonical term in the
+ * Indian-finance context and the audience this app serves).
+ *
+ * 3.2.16 visual polish pass:
+ *   - Header rename ("Loan Calculator" → "EMI Calculator").
+ *   - Tenure unit segmented row no longer wraps inside the same `weight(1f)`
+ *     as the number input; it now hugs its natural width with the input
+ *     taking the rest of the row.
+ *   - Result cards bumped from `bodySmall` (which wrapped on narrower
+ *     phones) to `titleMedium` — proper visual hierarchy for the
+ *     headline numbers.
+ *   - Loan/Due date inputs swapped from raw text fields to `DatePickerField`
+ *     (same component used everywhere else in the app).
+ *   - "Outstanding as of today" section hidden behind an explicit
+ *     `Already took this loan?` toggle — the primary use case is planning
+ *     a *future* EMI; the outstanding-interest path is the exception, not
+ *     the default. Cleans up the form for the common case.
+ *   - Amortization schedule got a Month-wise / Year-wise toggle. Yearly is
+ *     the default — 24 monthly rows was a wall of text most users scan past;
+ *     yearly summary (one row per year with summed principal + interest +
+ *     end-of-year balance) is what the user actually wants to see.
+ *   - Reset button — clears all inputs and the dates. Useful when iterating
+ *     between scenarios.
+ *
+ * Deferred to a separate cluster (per user "just visuals, skip features"):
+ *   - Save as Debt (push computed loan into Debts tracker).
+ *   - Prepayment simulation (modal: "prepay ₹X in month Y, see savings").
+ *   - Affordability % (EMI vs declared salary).
+ *   - Compare two scenarios side-by-side.
+ *   - Share / export schedule (CSV or PDF).
+ *   - EMI breakdown pie chart.
+ *
+ * Per UX_AUDIT C12-C15 P1 backlog — this commit closes the visual half.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LoanCalculatorScreen(viewModel: FinanceViewModel? = null) {
@@ -41,6 +78,17 @@ fun LoanCalculatorScreen(viewModel: FinanceViewModel? = null) {
     var loanDate   by remember { mutableStateOf(java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy"))) }
     var dueDate    by remember { mutableStateOf("") }
     var expanded   by remember { mutableStateOf(false) }
+
+    // 3.2.16 — outstanding-interest section is opt-in. Most users planning
+    // an EMI haven't taken the loan yet, so showing the "days elapsed /
+    // accrued interest" panel by default was noise. Now hidden until the
+    // user explicitly says "I already took this loan and want to see what
+    // I owe today."
+    var trackExistingLoan by remember { mutableStateOf(false) }
+
+    // 3.2.16 — Month-wise / Year-wise amortization toggle. Yearly is the
+    // default; the user can switch if they want the granular view.
+    var scheduleGranularity by remember { mutableStateOf("Yearly") }
 
     val intTypes = listOf("Reducing Balance", "Simple Interest", "Compound Interest")
 
@@ -117,18 +165,44 @@ fun LoanCalculatorScreen(viewModel: FinanceViewModel? = null) {
         }
     }
 
+    // 3.2.16 — reset clears every input back to defaults. The dates
+    // get re-initialised to today (loan) and blank (due) so the user
+    // doesn't fall into the trap of a stale loan date triggering the
+    // accrued-interest panel after a reset.
+    val resetAll: () -> Unit = {
+        principal = ""
+        rate = ""
+        tenure = ""
+        tenureUnit = "Months"
+        intType = "Reducing Balance"
+        loanDate = java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy"))
+        dueDate = ""
+        trackExistingLoan = false
+        scheduleGranularity = "Yearly"
+    }
+
     Column(modifier = Modifier.fillMaxSize()) {
-        PremiumScreenHeader("Loan Calculator", "Plan your EMI before borrowing")
+        PremiumScreenHeader(
+            title = "EMI Calculator",
+            subtitle = "Plan your EMI before borrowing",
+            action = {
+                // 3.2.16 — Reset button. Tonal so it's discoverable but
+                // doesn't compete with the primary input flow.
+                FilledTonalIconButton(onClick = resetAll) {
+                    Icon(Icons.Default.Refresh, contentDescription = "Reset")
+                }
+            }
+        )
         Column(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp).verticalScroll(rememberScrollState()).imePadding()) {
-        Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(8.dp))
 
-        Column(
-            Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp))
-                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-
+            // ── Input card ────────────────────────────────────────────────
+            Column(
+                Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
                 OutlinedTextField(
                     value = principal, onValueChange = { principal = it },
                     label = { Text("Principal Amount ($currencySymbol)") },
@@ -143,25 +217,31 @@ fun LoanCalculatorScreen(viewModel: FinanceViewModel? = null) {
                     modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp), singleLine = true
                 )
 
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                // 3.2.16 — tenure input + unit picker. The unit segmented row
+                // used to share `weight(1f)` with the number input, making
+                // them both half-width and the segment labels (Months / Years)
+                // cramped. Now the number input is `weight(1f)` (takes
+                // remaining space) and the unit picker hugs its natural
+                // width — far cleaner.
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
                     OutlinedTextField(
                         value = tenure, onValueChange = { tenure = it },
                         label = { Text("Tenure") },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp), singleLine = true
                     )
-                    // 3.2.11 chip-sweep: tenure unit was a vertical Column of 2 fillMaxWidth chips
-                    // (awkward stacked layout) — now a horizontal SegmentedButtonRow that sits
-                    // beside the Tenure number input. `icon = {}` per the 3.2.8 lesson.
                     val tenureUnits = listOf("Months", "Years")
-                    SingleChoiceSegmentedButtonRow(modifier = Modifier.weight(1f)) {
+                    SingleChoiceSegmentedButtonRow {
                         tenureUnits.forEachIndexed { idx, unit ->
                             SegmentedButton(
                                 selected = tenureUnit == unit,
                                 onClick = { tenureUnit = unit },
                                 shape = SegmentedButtonDefaults.itemShape(idx, tenureUnits.size),
                                 icon = {},
-                                label = { Text(unit, style = MaterialTheme.typography.labelSmall) },
+                                label = { Text(unit, style = MaterialTheme.typography.labelMedium) },
                             )
                         }
                     }
@@ -182,202 +262,435 @@ fun LoanCalculatorScreen(viewModel: FinanceViewModel? = null) {
                     }
                 }
 
-                HorizontalDivider()
-                Text("Loan Dates (for outstanding calculation)",
-                    style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-
-                OutlinedTextField(
-                    value = loanDate, onValueChange = { loanDate = it },
-                    label = { Text("Loan Date (DD-MM-YYYY)") },
-                    modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp), singleLine = true
-                )
-                OutlinedTextField(
-                    value = dueDate, onValueChange = { dueDate = it },
-                    label = { Text("Due Date (DD-MM-YYYY) — optional") },
-                    modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp), singleLine = true
-                )
-                if (daysElapsed > 0) {
-                    Row(
-                        Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
-                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
-                            .padding(10.dp),
-                        Arrangement.SpaceBetween
-                    ) {
-                        Text("Days elapsed: $daysElapsed", style = MaterialTheme.typography.bodySmall)
-                        if (isOverdue) Text("Overdue: $daysOverdue days",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = SemanticRed)
-                    }
-                }
-        }
-
-        Spacer(Modifier.height(16.dp))
-
-        if (result != null) {
-            Column(
-                Modifier.fillMaxWidth().padding(top = 4.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text("Monthly EMI", style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text(CurrencyFormatter.detail(result.emi, currencyCode, locale),
-                    style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.ExtraBold),
-                    color = Emerald500)
-            }
-
-            Spacer(Modifier.height(12.dp))
-
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                ResultCard("Principal", CurrencyFormatter.detail(principal.toDoubleOrNull() ?: 0.0, currencyCode, locale),
-                    MaterialTheme.colorScheme.primary, Modifier.weight(1f))
-                ResultCard("Total Interest", CurrencyFormatter.detail(result.totalInterest, currencyCode, locale),
-                    SemanticRed, Modifier.weight(1f))
-                ResultCard("Total Payment", CurrencyFormatter.detail(result.totalPayment, currencyCode, locale),
-                    Emerald500, Modifier.weight(1f))
-            }
-
-            val pct = if ((principal.toDoubleOrNull() ?: 0.0) > 0)
-                result.totalInterest / (principal.toDoubleOrNull() ?: 1.0) * 100 else 0.0
-            Spacer(Modifier.height(8.dp))
-            Row(
-                Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
-                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
-                    .padding(12.dp),
-                Arrangement.SpaceBetween
-            ) {
-                Text("Interest is ${String.format(locale, "%.1f", pct)}% of principal",
-                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text("Method: $intType", style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-
-            if (daysElapsed > 0 && (principal.toDoubleOrNull() ?: 0.0) > 0) {
-                Spacer(Modifier.height(12.dp))
-                val loanDateFmt = runCatching {
-                    val fmt = java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy")
-                    val d = java.time.LocalDate.parse(loanDate, fmt)
-                    d.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd"))
-                }.getOrDefault("")
-                val dueDateFmt = runCatching {
-                    if (dueDate.isBlank()) ""
-                    else {
-                        val fmt = java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy")
-                        val d = java.time.LocalDate.parse(dueDate, fmt)
-                        d.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd"))
-                    }
-                }.getOrDefault("")
-                val p = principal.toDoubleOrNull() ?: 0.0
-                val r = rate.toDoubleOrNull() ?: 0.0
-                val accrued = app.fynlo.logic.InterestEngine.calcIntAccrued(
-                    amount = p, rate = r, loanDate = loanDateFmt,
-                    intType = intType, dueDate = dueDateFmt
-                )
-                val outstanding = p + accrued
-                val perDay = if (daysElapsed > 0) accrued / daysElapsed else 0.0
-
-                Column(
-                    Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp))
-                        .background(SemanticRed.copy(alpha = 0.08f))
-                        .padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                // 3.2.16 — Already-took-this-loan toggle. Hides the
+                // outstanding-as-of-today section by default; surfaces it
+                // when the user opts in. Cleaner default form, same
+                // functionality available on demand.
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                        Text("Outstanding as of Today",
-                            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold))
-                        HorizontalDivider()
-                        Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
-                            Text("Days Elapsed", style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Text("$daysElapsed days", style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold))
-                        }
-                        Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
-                            Text("Interest Accrued", style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Text(CurrencyFormatter.detail(accrued, currencyCode, locale),
-                                style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            "Already took this loan?",
+                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                        )
+                        Text(
+                            "Show accrued interest from loan date onward",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Switch(
+                        checked = trackExistingLoan,
+                        onCheckedChange = { trackExistingLoan = it },
+                    )
+                }
+
+                if (trackExistingLoan) {
+                    HorizontalDivider()
+                    DatePickerField(
+                        value = loanDate,
+                        onValueChange = { loanDate = it },
+                        label = "Loan Date",
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    DatePickerField(
+                        value = dueDate,
+                        onValueChange = { dueDate = it },
+                        label = "Due Date",
+                        modifier = Modifier.fillMaxWidth(),
+                        optional = true,
+                    )
+                    if (daysElapsed > 0) {
+                        Row(
+                            Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
+                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+                                .padding(10.dp),
+                            Arrangement.SpaceBetween
+                        ) {
+                            Text("Days elapsed: $daysElapsed", style = MaterialTheme.typography.bodySmall)
+                            if (isOverdue) Text("Overdue: $daysOverdue days",
+                                style = MaterialTheme.typography.bodySmall,
                                 color = SemanticRed)
                         }
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(20.dp))
+
+            // ── Results section ───────────────────────────────────────────
+            if (result != null) {
+                // EMI headline — hero number
+                Column(
+                    Modifier.fillMaxWidth().padding(top = 4.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        "Monthly EMI",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        CurrencyFormatter.detail(result.emi, currencyCode, locale),
+                        style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.ExtraBold),
+                        color = Emerald500,
+                    )
+                }
+
+                Spacer(Modifier.height(16.dp))
+
+                // 3.2.16 — result cards bumped from bodySmall to titleMedium.
+                // Three side-by-side cards in the same row at narrow widths
+                // cramped tiny numbers; titleMedium with proper card padding
+                // makes the headline-level information actually readable.
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    ResultCard(
+                        "Principal",
+                        CurrencyFormatter.detail(principal.toDoubleOrNull() ?: 0.0, currencyCode, locale),
+                        MaterialTheme.colorScheme.primary,
+                        Modifier.weight(1f),
+                    )
+                    ResultCard(
+                        "Total Interest",
+                        CurrencyFormatter.detail(result.totalInterest, currencyCode, locale),
+                        SemanticRed,
+                        Modifier.weight(1f),
+                    )
+                    ResultCard(
+                        "Total Payment",
+                        CurrencyFormatter.detail(result.totalPayment, currencyCode, locale),
+                        Emerald500,
+                        Modifier.weight(1f),
+                    )
+                }
+
+                val pct = if ((principal.toDoubleOrNull() ?: 0.0) > 0)
+                    result.totalInterest / (principal.toDoubleOrNull() ?: 1.0) * 100 else 0.0
+                Spacer(Modifier.height(12.dp))
+                Row(
+                    Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+                        .padding(12.dp),
+                    Arrangement.SpaceBetween
+                ) {
+                    Text("Interest is ${String.format(locale, "%.1f", pct)}% of principal",
+                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("Method: $intType", style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+
+                // ── Outstanding-as-of-today (only when trackExistingLoan) ─
+                if (trackExistingLoan && daysElapsed > 0 && (principal.toDoubleOrNull() ?: 0.0) > 0) {
+                    Spacer(Modifier.height(16.dp))
+                    val loanDateFmt = runCatching {
+                        val fmt = java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy")
+                        val d = java.time.LocalDate.parse(loanDate, fmt)
+                        d.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd"))
+                    }.getOrDefault("")
+                    val dueDateFmt = runCatching {
+                        if (dueDate.isBlank()) ""
+                        else {
+                            val fmt = java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy")
+                            val d = java.time.LocalDate.parse(dueDate, fmt)
+                            d.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd"))
+                        }
+                    }.getOrDefault("")
+                    val p = principal.toDoubleOrNull() ?: 0.0
+                    val r = rate.toDoubleOrNull() ?: 0.0
+                    val accrued = app.fynlo.logic.InterestEngine.calcIntAccrued(
+                        amount = p, rate = r, loanDate = loanDateFmt,
+                        intType = intType, dueDate = dueDateFmt
+                    )
+                    val outstanding = p + accrued
+                    val perDay = if (daysElapsed > 0) accrued / daysElapsed else 0.0
+
+                    Column(
+                        Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp))
+                            .background(SemanticRed.copy(alpha = 0.08f))
+                            .padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            "Outstanding as of Today",
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                        )
+                        HorizontalDivider()
                         Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
-                            Text("Per Day Interest", style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Text(CurrencyFormatter.detail(perDay, currencyCode, locale),
-                                style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold))
+                            Text(
+                                "Days Elapsed",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            Text(
+                                "$daysElapsed days",
+                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                            )
+                        }
+                        Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
+                            Text(
+                                "Interest Accrued",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            Text(
+                                CurrencyFormatter.detail(accrued, currencyCode, locale),
+                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                                color = SemanticRed,
+                            )
+                        }
+                        Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
+                            Text(
+                                "Per Day Interest",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            Text(
+                                CurrencyFormatter.detail(perDay, currencyCode, locale),
+                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                            )
                         }
                         if (isOverdue) {
-                            Text("Overdue by $daysOverdue days",
-                                style = MaterialTheme.typography.labelSmall,
+                            Text(
+                                "Overdue by $daysOverdue days",
+                                style = MaterialTheme.typography.labelMedium,
                                 color = SemanticRed,
-                                modifier = Modifier.clip(RoundedCornerShape(8.dp))
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(8.dp))
                                     .background(SemanticRed.copy(alpha = 0.1f))
-                                    .padding(horizontal = 8.dp, vertical = 4.dp))
+                                    .padding(horizontal = 10.dp, vertical = 5.dp),
+                            )
                         }
                         HorizontalDivider()
-                        Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
-                            Text("Total Outstanding", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold))
-                            Text(CurrencyFormatter.detail(outstanding, currencyCode, locale),
-                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.ExtraBold),
-                                color = SemanticRed)
+                        Row(
+                            Modifier.fillMaxWidth(),
+                            Arrangement.SpaceBetween,
+                            Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                "Total Outstanding",
+                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                            )
+                            Text(
+                                CurrencyFormatter.detail(outstanding, currencyCode, locale),
+                                style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.ExtraBold),
+                                color = SemanticRed,
+                            )
                         }
+                    }
                 }
-            }
 
-            if (result.schedule.isNotEmpty()) {
-                Spacer(Modifier.height(16.dp))
-                Text("Amortization Schedule",
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
-                Spacer(Modifier.height(8.dp))
+                // ── Amortization schedule ────────────────────────────────
+                if (result.schedule.isNotEmpty()) {
+                    Spacer(Modifier.height(20.dp))
+
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            "Amortization Schedule",
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                        )
+                        // 3.2.16 — granularity toggle. Yearly aggregates the
+                        // 12 months of each year into one row (year #,
+                        // sum-of-principal, sum-of-interest, end-of-year
+                        // remaining balance) so a 30-year home loan goes
+                        // from a 360-row wall of text to a scannable 30 rows.
+                        val granOptions = listOf("Yearly", "Monthly")
+                        SingleChoiceSegmentedButtonRow {
+                            granOptions.forEachIndexed { idx, g ->
+                                SegmentedButton(
+                                    selected = scheduleGranularity == g,
+                                    onClick = { scheduleGranularity = g },
+                                    shape = SegmentedButtonDefaults.itemShape(idx, granOptions.size),
+                                    icon = {},
+                                    label = { Text(g, style = MaterialTheme.typography.labelSmall) },
+                                )
+                            }
+                        }
+                    }
+                    Spacer(Modifier.height(12.dp))
+
+                    Column(
+                        Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp))
+                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+                            .padding(16.dp)
+                    ) {
+                        if (scheduleGranularity == "Yearly") {
+                            // Year-wise aggregation: chunk the monthly
+                            // schedule into 12-month groups; for each year
+                            // sum the principal + interest and compute the
+                            // remaining balance after the year ends.
+                            val totalPrincipal = principal.toDoubleOrNull() ?: 0.0
+                            val years = result.schedule.chunked(12)
+                            var balance = totalPrincipal
+
+                            Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
+                                listOf("Year", "Principal", "Interest", "Balance").forEach { h ->
+                                    Text(
+                                        h,
+                                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                        modifier = Modifier.weight(1f), textAlign = TextAlign.Center,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
+                            }
+                            HorizontalDivider(Modifier.padding(vertical = 8.dp))
+                            years.forEachIndexed { idx, yearChunk ->
+                                val yearNum = idx + 1
+                                val sumPrin = yearChunk.sumOf { it.second }
+                                val sumInt = yearChunk.sumOf { it.third }
+                                balance = (balance - sumPrin).coerceAtLeast(0.0)
+                                Row(
+                                    Modifier.fillMaxWidth().padding(vertical = 5.dp),
+                                    Arrangement.SpaceBetween,
+                                ) {
+                                    Text(
+                                        "$yearNum",
+                                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                                        modifier = Modifier.weight(1f), textAlign = TextAlign.Center,
+                                    )
+                                    Text(
+                                        CurrencyFormatter.listRow(sumPrin, currencyCode, locale),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.weight(1f), textAlign = TextAlign.Center,
+                                    )
+                                    Text(
+                                        CurrencyFormatter.listRow(sumInt, currencyCode, locale),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = SemanticRed,
+                                        modifier = Modifier.weight(1f), textAlign = TextAlign.Center,
+                                    )
+                                    Text(
+                                        CurrencyFormatter.listRow(balance, currencyCode, locale),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        modifier = Modifier.weight(1f), textAlign = TextAlign.Center,
+                                    )
+                                }
+                                if (idx < years.lastIndex) {
+                                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
+                                }
+                            }
+                        } else {
+                            // Monthly view — kept for users who want
+                            // detailed precision. First 24 rows; deep loans
+                            // truncated with a "... N more months" footer.
+                            Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
+                                listOf("Month", "Principal", "Interest", "EMI").forEach { h ->
+                                    Text(
+                                        h,
+                                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                        modifier = Modifier.weight(1f), textAlign = TextAlign.Center,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
+                            }
+                            HorizontalDivider(Modifier.padding(vertical = 8.dp))
+                            result.schedule.take(24).forEach { (month, prin, interest) ->
+                                Row(
+                                    Modifier.fillMaxWidth().padding(vertical = 3.dp),
+                                    Arrangement.SpaceBetween,
+                                ) {
+                                    Text(
+                                        "$month",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        modifier = Modifier.weight(1f), textAlign = TextAlign.Center,
+                                    )
+                                    Text(
+                                        CurrencyFormatter.listRow(prin, currencyCode, locale),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.weight(1f), textAlign = TextAlign.Center,
+                                    )
+                                    Text(
+                                        CurrencyFormatter.listRow(interest, currencyCode, locale),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = SemanticRed,
+                                        modifier = Modifier.weight(1f), textAlign = TextAlign.Center,
+                                    )
+                                    Text(
+                                        CurrencyFormatter.listRow(prin + interest, currencyCode, locale),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        modifier = Modifier.weight(1f), textAlign = TextAlign.Center,
+                                    )
+                                }
+                                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
+                            }
+                            if (result.schedule.size > 24) {
+                                Text(
+                                    "... ${result.schedule.size - 24} more months — switch to Yearly to see the full term",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+                                    textAlign = TextAlign.Center,
+                                )
+                            }
+                        }
+                    }
+                }
+            } else {
+                // Empty state — clear guidance about what to enter.
                 Column(
-                    Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp))
-                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
-                        .padding(16.dp)
+                    Modifier.fillMaxWidth().padding(top = 24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                        Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
-                            listOf("Month", "Principal", "Interest", "Total EMI").forEach { h ->
-                                Text(h, style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                                    modifier = Modifier.weight(1f), textAlign = TextAlign.Center,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            }
-                        }
-                        HorizontalDivider(Modifier.padding(vertical = 8.dp))
-                        result.schedule.take(24).forEach { (month, prin, interest) ->
-                            Row(Modifier.fillMaxWidth().padding(vertical = 3.dp), Arrangement.SpaceBetween) {
-                                Text("$month", style = MaterialTheme.typography.bodySmall,
-                                    modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
-                                Text(CurrencyFormatter.detail(prin, currencyCode, locale),
-                                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
-                                Text(CurrencyFormatter.detail(interest, currencyCode, locale),
-                                    style = MaterialTheme.typography.bodySmall, color = SemanticRed,
-                                    modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
-                                Text(CurrencyFormatter.detail(prin + interest, currencyCode, locale),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
-                            }
-                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
-                        }
-                        if (result.schedule.size > 24) {
-                            Text("... ${result.schedule.size - 24} more months",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.fillMaxWidth().padding(top = 8.dp), textAlign = TextAlign.Center)
-                        }
+                    Icon(
+                        Icons.Default.Calculate,
+                        contentDescription = null,
+                        modifier = Modifier.size(48.dp),
+                        tint = MaterialTheme.colorScheme.outlineVariant,
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        "Enter principal, rate, and tenure",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Text(
+                        "Your EMI and full amortization will appear here.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.outlineVariant,
+                    )
                 }
             }
-        }
 
-        Spacer(Modifier.height(100.dp))
-    }
+            Spacer(Modifier.height(FabBottomPadding))
+        }
     }
 }
 
 @Composable
 fun ResultCard(label: String, value: String, color: Color, modifier: Modifier) {
     Column(
-        modifier.clip(RoundedCornerShape(16.dp)).background(color.copy(alpha = 0.08f)).padding(14.dp),
+        modifier.clip(RoundedCornerShape(16.dp)).background(color.copy(alpha = 0.08f)).padding(12.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text(label, style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
-        Text(value, style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
-            color = color, textAlign = TextAlign.Center)
+        Text(
+            label,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+        )
+        Spacer(Modifier.height(4.dp))
+        // 3.2.16 — was `bodySmall.copy(fontWeight = Bold)` which was 14sp.
+        // Three of these in a Row at narrow widths made the numbers crash
+        // into each other. titleMedium (16sp) keeps the cards readable at
+        // typical phone widths while still fitting comfortably in 3-up
+        // layout.
+        Text(
+            value,
+            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+            color = color,
+            textAlign = TextAlign.Center,
+        )
     }
 }

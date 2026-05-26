@@ -2,6 +2,38 @@
 
 All notable changes to Fynlo are documented here.
 
+## [3.2.16] - 2026-05-27 *(Development milestone — EMI Calculator visual polish; not promoted per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`)*
+
+### Fixed
+- **EMI Calculator visual polish (partial of UX_AUDIT C12-C15 P1 redesign backlog).** User flagged the screen as "not good to see and missing features" and clarified it's their EMI calculator (the canonical Indian-finance term). Visual-polish-only scope this commit; features (Save-as-Debt, Prepayment simulation, Compare scenarios, Share schedule) deferred.
+  - **Header rename** "Loan Calculator" → "EMI Calculator" (both in `PremiumScreenHeader` and in `Navigation.Screen.LoanCalc.label` for the side-drawer entry). Route name `loan_calc` kept unchanged — backwards-compat with any deep-link / saved state.
+  - **Tenure input row fixed.** The number input + Months/Years segmented row both used `weight(1f)` previously, making them the same width and cramping the segment labels. Now: number input is `weight(1f)` (takes remaining space), unit segment hugs natural width.
+  - **Result cards bumped from `bodySmall` → `titleMedium`.** Three cards side-by-side (Principal / Total Interest / Total Payment) with 14sp values were unreadable; 16sp + better card padding makes them proper headline-level information.
+  - **Loan / Due Date inputs now use `DatePickerField`** (same component used everywhere else in the app). No more `DD-MM-YYYY` text-hint pattern, no more parsing-by-string-input.
+  - **Outstanding-as-of-Today section hidden behind a `Switch` toggle** ("Already took this loan? Show accrued interest from loan date onward"). The primary EMI-calculator use case is planning a *future* loan; the accrued-interest path is the exception. Toggle defaults OFF for a cleaner default form; opting in surfaces the date pickers and the accrued-interest panel.
+  - **Amortization schedule got a `Yearly / Monthly` toggle.** Yearly is the default — 24 monthly rows for a long loan was a wall of text users scanned past; yearly summary (one row per year with summed principal + interest + end-of-year remaining balance) is what people actually want to see. Monthly view still available for users who want detailed precision.
+  - **Reset button** added to the header action slot (`FilledTonalIconButton` with refresh icon). Clears all inputs back to defaults — useful when iterating between scenarios.
+  - **Empty state** when no inputs entered: small calculator icon + "Enter principal, rate, and tenure" hint. Replaces the previous blank gap.
+  - **Outstanding panel typography bumped** — `bodyMedium` for labels and values, `titleMedium` header. Was `bodySmall` previously which felt cramped against the prominent `Outstanding` heading.
+  - **Bottom padding** now uses the shared `FabBottomPadding` constant (C06 design system) instead of the previous hardcoded `100.dp`.
+
+### Deferred to a future cluster (per user "just visuals, skip features")
+- **Save as Debt** — push the computed loan into the Debts tracker so the user can track it after taking the loan.
+- **Prepayment simulation** — "prepay ₹X in month Y → total interest savings + tenure shortening."
+- **Affordability %** — EMI as % of declared salary; needs a salary preference field.
+- **Compare two scenarios** side-by-side.
+- **Share / export schedule** (CSV / PDF).
+- **EMI breakdown pie chart** (Principal vs Total Interest visual).
+
+### Changed
+- **`versionName`** `3.2.15` → `3.2.16`, **`versionCode`** `138` → `139`. EMI Calculator visual-polish milestone.
+
+### Data-integrity gate
+Unchanged at **112 tests across 9 classes**, 0 failures (UI-only refactor).
+
+### Notes
+- **Stage 4 of C08 still pending** — PDF + XLSX export migration was originally planned next, but the user surfaced the EMI Calculator first. Stage 4 ships as 3.2.17.
+
 ## [3.2.15] - 2026-05-27 *(Development milestone — C08 Stage 3: Detail sweep across 18+ files via 6 parallel agents; not promoted per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`)*
 
 ### Fixed

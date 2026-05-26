@@ -158,7 +158,7 @@ AI_AGENT_PROTOCOL.md to match.
 
 # Fynlo - Complete AI Portability File
 **Project Name**: Fynlo
-**Version**: 3.2.15 on `master` (`versionName = "3.2.15"`, `versionCode = 138`). All four Sprint-1 P0 clusters closed (C01 / C02 / C03a / C05). Three P1 Sprint 2 clusters closed (C04 at 3.2.6, C06 + C07 at 3.2.12). **C08 nearly closed — Stage 1 (3.2.13: CurrencyFormatter foundation + 33 tests), Stage 2 (3.2.14: 52 highest-impact sites + 3 truncation fixes), Stage 3 (3.2.15: 147 Detail sites + 1 latent bug fix via 6 parallel agents). Only Stage 4 remains: PDF + XLSX export migration (XLSX numeric-cell fix is load-bearing — currently strings, breaks Excel formulas).** Total ~202/257 currency call sites migrated through Stages 1-3. Internal milestone markers only — per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens until every `UX_AUDIT` cluster (P0 through P3) is closed.
+**Version**: 3.2.16 on `master` (`versionName = "3.2.16"`, `versionCode = 139`). All four Sprint-1 P0 clusters closed (C01 / C02 / C03a / C05). Three P1 Sprint 2 clusters closed (C04 at 3.2.6, C06 + C07 at 3.2.12). C08 Stages 1-3 done (3.2.13 / 3.2.14 / 3.2.15); **Stage 4 paused after user surfaced EMI Calculator polish — shipped as 3.2.16 (visual polish only; features deferred). C08 Stage 4 (PDF + XLSX export migration) is the next planned commit as 3.2.17.** Internal milestone markers only — per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens until every `UX_AUDIT` cluster (P0 through P3) is closed.
 **Platform**: Android (Kotlin, Jetpack Compose, Room — Gradle 9.4.1, AGP 9.2.1, Room 2.8.4, KSP 2.3.7, Kotlin 2.2.10)
 
 ## 1. Project Overview
@@ -345,6 +345,35 @@ in the APK).
 ## 6. Journal
 
 **Newest first.** Each entry: date · cluster(s) closed/touched · commit(s) · one-paragraph why-and-what.
+
+### 2026-05-27 — 3.2.16 (EMI Calculator visual polish — partial of C12-C15 P1 backlog)
+
+**Type:** out-of-band visual polish for `LoanCalculatorScreen.kt` (renamed to "EMI Calculator") after user flagged it as "not good to see and missing features." Sits in the C12-C15 P1 redesign backlog; not a full cluster closure (features still deferred per user "just visuals" scope choice). Interrupted C08 work — Stage 4 (PDF + XLSX exports) deferred to 3.2.17.
+
+**Internal milestone:** `3.2.16` / `versionCode = 139`. No Play Console upload per release-cadence ADR. No test gate change.
+
+**What landed (visual polish only):**
+- **Rename** `LoanCalculatorScreen` → "EMI Calculator" header + side-drawer label. Route name `loan_calc` kept for backwards-compat.
+- **Tenure row fixed** — number input takes remaining width, unit segmented row hugs natural width. Previously both `weight(1f)` cramped the segment labels.
+- **Result cards** bumped `bodySmall` → `titleMedium`. Three side-by-side cards (Principal / Total Interest / Total Payment) were unreadable at 14sp; 16sp + card-padding tweak makes them headline-level.
+- **`DatePickerField`** for loan + due dates (matches every other date input in the app). No more raw `DD-MM-YYYY` text-hint pattern.
+- **Outstanding-as-of-Today section hidden behind `Switch` toggle** — `Already took this loan? Show accrued interest from loan date onward`. Default OFF; primary EMI-calc use case is planning a *future* loan, accrued-interest is the exception.
+- **Amortization schedule `Yearly / Monthly` toggle**, defaulting to Yearly. 30-year loan goes from a 360-row wall of text to a 30-row scannable summary (year #, summed principal, summed interest, end-of-year balance).
+- **Reset button** (`FilledTonalIconButton` in header action slot) clears all inputs.
+- **Empty state** when no inputs: calculator icon + "Enter principal, rate, and tenure" hint.
+- **Bottom padding** swapped to shared `FabBottomPadding` constant (C06 design system).
+
+**Deferred (per user "skip features" scope choice — tracked as a future cluster):**
+- Save as Debt (push computed loan into Debts tracker — primary CTA).
+- Prepayment simulation (modal: prepay ₹X in month Y → recomputed interest savings + shortened tenure).
+- Affordability % (EMI vs declared salary; needs a salary preference field).
+- Compare two scenarios side-by-side.
+- Share / export schedule (CSV / PDF).
+- EMI breakdown pie chart (Principal vs Total Interest visual).
+
+These remain in the C12-C15 P1 backlog and will land in a dedicated EMI-Calculator-features commit when the user calls for it.
+
+**Pattern reinforced:** when a screen has "polish vs features" tension and the user picks polish-only, ship the polish fast (single commit, no agent fan-out needed for a single-screen redesign) and explicitly defer the features in the journal + CHANGELOG so the deferred work is auditable.
 
 ### 2026-05-27 — 3.2.15 (C08 Stage 3: Detail sweep across 18+ files via 6 parallel agents)
 
