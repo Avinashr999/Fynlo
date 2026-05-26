@@ -72,9 +72,10 @@ If any line can't be filled, **stop and ask**. If the user pushes back, follow `
 
 **Before promoting `master` to 3.2.2 Production** (per `RELEASE_PROTOCOL.md §8`):
 
-- Add an instrumented migration test (`MigrationTestHelper` for `v15 → v16`) — runtime test exists in JVM but the actual migration code path is only exercised on a real device/emulator
-- Draft 3.2.2 release notes per `RELEASE_PROTOCOL.md §5`
-- Manual smoke test (§3.5 of release protocol)
+- ~~Add an instrumented migration test (`MigrationTestHelper` for `v15 → v16`)~~ ✅ done 2026-05-26 — `FynloDatabaseMigrationTest` in `app/src/androidTest/`, 5 cases all passing on real device (CPH2767, Android 16). Requires emulator/device locally; CI integration via Firebase Test Lab is a follow-up.
+- ~~Draft 3.2.2 release notes per `RELEASE_PROTOCOL.md §5`~~ ✅ `release_notes/3.2.2.md` + `CHANGELOG.md [3.2.2]`.
+- Manual smoke test (§3.5 of release protocol) — still TODO before tag.
+- `versionName` / `versionCode` bump in `app/build.gradle.kts` — still TODO before tag.
 
 ## 0.5 Priority discipline (summary)
 
@@ -353,7 +354,7 @@ in the APK).
 |---|---|
 | C01 regression test exists and passes | ✅ `RecalculateBalancesDataIntegrityTest` (3 cases) green in CI |
 | Manual verification: fixture with `paid: 5000` on a borrower → recalc → `paid` survives | ✅ encoded as sub-test 1 (₹50K fixture; adapt to ₹5K trivially) |
-| Schema migration tested for upgrade-path | ⚠️ logically tested in JVM; instrumented `MigrationTestHelper` v15→v16 still TODO |
+| Schema migration tested for upgrade-path | ✅ `FynloDatabaseMigrationTest` (5 cases, instrumented; passed on CPH2767 / Android 16, 2026-05-26) |
 | `PROJECT_STATE_FOR_AI.md` updated with C01 closure | ✅ this entry |
 | 3.2.2 release notes | ⚠️ TODO |
 

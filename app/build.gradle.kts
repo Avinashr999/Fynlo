@@ -148,6 +148,13 @@ android {
     testOptions {
         unitTests.isIncludeAndroidResources = true
     }
+
+    // Expose Room's exported schema JSONs (under app/schemas/) to the
+    // androidTest APK as assets. MigrationTestHelper reads them from there
+    // when spinning up a database at a prior schema version. Without this
+    // config the instrumented FynloDatabaseMigrationTest can't find the
+    // schemas and fails with a confusing "Schema for X not found" error.
+    sourceSets.getByName("androidTest").assets.srcDirs("$projectDir/schemas")
 }
 
 dependencies {
@@ -217,7 +224,7 @@ dependencies {
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     androidTestImplementation(libs.androidx.espresso.core)
-    androidTestImplementation("androidx.room:room-testing:2.6.1")
+    androidTestImplementation("androidx.room:room-testing:2.8.4")
     androidTestImplementation(libs.androidx.junit)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     debugImplementation(libs.androidx.compose.ui.tooling)
