@@ -68,53 +68,56 @@ fun RecurringScreen(viewModel: FinanceViewModel) {
     val dueCount = recurringList.count { rec -> rec.isActive && !today.isBefore(nextDue(rec)) }
 
     Column(modifier = Modifier.fillMaxSize()) {
+        // C07 fix (UX_AUDIT §C07): the header action row (due-count badge + `+`
+        // IconButton) only renders when the list has data. On empty state the
+        // shared `EmptyState` composable below is the single unambiguous CTA —
+        // hiding the header `+` here prevents the pre-3.2.12 triple-entry-point
+        // (header `+` + inline "Add First" + Scaffold FAB) on the empty screen.
         PremiumScreenHeader(
             title = "Recurring",
             subtitle = "Auto-log on schedule",
-            action = {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    if (dueCount > 0) {
-                        Surface(shape = RoundedCornerShape(20.dp), color = SemanticAmber) {
-                            Text("$dueCount due",
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
-                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                                color = Color.White)
+            action = if (recurringList.isNotEmpty()) {
+                {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        if (dueCount > 0) {
+                            Surface(shape = RoundedCornerShape(20.dp), color = SemanticAmber) {
+                                Text("$dueCount due",
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                    color = Color.White)
+                            }
+                        }
+                        // 3.2.7 fix: was `IconButton + tint = Color.White` against
+                        // the plain surface background of `PremiumScreenHeader` —
+                        // invisible in light mode (smoke-test finding on 3.2.6).
+                        // `FilledTonalIconButton` paints a theme-aware secondary
+                        // container behind a properly-tinted icon, so it stays
+                        // legible in both light and dark themes without needing a
+                        // hardcoded colour.
+                        FilledTonalIconButton(onClick = { showAddDialog = true }) {
+                            Icon(Icons.Default.Add, "Add recurring transaction")
                         }
                     }
-                    // 3.2.7 fix: was `IconButton + tint = Color.White` against
-                    // the plain surface background of `PremiumScreenHeader` —
-                    // invisible in light mode (smoke-test finding on 3.2.6).
-                    // `FilledTonalIconButton` paints a theme-aware secondary
-                    // container behind a properly-tinted icon, so it stays
-                    // legible in both light and dark themes without needing a
-                    // hardcoded colour.
-                    FilledTonalIconButton(onClick = { showAddDialog = true }) {
-                        Icon(Icons.Default.Add, "Add recurring transaction")
-                    }
                 }
-            }
+            } else null,
         )
         Box(modifier = Modifier.weight(1f)) {
         if (recurringList.isEmpty()) {
-            Box(Modifier.fillMaxSize(), Alignment.Center) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Icon(Icons.Default.Repeat, null, Modifier.size(56.dp), tint = MaterialTheme.colorScheme.outlineVariant)
-                    Text("No recurring transactions", style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text("Add salary, rent, EMIs to auto-log", style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.outlineVariant)
-                    FilledTonalButton(onClick = { showAddDialog = true }, shape = RoundedCornerShape(12.dp)) {
-                        Icon(Icons.Default.Add, null, Modifier.size(16.dp))
-                        Spacer(Modifier.width(6.dp))
-                        Text("Add First")
-                    }
-                }
-            }
+            // C07 fix: shared EmptyState replaces the bespoke empty layout.
+            // Header `+` is hidden (see PremiumScreenHeader action above), so
+            // this is the single unambiguous CTA.
+            EmptyState(
+                icon = Icons.Default.Repeat,
+                title = "No recurring transactions",
+                subtitle = "Add salary, rent, EMIs to auto-log",
+                actionLabel = "Add First Recurring",
+                onAction = { showAddDialog = true },
+            )
         } else {
             LazyColumn(
                 modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
-                contentPadding = PaddingValues(top = 12.dp, bottom = 100.dp)
+                contentPadding = PaddingValues(top = 12.dp, bottom = FabBottomPadding)
             ) {
                 if (dueCount > 0) {
                     item {

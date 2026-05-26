@@ -202,7 +202,7 @@ val transactions by viewModel.transactions.collectAsState()
                         actionLabel = "Add First Expense"
                     )
                 }
-                Spacer(Modifier.height(100.dp))
+                Spacer(Modifier.height(FabBottomPadding))
             }
     }
     }

@@ -116,8 +116,14 @@ fun CollectionCalendarScreen(
             title = "Collection Calendar",
             subtitle = "Due dates & overdue loans",
             action = {
-                IconButton(onClick = onNavigateBack) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = androidx.compose.ui.graphics.Color.White)
+                // 3.2.12: was `IconButton + tint = Color.White` against the
+                // plain surface background of `PremiumScreenHeader` — invisible
+                // in light mode (same bug pattern as the RecurringScreen header
+                // `+` fixed in 3.2.7). `FilledTonalIconButton` paints a
+                // theme-aware secondary container behind a properly-tinted
+                // icon, so it stays legible in both light and dark themes.
+                FilledTonalIconButton(onClick = onNavigateBack) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                 }
             }
         )

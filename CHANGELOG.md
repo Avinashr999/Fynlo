@@ -2,6 +2,29 @@
 
 All notable changes to Fynlo are documented here.
 
+## [3.2.12] - 2026-05-27 *(Development milestone — C06 + C07 closure; not promoted per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`)*
+
+### Fixed
+- **C06 (FAB overlap) — system-wide layout bug.** Every scrollable container that sits under a FAB now reserves a shared `FabBottomPadding = 120.dp` clear zone in its `contentPadding.bottom` (LazyColumn) or trailing `Spacer` (verticalScroll). Pre-fix, the 10 scrolling screens used `bottom = 100.dp` which was provably not enough (Material 3 FAB is 56dp + 16dp container margin + gesture-nav inset ≈ 80dp minimum; 100dp left almost no breathing room, 120dp gives a comfortable safety margin). Screens fixed: `HomeScreen`, `HomeScreenModern` (was already 120dp), `SpendScreen`, `BudgetScreen`, `GoalScreen`, `InvestmentScreen`, `LendingScreen`, `PeopleScreen`, `DebtScreen`, `TransactionHistoryScreen`, `RecurringScreen`. The new `FabBottomPadding` constant lives in `DesignSystem.kt` so future scrolling screens can reuse it.
+- **C07 (Duplicate FAB on empty states) — three-entry-point UI mess.** Pre-fix, `GoalScreen`, `BudgetScreen`, and `RecurringScreen` all rendered three Add affordances simultaneously on empty state: the Scaffold's QuickAdd FAB (from `Navigation.kt:480`), a screen-level FAB or header `+` IconButton, AND an inline "Add First X" CTA. The audit's exact wording: "Three entry points minimum. User asks: which one?"
+  - **`Navigation.kt:172` — `showFab` hidden list extended** to include `Screen.Budgets.route`, `Screen.Goals.route`, `Screen.Recurring.route`. These three screens own their own contextual Add affordance (the Scaffold FAB opens a QuickActionMenu for *transactions*, which is the wrong intent on a Budgets/Goals/Recurring page).
+  - **NEW shared `EmptyState(icon, title, subtitle, actionLabel, onAction)` composable** in `DesignSystem.kt`. On empty state, each of the three screens now renders ONLY this one composable, with the screen-level FAB / header `+` IconButton conditionally hidden by an `if (list.isNotEmpty())` wrapper. Once data exists, the screen-level FAB / `+` re-appears and the EmptyState is replaced by the list. Single unambiguous CTA per screen state.
+- **Bonus: `CollectionCalendarScreen` back arrow visibility.** Same `tint = Color.White` on light-surface invisibility bug as the RecurringScreen header `+` fixed in 3.2.7. Replaced with `FilledTonalIconButton` (theme-aware secondary container + properly-tinted icon). Logged as a follow-up in the 3.2.7 commit, folded into this commit since it's the same icon-on-surface pattern as C06/C07 owns.
+
+### Added
+- **`app.fynlo.ui.theme.FabBottomPadding: Dp = 120.dp`** — shared constant for any scrolling container under a FAB. Doc comment explains the 56dp + 16dp + 48dp safety-margin math.
+- **`app.fynlo.ui.theme.EmptyState`** — shared composable for empty-state screens that need a single unambiguous CTA. Encapsulates the icon + title + subtitle + tonal-button-with-Add-icon pattern.
+
+### Changed
+- **`Navigation.kt`** `showFab` hidden list grew from 10 routes to 13 (added Budgets, Goals, Recurring).
+- **`versionName`** `3.2.11` → `3.2.12`, **`versionCode`** `134` → `135`. C06 + C07 dual-cluster closure (both P1 Sprint 2). Per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens here.
+
+### Data-integrity gate
+Unchanged at **79 tests across 8 classes**, 0 failures (pure UI layout / widget change — no logic change).
+
+### Sprint 2 P1 milestone
+After this commit, **three P1 Sprint 2 clusters are CLOSED**: C04 (smart defaults, 3.2.6), C06 (FAB overlap), C07 (duplicate FAB on empty states). Remaining P1: C08 (number formatting), C09 (UTF-8 in dialogs), C12-C15 (screen redesigns), C18 (Settings cleanup), C21 (PDF/XLSX export quality proper).
+
 ## [3.2.11] - 2026-05-27 *(Development milestone — chip→better-widget moderate sweep; not promoted per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`)*
 
 ### Changed

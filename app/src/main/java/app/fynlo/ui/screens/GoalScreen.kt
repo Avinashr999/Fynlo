@@ -46,54 +46,48 @@ fun GoalScreen(viewModel: FinanceViewModel) {
     Column(modifier = Modifier.fillMaxSize()) {
         PremiumScreenHeader("Savings Goals", "Track your financial targets")
         Box(modifier = Modifier.weight(1f)) {
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-            contentPadding = PaddingValues(bottom = 100.dp)
-        ) {
-            item {
-                                Text(
-                    "Track your progress towards big purchases or milestones.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-
+            // C07 fix (UX_AUDIT §C07): on empty state show ONLY the shared
+            // EmptyState CTA, hiding both the list AND the FAB so the user
+            // sees one unambiguous "Add First Goal" entry point — not the
+            // pre-3.2.12 triple of header FAB + inline button + Scaffold FAB.
             if (goals.isEmpty()) {
-                item {
-                    Box(Modifier.fillMaxWidth().padding(vertical = 48.dp), Alignment.Center) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                            Icon(Icons.Default.Star, null, Modifier.size(64.dp),
-                                tint = MaterialTheme.colorScheme.outlineVariant)
-                            Text("No savings goals yet",
-                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
-                                color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Text("Set targets for big purchases or milestones",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.outlineVariant)
-                            Button(onClick = { showAddDialog = true }) { Text("Add First Goal") }
+                EmptyState(
+                    icon = Icons.Default.Star,
+                    title = "No savings goals yet",
+                    subtitle = "Set targets for big purchases or milestones",
+                    actionLabel = "Add First Goal",
+                    onAction = { showAddDialog = true },
+                )
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                    contentPadding = PaddingValues(bottom = FabBottomPadding)
+                ) {
+                    item {
+                        Text(
+                            "Track your progress towards big purchases or milestones.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    itemsIndexed(goals, key = { _, g -> g.id }) { index, goal ->
+                        GoalCard(goal, currencySymbol, onDelete = { viewModel.deleteGoal(goal) })
+                        if (index < goals.lastIndex) {
+                            HorizontalDivider(thickness = 0.5.dp,
+                                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f))
                         }
                     }
                 }
-            } else {
-                itemsIndexed(goals, key = { _, g -> g.id }) { index, goal ->
-                    GoalCard(goal, currencySymbol, onDelete = { viewModel.deleteGoal(goal) })
-                    if (index < goals.lastIndex) {
-                        HorizontalDivider(thickness = 0.5.dp,
-                            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f))
-                    }
+                FloatingActionButton(
+                    onClick = { showAddDialog = true },
+                    modifier = Modifier.align(Alignment.BottomEnd).padding(24.dp),
+                    containerColor = MaterialTheme.colorScheme.primary
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = "Add Goal")
                 }
             }
-        }
-        FloatingActionButton(
-            onClick = { showAddDialog = true },
-            modifier = Modifier.align(Alignment.BottomEnd).padding(24.dp),
-            containerColor = MaterialTheme.colorScheme.primary
-        ) {
-            Icon(Icons.Default.Add, contentDescription = "Add Goal")
-        }
         }
     }
 }

@@ -158,7 +158,7 @@ AI_AGENT_PROTOCOL.md to match.
 
 # Fynlo - Complete AI Portability File
 **Project Name**: Fynlo
-**Version**: 3.2.11 on `master` (`versionName = "3.2.11"`, `versionCode = 134`). C01 closed at 3.2.2 → C02 at 3.2.3 → C03a at 3.2.4 → C05 at 3.2.5 (all four Sprint-1 P0 clusters closed) → C04 at 3.2.6 (first P1 Sprint 2 cluster closed) → 3.2.7 = C04 smoke follow-up + two RecurringScreen surface fixes → 3.2.8 = re-smoke fix for SegmentedButton 'Monthly' clipping → 3.2.9 = intermediate FlowRow attempt that lost 'Yearly' → 3.2.10 = ExposedDropdownMenuBox for frequency picker — establishes the design rule "constrained-width pickers use dropdown, not chips" → **3.2.11 = app-wide chip→better-widget moderate sweep (8 conversions across 6 screens)**. Internal milestone markers only — per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens until every `UX_AUDIT` cluster (P0 through P3) is closed. Next P1: the C06 / C07 FAB-ownership pair (they share the same Scaffold-vs-screen question so they close as a unit).
+**Version**: 3.2.12 on `master` (`versionName = "3.2.12"`, `versionCode = 135`). All four Sprint-1 P0 clusters closed (C01 / C02 / C03a / C05). **Three P1 Sprint 2 clusters now closed: C04 at 3.2.6, C06 + C07 at 3.2.12.** Internal milestone markers only — per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens until every `UX_AUDIT` cluster (P0 through P3) is closed. Next P1: C08 (number formatting — biggest remaining UX consistency win), then C09 (UTF-8 in dialogs), then C12-C15 / C18 / C21.
 **Platform**: Android (Kotlin, Jetpack Compose, Room — Gradle 9.4.1, AGP 9.2.1, Room 2.8.4, KSP 2.3.7, Kotlin 2.2.10)
 
 ## 1. Project Overview
@@ -345,6 +345,37 @@ in the APK).
 ## 6. Journal
 
 **Newest first.** Each entry: date · cluster(s) closed/touched · commit(s) · one-paragraph why-and-what.
+
+### 2026-05-27 — 3.2.12 (C06 + C07 dual-cluster closure — FAB ownership + empty-state CTAs)
+
+**Type:** dual-cluster closure. C06 (FAB overlap) and C07 (duplicate FAB on empty states) were both P1 Sprint 2 layout bugs that shared the same Scaffold-vs-screen FAB ownership question, so they closed as a unit per the audit's grouping note.
+
+**Internal milestone:** `3.2.12` / `versionCode = 135`. No Play Console upload per release-cadence ADR. Data-integrity gate unchanged at 79 tests / 8 classes / 0 failures.
+
+**C06 fix — system-wide FAB clear zone.** Explore agent surveyed all 10 scrolling screens; every one used `bottom = 100.dp` which the survey + user reports confirmed was provably not enough. Standard M3 FAB is 56dp + 16dp container margin ≈ 72dp minimum; 100dp left almost no breathing room and got eaten by gesture-nav insets on some devices.
+
+NEW `app.fynlo.ui.theme.FabBottomPadding: Dp = 120.dp` constant in `DesignSystem.kt` with explanatory doc comment. Applied via:
+- `LazyColumn(contentPadding = PaddingValues(bottom = FabBottomPadding))` — 8 screens (Budget, Goal, Invest, Lending, People, Debt, History, Recurring)
+- `Spacer(Modifier.height(FabBottomPadding))` — 2 verticalScroll screens (Home, Spend); `HomeScreenModern` already was at 120dp
+
+Future scrolling screens reuse the constant. The audit also suggested a Detekt lint rule that fails when a Scaffold-with-FAB screen lacks the safe padding — punted to INF backlog (not blocking).
+
+**C07 fix — single unambiguous CTA on empty state.** Pre-fix, GoalScreen / BudgetScreen / RecurringScreen each rendered **three** Add affordances simultaneously on empty state:
+- Scaffold's QuickAdd FAB (from `Navigation.kt`'s `floatingActionButton =` slot)
+- Screen-level FAB (Goal, Budget) or header `+` IconButton (Recurring)
+- Inline "Add First X" subtitle / button
+
+Two-part fix:
+
+(1) **`Navigation.kt:172` — `showFab` hidden list extended** by 3 routes (Budgets, Goals, Recurring). The Scaffold FAB opens a QuickActionMenu for transactions, which is the wrong intent on a Budget / Goal / Recurring page. With this change those screens own their own contextual Add affordance, no longer competing with the Scaffold's.
+
+(2) **NEW shared `EmptyState(icon, title, subtitle, actionLabel, onAction)` composable** in `DesignSystem.kt`. Replaces the three bespoke inline empty states. Each screen wraps its screen-level FAB / header `+` in `if (list.isNotEmpty())` so on empty state the EmptyState's tonal-pill is the single unambiguous CTA. Once data exists, the FAB / `+` re-appears.
+
+**Bonus fix — `CollectionCalendarScreen` back arrow.** Same `tint = Color.White`-on-light-surface invisibility bug as the RecurringScreen `+` fixed in 3.2.7. Replaced with `FilledTonalIconButton` (theme-aware). Logged in the 3.2.7 commit as a follow-up; folded here because it's the same icon-on-surface-without-affordance pattern that C07's design rule addresses.
+
+**Three P1 Sprint 2 clusters now closed:** C04 (3.2.6), C06 + C07 (3.2.12). Six more P1 clusters remain (C08 / C09 / C12-C15 / C18 / C21). C08 (number formatting consistency across all screens) is the largest remaining UX win — likely warrants its own multi-stage cluster like C04.
+
+**Pattern reinforced for future cluster work:** when a cluster has a clear "shared widget owns the consistency" angle (FabBottomPadding constant, EmptyState composable), extracting it to `DesignSystem.kt` first means future screens can adopt the rule without each one re-implementing it. Saves the lint-rule work and gives compile-time visibility of any screen that didn't migrate.
 
 ### 2026-05-27 — 3.2.11 (chip→better-widget moderate sweep applying the 3.2.10 design rule)
 

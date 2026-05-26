@@ -300,7 +300,7 @@ fun TransactionHistoryScreen(viewModel: FinanceViewModel) {
         } else {
             app.fynlo.ui.components.PullRefresh(viewModel) {
             LazyColumn(
-                contentPadding = PaddingValues(bottom = 100.dp)
+                contentPadding = PaddingValues(bottom = FabBottomPadding)
             ) {
                 val byMonth = filteredHistory.groupBy { it.date.substring(0, 7) }
                 byMonth.keys.sortedByDescending { it }.forEach { month ->

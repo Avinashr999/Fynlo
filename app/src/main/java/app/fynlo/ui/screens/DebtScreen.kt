@@ -95,7 +95,7 @@ val debts by viewModel.debts.collectAsState()
         app.fynlo.ui.components.PullRefresh(viewModel) {
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp).imePadding(),
-            contentPadding = PaddingValues(bottom = 100.dp)
+            contentPadding = PaddingValues(bottom = FabBottomPadding)
         ) {
         item {
         Row(Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 4.dp), Arrangement.End, Alignment.CenterVertically) {

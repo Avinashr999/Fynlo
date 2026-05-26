@@ -271,7 +271,7 @@ val currentProject by viewModel.currentProject.collectAsState()
             app.fynlo.ui.components.PullRefresh(viewModel) {
             LazyColumn(
                 modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
-                contentPadding = PaddingValues(bottom = 100.dp)
+                contentPadding = PaddingValues(bottom = FabBottomPadding)
             ) {
                 itemsIndexed(investments, key = { _, i -> i.id }) { index, invest ->
                     InvestmentCard(

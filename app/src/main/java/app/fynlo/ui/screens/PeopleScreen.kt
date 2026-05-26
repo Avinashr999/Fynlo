@@ -127,7 +127,7 @@ fun PeopleScreen(viewModel: FinanceViewModel) {
                 .semantics { testTagsAsResourceId = true }
                 .testTag("people_list"),
             verticalArrangement = Arrangement.spacedBy(4.dp),
-            contentPadding = PaddingValues(bottom = 100.dp)
+            contentPadding = PaddingValues(bottom = FabBottomPadding)
         ) {
             item {
                                 Text(

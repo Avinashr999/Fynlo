@@ -214,7 +214,7 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp).imePadding(),
             verticalArrangement = Arrangement.spacedBy(10.dp),
-            contentPadding = PaddingValues(bottom = 100.dp)
+            contentPadding = PaddingValues(bottom = FabBottomPadding)
         ) {
             // Header
             // Sub-header: stats + action buttons (scrolls with content)

@@ -169,11 +169,18 @@ fun MainNavigation(viewModel: FinanceViewModel) {
         else navController.navigate(Screen.UpgradePro.route)
     }
 
+    // C07 fix (UX_AUDIT §C07): the Scaffold FAB opens the QuickActionMenu
+    // (all transaction types). Hide it on screens that have their own
+    // contextual add-affordance — otherwise the user sees two FABs (or a
+    // FAB + an `+` icon in the header) competing for the same intent.
+    // Added in 3.2.12: Budgets, Goals, Recurring — each owns its own
+    // "Add Budget" / "Add Goal" / "Add Recurring" entry point.
     val showFab = when (baseRoute) {
         Screen.Settings.route, Screen.About.route, Screen.People.route,
         Screen.Profile.route, Screen.Lending.route, Screen.Debts.route,
         Screen.Loans.route, Screen.Invest.route,
-        Screen.Reports.route, Screen.GlobalSearch.route -> false
+        Screen.Reports.route, Screen.GlobalSearch.route,
+        Screen.Budgets.route, Screen.Goals.route, Screen.Recurring.route -> false
         else -> drawerState.isClosed
     }
 

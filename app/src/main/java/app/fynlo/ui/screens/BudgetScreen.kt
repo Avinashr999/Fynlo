@@ -83,7 +83,7 @@ fun BudgetScreen(viewModel: FinanceViewModel) {
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp).imePadding(),
             verticalArrangement = Arrangement.spacedBy(4.dp),
-            contentPadding = PaddingValues(bottom = 100.dp)
+            contentPadding = PaddingValues(bottom = FabBottomPadding)
         ) {
             item {
                 Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
@@ -146,21 +146,7 @@ fun BudgetScreen(viewModel: FinanceViewModel) {
                 }
             }
 
-            if (budgets.isEmpty()) {
-                item {
-                    Box(Modifier.fillMaxWidth().padding(top = 64.dp), Alignment.Center) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Icon(Icons.Default.AccountBalanceWallet, null, Modifier.size(56.dp),
-                                tint = MaterialTheme.colorScheme.outlineVariant)
-                            Text("No budgets set yet", style = MaterialTheme.typography.titleMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Text("Tap + to add a spending limit for any category",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.outlineVariant)
-                        }
-                    }
-                }
-            } else {
+            if (!budgets.isEmpty()) {
                 itemsIndexed(sorted, key = { _, b -> b.category }) { index, budget ->
                     val actualSpent = expenses[budget.category] ?: 0.0
                     BudgetCard(budget, actualSpent, daysRemaining, daysPassed, currencySymbol, locale,
@@ -172,12 +158,29 @@ fun BudgetScreen(viewModel: FinanceViewModel) {
                 }
             }
         }
-        FloatingActionButton(
-            onClick = { showAddDialog = true },
-            modifier = Modifier.align(Alignment.BottomEnd).padding(24.dp),
-            containerColor = MaterialTheme.colorScheme.primary
-        ) {
-            Icon(Icons.Default.Add, contentDescription = "Add Budget")
+        // C07 fix (UX_AUDIT §C07): on empty state show ONLY the shared
+        // EmptyState CTA overlaid on the outer Box, hiding the FAB so the
+        // user sees one unambiguous "Add First Budget" entry point — not the
+        // pre-3.2.12 mix of FAB + "Tap + to add" subtitle (which referred to
+        // a now-hidden Scaffold FAB) + a now-missing inline action button.
+        // The LazyColumn above stays mounted so its header card (with the
+        // days-remaining counter etc.) keeps rendering even when empty.
+        if (budgets.isEmpty()) {
+            EmptyState(
+                icon = Icons.Default.AccountBalanceWallet,
+                title = "No budgets set yet",
+                subtitle = "Add a spending limit for any category",
+                actionLabel = "Add First Budget",
+                onAction = { showAddDialog = true },
+            )
+        } else {
+            FloatingActionButton(
+                onClick = { showAddDialog = true },
+                modifier = Modifier.align(Alignment.BottomEnd).padding(24.dp),
+                containerColor = MaterialTheme.colorScheme.primary
+            ) {
+                Icon(Icons.Default.Add, contentDescription = "Add Budget")
+            }
         }
         }
     }

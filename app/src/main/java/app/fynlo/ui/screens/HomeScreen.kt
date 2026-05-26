@@ -320,7 +320,7 @@ fun HomeScreen(viewModel: FinanceViewModel, onNavigateToScreen: (String) -> Unit
             MetricCard("Total Owed", "$currencySymbol${String.format(locale, "%,.0f", summary.totalDebtPrincipal + summary.totalDebtInterest)}", SemanticRed, Modifier.weight(1f)) { onNavigateToScreen("debts") }
         }
 
-        Spacer(Modifier.height(100.dp))
+        Spacer(Modifier.height(FabBottomPadding))
     }
 }
 

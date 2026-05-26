@@ -5,6 +5,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -197,4 +199,82 @@ fun PremiumSectionDivider(modifier: Modifier = Modifier) {
 fun formatAmount(amount: Double, symbol: String = "₹"): String {
     val locale = Locale.getDefault()
     return "$symbol ${String.format(locale, "%,.0f", amount)}"
+}
+
+// ── C06: shared FAB clear-zone constant ───────────────────────────────────────
+// Every scrollable container (LazyColumn `contentPadding.bottom`, or a trailing
+// Spacer inside a verticalScroll Column) that sits underneath a FAB should
+// reserve this much space at the bottom so the last list item doesn't render
+// under the FAB.
+//
+// Math: M3 FloatingActionButton is 56dp tall + 16dp of container margin =
+// 72dp minimum. We use 120dp to leave a comfortable ~48dp safety margin for
+// systems that add extra inset (gesture nav bar, predictive back hint) and
+// for visual breathing room on the last row. Per `DESIGN_SYSTEM.md §5.2`
+// (which prescribed 96dp); the survey of existing screens used 100dp and the
+// user still reported overlap, so 120dp is the floor.
+//
+// Apply at the call site as either:
+//   LazyColumn(contentPadding = PaddingValues(bottom = FabBottomPadding))
+//   Spacer(Modifier.height(FabBottomPadding))   // inside verticalScroll Column
+val FabBottomPadding = 120.dp
+
+// ── C07: shared empty-state — single CTA, no duplicate FAB ────────────────────
+// Audit (UX_AUDIT §C07) fix point #1: "Empty state shows ONLY the 'Add First X'
+// CTA per DESIGN_SYSTEM.md §9.6." Use this on any screen where the empty
+// state historically rendered both a FAB and an inline CTA simultaneously
+// (Goals, Budgets, Recurring). The screen-level FAB / header `+` should be
+// hidden when the list is empty so this composable's [actionLabel] button
+// is the single unambiguous entry point.
+//
+// Parameters:
+//   icon         — leading icon (typically a domain-relevant `Icons.Default.*`)
+//   title        — primary line ("No goals yet")
+//   subtitle     — secondary line explaining purpose ("Set a savings target …")
+//   actionLabel  — CTA pill label ("Add First Goal" / "Add First Budget" / …)
+//   onAction     — invoked when the user taps the CTA pill
+//   modifier     — optional outer Modifier (caller usually wraps in a centred Box)
+@Composable
+fun EmptyState(
+    icon: ImageVector,
+    title: String,
+    subtitle: String,
+    actionLabel: String,
+    onAction: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Icon(
+                icon,
+                contentDescription = null,
+                modifier = Modifier.size(56.dp),
+                tint = MaterialTheme.colorScheme.outlineVariant,
+            )
+            Text(
+                title,
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                subtitle,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.outlineVariant,
+            )
+            FilledTonalButton(
+                onClick = onAction,
+                shape = RoundedCornerShape(12.dp),
+            ) {
+                Icon(Icons.Filled.Add, null, Modifier.size(16.dp))
+                Spacer(Modifier.width(6.dp))
+                Text(actionLabel)
+            }
+        }
+    }
 }
