@@ -23,12 +23,32 @@ object ExcelExportUtility {
         debts: List<Debt>,
         investments: List<Investment>,
         payments: List<Payment>,
-        debtPayments: List<DebtPayment>
+        debtPayments: List<DebtPayment>,
+        // C02 step 5: surface when the figures below were last recalculated.
+        // 0L = no recalc has ever run; rendered as "—".
+        lastRecalcAt: Long = 0L,
     ) {
         val locale = Locale.getDefault()
         fun fmt(v: Double) = String.format(locale, "%.2f", v)
 
+        // C02: human-readable timestamp for the Metadata sheet.
+        val recalcText = if (lastRecalcAt > 0L) {
+            val zone = java.time.ZoneId.systemDefault()
+            val dt   = java.time.Instant.ofEpochMilli(lastRecalcAt).atZone(zone)
+            val fmtR = java.time.format.DateTimeFormatter.ofPattern("d MMM yyyy, h:mm a", Locale.ENGLISH)
+            dt.format(fmtR)
+        } else {
+            "—"
+        }
+
         val sheets = listOf(
+            Sheet("Metadata", buildList {
+                add(listOf("Key", "Value"))
+                add(listOf("Export type",     "Full backup"))
+                add(listOf("Generated",       java.time.LocalDateTime.now().format(
+                    java.time.format.DateTimeFormatter.ofPattern("d MMM yyyy, h:mm a", Locale.ENGLISH))))
+                add(listOf("Recalculated at", recalcText))
+            }),
             Sheet("Accounts", buildList {
                 add(listOf("Name", "Balance", "Type"))
                 accounts.forEach { a -> add(listOf(a.name, fmt(a.balance), a.type)) }

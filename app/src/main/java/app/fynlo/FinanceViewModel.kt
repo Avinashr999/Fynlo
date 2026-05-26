@@ -284,6 +284,27 @@ class FinanceViewModel @Inject constructor(
         viewModelScope.launch(Dispatchers.IO) { recalcCoordinator.runAndStamp() }
     }
 
+    /**
+     * C02 step 4: manual recalc that returns a before/after snapshot so the
+     * Settings screen can show a result dialog ("Net worth: ₹268,081 → ₹241,663").
+     *
+     * Implementation note: `financialSummary` is a derived `StateFlow` over
+     * the Room-backed list flows. When `runAndStamp()` returns, the DB writes
+     * have committed but the StateFlow chain hasn't *necessarily* emitted the
+     * post-state yet. So we wait briefly for the next *different* value,
+     * with a 500 ms timeout for the (common, post-C01) case where nothing
+     * actually changed — in which case `pre == post` and the dialog says
+     * "no changes."
+     */
+    suspend fun recalculateAllBalancesCapturingDelta(): RecalcDelta {
+        val pre = financialSummary.value
+        recalcCoordinator.runAndStamp()
+        val post = kotlinx.coroutines.withTimeoutOrNull(500L) {
+            financialSummary.first { it != pre }
+        } ?: pre
+        return RecalcDelta(pre, post)
+    }
+
     fun addBorrowerWithSource(borrower: Borrower, source: String) {
         viewModelScope.launch(Dispatchers.IO) {
             repository.insertBorrowerWithSource(borrower.copy(projectId = pid), source, pid)
@@ -769,10 +790,11 @@ class FinanceViewModel @Inject constructor(
     }
 
     suspend fun exportToPDF(outputStream: java.io.OutputStream) {
-        recalcCoordinator.runAndStamp()
+        val recalcAt = recalcCoordinator.runAndStamp()
         app.fynlo.logic.ExportUtility.generatePDF(
             outputStream, financialSummary.value,
-            transactions.value, borrowers.value, investments.value
+            transactions.value, borrowers.value, investments.value,
+            lastRecalcAt = recalcAt,
         )
         app.fynlo.data.Analytics.dataExported("pdf")
     }
@@ -785,7 +807,7 @@ class FinanceViewModel @Inject constructor(
      * formats" gap explicitly).
      */
     suspend fun exportToXLSX(outputStream: java.io.OutputStream) {
-        recalcCoordinator.runAndStamp()
+        val recalcAt = recalcCoordinator.runAndStamp()
         app.fynlo.logic.ExcelExportUtility.generateFullBackup(
             outputStream,
             accounts.value,
@@ -795,6 +817,7 @@ class FinanceViewModel @Inject constructor(
             investments.value,
             payments.value,
             debtPayments.value,
+            lastRecalcAt = recalcAt,
         )
         app.fynlo.data.Analytics.dataExported("xlsx")
     }
@@ -921,4 +944,29 @@ class FinanceViewModel @Inject constructor(
             ).forEach { repository.insertTransaction(it) }
         }
     }
+}
+
+/**
+ * C02 step 4: result type for [FinanceViewModel.recalculateAllBalancesCapturingDelta].
+ * `before == after` means the recalc was a no-op (the common case after C01 —
+ * data is already structurally consistent). The Settings dialog inspects the
+ * deltas on whichever metrics it surfaces and shows "No changes" when none move.
+ */
+@androidx.compose.runtime.Immutable
+data class RecalcDelta(
+    val before: app.fynlo.data.model.FinancialSummary,
+    val after: app.fynlo.data.model.FinancialSummary,
+) {
+    /** Net-worth delta (after − before). Positive = value went up. */
+    val netWorthChange: Double get() = after.netWorth - before.netWorth
+    val receivablesChange: Double get() = after.totalReceivables - before.totalReceivables
+    val cashChange: Double get() = after.totalCash - before.totalCash
+    val investmentsChange: Double get() = after.totalInvestments - before.totalInvestments
+
+    /** True iff all metrics the Settings dialog reports moved by less than half a rupee. */
+    val isNoOp: Boolean get() =
+        kotlin.math.abs(netWorthChange) < 0.5 &&
+        kotlin.math.abs(receivablesChange) < 0.5 &&
+        kotlin.math.abs(cashChange) < 0.5 &&
+        kotlin.math.abs(investmentsChange) < 0.5
 }

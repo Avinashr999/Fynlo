@@ -23,6 +23,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -54,6 +55,14 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
     var addTxnIncome      by remember { mutableStateOf(false) }
     val netWorthSnapshots by viewModel.getNetWorthSnapshots().collectAsState(initial = emptyList())
     var activeBreakdownType by remember { mutableStateOf<BreakdownType?>(null) }
+
+    // C02 step 3: surface lastRecalcAt as a small "Last updated X ago"
+    // subtitle below the hero net-worth number. Tells the user the figures
+    // are fresh; reassures them the auto-recalc-on-launch (Stage 1) actually
+    // ran. 0L means "no recalc has ever run" — rendered as "Not recalculated yet".
+    val context = LocalContext.current
+    val lastRecalcAt by app.fynlo.data.UserPreferences
+        .lastRecalcAt(context).collectAsState(initial = 0L)
 
     fun fmt(v: Double) = "$cs${String.format(locale, "%,.0f", v)}"
 
@@ -184,6 +193,27 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
                 fontSize = 42.sp,
                 fontWeight = FontWeight.ExtraBold,
                 color = MaterialTheme.colorScheme.onSurface
+            )
+            // C02 step 3: "Last updated 2 min ago" subtitle. Uses Android's
+            // DateUtils.getRelativeTimeSpanString — returns "2 min ago",
+            // "Yesterday", "3 days ago" etc. with appropriate granularity.
+            Spacer(Modifier.height(4.dp))
+            val lastUpdatedLabel = if (lastRecalcAt > 0L) {
+                "Last updated " + android.text.format.DateUtils
+                    .getRelativeTimeSpanString(
+                        lastRecalcAt,
+                        System.currentTimeMillis(),
+                        android.text.format.DateUtils.MINUTE_IN_MILLIS,
+                    )
+                    .toString()
+                    .replaceFirstChar { it.lowercase(locale) }
+            } else {
+                "Not recalculated yet"
+            }
+            Text(
+                text  = lastUpdatedLabel,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
         Spacer(Modifier.height(12.dp))

@@ -145,7 +145,11 @@ object ExportUtility {
         summary: FinancialSummary,
         transactions: List<Transaction>,
         borrowers: List<Borrower>,
-        investments: List<Investment>
+        investments: List<Investment>,
+        // C02 step 5: timestamp the data so anyone reading the PDF can see
+        // when the numbers were last computed (not just when the file was
+        // produced). 0L = no recalc has ever run; rendered as "—".
+        lastRecalcAt: Long = 0L,
     ) {
         val pdf = PdfDocument()
         val b = PdfBuilder(pdf, outputStream)
@@ -158,6 +162,18 @@ object ExportUtility {
         b.nl(18f)
         b.canvas().drawText("Generated: ${LocalDate.now()} | Personal Finance Tracker",
             MARGIN, b.y, bodyPaint(COLOR_GRAY, 10f))
+        b.nl(12f)
+        // C02: "Recalculated: <when>" — proves the figures below reflect the
+        // post-recalc state, not whatever was stale in memory.
+        val recalcLabel = if (lastRecalcAt > 0L) {
+            val zone = java.time.ZoneId.systemDefault()
+            val dt = java.time.Instant.ofEpochMilli(lastRecalcAt).atZone(zone)
+            val fmt = java.time.format.DateTimeFormatter.ofPattern("d MMM yyyy, h:mm a", java.util.Locale.ENGLISH)
+            "Recalculated: ${dt.format(fmt)}"
+        } else {
+            "Recalculated: —" // em dash for "never"
+        }
+        b.canvas().drawText(recalcLabel, MARGIN, b.y, bodyPaint(COLOR_GRAY, 10f))
         b.nl(24f)
 
         // Summary cards — 4 across

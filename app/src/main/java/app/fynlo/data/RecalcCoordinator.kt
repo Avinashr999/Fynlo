@@ -40,15 +40,20 @@ class RecalcCoordinator @Inject constructor(
 
     /**
      * Runs `recalculateAllBalances()` and stamps `lastRecalcAt` with the
-     * current epoch millis on success. Idempotent — safe to call from
-     * multiple call sites (launch coroutine + each export) without
-     * coordination, because the underlying `recalculateAllBalances()` is
-     * itself idempotent post-C01 (see
+     * current epoch millis on success. **Returns the stamped time** so
+     * callers (e.g., export-renderers that need the timestamp in their
+     * header) don't have to re-read the DataStore right after writing it.
+     *
+     * Idempotent — safe to call from multiple call sites (launch coroutine
+     * + each export) without coordination, because the underlying
+     * `recalculateAllBalances()` is itself idempotent post-C01 (see
      * `decisions/2026-05-26-c01-fix-strategy.md`).
      */
-    suspend fun runAndStamp() {
+    suspend fun runAndStamp(): Long {
         repository.recalculateAllBalances()
-        UserPreferences.setLastRecalcAt(context, System.currentTimeMillis())
+        val now = System.currentTimeMillis()
+        UserPreferences.setLastRecalcAt(context, now)
+        return now
     }
 
     /**

@@ -151,7 +151,7 @@ AI_AGENT_PROTOCOL.md to match.
 
 # Fynlo - Complete AI Portability File
 **Project Name**: Fynlo
-**Version**: 3.2.2 on `master` (the C01-fix release — `versionName = "3.2.2"`, `versionCode = 125` in `app/build.gradle.kts`). Tag `v3.2.2` is not pushed yet; final smoke test (`RELEASE_PROTOCOL.md §3.5`) and macrobench re-run (§3.4) are the remaining gates before promotion to Play Store Internal Testing.
+**Version**: 3.2.3 on `master` (`versionName = "3.2.3"`, `versionCode = 126`). C01 closed at 3.2.2; C02 closed at 3.2.3. Internal milestone markers only — per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens until every `UX_AUDIT` cluster is closed.
 **Platform**: Android (Kotlin, Jetpack Compose, Room — Gradle 9.4.1, AGP 9.2.1, Room 2.8.4, KSP 2.3.7, Kotlin 2.2.10)
 
 ## 1. Project Overview
@@ -338,6 +338,28 @@ in the APK).
 ## 6. Journal
 
 **Newest first.** Each entry: date · cluster(s) closed/touched · commit(s) · one-paragraph why-and-what.
+
+### 2026-05-26 — C02 closed (both stages)
+
+**Cluster:** C02 (P0 ship-blocker, stale exports / no auto-recalc) — now ✅ closed alongside C01.
+**Internal milestone:** `versionName = "3.2.3"`, `versionCode = 126` (not uploaded — see `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`).
+
+**Stage 2 (UI/UX layer) summary:**
+- **Dashboard "Last updated" subtitle** lives under the hero net-worth number on `HomeScreenModern`. Reads `UserPreferences.lastRecalcAt(...)` reactively; renders via `DateUtils.getRelativeTimeSpanString`.
+- **Before/after `AlertDialog`** on manual Recalculate. `FinanceViewModel.recalculateAllBalancesCapturingDelta()` returns a `RecalcDelta` (top-level data class at the bottom of `FinanceViewModel.kt`) with signed change fields and an `isNoOp` predicate; the dialog shows pre→post + deltas, or a "no changes" message when `isNoOp` (the common post-C01 case).
+- **Export timestamp** in PDF and XLSX. `ExportUtility.generatePDF` adds a "Recalculated: \<date\>" line under the existing "Generated:" header. `ExcelExportUtility.generateFullBackup` prepends a `Metadata` sheet with `Generated` / `Recalculated at` rows. `RecalcCoordinator.runAndStamp()` now returns the stamped time so callers don't need a separate DataStore read.
+
+All 5 steps of the audit's §C02 fix list are now landed. Status post-C02:
+
+| # | Step | Status |
+|---|---|---|
+| 1 | Auto-recalc on launch (daily debounce) | ✅ |
+| 2 | Auto-recalc before every export | ✅ |
+| 3 | "Last updated X ago" subtitle on Dashboard | ✅ |
+| 4 | Before/after dialog on manual recalc | ✅ |
+| 5 | Timestamp embedded in PDF/XLSX exports | ✅ |
+
+**Next cluster to pick up:** C03a (schema integrity — additive fields: `schemaVersion`, `createdAt`, `projectId`, `userId` at backup root). Independent of C01/C02 work; mechanical migration. Or C05 (category bleed Income/Expense) — also independent.
 
 ### 2026-05-26 — C02 Stage 1 landed (auto-recalc data path)
 

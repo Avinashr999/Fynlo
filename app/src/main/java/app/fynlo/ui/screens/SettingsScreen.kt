@@ -247,14 +247,65 @@ fun SettingsScreen(
 
                 SettingsDivider()
 
+                // C02 step 4: capture the before/after summary so the result
+                // dialog can show actual deltas instead of a fire-and-forget Toast.
+                var recalcDelta by remember { mutableStateOf<app.fynlo.RecalcDelta?>(null) }
+                var recalcInFlight by remember { mutableStateOf(false) }
+                val currentProject by viewModel.currentProject.collectAsState()
+                val currencySymbol = app.fynlo.logic.CurrencyUtils.symbolFor(currentProject?.currency ?: "INR")
+                val locale = java.util.Locale.getDefault()
+                fun fmtMoney(v: Double): String = "$currencySymbol${String.format(locale, "%,.0f", v)}"
+                fun fmtDelta(v: Double): String = when {
+                    kotlin.math.abs(v) < 0.5 -> "no change"
+                    v > 0 -> "+${fmtMoney(v)}"
+                    else  -> "−${fmtMoney(-v)}"
+                }
+
                 SettingsActionRow(
                     icon     = Icons.Default.Calculate,
                     color    = Amber,
                     title    = "Recalculate Balances",
                     subtitle = "Fixes account balances that got out of sync. Run this if Cash in Hand or any account shows a wrong amount."
                 ) {
-                    viewModel.recalculateAllBalances()
-                    android.widget.Toast.makeText(context, "Balances recalculated from transactions ✓", android.widget.Toast.LENGTH_LONG).show()
+                    if (recalcInFlight) return@SettingsActionRow
+                    recalcInFlight = true
+                    scope.launch(Dispatchers.IO) {
+                        val delta = viewModel.recalculateAllBalancesCapturingDelta()
+                        kotlinx.coroutines.withContext(Dispatchers.Main) {
+                            recalcDelta = delta
+                            recalcInFlight = false
+                        }
+                    }
+                }
+
+                recalcDelta?.let { delta ->
+                    AlertDialog(
+                        onDismissRequest = { recalcDelta = null },
+                        title = { Text("Balances recalculated") },
+                        text = {
+                            if (delta.isNoOp) {
+                                Text(
+                                    "Your data was already up to date — every total stayed the same. " +
+                                    "This is the normal outcome after the C01 fix landed; " +
+                                    "the recalc is now safe to run any time."
+                                )
+                            } else {
+                                Column {
+                                    Text(
+                                        "Net worth: ${fmtMoney(delta.before.netWorth)} → " +
+                                        "${fmtMoney(delta.after.netWorth)} (${fmtDelta(delta.netWorthChange)})"
+                                    )
+                                    Spacer(Modifier.height(6.dp))
+                                    Text("Receivables: ${fmtDelta(delta.receivablesChange)}")
+                                    Text("Cash: ${fmtDelta(delta.cashChange)}")
+                                    Text("Investments (current value): ${fmtDelta(delta.investmentsChange)}")
+                                }
+                            }
+                        },
+                        confirmButton = {
+                            TextButton(onClick = { recalcDelta = null }) { Text("OK") }
+                        },
+                    )
                 }
             }
         }
