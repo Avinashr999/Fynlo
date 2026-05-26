@@ -56,26 +56,31 @@ If any line can't be filled, **stop and ask**. If the user pushes back, follow `
 
 ## 0.4 The one thing you must remember if you remember nothing else
 
-**Fynlo currently has an unfixed P0 ship-blocker: Recalculate Balances destroys ₹54K of payment history per tap (audit cluster C01).**
+**C01 is CLOSED on `master`** (2026-05-26 — Stage 1 commit `331c1ae`, Stage 2 commit `5a00d4a`; ADR `decisions/2026-05-26-c01-fix-strategy.md`). Recalculate Balances no longer destroys payment history. The `payments` and `debt_payments` tables are the **single source of truth** and the invariant `paid == SUM(payments)` is structurally enforced — there is no longer any DAO method that lets new code violate it without first re-adding one of the ten queries Stage 2 deleted.
 
-Until C01 is closed, do not:
+**Do NOT** (these would re-open C01):
 
-- Propose shipping any 3.2.x build to Play Store production
-- Suggest features that depend on accurate `paid` values
-- Add new entry points to Recalculate Balances
-- Propose UI changes that make Recalculate easier to tap
+- Re-introduce a direct `paid` / `paidPrincipal` / `paidInterest` writer at the DAO layer. To record a repayment, `insertPayment` (or `insertDebtPayment`) and then call `rebuildBorrowerPaidFromPayments()` (or the debt twin). To reverse one, `deletePayment` + rebuild.
+- Add any `@Query("UPDATE borrowers SET paid = ...")` (or debts twin) outside the existing `rebuildBorrowerPaidFromPayments` / `rebuildDebtPaidFromDebtPayments` queries. The entire C01 ADR exists because of one such query.
+- Remove or weaken `RecalculateBalancesDataIntegrityTest` or the explicit `--tests '*DataIntegrity*' --tests '*Recalculate*'` gate in `.github/workflows/checks.yml` (those are the CI tripwire that catches a regression).
 
-Do prioritize:
+**Remaining P0 work** for the 3.2.2 release that ships C01's fix:
 
-- Sprint 1 work (C01, C02, C05)
-- Writing the C01 regression test FIRST (test-first per `AI_AGENT_PROTOCOL.md §6`)
-- Migration scripts for the repayment-record schema change
+- **C02** — stale exports & auto-recalc (now safe to enable thanks to C01 closure)
+- **C03a** — schema integrity additive fields (`schemaVersion`, `createdAt`, `projectId`, `userId`)
+- **C05** — category bleed Income / Expense
+
+**Before promoting `master` to 3.2.2 Production** (per `RELEASE_PROTOCOL.md §8`):
+
+- Add an instrumented migration test (`MigrationTestHelper` for `v15 → v16`) — runtime test exists in JVM but the actual migration code path is only exercised on a real device/emulator
+- Draft 3.2.2 release notes per `RELEASE_PROTOCOL.md §5`
+- Manual smoke test (§3.5 of release protocol)
 
 ## 0.5 Priority discipline (summary)
 
 The audit ranks 22 clusters by priority. Do not work out of order:
 
-- **P0** (4 clusters) — C01, C02, C03a, C05 — ship-blockers
+- **P0** (4 clusters) — ~~C01~~ ✅ closed 2026-05-26 · C02, C03a, C05 still open — ship-blockers
 - **P1** (12 clusters) — major UX wins
 - **P2** (6 clusters) — polish
 - **P3** (1 cluster) — v4+ backlog
@@ -143,8 +148,8 @@ AI_AGENT_PROTOCOL.md to match.
 
 # Fynlo - Complete AI Portability File
 **Project Name**: Fynlo
-**Version**: 1.8.0
-**Platform**: Android (Kotlin, Jetpack Compose, Room)
+**Version**: 3.2.1 on `master` (heading toward 3.2.2 — the C01-fix release; bump in `app/build.gradle.kts` `versionName` and `versionCode` is part of the 3.2.2 promotion checklist per `RELEASE_PROTOCOL.md §4`)
+**Platform**: Android (Kotlin, Jetpack Compose, Room — Gradle 9.4.1, AGP 9.2.1, Room 2.8.4, KSP 2.3.7, Kotlin 2.2.10)
 
 ## 1. Project Overview
 A professional financial ledger for personal use. Every rupee is tracked using double-entry principles (origin to destination). Features include PIN security, automated interest (anniversary-based step compounding), data exports (PDF/CSV), and a central contact book with unique IDs.
@@ -324,3 +329,36 @@ in the APK).
 
 - `PeopleScreen.kt` has `.testTag("people_list")` on its LazyColumn, with
   `testTagsAsResourceId = true` semantics. ScrollBenchmark depends on this.
+
+---
+
+## 6. Journal
+
+**Newest first.** Each entry: date · cluster(s) closed/touched · commit(s) · one-paragraph why-and-what.
+
+### 2026-05-26 — C01 closed (Sprint 1)
+
+**Cluster:** C01 (P0 ship-blocker, Recalculate destroys payment history).
+**Related:** INF04 (data-integrity CI gate) — also closed in the same sprint.
+**ADR:** `decisions/2026-05-26-c01-fix-strategy.md` (Status: Accepted; Stage 1 + Stage 2 both implemented).
+**Commits:**
+
+- `b1e28a0` — `RecalculateBalancesDataIntegrityTest` added (Robolectric + in-memory `FynloDatabase`); `@Ignore`'d while red.
+- `331c1ae` — **Stage 1.** Backfill migration `v15 → v16` writes one synthetic Payment row per legacy borrower / debt where `paid > 0` and no `payments` rows existed (`type = "Legacy backfill"`, dated `loanDate`, principal = `paid`, interest = 0). `FinanceRepository.recalculateAllBalances()` no longer calls the destructive `recalculateBorrowerPaid` / `recalculateDebtPaid` DAO queries — only derives via the rebuild queries, whose `WHERE EXISTS` gate is removed and whose `SUM(...)` is wrapped in `COALESCE(..., 0)`. The C01 test goes from 1 RED + 1 GREEN to 3 GREEN. INF04 CI gate re-enabled.
+- `5a00d4a` — **Stage 2.** Structural enforcement: `editTransaction` ported to delete-old-Payment + insert-new-Payment + rebuild; `deleteTransaction`'s "no matching Payment" fallback that mutated `paid` directly is removed; `insertPaymentWithDest` / `insertDebtPaymentWithSource` collapse their conditional principal/interest writers into a single `rebuild...FromPayments` call. **10 DAO methods + their repository wrappers deleted:** `updateBorrowerPaid{Amount,Principal,Interest}`, `updateDebtPaid{Amount,Principal,Interest}`, `recalculateBorrowerPaid`, `recalculateDebtPaid`, and the dead-code `seedPaidPrincipalFromPaid` / `seedDebtPaidPrincipalFromPaid`. The invariant `paid == SUM(payments)` is now impossible to violate without first re-adding one of those queries.
+
+**Status against `RELEASE_PROTOCOL.md §8` gates:**
+
+| Gate | Status |
+|---|---|
+| C01 regression test exists and passes | ✅ `RecalculateBalancesDataIntegrityTest` (3 cases) green in CI |
+| Manual verification: fixture with `paid: 5000` on a borrower → recalc → `paid` survives | ✅ encoded as sub-test 1 (₹50K fixture; adapt to ₹5K trivially) |
+| Schema migration tested for upgrade-path | ⚠️ logically tested in JVM; instrumented `MigrationTestHelper` v15→v16 still TODO |
+| `PROJECT_STATE_FOR_AI.md` updated with C01 closure | ✅ this entry |
+| 3.2.2 release notes | ⚠️ TODO |
+
+**Next:** C02 (auto-recalc on launch + before exports), C03a (schema additive fields), C05 (category bleed). These are all P0 for the same 3.2.2 release.
+
+---
+
+*(Older history not maintained — see `git log --first-parent` for the pre-C01 timeline.)*
