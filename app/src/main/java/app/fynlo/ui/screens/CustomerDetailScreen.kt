@@ -48,7 +48,6 @@ val borrowers by viewModel.borrowers.collectAsState()
     val accounts by viewModel.accounts.collectAsState()
     val currentProject by viewModel.currentProject.collectAsState()
     val currencyCode = currentProject?.currency ?: "INR"
-    val currencySymbol = app.fynlo.logic.CurrencyUtils.symbolFor(currencyCode)
     val locale = Locale.getDefault()
 
     val borrower = borrowers.find { it.id == borrowerId }
@@ -259,7 +258,7 @@ val borrowers by viewModel.borrowers.collectAsState()
                 }
             } else {
                 items(loanPayments, key = { it.id }) { payment ->
-                    PaymentItem(payment, currencySymbol)
+                    PaymentItem(payment, currencyCode, locale)
                 }
             }
 
@@ -294,7 +293,7 @@ val borrowers by viewModel.borrowers.collectAsState()
 }
 
 @Composable
-fun PaymentItem(payment: Payment, currencySymbol: String) {
+fun PaymentItem(payment: Payment, currencyCode: String, locale: Locale) {
     Row(
         modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -330,7 +329,7 @@ fun PaymentItem(payment: Payment, currencySymbol: String) {
             }
         }
         Text(
-            "+$currencySymbol${String.format(Locale.getDefault(), "%,.0f", payment.amount)}",
+            "+${CurrencyFormatter.detail(payment.amount, currencyCode, locale)}",
             style = MaterialTheme.typography.bodyLarge.copy(
                 fontWeight = FontWeight.ExtraBold,
                 color = Emerald500

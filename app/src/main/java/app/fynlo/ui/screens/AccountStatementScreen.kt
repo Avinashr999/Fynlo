@@ -101,7 +101,7 @@ fun AccountStatementScreen(
                     items(accountTransactions, key = { it.id }) { txn ->
                         TransactionItem(
                             txn            = txn,
-                            currencySymbol = currencySymbol,
+                            currencyCode   = currencyCode,
                             onEdit         = { viewModel.editTransaction(txn, it) },
                             onDelete       = { viewModel.deleteTransaction(txn) }
                         )

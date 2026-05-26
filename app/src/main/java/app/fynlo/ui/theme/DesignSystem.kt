@@ -17,7 +17,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import java.util.Locale
 
 // ── Fynlo Premium Design System ───────────────────────────────────────────────
 // Deep Emerald + Carbon — inspired by premium fintech apps
@@ -193,12 +192,6 @@ fun PremiumSectionDivider(modifier: Modifier = Modifier) {
         thickness = 0.5.dp,
         color = MaterialTheme.colorScheme.outline.copy(alpha = 0.08f)
     )
-}
-
-// ── Amount display helper ──────────────────────────────────────────────────────
-fun formatAmount(amount: Double, symbol: String = "₹"): String {
-    val locale = Locale.getDefault()
-    return "$symbol ${String.format(locale, "%,.0f", amount)}"
 }
 
 // ── C06: shared FAB clear-zone constant ───────────────────────────────────────

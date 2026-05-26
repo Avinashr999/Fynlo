@@ -29,6 +29,7 @@ import app.fynlo.FinanceViewModel
 import app.fynlo.data.model.Borrower
 import app.fynlo.data.model.Debt
 import app.fynlo.data.model.Transaction
+import app.fynlo.logic.CurrencyFormatter
 import java.util.Locale
 import app.fynlo.ui.theme.*
 
@@ -52,7 +53,7 @@ fun MoneyFlowScreen(viewModel: FinanceViewModel) {
     val debts        by viewModel.debts.collectAsState()
     val accounts     by viewModel.allAccountsUnfiltered.collectAsState()
     val currentProject by viewModel.currentProject.collectAsState()
-    val currencySymbol = app.fynlo.logic.CurrencyUtils.symbolFor(currentProject?.currency ?: "INR")
+    val currencyCode = currentProject?.currency ?: "INR"
     val locale       = remember { Locale.getDefault() }
     val context      = LocalContext.current
     var showExportMenu by remember { mutableStateOf(false) }
@@ -226,7 +227,7 @@ fun MoneyFlowScreen(viewModel: FinanceViewModel) {
                     if (index > 0) {
                         HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f))
                     }
-                    AccountFlowCard(name, flows.first, flows.second, currencySymbol, locale)
+                    AccountFlowCard(name, flows.first, flows.second, currencyCode, locale)
                 }
             }
 
@@ -244,12 +245,13 @@ fun MoneyFlowScreen(viewModel: FinanceViewModel) {
                 ) {
                     Text("Flow Summary", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold))
                     HorizontalDivider()
-                    FlowSummaryRow("Total Inflow",   "$currencySymbol${String.format(locale, "%,.0f", totalIn)}",  Emerald500)
-                    FlowSummaryRow("Total Outflow",  "$currencySymbol${String.format(locale, "%,.0f", totalOut)}", SemanticRed)
-                    FlowSummaryRow("Lent Out",       "$currencySymbol${String.format(locale, "%,.0f", lentOut)}",  SemanticAmber)
+                    FlowSummaryRow("Total Inflow",   CurrencyFormatter.detail(totalIn, currencyCode, locale),  Emerald500)
+                    FlowSummaryRow("Total Outflow",  CurrencyFormatter.detail(totalOut, currencyCode, locale), SemanticRed)
+                    FlowSummaryRow("Lent Out",       CurrencyFormatter.detail(lentOut, currencyCode, locale),  SemanticAmber)
                     HorizontalDivider()
                     FlowSummaryRow("Net Flow",
-                        "$currencySymbol${String.format(locale, "%,.0f", totalIn - totalOut)}",
+                        if (totalIn - totalOut < 0) CurrencyFormatter.negative(totalIn - totalOut, currencyCode, locale)
+                        else CurrencyFormatter.detail(totalIn - totalOut, currencyCode, locale),
                         if (totalIn >= totalOut) Emerald500 else SemanticRed,
                         bold = true)
                 }
@@ -282,7 +284,7 @@ fun MoneyFlowScreen(viewModel: FinanceViewModel) {
                     if (index > 0) {
                         HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f))
                     }
-                    FlowEntryCard(flow, currencySymbol, locale)
+                    FlowEntryCard(flow, currencyCode, locale)
                 }
             }
 
@@ -292,26 +294,26 @@ fun MoneyFlowScreen(viewModel: FinanceViewModel) {
 }
 
 @Composable
-private fun AccountFlowCard(name: String, inflow: Double, outflow: Double, currencySymbol: String, locale: Locale) {
+private fun AccountFlowCard(name: String, inflow: Double, outflow: Double, currencyCode: String, locale: Locale) {
     val net = inflow - outflow
     Row(Modifier.padding(vertical = 12.dp).fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
             Text(name, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
                 maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text("Net: $currencySymbol${String.format(locale, "%,.0f", net)}",
+            Text("Net: ${if (net < 0) CurrencyFormatter.negative(net, currencyCode, locale) else CurrencyFormatter.detail(net, currencyCode, locale)}",
                 style = MaterialTheme.typography.labelSmall,
                 color = if (net >= 0) Emerald500 else SemanticRed)
         }
         Spacer(Modifier.width(8.dp))
         Column(horizontalAlignment = Alignment.End) {
-            Text("▲ $currencySymbol${String.format(locale, "%,.0f", inflow)}", fontSize = 11.sp, color = Emerald500)
-            Text("▼ $currencySymbol${String.format(locale, "%,.0f", outflow)}", fontSize = 11.sp, color = SemanticRed)
+            Text("▲ ${CurrencyFormatter.detail(inflow, currencyCode, locale)}", fontSize = 11.sp, color = Emerald500)
+            Text("▼ ${CurrencyFormatter.detail(outflow, currencyCode, locale)}", fontSize = 11.sp, color = SemanticRed)
         }
     }
 }
 
 @Composable
-private fun FlowEntryCard(flow: FlowEntry, currencySymbol: String, locale: Locale) {
+private fun FlowEntryCard(flow: FlowEntry, currencyCode: String, locale: Locale) {
     val (arrowColor, icon) = when (flow.flowType) {
         FlowType.INCOME        -> Pair(Emerald500, Icons.Default.ArrowDownward)
         FlowType.EXPENSE       -> Pair(SemanticRed, Icons.Default.ArrowUpward)
@@ -350,7 +352,7 @@ private fun FlowEntryCard(flow: FlowEntry, currencySymbol: String, locale: Local
 
         Spacer(Modifier.width(8.dp))
 
-        Text("$currencySymbol${String.format(locale, "%,.0f", flow.amount)}",
+        Text(CurrencyFormatter.detail(flow.amount, currencyCode, locale),
             style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
             color = arrowColor)
     }

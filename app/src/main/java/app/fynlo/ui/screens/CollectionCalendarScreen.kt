@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.fynlo.FinanceViewModel
 import app.fynlo.data.model.Borrower
+import app.fynlo.logic.CurrencyFormatter
 import app.fynlo.logic.DateUtils
 import app.fynlo.logic.InterestEngine
 import app.fynlo.ui.theme.*
@@ -73,7 +74,7 @@ fun CollectionCalendarScreen(
 ) {
     val borrowers by viewModel.borrowers.collectAsState()
     val currentProject by viewModel.currentProject.collectAsState()
-    val currencySymbol = app.fynlo.logic.CurrencyUtils.symbolFor(currentProject?.currency ?: "INR")
+    val currencyCode = currentProject?.currency ?: "INR"
     val today = remember { LocalDate.now() }
     val locale = Locale.getDefault()
     val dbFmt = DateTimeFormatter.ofPattern("yyyy-MM-dd")
@@ -203,9 +204,7 @@ fun CollectionCalendarScreen(
                     entriesByDate = entriesByDate,
                     onSelectDate = { date ->
                         selectedDate = if (selectedDate == date) null else date
-                    },
-                    currencySymbol = currencySymbol,
-                    locale = locale
+                    }
                 )
                 Spacer(Modifier.height(8.dp))
             }
@@ -255,7 +254,7 @@ fun CollectionCalendarScreen(
                 items(selectedEntries, key = { it.borrower.id }) { entry ->
                     DueEntryCard(
                         entry = entry,
-                        currencySymbol = currencySymbol,
+                        currencyCode = currencyCode,
                         today = today,
                         locale = locale,
                         onClick = { onNavigateToBorrower(entry.borrower.id) }
@@ -274,9 +273,7 @@ private fun CalendarGrid(
     today: LocalDate,
     selectedDate: LocalDate?,
     entriesByDate: Map<LocalDate, List<DueEntry>>,
-    onSelectDate: (LocalDate) -> Unit,
-    currencySymbol: String,
-    locale: Locale
+    onSelectDate: (LocalDate) -> Unit
 ) {
     val firstDay  = month.atDay(1)
     val lastDay   = month.atEndOfMonth()
@@ -392,7 +389,7 @@ private fun CalendarDay(
 @Composable
 private fun DueEntryCard(
     entry: DueEntry,
-    currencySymbol: String,
+    currencyCode: String,
     today: LocalDate,
     locale: Locale,
     onClick: () -> Unit
@@ -453,7 +450,7 @@ private fun DueEntryCard(
             }
             Column(horizontalAlignment = Alignment.End) {
                 Text(
-                    "$currencySymbol${String.format(locale, "%,.0f", entry.outstanding)}",
+                    CurrencyFormatter.detail(entry.outstanding, currencyCode, locale),
                     style = MaterialTheme.typography.titleSmall.copy(
                         fontWeight = FontWeight.ExtraBold,
                         color = color

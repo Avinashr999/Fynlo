@@ -26,6 +26,8 @@ import app.fynlo.data.model.Borrower
 import app.fynlo.data.model.Debt
 import app.fynlo.data.model.DebtPayment
 import app.fynlo.data.model.Payment
+import app.fynlo.logic.CurrencyFormatter
+import app.fynlo.logic.CurrencyUtils
 import app.fynlo.logic.DateUtils
 import app.fynlo.logic.InterestEngine
 import java.util.*
@@ -39,9 +41,11 @@ fun CollectPaymentDialog(
     borrower: Borrower,
     accounts: List<Account>,
     onDismiss: () -> Unit,
-    onConfirm: (Payment, String) -> Unit
+    onConfirm: (Payment, String) -> Unit,
+    currencyCode: String = "INR",
 ) {
     val today = java.time.LocalDate.now()
+    val locale = Locale.getDefault()
 
     // Calculate accrued interest and outstanding using new split fields
     val accruedInterest = remember(borrower) {
@@ -102,7 +106,7 @@ fun CollectPaymentDialog(
                         Spacer(Modifier.height(6.dp))
                         Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
                             Text("Principal", style = MaterialTheme.typography.bodySmall)
-                            Text("₹${String.format("%,.0f", principalOutstanding)}",
+                            Text(CurrencyFormatter.detail(principalOutstanding, currencyCode, locale),
                                 style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
                                 color = SemanticRed)
                         }
@@ -110,7 +114,7 @@ fun CollectPaymentDialog(
                             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
                                 Text("Interest (${borrower.rate}% ${borrower.type})",
                                     style = MaterialTheme.typography.bodySmall)
-                                Text("₹${String.format("%,.0f", interestOutstanding)}",
+                                Text(CurrencyFormatter.detail(interestOutstanding, currencyCode, locale),
                                     style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
                                     color = SemanticAmber)
                             }
@@ -118,7 +122,7 @@ fun CollectPaymentDialog(
                         HorizontalDivider(Modifier.padding(vertical = 4.dp))
                         Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
                             Text("Total Due", style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold))
-                            Text("₹${String.format("%,.0f", totalOutstanding)}",
+                            Text(CurrencyFormatter.detail(totalOutstanding, currencyCode, locale),
                                 style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
                                 color = MaterialTheme.colorScheme.onSurface)
                         }
@@ -139,7 +143,7 @@ fun CollectPaymentDialog(
                     ) {
                         Icon(Icons.Default.AutoAwesome, null, Modifier.size(16.dp))
                         Spacer(Modifier.width(6.dp))
-                        Text("Interest Only — ₹${String.format("%,.0f", interestOutstanding)}")
+                        Text("Interest Only — ${CurrencyFormatter.detail(interestOutstanding, currencyCode, locale)}")
                     }
                     Spacer(Modifier.height(4.dp))
                 }
@@ -155,7 +159,7 @@ fun CollectPaymentDialog(
                     ) {
                         Icon(Icons.Default.AutoAwesome, null, Modifier.size(16.dp))
                         Spacer(Modifier.width(6.dp))
-                        Text("Full Settlement — ₹${String.format("%,.0f", totalOutstanding)}")
+                        Text("Full Settlement — ${CurrencyFormatter.detail(totalOutstanding, currencyCode, locale)}")
                     }
                     Spacer(Modifier.height(12.dp))
                 }
@@ -171,7 +175,7 @@ fun CollectPaymentDialog(
                         onValueChange = { principalStr = it },
                         label = { Text("Principal") },
                         placeholder = { Text("0") },
-                        prefix = { Text("₹") },
+                        prefix = { Text(CurrencyUtils.symbolFor(currencyCode)) },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         modifier = Modifier.weight(1f),
                         colors = OutlinedTextFieldDefaults.colors(
@@ -184,7 +188,7 @@ fun CollectPaymentDialog(
                         onValueChange = { interestStr = it },
                         label = { Text("Interest") },
                         placeholder = { Text("0") },
-                        prefix = { Text("₹") },
+                        prefix = { Text(CurrencyUtils.symbolFor(currencyCode)) },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         modifier = Modifier.weight(1f),
                         colors = OutlinedTextFieldDefaults.colors(
@@ -201,7 +205,7 @@ fun CollectPaymentDialog(
                         Text("Total collecting: ",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text("₹${String.format("%,.0f", totalAmount)}",
+                        Text(CurrencyFormatter.detail(totalAmount, currencyCode, locale),
                             style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
                             color = Emerald500)
                     }
@@ -216,7 +220,7 @@ fun CollectPaymentDialog(
                         readOnly = true,
                         label = { Text("Deposit into account") },
                         supportingText = {
-                            Text("${selectedAccount.type}  •  Balance: ₹${String.format("%,.0f", selectedAccount.balance)}",
+                            Text("${selectedAccount.type}  •  Balance: ${CurrencyFormatter.detail(selectedAccount.balance, currencyCode, locale)}",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.primary)
                         },
@@ -243,7 +247,7 @@ fun CollectPaymentDialog(
                                                     color = MaterialTheme.colorScheme.onSurfaceVariant)
                                             }
                                         }
-                                        Text("₹${String.format("%,.0f", acct.balance)}",
+                                        Text(CurrencyFormatter.detail(acct.balance, currencyCode, locale),
                                             style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                                             color = if (acct.balance >= 0) Emerald500 else MaterialTheme.colorScheme.error)
                                     }
@@ -294,7 +298,7 @@ fun CollectPaymentDialog(
                         enabled = isValid,
                         shape = RoundedCornerShape(14.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = app.fynlo.ui.theme.Emerald500)
-                    ) { Text("Confirm ₹${String.format("%,.0f", totalAmount)}") }
+                    ) { Text("Confirm ${CurrencyFormatter.detail(totalAmount, currencyCode, locale)}") }
                 }
             }
         }
@@ -309,8 +313,10 @@ fun PayDebtDialog(
     debt: Debt,
     accounts: List<Account>,
     onDismiss: () -> Unit,
-    onConfirm: (DebtPayment, String) -> Unit
+    onConfirm: (DebtPayment, String) -> Unit,
+    currencyCode: String = "INR",
 ) {
+    val locale = Locale.getDefault()
     val accruedInterest = remember(debt) {
         InterestEngine.calcIntAccrued(
             debt.amount, debt.rate, debt.date, debt.intType, debt.due,
@@ -359,13 +365,13 @@ fun PayDebtDialog(
                         Spacer(Modifier.height(6.dp))
                         Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
                             Text("Principal", style = MaterialTheme.typography.bodySmall)
-                            Text("₹${String.format("%,.0f", principalOutstanding)}",
+                            Text(CurrencyFormatter.detail(principalOutstanding, currencyCode, locale),
                                 style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold))
                         }
                         if (debt.rate > 0) {
                             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
                                 Text("Interest (${debt.rate}%)", style = MaterialTheme.typography.bodySmall)
-                                Text("₹${String.format("%,.0f", interestOutstanding)}",
+                                Text(CurrencyFormatter.detail(interestOutstanding, currencyCode, locale),
                                     style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
                                     color = MaterialTheme.colorScheme.error)
                             }
@@ -373,7 +379,7 @@ fun PayDebtDialog(
                         HorizontalDivider(Modifier.padding(vertical = 4.dp))
                         Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
                             Text("Total Due", style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold))
-                            Text("₹${String.format("%,.0f", totalOutstanding)}",
+                            Text(CurrencyFormatter.detail(totalOutstanding, currencyCode, locale),
                                 style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold))
                         }
                     }
@@ -387,7 +393,7 @@ fun PayDebtDialog(
                     }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(10.dp)) {
                         Icon(Icons.Default.AutoAwesome, null, Modifier.size(16.dp))
                         Spacer(Modifier.width(6.dp))
-                        Text("Interest Only — ₹${String.format("%,.0f", interestOutstanding)}")
+                        Text("Interest Only — ${CurrencyFormatter.detail(interestOutstanding, currencyCode, locale)}")
                     }
                     Spacer(Modifier.height(4.dp))
                 }
@@ -400,7 +406,7 @@ fun PayDebtDialog(
                     colors = ButtonDefaults.filledTonalButtonColors(containerColor = Emerald500.copy(alpha = 0.15f))) {
                         Icon(Icons.Default.AutoAwesome, null, Modifier.size(16.dp), tint = Emerald500)
                         Spacer(Modifier.width(6.dp))
-                        Text("Full Settlement — ₹${String.format("%,.0f", totalOutstanding)}", color = Emerald500)
+                        Text("Full Settlement — ${CurrencyFormatter.detail(totalOutstanding, currencyCode, locale)}", color = Emerald500)
                     }
                     Spacer(Modifier.height(4.dp))
                 }
@@ -412,11 +418,11 @@ fun PayDebtDialog(
 
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(value = principalStr, onValueChange = { principalStr = it },
-                        label = { Text("Principal") }, placeholder = { Text("0") }, prefix = { Text("₹") },
+                        label = { Text("Principal") }, placeholder = { Text("0") }, prefix = { Text(CurrencyUtils.symbolFor(currencyCode)) },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         modifier = Modifier.weight(1f))
                     OutlinedTextField(value = interestStr, onValueChange = { interestStr = it },
-                        label = { Text("Interest") }, placeholder = { Text("0") }, prefix = { Text("₹") },
+                        label = { Text("Interest") }, placeholder = { Text("0") }, prefix = { Text(CurrencyUtils.symbolFor(currencyCode)) },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         modifier = Modifier.weight(1f),
                         colors = OutlinedTextFieldDefaults.colors(
@@ -429,7 +435,7 @@ fun PayDebtDialog(
                     Row(Modifier.fillMaxWidth(), Arrangement.End) {
                         Text("Total paying: ", style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text("₹${String.format("%,.0f", totalAmount)}",
+                        Text(CurrencyFormatter.detail(totalAmount, currencyCode, locale),
                             style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
                             color = MaterialTheme.colorScheme.error)
                     }
@@ -440,7 +446,7 @@ fun PayDebtDialog(
                     OutlinedTextField(value = selectedAccount.name, onValueChange = {}, readOnly = true,
                         label = { Text("Pay from account") },
                         supportingText = {
-                            Text("${selectedAccount.type}  •  Balance: ₹${String.format("%,.0f", selectedAccount.balance)}",
+                            Text("${selectedAccount.type}  •  Balance: ${CurrencyFormatter.detail(selectedAccount.balance, currencyCode, locale)}",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.primary)
                         },
@@ -466,7 +472,7 @@ fun PayDebtDialog(
                                                     color = MaterialTheme.colorScheme.onSurfaceVariant)
                                             }
                                         }
-                                        Text("₹${String.format("%,.0f", acct.balance)}",
+                                        Text(CurrencyFormatter.detail(acct.balance, currencyCode, locale),
                                             style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                                             color = if (acct.balance >= 0) Emerald500 else MaterialTheme.colorScheme.error)
                                     }
@@ -510,7 +516,7 @@ fun PayDebtDialog(
                         enabled = isValid,
                         shape   = RoundedCornerShape(14.dp),
                         colors  = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
-                    ) { Text("Pay ₹${String.format("%,.0f", totalAmount)}") }
+                    ) { Text("Pay ${CurrencyFormatter.detail(totalAmount, currencyCode, locale)}") }
                 }
             }
         }

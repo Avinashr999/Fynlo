@@ -26,6 +26,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.fynlo.FinanceViewModel
 import app.fynlo.data.UserPreferences
+import app.fynlo.logic.CurrencyFormatter
 import app.fynlo.logic.CurrencyUtils
 import app.fynlo.ui.theme.ThemeController
 import app.fynlo.ui.theme.*
@@ -277,9 +278,9 @@ fun SettingsScreen(
                 var recalcDelta by remember { mutableStateOf<app.fynlo.RecalcDelta?>(null) }
                 var recalcInFlight by remember { mutableStateOf(false) }
                 val currentProject by viewModel.currentProject.collectAsState()
-                val currencySymbol = app.fynlo.logic.CurrencyUtils.symbolFor(currentProject?.currency ?: "INR")
+                val currencyCode = currentProject?.currency ?: "INR"
                 val locale = java.util.Locale.getDefault()
-                fun fmtMoney(v: Double): String = "$currencySymbol${String.format(locale, "%,.0f", v)}"
+                fun fmtMoney(v: Double): String = CurrencyFormatter.detail(v, currencyCode, locale)
                 fun fmtDelta(v: Double): String = when {
                     kotlin.math.abs(v) < 0.5 -> "no change"
                     v > 0 -> "+${fmtMoney(v)}"

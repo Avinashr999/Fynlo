@@ -6,6 +6,7 @@ import app.fynlo.data.model.*
 import app.fynlo.data.remote.FirestoreRepository
 import app.fynlo.data.remote.SyncManager
 import app.fynlo.data.remote.deleteFirestoreUserTree
+import app.fynlo.logic.CurrencyFormatter
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -830,6 +831,10 @@ class FinanceRepository(
         val costBasis   = investment.invested * proportionWithdrawn  // what we paid for this portion
         val gainLoss    = withdrawAmount - costBasis                  // profit or loss
 
+        // Look up the project's currency for the persisted notes string.
+        // Falls back to INR if the project lookup fails (orphaned investment, schema race, etc).
+        val currencyCode = dao.getProjectById(investment.projectId)?.currency ?: "INR"
+
         db.withTransaction {
             // Update investment: reduce currentVal and track withdrawn amount
             val newCurrentVal  = (investment.currentVal  - withdrawAmount).coerceAtLeast(0.0)
@@ -856,8 +861,8 @@ class FinanceRepository(
                 category  = "Investment Returns",
                 desc      = "Withdrawal from ${investment.name}",
                 ref       = investment.id,
-                notes     = if (gainLoss >= 0) "Gain: ₹${String.format("%.0f", gainLoss)}"
-                            else "Loss: ₹${String.format("%.0f", -gainLoss)}",
+                notes     = if (gainLoss >= 0) "Gain: ${CurrencyFormatter.detail(gainLoss, currencyCode)}"
+                            else "Loss: ${CurrencyFormatter.detail(-gainLoss, currencyCode)}",
                 projectId = investment.projectId,
                 updatedAt = System.currentTimeMillis()
             )
@@ -912,6 +917,10 @@ class FinanceRepository(
             (borrower.amount - borrower.paidPrincipal) + maxOf(0.0, interest - borrower.paidInterest)
         }
 
+        // Look up the project's currency for the persisted desc string.
+        // Falls back to INR if the project lookup fails (orphaned borrower, schema race, etc).
+        val currencyCode = dao.getProjectById(borrower.projectId)?.currency ?: "INR"
+
         db.withTransaction {
             val updated = borrower.copy(status = "WrittenOff", updatedAt = System.currentTimeMillis())
             dao.insertBorrower(updated)
@@ -924,7 +933,7 @@ class FinanceRepository(
                 amount    = outstanding,
                 fromAcct  = "", // no actual cash movement
                 category  = "Bad Debt",
-                desc      = "Write-off: ${borrower.name} — outstanding ₹${String.format("%.0f", outstanding)}",
+                desc      = "Write-off: ${borrower.name} — outstanding ${CurrencyFormatter.detail(outstanding, currencyCode)}",
                 ref       = borrower.id,
                 tags      = "journal_only", // exclude from cash flow
                 projectId = borrower.projectId,

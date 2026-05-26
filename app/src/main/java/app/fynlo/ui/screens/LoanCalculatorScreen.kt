@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.dp
 import java.util.Locale
 import kotlin.math.pow
 import app.fynlo.FinanceViewModel
+import app.fynlo.logic.CurrencyFormatter
 import app.fynlo.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -29,7 +30,8 @@ fun LoanCalculatorScreen(viewModel: FinanceViewModel? = null) {
     val locale = remember { Locale.getDefault() }
     val currentProjectState = viewModel?.currentProject?.collectAsState()
     val currentProject = currentProjectState?.value
-    val currencySymbol = app.fynlo.logic.CurrencyUtils.symbolFor(currentProject?.currency ?: "INR")
+    val currencyCode = currentProject?.currency ?: "INR"
+    val currencySymbol = app.fynlo.logic.CurrencyUtils.symbolFor(currencyCode)
 
     var principal  by remember { mutableStateOf("") }
     var rate       by remember { mutableStateOf("") }
@@ -218,7 +220,7 @@ fun LoanCalculatorScreen(viewModel: FinanceViewModel? = null) {
             ) {
                 Text("Monthly EMI", style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text("$currencySymbol ${String.format(locale, "%,.2f", result.emi)}",
+                Text(CurrencyFormatter.detail(result.emi, currencyCode, locale),
                     style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.ExtraBold),
                     color = Emerald500)
             }
@@ -226,11 +228,11 @@ fun LoanCalculatorScreen(viewModel: FinanceViewModel? = null) {
             Spacer(Modifier.height(12.dp))
 
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                ResultCard("Principal", "$currencySymbol${String.format(locale, "%,.0f", principal.toDoubleOrNull() ?: 0.0)}",
+                ResultCard("Principal", CurrencyFormatter.detail(principal.toDoubleOrNull() ?: 0.0, currencyCode, locale),
                     MaterialTheme.colorScheme.primary, Modifier.weight(1f))
-                ResultCard("Total Interest", "$currencySymbol${String.format(locale, "%,.0f", result.totalInterest)}",
+                ResultCard("Total Interest", CurrencyFormatter.detail(result.totalInterest, currencyCode, locale),
                     SemanticRed, Modifier.weight(1f))
-                ResultCard("Total Payment", "$currencySymbol${String.format(locale, "%,.0f", result.totalPayment)}",
+                ResultCard("Total Payment", CurrencyFormatter.detail(result.totalPayment, currencyCode, locale),
                     Emerald500, Modifier.weight(1f))
             }
 
@@ -290,14 +292,14 @@ fun LoanCalculatorScreen(viewModel: FinanceViewModel? = null) {
                         Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
                             Text("Interest Accrued", style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Text("$currencySymbol ${String.format(locale, "%,.2f", accrued)}",
+                            Text(CurrencyFormatter.detail(accrued, currencyCode, locale),
                                 style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
                                 color = SemanticRed)
                         }
                         Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
                             Text("Per Day Interest", style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Text("$currencySymbol ${String.format(locale, "%,.2f", perDay)}",
+                            Text(CurrencyFormatter.detail(perDay, currencyCode, locale),
                                 style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold))
                         }
                         if (isOverdue) {
@@ -311,7 +313,7 @@ fun LoanCalculatorScreen(viewModel: FinanceViewModel? = null) {
                         HorizontalDivider()
                         Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
                             Text("Total Outstanding", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold))
-                            Text("$currencySymbol ${String.format(locale, "%,.2f", outstanding)}",
+                            Text(CurrencyFormatter.detail(outstanding, currencyCode, locale),
                                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.ExtraBold),
                                 color = SemanticRed)
                         }
@@ -340,13 +342,13 @@ fun LoanCalculatorScreen(viewModel: FinanceViewModel? = null) {
                             Row(Modifier.fillMaxWidth().padding(vertical = 3.dp), Arrangement.SpaceBetween) {
                                 Text("$month", style = MaterialTheme.typography.bodySmall,
                                     modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
-                                Text("$currencySymbol${String.format(locale, "%,.0f", prin)}",
+                                Text(CurrencyFormatter.detail(prin, currencyCode, locale),
                                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary,
                                     modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
-                                Text("$currencySymbol${String.format(locale, "%,.0f", interest)}",
+                                Text(CurrencyFormatter.detail(interest, currencyCode, locale),
                                     style = MaterialTheme.typography.bodySmall, color = SemanticRed,
                                     modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
-                                Text("$currencySymbol${String.format(locale, "%,.0f", prin + interest)}",
+                                Text(CurrencyFormatter.detail(prin + interest, currencyCode, locale),
                                     style = MaterialTheme.typography.bodySmall,
                                     modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
                             }

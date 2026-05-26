@@ -158,7 +158,7 @@ AI_AGENT_PROTOCOL.md to match.
 
 # Fynlo - Complete AI Portability File
 **Project Name**: Fynlo
-**Version**: 3.2.14 on `master` (`versionName = "3.2.14"`, `versionCode = 137`). All four Sprint-1 P0 clusters closed (C01 / C02 / C03a / C05). Three P1 Sprint 2 clusters closed (C04 at 3.2.6, C06 + C07 at 3.2.12). **C08 in flight — Stage 1 (CurrencyFormatter foundation + 33 tests) at 3.2.13, Stage 2 (Hero/ListRow/Negative + truncation fixes, ~34 sites + 6 truncation fixes across 12 files via 4 parallel agents) at 3.2.14. Stages 3-4 (Detail sweep ~189 sites + export fixes) still ahead as 3.2.15 / 3.2.16.** Internal milestone markers only — per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens until every `UX_AUDIT` cluster (P0 through P3) is closed.
+**Version**: 3.2.15 on `master` (`versionName = "3.2.15"`, `versionCode = 138`). All four Sprint-1 P0 clusters closed (C01 / C02 / C03a / C05). Three P1 Sprint 2 clusters closed (C04 at 3.2.6, C06 + C07 at 3.2.12). **C08 nearly closed — Stage 1 (3.2.13: CurrencyFormatter foundation + 33 tests), Stage 2 (3.2.14: 52 highest-impact sites + 3 truncation fixes), Stage 3 (3.2.15: 147 Detail sites + 1 latent bug fix via 6 parallel agents). Only Stage 4 remains: PDF + XLSX export migration (XLSX numeric-cell fix is load-bearing — currently strings, breaks Excel formulas).** Total ~202/257 currency call sites migrated through Stages 1-3. Internal milestone markers only — per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens until every `UX_AUDIT` cluster (P0 through P3) is closed.
 **Platform**: Android (Kotlin, Jetpack Compose, Room — Gradle 9.4.1, AGP 9.2.1, Room 2.8.4, KSP 2.3.7, Kotlin 2.2.10)
 
 ## 1. Project Overview
@@ -345,6 +345,61 @@ in the APK).
 ## 6. Journal
 
 **Newest first.** Each entry: date · cluster(s) closed/touched · commit(s) · one-paragraph why-and-what.
+
+### 2026-05-27 — 3.2.15 (C08 Stage 3: Detail sweep across 18+ files via 6 parallel agents)
+
+**Type:** Stage 3 of 4 for C08. Largest single sweep of the C08 plan: ~147 Detail-style call-site migrations across 18+ files via 6 parallel general-purpose agents grouped by domain. No file overlap between agents; each got a 3-5 file scope with explicit "don't re-touch Stage 2 sites" guidance.
+
+**Internal milestone:** `3.2.15` / `versionCode = 138`. No Play Console upload per release-cadence ADR.
+
+**Agent breakdown (all 6 BUILD SUCCESSFUL + 112 tests passing):**
+
+| Agent | Domain | Files | Sites |
+|---|---|---|---|
+| A | Payment/Lending/Debt dialogs | PaymentDialog, LendingDialog, DebtDialog | 27 |
+| B | Lending/Debt/Customer screen bodies | LendingScreen, DebtScreen, CustomerDetailScreen | 32 |
+| C | Investment cluster + widget | InvestmentScreen, InvestmentDialog, PortfolioAnalyticsSheet, NetWorthWidget | 18 |
+| D | Daily-use screens | BudgetScreen, GoalScreen, SpendScreen, MoneyFlowScreen, TransactionHistoryScreen | 36 |
+| E | Calculators + repository | LoanCalculator, DebtPayoff, MonthlySummary, FinanceRepository | 24 |
+| F | Misc cleanup | GlobalSearch, CollectionCalendar, ProfitLoss, Settings, SmartFlowWizard, DashboardComponents, DesignSystem | 10 + 1 deletion + 1 latent bug fix |
+
+**Total: ~147 Detail migrations + ~10 ripple updates (Navigation/HomeScreen/HomeScreenModern/AccountStatement for signature changes) + 1 `formatAmount` helper deletion + 1 latent bug fix (`AccountGrowthIndicator` negative-growth display now uses en-dash instead of `₹-1,200`).**
+
+**Notable patterns the agents established:**
+
+1. **`currencyCode: String = "INR"` default param** on every shared Composable that previously took `currencySymbol`. Defaults preserve preview/test composability and existing named-arg call sites continue compiling without changes. Adopted by `PaymentDialog`, `LendingDialog`, `DebtDialog`, `LendingCard`, `DebtCard`, `PaymentItem`, `BudgetCard`, `InvestmentCard`, `PortfolioAnalyticsSheet`, `PortfolioBreakdownSheet`, `UpdateInvestmentValueDialog`, `ValuationHistoryDialog`, `AddInvestmentDialog`, `StepVerification`, `AccountGrowthIndicator`, `PLSection`, `DueEntryCard`, `CalendarGrid`, `TransactionItem`.
+
+2. **Signature-change ripple** (Agent C): `PortfolioBreakdownSheet` had its `currencySymbol` param dropped entirely (truly unused after migration). Forced ripple updates in 3 call-site files (`HomeScreen.kt`, `HomeScreenModern.kt`, `Navigation.kt`) — Agent C handled the ripple as authorized cross-file plumbing within scope. Navigation gained `navProject` + `navCurrencyCode` derivations to pass through to dialogs.
+
+3. **Smart Negative-vs-Detail branching** for sign-significant displays — `BudgetScreen.Remaining`, `MoneyFlowScreen.Net Flow`, `TransactionItem` amounts. Pattern: `if (value < 0) CurrencyFormatter.negative(...) else CurrencyFormatter.detail(...)`. Establishes app-wide consistency on en-dash use for negatives.
+
+4. **Repository self-resolves currency** (Agent E): `FinanceRepository` note-generation sites use `dao.getProjectById(<entity>.projectId)?.currency ?: "INR"` to read currency at persistence time rather than threading currencyCode through UI → ViewModel → Repository. Clean layering, no caller-side plumbing.
+
+5. **IME-safe input prefix swap**: text-field `prefix = { Text("₹") }` patterns swapped to `prefix = { Text(CurrencyUtils.symbolFor(currencyCode)) }`. Currency-aware prefix while keeping raw text-field state intact. Hero typing-input symbols (e.g., LendingDialog's 32sp `Text("₹")`) treated the same way.
+
+6. **Latent bug fix (Agent F)**: `AccountGrowthIndicator` rendered negative growth as `₹-1,200` (hyphen between symbol and digits from `String.format` itself). Now correctly `−₹1,200` (en-dash before symbol per audit). No tests exercised this path so the bug wasn't surfaced before; the migration uncovered + fixed it incidentally.
+
+7. **`formatAmount` deletion**: the pre-existing `DesignSystem.formatAmount(amount, symbol)` helper had **zero callers** post-Stage 2 (Stage 2 migrations made it dead code). Deleted entirely along with the unused `java.util.Locale` import. Clean.
+
+**Per-file `currencySymbol` deletion outcome:**
+- **Deleted (fully migrated):** DebtScreen, CustomerDetailScreen, PortfolioAnalyticsSheet, SpendScreen, MoneyFlowScreen, TransactionHistoryScreen, DebtPayoffScreen, MonthlySummaryScreen, GlobalSearchScreen, CollectionCalendarScreen, ProfitLossScreen, SettingsScreen.
+- **Kept (still used by Input field labels):** BudgetScreen, GoalScreen, LendingScreen, InvestmentScreen, InvestmentDialog, LoanCalculatorScreen. These use `currencySymbol` only in `OutlinedTextField` label text like `"Target Amount ($currencySymbol)"` — the field label, not the value, but it's input-affordance text where users want the bare symbol of their currency. Per the IME-safety carve-out.
+
+**Visible UX changes worth flagging on smoke:**
+1. **Indian lakh-crore grouping everywhere now** — not just dashboards. Every card body, dialog field, transaction row, calculator output, lending/debt detail.
+2. **Decimals dropped to no-decimals on Detail surfaces** — LoanCalculator EMI, account-balance share-copy lines, per-day interest accrual all dropped from `.2f` → `.0f` per audit. If any specific surface needs decimals back, flag in smoke.
+3. **All transaction rows show `−` en-dash for expenses, `+` for income** consistently across History, MoneyFlow, Spend, CustomerDetail.
+4. **DashboardComponents growth indicator** now `−₹1,200` instead of `₹-1,200`.
+
+**Implementation gotcha (logged for Stage 4):** Parallel agents touching shared composables (e.g., `TransactionItem`, `PortfolioBreakdownSheet`) can leave the Kotlin incremental compile cache in a stale state — agents 1-2 changed a signature, agent 3 sees the old cached signature and fails to compile its file. `./gradlew --stop && ./gradlew ... --rerun-tasks` resolves. Build was clean after one such stop+rerun.
+
+**NetWorthWidget TODO (Agent C):** widget hardcodes `"INR"` with a `// TODO: widget should read default-currency pref from DataStore` comment — runs outside Composable scope, can't easily read user pref. Tracked as Task #22 for later.
+
+**Data-integrity gate state:** unchanged at **112 tests across 9 classes**, 0 failures.
+
+**Cumulative C08 progress:** Stage 1 (3.2.13: foundation + 33 tests) → Stage 2 (3.2.14: 52 highest-impact + 3 truncation fixes) → Stage 3 (3.2.15: 147 Detail + latent bug fix + helper deletion). **~202/257 sites migrated**, only Stage 4 (PDF + XLSX exports) remains for C08 closure.
+
+**Next:** Stage 4 — `ExportUtility.kt` (6 PDF sites) + `ExcelExportUtility.kt` (8 XLSX sites). The XLSX migration is load-bearing because cells are currently stored as `t="s"` (strings) preventing Excel from summing/sorting numerically — has to switch to `t="n"` with a proper number-format style. This unlocks proper spreadsheet workflows.
 
 ### 2026-05-27 — 3.2.14 (C08 Stage 2: Hero/ListRow/Negative + truncation fixes — 4 parallel agents)
 

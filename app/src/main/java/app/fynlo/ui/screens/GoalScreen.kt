@@ -18,6 +18,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.fynlo.FinanceViewModel
 import app.fynlo.data.model.Goal
+import app.fynlo.logic.CurrencyFormatter
 import java.util.*
 import app.fynlo.ui.theme.*
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -29,7 +30,9 @@ fun GoalScreen(viewModel: FinanceViewModel) {
     val haptic = LocalHapticFeedback.current
     val goals by viewModel.goals.collectAsState()
     val currentProject by viewModel.currentProject.collectAsState()
-    val currencySymbol = app.fynlo.logic.CurrencyUtils.symbolFor(currentProject?.currency ?: "INR")
+    val currencyCode = currentProject?.currency ?: "INR"
+    val currencySymbol = app.fynlo.logic.CurrencyUtils.symbolFor(currencyCode)
+    val locale = remember { Locale.getDefault() }
     var showAddDialog by remember { mutableStateOf(false) }
 
     if (showAddDialog) {
@@ -73,7 +76,7 @@ fun GoalScreen(viewModel: FinanceViewModel) {
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     itemsIndexed(goals, key = { _, g -> g.id }) { index, goal ->
-                        GoalCard(goal, currencySymbol, onDelete = { viewModel.deleteGoal(goal) })
+                        GoalCard(goal, currencyCode, locale, onDelete = { viewModel.deleteGoal(goal) })
                         if (index < goals.lastIndex) {
                             HorizontalDivider(thickness = 0.5.dp,
                                 color = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f))
@@ -93,7 +96,7 @@ fun GoalScreen(viewModel: FinanceViewModel) {
 }
 
 @Composable
-fun GoalCard(goal: Goal, currencySymbol: String, onDelete: () -> Unit) {
+fun GoalCard(goal: Goal, currencyCode: String, locale: Locale, onDelete: () -> Unit) {
     val haptic = LocalHapticFeedback.current
     var showDeleteConfirm by remember { mutableStateOf(false) }
     if (showDeleteConfirm) {
@@ -145,10 +148,10 @@ fun GoalCard(goal: Goal, currencySymbol: String, onDelete: () -> Unit) {
             Spacer(Modifier.height(8.dp))
 
             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
-                Text("$currencySymbol${String.format(java.util.Locale.getDefault(), "%,.0f", goal.savedAmount)} saved",
+                Text("${CurrencyFormatter.detail(goal.savedAmount, currencyCode, locale)} saved",
                     style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
                     color = Emerald500)
-                Text("$currencySymbol${String.format(java.util.Locale.getDefault(), "%,.0f", goal.targetAmount)} target • $pct%",
+                Text("${CurrencyFormatter.detail(goal.targetAmount, currencyCode, locale)} target • $pct%",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }

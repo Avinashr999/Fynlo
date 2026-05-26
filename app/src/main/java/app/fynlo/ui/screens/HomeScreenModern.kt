@@ -120,7 +120,7 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
             BreakdownType.HAND_LOANS -> summary.handLendingBreakdown
             else -> emptyMap()
         }
-        PortfolioBreakdownSheet(title, data, cs, icon, color) { activeBreakdownType = null }
+        PortfolioBreakdownSheet(title, data, icon, color, { activeBreakdownType = null }, currencyCode = currencyCode)
     }
 
     if (!isSyncReady) {

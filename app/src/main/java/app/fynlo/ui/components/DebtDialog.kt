@@ -21,6 +21,8 @@ import app.fynlo.FinanceViewModel
 import app.fynlo.data.model.Account
 import app.fynlo.data.model.Debt
 import app.fynlo.data.model.Person
+import app.fynlo.logic.CurrencyFormatter
+import app.fynlo.logic.CurrencyUtils
 import app.fynlo.logic.DateUtils
 import app.fynlo.ui.theme.Emerald500
 import java.util.*
@@ -31,10 +33,12 @@ fun AddDebtDialog(
     viewModel: FinanceViewModel,
     onDismiss: () -> Unit,
     onConfirm: (Debt, String) -> Unit,
-    initialDebt: Debt? = null
+    initialDebt: Debt? = null,
+    currencyCode: String = "INR",
 ) {
     val people   by viewModel.people.collectAsState()
     val accounts by viewModel.accounts.collectAsState()
+    val locale = Locale.getDefault()
 
     var selectedPerson  by remember { mutableStateOf<Person?>(null) }
     var personExpanded  by remember { mutableStateOf(false) }
@@ -119,7 +123,7 @@ fun AddDebtDialog(
                             readOnly = true,
                             label = { Text("Received into Account") },
                             supportingText = {
-                                Text("${selectedAccount.type}  •  Balance: ₹${String.format("%,.0f", selectedAccount.balance)}",
+                                Text("${selectedAccount.type}  •  Balance: ${CurrencyFormatter.detail(selectedAccount.balance, currencyCode, locale)}",
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.primary)
                             },
@@ -144,7 +148,7 @@ fun AddDebtDialog(
                                                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                                                 }
                                             }
-                                            Text("₹${String.format("%,.0f", acct.balance)}",
+                                            Text(CurrencyFormatter.detail(acct.balance, currencyCode, locale),
                                                 style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
                                                 color = Emerald500)
                                         }
@@ -159,7 +163,7 @@ fun AddDebtDialog(
 
                 // ── Amount + dates ────────────────────────────────────────
                 OutlinedTextField(value = amount, onValueChange = { amount = it },
-                    label = { Text("Amount (₹)") },
+                    label = { Text("Amount (${CurrencyUtils.symbolFor(currencyCode)})") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier.fillMaxWidth())
                 DatePickerField(value = date, onValueChange = { date = it }, label = "Date Taken")

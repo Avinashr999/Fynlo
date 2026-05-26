@@ -20,6 +20,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.fynlo.data.model.FinancialSummary
+import app.fynlo.logic.CurrencyFormatter
 import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -27,10 +28,10 @@ import java.util.*
 fun PortfolioBreakdownSheet(
     title: String,
     data: Map<String, Double>,
-    currencySymbol: String,
     icon: ImageVector,
     iconColor: Color,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    currencyCode: String = "INR"
 ) {
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -61,7 +62,7 @@ fun PortfolioBreakdownSheet(
                     Text(title, style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold))
                     val total = data.values.sum()
                     Text(
-                        "$currencySymbol ${String.format(Locale.getDefault(), "%,.0f", total)} total",
+                        "${CurrencyFormatter.detail(total, currencyCode)} total",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -82,7 +83,7 @@ fun PortfolioBreakdownSheet(
                         BreakdownItem(
                             label = entry.key,
                             amount = entry.value,
-                            currencySymbol = currencySymbol,
+                            currencyCode = currencyCode,
                             percentage = (entry.value / data.values.sum() * 100).toInt(),
                             color = iconColor
                         )
@@ -97,7 +98,7 @@ fun PortfolioBreakdownSheet(
 private fun BreakdownItem(
     label: String,
     amount: Double,
-    currencySymbol: String,
+    currencyCode: String,
     percentage: Int,
     color: Color
 ) {
@@ -119,7 +120,7 @@ private fun BreakdownItem(
             }
         }
         Text(
-            "$currencySymbol ${String.format(Locale.getDefault(), "%,.0f", amount)}",
+            CurrencyFormatter.detail(amount, currencyCode),
             style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold)
         )
     }

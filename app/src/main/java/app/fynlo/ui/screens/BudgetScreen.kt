@@ -116,11 +116,13 @@ fun BudgetScreen(viewModel: FinanceViewModel) {
                     ) {
                             Text("This Month's Overview", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold))
                             Row(Modifier.fillMaxWidth(), Arrangement.spacedBy(8.dp)) {
-                                OverviewChip("Total Budget", "$currencySymbol${String.format(locale, "%,.0f", totalLimit)}",
+                                OverviewChip("Total Budget", CurrencyFormatter.detail(totalLimit, currencyCode, locale),
                                     MaterialTheme.colorScheme.primary, Modifier.weight(1f))
-                                OverviewChip("Spent", "$currencySymbol${String.format(locale, "%,.0f", totalSpent)}",
+                                OverviewChip("Spent", CurrencyFormatter.detail(totalSpent, currencyCode, locale),
                                     if (totalSpent > totalLimit) SemanticRed else Emerald500, Modifier.weight(1f))
-                                OverviewChip("Remaining", "$currencySymbol${String.format(locale, "%,.0f", totalRemain)}",
+                                OverviewChip("Remaining",
+                                    if (totalRemain < 0) CurrencyFormatter.negative(totalRemain, currencyCode, locale)
+                                    else CurrencyFormatter.detail(totalRemain, currencyCode, locale),
                                     if (totalRemain < 0) SemanticRed else MaterialTheme.colorScheme.primary, Modifier.weight(1f))
                             }
                             if (overBudget > 0 || nearLimit > 0) {
@@ -262,9 +264,9 @@ fun BudgetCard(
             Spacer(Modifier.height(6.dp))
 
             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
-                Text("$currencySymbol${String.format(locale, "%,.0f", actualSpent)} spent",
+                Text("${CurrencyFormatter.detail(actualSpent, currencyCode, locale)} spent",
                     style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold))
-                Text("$pct% of $currencySymbol${String.format(locale, "%,.0f", budget.limitAmount)}",
+                Text("$pct% of ${CurrencyFormatter.detail(budget.limitAmount, currencyCode, locale)}",
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
 
@@ -278,19 +280,19 @@ fun BudgetCard(
                 Arrangement.SpaceBetween
             ) {
                     InfoItem("Remaining", if (isExceeded) CurrencyFormatter.negative(remaining, currencyCode, locale)
-                        else "$currencySymbol${String.format(locale, "%,.0f", remaining)}",
+                        else CurrencyFormatter.detail(remaining, currencyCode, locale),
                         if (isExceeded) SemanticRed else Emerald500)
-                    InfoItem("Daily Budget", "$currencySymbol${String.format(locale, "%,.0f", dailyBudget)}",
+                    InfoItem("Daily Budget", CurrencyFormatter.detail(dailyBudget, currencyCode, locale),
                         MaterialTheme.colorScheme.onSurfaceVariant)
-                    InfoItem("Daily Spent", "$currencySymbol${String.format(locale, "%,.0f", dailySpent)}",
+                    InfoItem("Daily Spent", CurrencyFormatter.detail(dailySpent, currencyCode, locale),
                         if (dailySpent > dailyBudget) SemanticRed else MaterialTheme.colorScheme.onSurfaceVariant)
-                    InfoItem("Projected", "$currencySymbol${String.format(locale, "%,.0f", projectedEnd)}",
+                    InfoItem("Projected", CurrencyFormatter.detail(projectedEnd, currencyCode, locale),
                         if (projectedEnd > budget.limitAmount) SemanticRed else Emerald500)
             }
 
             if (projectedEnd > budget.limitAmount && !isExceeded) {
                 Spacer(Modifier.height(4.dp))
-                Text("⚠ At this rate you'll exceed by $currencySymbol${String.format(locale, "%,.0f", projectedEnd - budget.limitAmount)} this month",
+                Text("⚠ At this rate you'll exceed by ${CurrencyFormatter.detail(projectedEnd - budget.limitAmount, currencyCode, locale)} this month",
                     style = MaterialTheme.typography.labelSmall, color = SemanticAmber)
             }
     }

@@ -21,6 +21,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.fynlo.FinanceViewModel
+import app.fynlo.logic.CurrencyFormatter
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -30,7 +31,7 @@ import app.fynlo.ui.theme.*
 fun MonthlySummaryScreen(viewModel: FinanceViewModel) {
     val transactions by viewModel.transactions.collectAsState()
     val currentProject by viewModel.currentProject.collectAsState()
-    val currencySymbol = app.fynlo.logic.CurrencyUtils.symbolFor(currentProject?.currency ?: "INR")
+    val currencyCode = currentProject?.currency ?: "INR"
     val locale       = remember { Locale.getDefault() }
 
     // Build last 6 months data
@@ -83,9 +84,9 @@ fun MonthlySummaryScreen(viewModel: FinanceViewModel) {
         val netSavings   = totalIncome - totalExpense
 
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            SummaryChip("6M Income",  "$currencySymbol${String.format(locale, "%,.0f", totalIncome)}",  incomeColor,  Modifier.weight(1f))
-            SummaryChip("6M Expense", "$currencySymbol${String.format(locale, "%,.0f", totalExpense)}", expenseColor, Modifier.weight(1f))
-            SummaryChip("Net Saved",  "$currencySymbol${String.format(locale, "%,.0f", netSavings)}",
+            SummaryChip("6M Income",  CurrencyFormatter.detail(totalIncome, currencyCode, locale),  incomeColor,  Modifier.weight(1f))
+            SummaryChip("6M Expense", CurrencyFormatter.detail(totalExpense, currencyCode, locale), expenseColor, Modifier.weight(1f))
+            SummaryChip("Net Saved",  CurrencyFormatter.detail(netSavings, currencyCode, locale),
                 if (netSavings >= 0) incomeColor else expenseColor, Modifier.weight(1f))
         }
 
@@ -146,15 +147,15 @@ fun MonthlySummaryScreen(viewModel: FinanceViewModel) {
                 Text(label, style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold), modifier = Modifier.width(48.dp))
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text("Income", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold), color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text("$currencySymbol${String.format(locale, "%,.0f", inc)}", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold), color = incomeColor)
+                    Text(CurrencyFormatter.detail(inc, currencyCode, locale), style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold), color = incomeColor)
                 }
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text("Expense", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text("$currencySymbol${String.format(locale, "%,.0f", exp)}", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold), color = expenseColor)
+                    Text(CurrencyFormatter.detail(exp, currencyCode, locale), style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold), color = expenseColor)
                 }
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text("Saved", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text("$currencySymbol${String.format(locale, "%,.0f", savings)}",
+                    Text(CurrencyFormatter.detail(savings, currencyCode, locale),
                         style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
                         color = if (savings >= 0) incomeColor else expenseColor)
                 }

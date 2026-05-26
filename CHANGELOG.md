@@ -2,6 +2,45 @@
 
 All notable changes to Fynlo are documented here.
 
+## [3.2.15] - 2026-05-27 *(Development milestone — C08 Stage 3: Detail sweep across 18+ files via 6 parallel agents; not promoted per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`)*
+
+### Fixed
+- **C08 Stage 3 — Detail-style migration of ~147 call sites across 18+ files via 6 parallel agents.** Largest single sweep in the C08 plan. After this commit, the **only remaining `String.format("%,.0f", amount)` patterns in display code are inside the exports** (Stage 4 scope: `ExportUtility.kt` / `ExcelExportUtility.kt`). Every UI screen, dialog, card, list row, and widget now routes through `CurrencyFormatter` for a single source of truth on number display.
+
+### Per-agent breakdown
+- **Agent A — Payment/Lending/Debt dialogs (27 sites):** `PaymentDialog.kt` (22 sites: `CollectPaymentDialog` + `PayDebtDialog`), `LendingDialog.kt` (2), `DebtDialog.kt` (3). Each dialog composable gained a `currencyCode: String = "INR"` parameter (default keeps existing named-arg call sites compiling). The hero typing-input `Text("₹")` symbols swapped to `CurrencyUtils.symbolFor(currencyCode)` for currency-aware prefix display while keeping raw text-field state intact (IME-safe).
+- **Agent B — Lending/Debt/Customer screen bodies (32 sites):** `LendingScreen.kt` (25 including the WhatsApp/share-copy `buildString` lines), `DebtScreen.kt` (6 in `DebtCard`), `CustomerDetailScreen.kt` (1 in `PaymentItem`). `currencySymbol` derivation deleted from `DebtScreen.kt` + `CustomerDetailScreen.kt` after all sites migrated. Share-copy precision dropped from `.2f` → `.0f` per audit Detail spec (flagged for review).
+- **Agent C — Investment cluster + widget (18 sites):** `InvestmentScreen.kt` (11), `InvestmentDialog.kt` (4), `PortfolioAnalyticsSheet.kt` (2), `NetWorthWidget.kt` (1). `PortfolioBreakdownSheet` composable signature changed (`currencySymbol` → `currencyCode`), forced ripple updates to call sites in `HomeScreen.kt`, `HomeScreenModern.kt`, and `Navigation.kt` (which gained a `navProject` / `navCurrencyCode` derivation to pass through to `AddInvestmentDialog`). **`NetWorthWidget` hardcodes `"INR"` with a `TODO: widget should read default-currency pref from DataStore` comment** — widget runs outside Composable scope so it can't easily read user pref; logged as a follow-up task.
+- **Agent D — Daily-use screens (36 sites):** `BudgetScreen.kt` (11 in `BudgetCard` + overview chips, including a smart Negative-vs-Detail branch for the Remaining chip when over-budget), `GoalScreen.kt` (2), `SpendScreen.kt` (7), `MoneyFlowScreen.kt` (9), `TransactionHistoryScreen.kt` (7). `TransactionItem` and month-header rows now use the **proper +/− pattern from Stage 2** (Income: `+₹2,41,663`; Expense: `−₹15,000` via `CurrencyFormatter.negative` for the en-dash). `MoneyFlowScreen` Net Flow display now branches Detail / Negative based on sign for consistent en-dash use. `currencySymbol` deleted from SpendScreen / MoneyFlowScreen / TransactionHistoryScreen.
+- **Agent E — Calculators + repository note generation (24 sites):** `LoanCalculatorScreen.kt` (10 — EMI display `.2f` → `.0f`, all amortization rows), `DebtPayoffScreen.kt` (5), `MonthlySummaryScreen.kt` (6), `FinanceRepository.kt` (3 note-generation sites — Gain/Loss transaction notes + Write-off description). Repository sites use `dao.getProjectById(<entity>.projectId)?.currency ?: "INR"` to self-resolve currency at persistence time — no TODO needed, no UI-layer dependency.
+- **Agent F — Miscellaneous cleanup (10 sites + 1 deletion + 1 latent bug fix):** `GlobalSearchScreen.kt` (1), `CollectionCalendarScreen.kt` (1 in `DueEntryCard`), `ProfitLossScreen.kt` (2 in outer + inner `fmt` helpers), `SettingsScreen.kt` (1 in `fmtMoney`), `SmartFlowWizardScreen.kt` (3 — wizard debit/credit/neutral rows), `DashboardComponents.kt` (1 in `AccountGrowthIndicator`). **Deleted `DesignSystem.kt`'s `formatAmount` helper entirely** (zero callers — confirmed via grep). **Latent bug fix in `AccountGrowthIndicator`**: pre-3.2.15 code rendered negative growth as `₹-1,200` (hyphen between symbol and digits, from `String.format` itself). Now correctly `−₹1,200` (en-dash before symbol per audit convention). No tests were exercising this path so the bug wasn't surfaced before.
+
+### Cumulative C08 progress
+- **Stage 1 (3.2.13):** CurrencyFormatter foundation + 33 tests.
+- **Stage 2 (3.2.14):** 52 highest-impact Hero/ListRow/Negative sites + 3 truncation fixes.
+- **Stage 3 (3.2.15, this commit):** 147 Detail sites + 1 latent bug fix + DesignSystem `formatAmount` deletion.
+- **Stage 4 (next):** PDF + XLSX export migration (XLSX numeric-cell fix is the load-bearing one).
+
+**Total sites migrated through Stages 1-3: ~202 / 257** from the survey (the remainder are the 14 export sites Stage 4 will handle + a handful of `OutlinedTextField` `value =` raw-state sites that are correctly excluded per the IME-safety rule).
+
+### Notable patterns established
+- **`currencyCode: String = "INR"`** added as default param on every shared Composable that previously took `currencySymbol`. Defaults preserve preview/test composability; named-arg call sites unaffected.
+- **`PortfolioBreakdownSheet` signature change** propagated automatically through ripple updates in HomeScreen / HomeScreenModern / Navigation — exact pattern Stage 4 may reuse for shared formatters.
+- **Smart Negative-vs-Detail branching** for sign-significant displays (BudgetScreen Remaining, MoneyFlowScreen Net Flow, TransactionItem amounts) — when the value can be negative, use `negative()` for the en-dash; otherwise `detail()`. Established as the consistent app-wide pattern.
+- **Repository self-resolves currency** via DAO lookup rather than threading through the UI — clean separation of concerns, no caller-side currency-code plumbing.
+
+### Visible UX changes worth flagging on smoke
+1. **Indian lakh-crore grouping everywhere now.** Not just dashboards (Stage 2) — every card body, dialog field, transaction row, calculator output, lending/debt detail. `₹241,663` → `₹2,41,663` is now universal for INR/NPR/LKR/BDT projects.
+2. **Decimals dropped to no-decimals on Detail surfaces.** LoanCalculator EMI, account-balance share-copy lines, and per-day interest accrual all dropped from `.2f` → `.0f` per audit spec. If a specific surface needs decimal precision (e.g., a formal loan-summary export), flag it in smoke — that'd be a design-system tweak.
+3. **All transaction rows show `−` en-dash for expenses, `+` for income** consistently. Pre-3.2.15 had inconsistent prefix logic across History, MoneyFlow, Spend, CustomerDetail PaymentItem.
+4. **DashboardComponents account growth indicator now shows `−₹1,200` instead of `₹-1,200`** for negative growth. Subtle but consistent with the rest of the app.
+
+### Changed
+- **`versionName`** `3.2.14` → `3.2.15`, **`versionCode`** `137` → `138`. C08 Stage 3 milestone marker.
+
+### Data-integrity gate
+Unchanged at **112 tests across 9 classes**, 0 failures (pure call-site refactor; CurrencyFormatter contract already covered).
+
 ## [3.2.14] - 2026-05-27 *(Development milestone — C08 Stage 2: Hero/ListRow/Negative + truncation fixes; not promoted per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`)*
 
 ### Fixed

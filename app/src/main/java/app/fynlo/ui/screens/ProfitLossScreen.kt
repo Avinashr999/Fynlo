@@ -16,6 +16,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.fynlo.FinanceViewModel
+import app.fynlo.logic.CurrencyFormatter
 import java.util.Locale
 import app.fynlo.ui.theme.*
 
@@ -26,7 +27,7 @@ fun ProfitLossScreen(viewModel: FinanceViewModel) {
     val investments    by viewModel.investments.collectAsState()
     val debts          by viewModel.debts.collectAsState()
     val currentProject by viewModel.currentProject.collectAsState()
-    val currencySymbol  = app.fynlo.logic.CurrencyUtils.symbolFor(currentProject?.currency ?: "INR")
+    val currencyCode    = currentProject?.currency ?: "INR"
     val summary        by viewModel.financialSummary.collectAsState()
     val locale          = remember { Locale.getDefault() }
     val context         = androidx.compose.ui.platform.LocalContext.current
@@ -62,7 +63,7 @@ fun ProfitLossScreen(viewModel: FinanceViewModel) {
 
     fun fmt(v: Double, showSign: Boolean = false): String {
         val sign = if (showSign && v > 0) "+" else ""
-        return "$sign$currencySymbol ${String.format(locale, "%,.0f", v)}"
+        return "$sign${CurrencyFormatter.detail(v, currencyCode, locale)}"
     }
     val green = Emerald500
     val red   = SemanticRed
@@ -118,7 +119,7 @@ fun ProfitLossScreen(viewModel: FinanceViewModel) {
             "Interest Income (collected)"  to interestIncome,
             "Other Income"                 to principalIncome,
             "Investment Returns"           to investReturns
-        ), grossRevenue, green, currencySymbol, locale)
+        ), grossRevenue, green, currencyCode, locale)
 
         Spacer(Modifier.height(12.dp))
 
@@ -127,7 +128,7 @@ fun ProfitLossScreen(viewModel: FinanceViewModel) {
             "Business / Personal Expenses" to totalExpense,
             "Interest Paid (Cost of Debt)" to interestExpense,
             "Bad Debt Write-offs"          to badDebtWriteOffs
-        ), totalExpense + interestExpense + badDebtWriteOffs, red, currencySymbol, locale)
+        ), totalExpense + interestExpense + badDebtWriteOffs, red, currencyCode, locale)
 
         Spacer(Modifier.height(12.dp))
 
@@ -143,7 +144,7 @@ fun ProfitLossScreen(viewModel: FinanceViewModel) {
             "Principal Recovered"     to totalRecovered,
             "Interest Collected"      to interestCollected,
             "Bad / Defaulted Loans"   to -defaultedAmt
-        ), interestCollected - badDebtWriteOffs, green, currencySymbol, locale)
+        ), interestCollected - badDebtWriteOffs, green, currencyCode, locale)
 
         Spacer(Modifier.height(12.dp))
 
@@ -153,7 +154,7 @@ fun ProfitLossScreen(viewModel: FinanceViewModel) {
             "Realised Returns (withdrawn)"  to investReturns,
             "Unrealised Growth (on paper)"  to investGrowth.coerceAtLeast(0.0),
             "Unrealised Loss (on paper)"    to investGrowth.coerceAtMost(0.0)
-        ), investGrowth + investReturns, if (investGrowth + investReturns >= 0) green else red, currencySymbol, locale)
+        ), investGrowth + investReturns, if (investGrowth + investReturns >= 0) green else red, currencyCode, locale)
 
         Spacer(Modifier.height(100.dp))
     }
@@ -166,10 +167,10 @@ private fun PLSection(
     items: List<Pair<String, Double>>,
     total: Double,
     color: Color,
-    currencySymbol: String,
+    currencyCode: String,
     locale: Locale
 ) {
-    fun fmt(v: Double) = "$currencySymbol ${String.format(locale, "%,.0f", v)}"
+    fun fmt(v: Double) = CurrencyFormatter.detail(v, currencyCode, locale)
     Column(
         Modifier.fillMaxWidth()
             .clip(RoundedCornerShape(20.dp))

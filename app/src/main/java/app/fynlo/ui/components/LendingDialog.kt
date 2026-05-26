@@ -23,6 +23,8 @@ import androidx.compose.ui.window.DialogProperties
 import app.fynlo.FinanceViewModel
 import app.fynlo.data.model.Borrower
 import app.fynlo.data.model.Person
+import app.fynlo.logic.CurrencyFormatter
+import app.fynlo.logic.CurrencyUtils
 import app.fynlo.logic.DateUtils
 import app.fynlo.ui.theme.Emerald500
 import java.util.*
@@ -33,10 +35,12 @@ fun AddLendingDialog(
     viewModel: FinanceViewModel,
     onDismiss: () -> Unit,
     onConfirm: (Borrower, String) -> Unit,
-    initialBorrower: Borrower? = null
+    initialBorrower: Borrower? = null,
+    currencyCode: String = "INR",
 ) {
     val people by viewModel.people.collectAsState()
     val accounts by viewModel.accounts.collectAsState()
+    val locale = Locale.getDefault()
 
     var selectedPerson by remember { mutableStateOf<Person?>(null) }
     var amount by remember { mutableStateOf(initialBorrower?.amount?.takeIf { it > 0 }?.let { String.format("%.0f", it) } ?: "") }
@@ -73,7 +77,7 @@ fun AddLendingDialog(
                 // ── Amount hero ───────────────────────────────────────────────
                 Box(Modifier.fillMaxWidth(), Alignment.Center) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("₹", fontSize = 32.sp, fontWeight = FontWeight.Bold,
+                        Text(CurrencyUtils.symbolFor(currencyCode), fontSize = 32.sp, fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Spacer(Modifier.width(6.dp))
                         androidx.compose.foundation.text.BasicTextField(
@@ -136,7 +140,7 @@ fun AddLendingDialog(
                         }
                     }
                     Spacer(Modifier.height(4.dp))
-                    Text("Balance: ₹${String.format("%,.0f", selectedAccount.balance)}",
+                    Text("Balance: ${CurrencyFormatter.detail(selectedAccount.balance, currencyCode, locale)}",
                         style = MaterialTheme.typography.labelSmall, color = Emerald500)
                 }
 

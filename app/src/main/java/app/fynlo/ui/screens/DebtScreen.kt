@@ -49,7 +49,6 @@ val debts by viewModel.debts.collectAsState()
     val accounts by viewModel.accounts.collectAsState()
     val currentProject by viewModel.currentProject.collectAsState()
     val currencyCode = currentProject?.currency ?: "INR"
-    val currencySymbol = app.fynlo.logic.CurrencyUtils.symbolFor(currencyCode)
     val locale = Locale.getDefault()
     var searchQuery by remember { mutableStateOf("") }
     val filteredDebts = remember(debts, searchQuery) {
@@ -185,7 +184,7 @@ val debts by viewModel.debts.collectAsState()
             itemsIndexed(filteredDebts, key = { _, d -> d.id }) { index, debt ->
                     DebtCard(
                         debt = debt,
-                        currencySymbol = currencySymbol,
+                        currencyCode = currencyCode,
                         onEdit = { editingDebt = debt },
                         onDelete = { viewModel.deleteDebt(debt) },
                         onPay = { payingDebt = debt }
@@ -203,7 +202,7 @@ val debts by viewModel.debts.collectAsState()
 
 }
 @Composable
-fun DebtCard(debt: Debt, currencySymbol: String = "₹", onEdit: () -> Unit, onDelete: () -> Unit, onPay: () -> Unit) {
+fun DebtCard(debt: Debt, currencyCode: String = "INR", onEdit: () -> Unit, onDelete: () -> Unit, onPay: () -> Unit) {
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var menuOpen by remember { mutableStateOf(false) }
     if (showDeleteConfirm) {
@@ -276,7 +275,7 @@ fun DebtCard(debt: Debt, currencySymbol: String = "₹", onEdit: () -> Unit, onD
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Column {
                     Text("Borrowed Amount", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text("$currencySymbol ${String.format(Locale.getDefault(), "%,.0f", debt.amount)}", style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold))
+                    Text(CurrencyFormatter.detail(debt.amount, currencyCode, locale), style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold))
                     Text("Borrowed: ${DateUtils.formatToDisplay(debt.date)}", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
                     if (debt.due.isNotBlank()) {
                         val isOverdue = debt.due < java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd"))
@@ -287,7 +286,7 @@ fun DebtCard(debt: Debt, currencySymbol: String = "₹", onEdit: () -> Unit, onD
                 }
                 Column(horizontalAlignment = Alignment.End) {
                     Text("Interest (${debt.rate}%)", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text("$currencySymbol ${String.format(locale, "%,.0f", interestAccrued)}", style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold, color = SemanticRed))
+                    Text(CurrencyFormatter.detail(interestAccrued, currencyCode, locale), style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold, color = SemanticRed))
                     Text("Type: ${debt.intType}", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
                 }
             }
@@ -298,11 +297,11 @@ fun DebtCard(debt: Debt, currencySymbol: String = "₹", onEdit: () -> Unit, onD
                 Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
                         Text("➔ SI (until due date)", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text("$currencySymbol ${String.format(locale, "%,.0f", bothPortions.first)}", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold))
+                        Text(CurrencyFormatter.detail(bothPortions.first, currencyCode, locale), style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold))
                     }
                     Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
                         Text("➔ CI (after due date)", style = MaterialTheme.typography.labelSmall, color = SemanticRed)
-                        Text("$currencySymbol ${String.format(locale, "%,.0f", bothPortions.second)}", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold), color = SemanticRed)
+                        Text(CurrencyFormatter.detail(bothPortions.second, currencyCode, locale), style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold), color = SemanticRed)
                     }
                 }
             }
@@ -319,11 +318,11 @@ fun DebtCard(debt: Debt, currencySymbol: String = "₹", onEdit: () -> Unit, onD
                 }
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text("Per Day Interest", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text("$currencySymbol ${String.format(locale, "%,.2f", perDayInterest)}", style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold), color = SemanticRed)
+                    Text(CurrencyFormatter.detail(perDayInterest, currencyCode, locale), style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold), color = SemanticRed)
                 }
                 Column(horizontalAlignment = Alignment.End) {
                     Text("Paid So Far", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text("$currencySymbol ${String.format(locale, "%,.0f", debt.paid)}", style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold), color = MaterialTheme.colorScheme.primary)
+                    Text(CurrencyFormatter.detail(debt.paid, currencyCode, locale), style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold), color = MaterialTheme.colorScheme.primary)
                 }
             }
 

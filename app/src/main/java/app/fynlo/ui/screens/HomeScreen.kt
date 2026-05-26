@@ -96,10 +96,10 @@ fun HomeScreen(viewModel: FinanceViewModel, onNavigateToScreen: (String) -> Unit
         PortfolioBreakdownSheet(
             title = sheetTitle,
             data = sheetData,
-            currencySymbol = currencySymbol,
             icon = sheetIcon,
             iconColor = sheetColor,
-            onDismiss = { activeBreakdownType = null }
+            onDismiss = { activeBreakdownType = null },
+            currencyCode = currencyCode
         )
     }
 
@@ -288,7 +288,7 @@ fun HomeScreen(viewModel: FinanceViewModel, onNavigateToScreen: (String) -> Unit
                             }
                             Column {
                                 Text(name, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold))
-                                AccountGrowthIndicator(growth, currencySymbol, locale)
+                                AccountGrowthIndicator(growth, currencyCode, locale)
                             }
                         }
                         Text(CurrencyFormatter.hero(balance, currencyCode, locale),

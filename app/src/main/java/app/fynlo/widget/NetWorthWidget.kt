@@ -6,6 +6,7 @@ import android.content.Context
 import android.widget.RemoteViews
 import app.fynlo.FynloApplication
 import app.fynlo.R
+import app.fynlo.logic.CurrencyFormatter
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.first
 import java.util.Locale
@@ -23,7 +24,8 @@ class NetWorthWidget : AppWidgetProvider() {
                 val accounts = app.dao.getAllAccounts().first()
                 val totalCash = accounts.sumOf { it.balance }
                 val locale   = Locale.getDefault()
-                val formatted = "₹${String.format(locale, "%,.0f", totalCash)}"
+                // TODO: widget should read default-currency pref from DataStore
+                val formatted = CurrencyFormatter.hero(totalCash, currencyCode = "INR", locale = locale)
 
                 val views = RemoteViews(context.packageName, R.layout.widget_net_worth)
                 views.setTextViewText(R.id.widget_net_worth_value, formatted)

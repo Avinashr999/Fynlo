@@ -14,6 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import java.util.Locale
+import app.fynlo.logic.CurrencyFormatter
 import app.fynlo.ui.theme.*
 
 @Composable
@@ -69,7 +70,7 @@ private fun LegendItem(label: String, color: Color, percent: String) {
 }
 
 @Composable
-fun AccountGrowthIndicator(growth: Double, currencySymbol: String, locale: Locale) {
+fun AccountGrowthIndicator(growth: Double, currencyCode: String = "INR", locale: Locale = Locale.getDefault()) {
     val color = when {
         growth > 0 -> Emerald400
         growth < 0 -> SemanticRed
@@ -80,12 +81,15 @@ fun AccountGrowthIndicator(growth: Double, currencySymbol: String, locale: Local
         growth < 0 -> Icons.Default.TrendingDown
         else -> Icons.Default.TrendingFlat
     }
-    
+
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
         Icon(icon, null, Modifier.size(12.dp), tint = color)
         Text(
-            text = if (growth == 0.0) "Stable" 
-                   else "${if (growth > 0) "+" else ""}$currencySymbol${String.format(locale, "%,.0f", growth)}",
+            text = when {
+                growth == 0.0 -> "Stable"
+                growth < 0     -> CurrencyFormatter.negative(growth, currencyCode, locale)
+                else           -> "+${CurrencyFormatter.detail(growth, currencyCode, locale)}"
+            },
             style = MaterialTheme.typography.labelSmall,
             color = color
         )

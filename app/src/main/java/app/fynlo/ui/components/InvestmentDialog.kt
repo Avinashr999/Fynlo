@@ -25,6 +25,7 @@ import app.fynlo.data.model.Account
 import app.fynlo.data.model.Debt
 import app.fynlo.data.model.Investment
 import app.fynlo.logic.CurrencyFormatter
+import app.fynlo.logic.CurrencyUtils
 import app.fynlo.logic.DateUtils
 import java.util.*
 import app.fynlo.ui.theme.*
@@ -52,10 +53,12 @@ private val SOURCE_NEW_LOAN      = "new_loan"
 fun AddInvestmentDialog(
     accounts: List<Account> = emptyList(),
     debts: List<Debt> = emptyList(),
+    currencyCode: String = "INR",
     onDismiss: () -> Unit,
     onConfirm: (InvestmentSaveRequest) -> Unit,
     initialInvestment: Investment? = null
 ) {
+    val currencySymbol = CurrencyUtils.symbolFor(currencyCode)
     val isNew = initialInvestment == null || initialInvestment.id.isBlank()
 
     var name     by remember { mutableStateOf(initialInvestment?.name     ?: "") }
@@ -157,7 +160,7 @@ fun AddInvestmentDialog(
                 OutlinedTextField(
                     value = amount,
                     onValueChange = { amount = it },
-                    label = { Text("Amount Invested (₹)") },
+                    label = { Text("Amount Invested ($currencySymbol)") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -221,7 +224,7 @@ fun AddInvestmentDialog(
                                     onValueChange = {}, readOnly = true,
                                     label = { Text("Deduct from which account?") },
                                     supportingText = selectedAccount?.let { acct ->
-                                        { Text("${acct.type}  •  Balance: ₹${String.format("%,.0f", acct.balance)}", style = MaterialTheme.typography.labelSmall) }
+                                        { Text("${acct.type}  •  Balance: ${CurrencyFormatter.detail(acct.balance, currencyCode)}", style = MaterialTheme.typography.labelSmall) }
                                     },
                                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = accountExpanded) },
                                     modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, true).fillMaxWidth()
@@ -243,7 +246,7 @@ fun AddInvestmentDialog(
                                                         }
                                                     }
                                                     Text(
-                                                        "₹${String.format("%,.0f", acct.balance)}",
+                                                        CurrencyFormatter.detail(acct.balance, currencyCode),
                                                         style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                                                         color = if (acct.balance >= 0) Emerald500 else MaterialTheme.colorScheme.error
                                                     )
@@ -274,7 +277,7 @@ fun AddInvestmentDialog(
                                     onValueChange = {}, readOnly = true,
                                     label = { Text("Which loan funded this?") },
                                     supportingText = selectedDebt?.let { d ->
-                                        { Text("Outstanding: ₹${String.format("%,.0f", d.amount - d.paid)}", style = MaterialTheme.typography.labelSmall) }
+                                        { Text("Outstanding: ${CurrencyFormatter.detail(d.amount - d.paid, currencyCode)}", style = MaterialTheme.typography.labelSmall) }
                                     },
                                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = debtExpanded) },
                                     modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, true).fillMaxWidth()
@@ -285,7 +288,7 @@ fun AddInvestmentDialog(
                                             text = {
                                                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                                                     Text(d.name, fontWeight = FontWeight.Medium)
-                                                    Text("₹${String.format("%,.0f", d.amount - d.paid)}", color = MaterialTheme.colorScheme.error)
+                                                    Text(CurrencyFormatter.detail(d.amount - d.paid, currencyCode), color = MaterialTheme.colorScheme.error)
                                                 }
                                             },
                                             onClick = { selectedDebt = d; debtExpanded = false }
@@ -317,7 +320,7 @@ fun AddInvestmentDialog(
                                 )
                                 OutlinedTextField(
                                     value = loanAmount, onValueChange = { loanAmount = it },
-                                    label = { Text("Loan Amount (₹)") },
+                                    label = { Text("Loan Amount ($currencySymbol)") },
                                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                                     modifier = Modifier.fillMaxWidth()
                                 )

@@ -22,6 +22,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.fynlo.FinanceViewModel
+import app.fynlo.logic.CurrencyFormatter
 import java.util.Locale
 import app.fynlo.ui.theme.*
 
@@ -48,7 +49,7 @@ fun GlobalSearchScreen(
     val transactions by viewModel.transactions.collectAsState()
     val investments  by viewModel.investments.collectAsState()
     val currentProject by viewModel.currentProject.collectAsState()
-    val currencySymbol = app.fynlo.logic.CurrencyUtils.symbolFor(currentProject?.currency ?: "INR")
+    val currencyCode = currentProject?.currency ?: "INR"
 
     var query by remember { mutableStateOf("") }
     val locale = remember { Locale.getDefault() }
@@ -224,7 +225,7 @@ fun GlobalSearchScreen(
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
-                        Text("$currencySymbol${String.format(locale, "%,.0f", result.amount)}",
+                        Text(CurrencyFormatter.detail(result.amount, currencyCode, locale),
                             style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
                             color = result.color)
                     }

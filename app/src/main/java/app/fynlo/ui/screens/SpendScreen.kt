@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.fynlo.FinanceViewModel
 import app.fynlo.data.model.Transaction
+import app.fynlo.logic.CurrencyFormatter
 import app.fynlo.ui.components.AddTransactionDialog
 import java.time.LocalDate
 import java.time.YearMonth
@@ -43,7 +44,7 @@ fun SpendScreen(viewModel: FinanceViewModel) {
 val transactions by viewModel.transactions.collectAsState()
     val budgets      by viewModel.budgets.collectAsState()
     val currentProject by viewModel.currentProject.collectAsState()
-    val currencySymbol = app.fynlo.logic.CurrencyUtils.symbolFor(currentProject?.currency ?: "INR")
+    val currencyCode = currentProject?.currency ?: "INR"
     val locale       = remember { Locale.getDefault() }
     var showDialog   by remember { mutableStateOf(false) }
 
@@ -113,7 +114,7 @@ val transactions by viewModel.transactions.collectAsState()
                     Text("Spent in ${selectedMonth.format(monthFmt)}",
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text("$currencySymbol${String.format(locale, "%,.0f", total)}",
+                    Text(CurrencyFormatter.detail(total, currencyCode, locale),
                         style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.ExtraBold),
                         color = SemanticRed)
                     Text("${expenses.size} transactions", style = MaterialTheme.typography.bodySmall,
@@ -144,7 +145,7 @@ val transactions by viewModel.transactions.collectAsState()
                                             Text(cat, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold))
                                         }
                                         Column(horizontalAlignment = Alignment.End) {
-                                            Text("$currencySymbol ${String.format(locale, "%,.0f", amt)}",
+                                            Text(CurrencyFormatter.detail(amt, currencyCode, locale),
                                                 style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                                                 color = color)
                                             if (budgetPct != null) {
@@ -155,7 +156,7 @@ val transactions by viewModel.transactions.collectAsState()
                                                 }
                                                 Surface(color = pctColor.copy(alpha = 0.12f),
                                                     shape = RoundedCornerShape(4.dp)) {
-                                                    Text("$budgetPct% of $currencySymbol${String.format(locale, "%,.0f", budget!!.limitAmount)}",
+                                                    Text("$budgetPct% of ${CurrencyFormatter.detail(budget!!.limitAmount, currencyCode, locale)}",
                                                         style = MaterialTheme.typography.labelSmall, color = pctColor,
                                                         modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
                                                 }
@@ -171,7 +172,7 @@ val transactions by viewModel.transactions.collectAsState()
                                     }
                                     // Budget limit line label
                                     if (budget != null) {
-                                        Text("Budget: $currencySymbol${String.format(locale, "%,.0f", budget.limitAmount)}",
+                                        Text("Budget: ${CurrencyFormatter.detail(budget.limitAmount, currencyCode, locale)}",
                                             style = MaterialTheme.typography.labelSmall,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f))
                                     }
@@ -188,7 +189,7 @@ val transactions by viewModel.transactions.collectAsState()
                     }
                     Spacer(Modifier.height(8.dp))
                     expenses.sortedByDescending { it.date }.take(15).forEach { txn ->
-                        ExpenseRow(txn, currencySymbol, locale,
+                        ExpenseRow(txn, currencyCode, locale,
                             onDelete = { viewModel.deleteTransaction(txn) },
                             onEdit   = { viewModel.editTransaction(txn, it) }
                         )
@@ -211,7 +212,7 @@ val transactions by viewModel.transactions.collectAsState()
 @Composable
 private fun ExpenseRow(
     txn: Transaction,
-    currencySymbol: String,
+    currencyCode: String,
     locale: Locale,
     onDelete: () -> Unit = {},
     onEdit: (app.fynlo.data.model.Transaction) -> Unit = {}
@@ -225,7 +226,7 @@ private fun ExpenseRow(
         AlertDialog(
             onDismissRequest = { showDeleteConfirm = false },
             title = { Text("Delete Expense?") },
-            text  = { Text("Delete $currencySymbol${String.format(locale, "%,.0f", txn.amount)} ${txn.category}? This will reverse the account balance.") },
+            text  = { Text("Delete ${CurrencyFormatter.detail(txn.amount, currencyCode, locale)} ${txn.category}? This will reverse the account balance.") },
             confirmButton = {
                 Button(onClick = { haptic.performHapticFeedback(HapticFeedbackType.LongPress); onDelete(); showDeleteConfirm = false },
                     colors = ButtonDefaults.buttonColors(containerColor = SemanticRed)) { Text("Delete") }
@@ -259,7 +260,7 @@ private fun ExpenseRow(
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         Column(horizontalAlignment = Alignment.End) {
-            Text("-$currencySymbol ${String.format(locale, "%,.0f", txn.amount)}",
+            Text(CurrencyFormatter.negative(txn.amount, currencyCode, locale),
                 style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                 color = SemanticRed)
             Text(txn.date, style = MaterialTheme.typography.labelSmall,

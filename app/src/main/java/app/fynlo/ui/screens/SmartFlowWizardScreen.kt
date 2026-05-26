@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.sp
 import app.fynlo.FinanceViewModel
 import app.fynlo.data.model.Debt
 import app.fynlo.data.model.Investment
+import app.fynlo.logic.CurrencyFormatter
 import app.fynlo.logic.DateUtils
 import app.fynlo.ui.components.DatePickerField
 import app.fynlo.ui.components.WizardStepIndicator
@@ -58,6 +59,8 @@ fun SmartFlowWizardScreen(
     var loanTenure by remember { mutableStateOf("12") }
 
     val accounts by viewModel.accounts.collectAsState()
+    val currentProject by viewModel.currentProject.collectAsState()
+    val currencyCode = currentProject?.currency ?: "INR"
 
     Scaffold(
         topBar = {
@@ -118,7 +121,8 @@ fun SmartFlowWizardScreen(
                             assetName = assetName,
                             amt = investedAmt.toDoubleOrNull() ?: 0.0,
                             source = selectedSource,
-                            sourceName = if (selectedSource == sources[0]) accountName else lenderName
+                            sourceName = if (selectedSource == sources[0]) accountName else lenderName,
+                            currencyCode = currencyCode
                         )
                     }
                 }
@@ -369,11 +373,13 @@ fun StepVerification(
     assetName: String,
     amt: Double,
     source: String,
-    sourceName: String
+    sourceName: String,
+    currencyCode: String = "INR"
 ) {
+    val locale = Locale.getDefault()
     Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
         Text("Double-Entry Verification", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-        
+
         Column(
             Modifier.fillMaxWidth()
                 .clip(RoundedCornerShape(20.dp))
@@ -381,20 +387,20 @@ fun StepVerification(
                 .padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-                EntryRow("Debit (Asset)", assetName, "+ ₹${String.format("%,.0f", amt)}", Emerald500)
-                
+                EntryRow("Debit (Asset)", assetName, "+${CurrencyFormatter.detail(amt, currencyCode, locale)}", Emerald500)
+
                 val creditLabel = when(source) {
                     "Existing Account" -> "Cash/Bank: $sourceName"
                     "New Bank Loan" -> "Liability: $sourceName"
                     else -> "Equity (Historical)"
                 }
-                EntryRow("Credit (Source)", creditLabel, "- ₹${String.format("%,.0f", amt)}", if (source == "New Bank Loan") SemanticRed else SemanticBlue)
-                
+                EntryRow("Credit (Source)", creditLabel, CurrencyFormatter.negative(amt, currencyCode, locale), if (source == "New Bank Loan") SemanticRed else SemanticBlue)
+
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f), modifier = Modifier.padding(vertical = 8.dp))
-                
+
                 Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
                     Text("Impact on Net Worth", style = MaterialTheme.typography.bodySmall)
-                    Text("₹ 0 (Neutral)", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
+                    Text("${CurrencyFormatter.detail(0.0, currencyCode, locale)} (Neutral)", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
                 }
             }
 

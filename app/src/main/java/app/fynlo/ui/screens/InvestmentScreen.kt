@@ -63,6 +63,7 @@ val currentProject by viewModel.currentProject.collectAsState()
         AddInvestmentDialog(
             accounts = accounts,
             debts    = debts,
+            currencyCode = currencyCode,
             onDismiss = { editingInvest = null },
             onConfirm = { req: InvestmentSaveRequest ->
                 if (editingInvest?.id?.isNotBlank() == true) {
@@ -86,6 +87,7 @@ val currentProject by viewModel.currentProject.collectAsState()
         UpdateInvestmentValueDialog(
             investment = updatingInvest!!,
             currencySymbol = currencySymbol,
+            currencyCode = currencyCode,
             onDismiss  = { updatingInvest = null },
             onConfirm  = { newVal, date, notes ->
                 viewModel.addValuation(
@@ -124,13 +126,13 @@ val currentProject by viewModel.currentProject.collectAsState()
             ) {
                 Column(Modifier.padding(24.dp)) {
                     Text("Withdraw from Investment", style = MaterialTheme.typography.headlineSmall)
-                    Text("${inv.name}  •  Current Value: ₹${String.format("%,.0f", inv.currentVal)}",
+                    Text("${inv.name}  •  Current Value: ${CurrencyFormatter.detail(inv.currentVal, currencyCode)}",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(Modifier.height(16.dp))
                     OutlinedTextField(
                         value = withdrawAmt, onValueChange = { withdrawAmt = it },
-                        label = { Text("Withdrawal Amount") }, prefix = { Text("₹") },
+                        label = { Text("Withdrawal Amount") }, prefix = { Text(currencySymbol) },
                         keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
                             keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
                         modifier = Modifier.fillMaxWidth()
@@ -152,7 +154,7 @@ val currentProject by viewModel.currentProject.collectAsState()
                                             androidx.compose.foundation.layout.Arrangement.SpaceBetween
                                         ) {
                                             Text(acct.name)
-                                            Text("₹${String.format("%,.0f", acct.balance)}",
+                                            Text(CurrencyFormatter.detail(acct.balance, currencyCode),
                                                 style = MaterialTheme.typography.bodySmall,
                                                 color = app.fynlo.ui.theme.Emerald500)
                                         }
@@ -190,12 +192,12 @@ val currentProject by viewModel.currentProject.collectAsState()
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text(
-                        "${inv.name}  •  ₹${String.format(java.util.Locale.getDefault(), "%,.0f", inv.invested)}",
+                        "${inv.name}  •  ${CurrencyFormatter.detail(inv.invested, currencyCode)}",
                         style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold)
                     )
                     when (inv.sourceType) {
                         "account"  -> Text(
-                            "This was funded from ${inv.fundingSource}. Do you want to restore ₹${String.format("%,.0f", inv.invested)} back to that account?",
+                            "This was funded from ${inv.fundingSource}. Do you want to restore ${CurrencyFormatter.detail(inv.invested, currencyCode)} back to that account?",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -219,7 +221,7 @@ val currentProject by viewModel.currentProject.collectAsState()
                                 modifier = Modifier.fillMaxWidth(),
                                 shape = RoundedCornerShape(10.dp)
                             ) {
-                                Text("Delete + Restore ₹${String.format("%,.0f", inv.invested)} to ${inv.fundingSource.take(14)}")
+                                Text("Delete + Restore ${CurrencyFormatter.detail(inv.invested, currencyCode)} to ${inv.fundingSource.take(14)}")
                             }
                             "new_loan" -> Button(
                                 onClick = { haptic.performHapticFeedback(HapticFeedbackType.LongPress); viewModel.deleteInvestmentAndLinkedLoan(inv); deletingInvest = null },
@@ -254,7 +256,7 @@ val currentProject by viewModel.currentProject.collectAsState()
     if (viewingHistory != null) {
         ValuationHistoryDialog(
             investment = viewingHistory!!,
-            currencySymbol = currencySymbol,
+            currencyCode = currencyCode,
             valuations = viewModel.getValuationsForInvestment(viewingHistory!!.id).collectAsState(initial = emptyList()).value,
             onDismiss = { viewingHistory = null }
         )
@@ -278,7 +280,6 @@ val currentProject by viewModel.currentProject.collectAsState()
                 itemsIndexed(investments, key = { _, i -> i.id }) { index, invest ->
                     InvestmentCard(
                         invest   = invest,
-                        currencySymbol = currencySymbol,
                         currencyCode = currencyCode,
                         onDelete    = { deletingInvest = invest },
                         onWithdraw  = { withdrawingInvest = invest },
@@ -304,7 +305,7 @@ val currentProject by viewModel.currentProject.collectAsState()
 }
 
 @Composable
-fun InvestmentCard(invest: Investment, currencySymbol: String = "₹", currencyCode: String = "INR", onDelete: () -> Unit, onEdit: () -> Unit, onUpdate: () -> Unit, onViewHistory: () -> Unit, onWithdraw: () -> Unit = {}) {
+fun InvestmentCard(invest: Investment, currencyCode: String = "INR", onDelete: () -> Unit, onEdit: () -> Unit, onUpdate: () -> Unit, onViewHistory: () -> Unit, onWithdraw: () -> Unit = {}) {
     val growth = invest.currentVal - (invest.invested - invest.withdrawn)
     val growthPercent = if (invest.invested > 0) (growth / invest.invested) * 100 else 0.0
     val isProfit = growth >= 0
@@ -364,7 +365,7 @@ fun InvestmentCard(invest: Investment, currencySymbol: String = "₹", currencyC
                 Column {
                     Text("Invested", style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text("$currencySymbol ${String.format(Locale.getDefault(), "%,.0f", invest.invested)}",
+                    Text(CurrencyFormatter.detail(invest.invested, currencyCode),
                         style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold))
                     Text("Since ${DateUtils.formatToDisplay(invest.date)}",
                         style = MaterialTheme.typography.labelSmall, color = Color.Gray)
@@ -382,7 +383,7 @@ fun InvestmentCard(invest: Investment, currencySymbol: String = "₹", currencyC
                 Column(horizontalAlignment = Alignment.End) {
                     Text("Current Value", style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text("$currencySymbol ${String.format(Locale.getDefault(), "%,.0f", invest.currentVal)}",
+                    Text(CurrencyFormatter.detail(invest.currentVal, currencyCode),
                         style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold,
                             color = if (isProfit) Emerald500 else SemanticRed))
                 }
@@ -390,7 +391,7 @@ fun InvestmentCard(invest: Investment, currencySymbol: String = "₹", currencyC
 
             if (invest.withdrawn > 0) {
                 Spacer(Modifier.height(6.dp))
-                Text("Withdrawn: $currencySymbol ${String.format(Locale.getDefault(), "%,.0f", invest.withdrawn)}",
+                Text("Withdrawn: ${CurrencyFormatter.detail(invest.withdrawn, currencyCode)}",
                     style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
 
@@ -446,13 +447,14 @@ fun EmptyInvestState(onAdd: () -> Unit = {}) {
 fun UpdateInvestmentValueDialog(
     investment: Investment,
     currencySymbol: String = "₹",
+    currencyCode: String = "INR",
     onDismiss: () -> Unit,
     onConfirm: (Double, String, String) -> Unit
 ) {
     var newValue by remember { mutableStateOf(investment.currentVal.toBigDecimal().stripTrailingZeros().toPlainString()) }
     var date by remember { mutableStateOf(java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy"))) }
     var notes by remember { mutableStateOf("") }
-    
+
     val parsed   = newValue.toDoubleOrNull()
     val growth   = parsed?.let { it - investment.invested }
     val locale   = java.util.Locale.getDefault()
@@ -482,8 +484,10 @@ fun UpdateInvestmentValueDialog(
 
                 if (growth != null) {
                     val pct = if (investment.invested > 0) (growth / investment.invested) * 100 else 0.0
+                    val growthStr = if (growth >= 0) "+${CurrencyFormatter.detail(growth, currencyCode, locale)}"
+                                    else            CurrencyFormatter.negative(growth, currencyCode, locale)
                     Text(
-                        "Total Growth: ${if (growth >= 0) "+" else ""}$currencySymbol ${String.format(locale, "%,.0f", growth)} (${String.format(locale, "%.1f", pct)}%)",
+                        "Total Growth: $growthStr (${String.format(locale, "%.1f", pct)}%)",
                         style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                         color = if (growth >= 0) Emerald500 else SemanticRed
                     )
@@ -502,7 +506,7 @@ fun UpdateInvestmentValueDialog(
 @Composable
 fun ValuationHistoryDialog(
     investment: Investment,
-    currencySymbol: String,
+    currencyCode: String = "INR",
     valuations: List<app.fynlo.data.model.InvestmentValuation>,
     onDismiss: () -> Unit
 ) {
@@ -530,7 +534,7 @@ fun ValuationHistoryDialog(
                                         Text(v.notes, style = MaterialTheme.typography.labelSmall, color = Color.Gray)
                                     }
                                 }
-                                Text("$currencySymbol ${String.format("%,.0f", v.value)}", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.ExtraBold)
+                                Text(CurrencyFormatter.detail(v.value, currencyCode), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.ExtraBold)
                             }
                             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
                         }

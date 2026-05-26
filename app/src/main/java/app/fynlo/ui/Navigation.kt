@@ -242,6 +242,8 @@ fun MainNavigation(viewModel: FinanceViewModel) {
 
     val navAccounts by viewModel.accounts.collectAsState()
     val navDebts    by viewModel.debts.collectAsState()
+    val navProject  by viewModel.currentProject.collectAsState()
+    val navCurrencyCode = navProject?.currency ?: "INR"
 
     // Auto-log recurring transactions once on each app session start
     androidx.compose.runtime.LaunchedEffect(Unit) {
@@ -253,6 +255,7 @@ fun MainNavigation(viewModel: FinanceViewModel) {
         AddInvestmentDialog(
             accounts  = navAccounts,
             debts     = navDebts,
+            currencyCode = navCurrencyCode,
             onDismiss = { showInvestmentDialog = false },
             onConfirm = { req: InvestmentSaveRequest ->
                 when (req.sourceType) {

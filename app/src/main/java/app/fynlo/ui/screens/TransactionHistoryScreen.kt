@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.sp
 import java.util.Locale
 import app.fynlo.FinanceViewModel
 import app.fynlo.data.model.Transaction
+import app.fynlo.logic.CurrencyFormatter
 import app.fynlo.logic.DateUtils
 import app.fynlo.ui.theme.*
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -36,7 +37,7 @@ fun TransactionHistoryScreen(viewModel: FinanceViewModel) {
     val transactions by viewModel.filteredTransactions.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
     val currentProject by viewModel.currentProject.collectAsState()
-    val currencySymbol = app.fynlo.logic.CurrencyUtils.symbolFor(currentProject?.currency ?: "INR")
+    val currencyCode = currentProject?.currency ?: "INR"
     val locale = Locale.getDefault()
 
     var selectedType   by remember { mutableStateOf("All") }
@@ -117,7 +118,8 @@ fun TransactionHistoryScreen(viewModel: FinanceViewModel) {
                 modifier = Modifier.padding(top = 8.dp)
             )
             Text(
-                text = "${if (net < 0) "-" else "+"}$currencySymbol${String.format(locale, "%,.0f", kotlin.math.abs(net))}",
+                text = if (net < 0) CurrencyFormatter.negative(net, currencyCode, locale)
+                       else "+${CurrencyFormatter.detail(net, currencyCode, locale)}",
                 style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.ExtraBold),
                 color = if (net < 0) SemanticRed else Emerald500
             )
@@ -129,10 +131,10 @@ fun TransactionHistoryScreen(viewModel: FinanceViewModel) {
                 Text("${filteredHistory.size} entries",
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text("▲ $currencySymbol${String.format(locale, "%,.0f", totalIncome)}",
+                Text("▲ ${CurrencyFormatter.detail(totalIncome, currencyCode, locale)}",
                     style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
                     color = Emerald500)
-                Text("▼ $currencySymbol${String.format(locale, "%,.0f", totalExpense)}",
+                Text("▼ ${CurrencyFormatter.detail(totalExpense, currencyCode, locale)}",
                     style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
                     color = SemanticRed)
             }
@@ -323,10 +325,10 @@ fun TransactionHistoryScreen(viewModel: FinanceViewModel) {
                                     fontWeight = FontWeight.Bold, letterSpacing = 0.8.sp),
                                 color = MaterialTheme.colorScheme.onSurfaceVariant)
                             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                                Text("+$currencySymbol${String.format(locale, "%,.0f", monthIncome)}",
+                                Text("+${CurrencyFormatter.detail(monthIncome, currencyCode, locale)}",
                                     style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
                                     color = Emerald500)
-                                Text("-$currencySymbol${String.format(locale, "%,.0f", monthExpense)}",
+                                Text(CurrencyFormatter.negative(monthExpense, currencyCode, locale),
                                     style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
                                     color = SemanticRed)
                             }
@@ -348,7 +350,7 @@ fun TransactionHistoryScreen(viewModel: FinanceViewModel) {
                                 txn         = transaction,
                                 isSelected  = transaction.id in selectedIds,
                                 selectionMode = selectionMode,
-                                currencySymbol = currencySymbol,
+                                currencyCode = currencyCode,
                                 onLongPress = {
                                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                     selectionMode = true; selectedIds = selectedIds + transaction.id
@@ -422,7 +424,7 @@ fun TransactionItem(
     onDelete: () -> Unit = {},
     isSelected: Boolean = false,
     selectionMode: Boolean = false,
-    currencySymbol: String = "₹",
+    currencyCode: String = "INR",
     onLongPress: () -> Unit = {},
     onSelect: () -> Unit = {}
 ) {
@@ -432,11 +434,6 @@ fun TransactionItem(
         isIncome   -> Emerald500
         isExpense  -> SemanticRed
         else       -> SemanticBlue
-    }
-    val amountPrefix = when {
-        isIncome   -> "+"
-        isExpense  -> "-"
-        else       -> "↔"
     }
     val locale = java.util.Locale.getDefault()
     var showEditDialog by remember { mutableStateOf(false) }
@@ -453,7 +450,7 @@ fun TransactionItem(
         AlertDialog(
             onDismissRequest = { showDeleteConfirm = false },
             title = { Text("Delete transaction?") },
-            text  = { Text("Delete $currencySymbol${String.format(locale, "%,.0f", txn.amount)} ${txn.category}? This reverses the account balance.") },
+            text  = { Text("Delete ${CurrencyFormatter.detail(txn.amount, currencyCode, locale)} ${txn.category}? This reverses the account balance.") },
             confirmButton = {
                 Button(onClick = { showDeleteConfirm = false; onDelete() },
                     colors = ButtonDefaults.buttonColors(containerColor = SemanticRed),
@@ -558,7 +555,11 @@ fun TransactionItem(
         Spacer(Modifier.width(8.dp))
 
         Text(
-            text  = "$amountPrefix$currencySymbol${String.format(locale, "%,.0f", txn.amount)}",
+            text  = when {
+                isIncome  -> "+${CurrencyFormatter.detail(txn.amount, currencyCode, locale)}"
+                isExpense -> CurrencyFormatter.negative(txn.amount, currencyCode, locale)
+                else      -> "↔${CurrencyFormatter.detail(txn.amount, currencyCode, locale)}"
+            },
             style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.ExtraBold),
             color = rowColor
         )

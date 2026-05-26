@@ -46,6 +46,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import app.fynlo.FinanceViewModel
 import app.fynlo.data.model.Borrower
+import app.fynlo.logic.CurrencyFormatter
 import app.fynlo.logic.DateUtils
 import app.fynlo.logic.InterestEngine
 import app.fynlo.ui.components.AddLendingDialog
@@ -65,7 +66,8 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
     val accounts      by viewModel.accounts.collectAsState()
     val people        by viewModel.people.collectAsState()  // for phone lookup
     val currentProject by viewModel.currentProject.collectAsState()
-    val currencySymbol = app.fynlo.logic.CurrencyUtils.symbolFor(currentProject?.currency ?: "INR")
+    val currencyCode = currentProject?.currency ?: "INR"
+    val currencySymbol = app.fynlo.logic.CurrencyUtils.symbolFor(currencyCode)
     var showEmiCalc by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
     var sortBy      by remember { mutableStateOf("Overdue") } // Overdue, Amount, Name, Date
@@ -146,7 +148,7 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
             title = { Text(if (isCurrentlyDefaulted) "Restore to Performing?" else "Mark as Defaulted?") },
             text  = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("${b.name}  •  ₹${String.format(java.util.Locale.getDefault(), "%,.0f", b.amount)}")
+                    Text("${b.name}  •  ${CurrencyFormatter.detail(b.amount, currencyCode, java.util.Locale.getDefault())}")
                     Text(
                         if (isCurrentlyDefaulted)
                             "This will mark the borrower as Active again and unfreeze interest accrual from today."
@@ -183,7 +185,7 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
             title = { Text("Write Off Bad Debt?") },
             text  = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("${b.name}  •  ₹${String.format(java.util.Locale.getDefault(), "%,.0f", b.amount)}")
+                    Text("${b.name}  •  ${CurrencyFormatter.detail(b.amount, currencyCode, java.util.Locale.getDefault())}")
                     Text("This will create a Bad Debt expense in your P&L and remove the borrower from receivables. Cannot be undone.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.error)
@@ -284,7 +286,7 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
                         Column {
                             Text("Total outstanding", style = MaterialTheme.typography.labelMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Text("$currencySymbol${String.format(java.util.Locale.getDefault(), "%,.0f", totalOut)}",
+                            Text(CurrencyFormatter.detail(totalOut, currencyCode, java.util.Locale.getDefault()),
                                 fontSize = 32.sp, fontWeight = FontWeight.ExtraBold,
                                 color = MaterialTheme.colorScheme.onSurface)
                         }
@@ -351,6 +353,7 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
                             borrower  = borrower,
                             people    = people,
                             currencySymbol = currencySymbol,
+                            currencyCode = currencyCode,
                             isOverdue = borrower.due.isNotBlank() && borrower.due < today,
                             onDelete  = { viewModel.deleteBorrower(borrower) },
                             onEdit    = { editingBorrower = borrower },
@@ -381,6 +384,7 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
                                         borrower  = borrower,
                                         people    = people,
                                         currencySymbol = currencySymbol,
+                                        currencyCode = currencyCode,
                                         isOverdue = false,
                                         onDelete  = { viewModel.deleteBorrower(borrower) },
                                         onEdit    = { editingBorrower = borrower },
@@ -406,7 +410,7 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
         }
 }
 @Composable
-fun LendingCard(borrower: Borrower, people: List<app.fynlo.data.model.Person> = emptyList(), currencySymbol: String = "₹", isOverdue: Boolean = false, onDelete: () -> Unit, onEdit: () -> Unit, onCollect: () -> Unit, onClick: () -> Unit, onDefault: () -> Unit = {}, onWriteOff: () -> Unit = {}) {
+fun LendingCard(borrower: Borrower, people: List<app.fynlo.data.model.Person> = emptyList(), currencySymbol: String = "₹", currencyCode: String = "INR", isOverdue: Boolean = false, onDelete: () -> Unit, onEdit: () -> Unit, onCollect: () -> Unit, onClick: () -> Unit, onDefault: () -> Unit = {}, onWriteOff: () -> Unit = {}) {
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var menuOpen by remember { mutableStateOf(false) }
     if (showDeleteConfirm) {
@@ -507,19 +511,19 @@ fun LendingCard(borrower: Borrower, people: List<app.fynlo.data.model.Person> = 
                                 appendLine("This is a reminder that your loan repayment is *${daysOverdue} day${if (daysOverdue != 1L) "s" else ""} overdue*.")
                                 appendLine()
                                 appendLine("*Loan Summary:*")
-                                appendLine("• Principal: ${currencySymbol}${String.format(locale, "%,.0f", borrower.amount)}")
+                                appendLine("• Principal: ${CurrencyFormatter.detail(borrower.amount, currencyCode, locale)}")
                                 if (borrower.rate > 0) {
-                                    appendLine("• Interest accrued (${borrower.rate}% ${borrower.type}): ${currencySymbol}${String.format(locale, "%,.0f", interest)}")
+                                    appendLine("• Interest accrued (${borrower.rate}% ${borrower.type}): ${CurrencyFormatter.detail(interest, currencyCode, locale)}")
                                 }
                                 if (borrower.paid > 0) {
-                                    appendLine("• Amount paid so far: ${currencySymbol}${String.format(locale, "%,.0f", borrower.paid)}")
+                                    appendLine("• Amount paid so far: ${CurrencyFormatter.detail(borrower.paid, currencyCode, locale)}")
                                 }
-                                appendLine("• *Total outstanding: ${currencySymbol}${String.format(locale, "%,.0f", outstanding)}*")
+                                appendLine("• *Total outstanding: ${CurrencyFormatter.detail(outstanding, currencyCode, locale)}*")
                                 appendLine()
                                 append("Please arrange payment at your earliest. ")
                                 if (borrower.rate > 0) {
                                     val dailyRate = borrower.amount * borrower.rate / 36500.0
-                                    append("Interest is adding ~${currencySymbol}${String.format(locale, "%.0f", dailyRate)}/day.")
+                                    append("Interest is adding ~${CurrencyFormatter.detail(dailyRate, currencyCode, locale)}/day.")
                                 }
                             } else {
                                 // Not overdue — friendly reminder
@@ -530,14 +534,14 @@ fun LendingCard(borrower: Borrower, people: List<app.fynlo.data.model.Person> = 
                                 appendLine("This is a friendly reminder about your outstanding loan${dueInfo}.")
                                 appendLine()
                                 appendLine("*Loan Summary:*")
-                                appendLine("• Principal: ${currencySymbol}${String.format(locale, "%,.0f", borrower.amount)}")
+                                appendLine("• Principal: ${CurrencyFormatter.detail(borrower.amount, currencyCode, locale)}")
                                 if (borrower.rate > 0) {
-                                    appendLine("• Interest so far (${daysSince} days @ ${borrower.rate}%): ${currencySymbol}${String.format(locale, "%,.0f", interest)}")
+                                    appendLine("• Interest so far (${daysSince} days @ ${borrower.rate}%): ${CurrencyFormatter.detail(interest, currencyCode, locale)}")
                                 }
                                 if (borrower.paid > 0) {
-                                    appendLine("• Paid: ${currencySymbol}${String.format(locale, "%,.0f", borrower.paid)}")
+                                    appendLine("• Paid: ${CurrencyFormatter.detail(borrower.paid, currencyCode, locale)}")
                                 }
-                                appendLine("• *Outstanding: ${currencySymbol}${String.format(locale, "%,.0f", outstanding)}*")
+                                appendLine("• *Outstanding: ${CurrencyFormatter.detail(outstanding, currencyCode, locale)}*")
                                 appendLine()
                                 append("Kindly arrange repayment at your convenience. Thank you!")
                             }
@@ -548,11 +552,11 @@ fun LendingCard(borrower: Borrower, people: List<app.fynlo.data.model.Person> = 
                         // SMS is shorter — just the essentials
                         val smsMsg = buildString {
                             if (daysOverdue > 0) {
-                                append("Hi ${borrower.name}, your loan of ${currencySymbol}${String.format(locale, "%,.0f", borrower.amount)} is ${daysOverdue} days overdue. ")
+                                append("Hi ${borrower.name}, your loan of ${CurrencyFormatter.detail(borrower.amount, currencyCode, locale)} is ${daysOverdue} days overdue. ")
                             } else {
                                 append("Hi ${borrower.name}, loan reminder: ")
                             }
-                            append("Outstanding: ${currencySymbol}${String.format(locale, "%,.0f", outstanding)}")
+                            append("Outstanding: ${CurrencyFormatter.detail(outstanding, currencyCode, locale)}")
                             if (borrower.rate > 0) append(" (incl. interest)")
                             append(". Please repay soon. -Fynlo")
                         }
@@ -606,13 +610,13 @@ fun LendingCard(borrower: Borrower, people: List<app.fynlo.data.model.Person> = 
                         val summary = buildString {
                             appendLine("=== Loan Summary ===")
                             appendLine("Borrower : ${borrower.name}")
-                            appendLine("Principal: $currencySymbol${String.format(locale, "%,.2f", borrower.amount)}")
+                            appendLine("Principal: ${CurrencyFormatter.detail(borrower.amount, currencyCode, locale)}")
                             appendLine("Interest : ${borrower.rate}% (${borrower.type})")
                             appendLine("Lent On  : ${borrower.date}")
                             if (borrower.due.isNotBlank()) appendLine("Due Date : ${borrower.due}")
-                            appendLine("Paid     : $currencySymbol${String.format(locale, "%,.2f", borrower.paid)}")
-                            appendLine("Interest : $currencySymbol${String.format(locale, "%,.2f", interest)}")
-                            appendLine("Outstanding: $currencySymbol${String.format(locale, "%,.2f", outstanding)}")
+                            appendLine("Paid     : ${CurrencyFormatter.detail(borrower.paid, currencyCode, locale)}")
+                            appendLine("Interest : ${CurrencyFormatter.detail(interest, currencyCode, locale)}")
+                            appendLine("Outstanding: ${CurrencyFormatter.detail(outstanding, currencyCode, locale)}")
                             appendLine()
                             appendLine("Generated by Fynlo App")
                         }
@@ -646,7 +650,7 @@ fun LendingCard(borrower: Borrower, people: List<app.fynlo.data.model.Person> = 
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Column {
                     Text("Principal", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text("$currencySymbol ${String.format(Locale.getDefault(), "%,.0f", borrower.amount)}", style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold))
+                    Text(CurrencyFormatter.detail(borrower.amount, currencyCode, locale), style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold))
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text("Lent: ${DateUtils.formatToDisplay(borrower.date)}", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
                         if (borrower.sourceAccount.isNotBlank()) {
@@ -665,7 +669,7 @@ fun LendingCard(borrower: Borrower, people: List<app.fynlo.data.model.Person> = 
                 }
                 Column(horizontalAlignment = Alignment.End) {
                     Text("Interest (${borrower.rate}%)", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text("$currencySymbol ${String.format(Locale.getDefault(), "%,.0f", interest)}", style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold, color = Emerald500))
+                    Text(CurrencyFormatter.detail(interest, currencyCode, locale), style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold, color = Emerald500))
                     Text(borrower.type, style = MaterialTheme.typography.labelSmall, color = Color.Gray)
                 }
             }
@@ -677,11 +681,11 @@ fun LendingCard(borrower: Borrower, people: List<app.fynlo.data.model.Person> = 
                     Column(Modifier.fillMaxWidth().padding(10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
                             Text("➔ SI (until due date)", style = MaterialTheme.typography.labelSmall, color = Emerald500)
-                            Text("$currencySymbol ${String.format(locale, "%,.0f", bothPortions.first)}", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold), color = Emerald500)
+                            Text(CurrencyFormatter.detail(bothPortions.first, currencyCode, locale), style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold), color = Emerald500)
                         }
                         Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
                             Text("➔ CI (after due date)", style = MaterialTheme.typography.labelSmall, color = SemanticRed)
-                            Text("$currencySymbol ${String.format(locale, "%,.0f", bothPortions.second)}", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold), color = SemanticRed)
+                            Text(CurrencyFormatter.detail(bothPortions.second, currencyCode, locale), style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold), color = SemanticRed)
                         }
                     }
                 }
@@ -699,11 +703,11 @@ fun LendingCard(borrower: Borrower, people: List<app.fynlo.data.model.Person> = 
                 }
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text("Per Day Interest", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text("$currencySymbol ${String.format(locale, "%,.2f", perDayInterest)}", style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold), color = Emerald500)
+                    Text(CurrencyFormatter.detail(perDayInterest, currencyCode, locale), style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold), color = Emerald500)
                 }
                 Column(horizontalAlignment = Alignment.End) {
                     Text("Paid So Far", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text("$currencySymbol ${String.format(locale, "%,.0f", borrower.paid)}", style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold), color = MaterialTheme.colorScheme.primary)
+                    Text(CurrencyFormatter.detail(borrower.paid, currencyCode, locale), style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold), color = MaterialTheme.colorScheme.primary)
                 }
             }
             
@@ -717,7 +721,7 @@ fun LendingCard(borrower: Borrower, people: List<app.fynlo.data.model.Person> = 
                 Column {
                     Text("Total Outstanding", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text(
-                        "$currencySymbol ${String.format(Locale.getDefault(), "%,.0f", outs)}",
+                        CurrencyFormatter.detail(outs, currencyCode, locale),
                         style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.error)
                     )
                 }
