@@ -47,3 +47,12 @@ firestore-debug.log
 
 # Node deps for the Firestore rules tests
 firestore-tests/node_modules/
+
+# C22 smoke screenshots — avoid accidental commits
+/v*.png
+/check.png
+/add_rec.png
+/recheck.png
+/reports.png
+/moneyflow*.png
+/fynlo_check.png
