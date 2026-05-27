@@ -105,7 +105,10 @@ fun SettingsScreen(
     ) { uri -> uri?.let { scope.launch(Dispatchers.IO) {
         // exportToPDF is now suspend (C02 — runs recalcCoordinator.runAndStamp()
         // first so the PDF reflects fresh state, not whatever was in memory).
-        context.contentResolver.openOutputStream(it)?.use { os -> viewModel.exportToPDF(os) }
+        context.contentResolver.openOutputStream(it)?.use { os ->
+            // C11 (3.2.40) — pass user's Date Format preference through.
+            viewModel.exportToPDF(os, dateFormat = dateFormat)
+        }
     }}}
 
     val xlsxLauncher = rememberLauncherForActivityResult(
@@ -119,7 +122,8 @@ fun SettingsScreen(
         // bypassed any pre-step — that's the C02 gap closed.
         runCatching {
             context.contentResolver.openOutputStream(it)?.use { os ->
-                viewModel.exportToXLSX(os)
+                // C11 (3.2.40) — pass user's Date Format preference through.
+                viewModel.exportToXLSX(os, dateFormat = dateFormat)
             }
         }
     }}}

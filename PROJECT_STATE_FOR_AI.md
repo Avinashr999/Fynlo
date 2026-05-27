@@ -158,7 +158,7 @@ AI_AGENT_PROTOCOL.md to match.
 
 # Fynlo - Complete AI Portability File
 **Project Name**: Fynlo
-**Version**: 3.2.39 on `master` (`versionName = "3.2.39"`, `versionCode = 162`). All four Sprint-1 P0 clusters closed. P1 backlog closed in full. **First P2 cluster closed in 3.2.39: C10 (Pluralization).** P2 remaining: C11 (Date formatting), C16 (Color semantics), C17 (Disabled button hints), C19 (Empty states), C20 (Drawer cleanup). Plus C22 v4+ backlog (P3), C03b breaking schema migration, infrastructure backlog INF01-INF06, deferred follow-ups (Task #24/#26/#27/#28). Internal milestone markers only — per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens until every `UX_AUDIT` cluster (P0 through P3) is closed. All four Sprint-1 P0 clusters closed (C01 / C02 / C03a / C05). **Ten** P1 Sprint 2 clusters closed (C04, C06+C07, C08, C09, C18, C13, C14, C12, **C15**). **3.2.33 = C15 Stage 5 = C15e Money Flow category-grouped visualization — closes C15 in full**. All five C15 sub-stages landed: C15a in 3.2.29, C15b in 3.2.30, C15c in 3.2.31, C15d in 3.2.32, C15e in 3.2.33. Remaining P1: C21 (PDF/XLSX export quality polish). Plus deferred follow-ups: Task #26, #27, #28, #24. Internal milestone markers only — per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens until every `UX_AUDIT` cluster (P0 through P3) is closed.
+**Version**: 3.2.40 on `master` (`versionName = "3.2.40"`, `versionCode = 163`). All four Sprint-1 P0 clusters closed. P1 backlog closed in full. **Two P2 clusters closed: C10 (3.2.39, Pluralization) and C11 (3.2.40, Date formatting consistency).** P2 remaining: C16 (Color semantics), C17 (Disabled button hints), C19 (Empty states), C20 (Drawer cleanup). Plus C22 v4+ backlog (P3), C03b breaking schema migration, infrastructure backlog INF01-INF06, deferred follow-ups (Task #24/#26/#27/#28). Internal milestone markers only — per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens until every `UX_AUDIT` cluster (P0 through P3) is closed. All four Sprint-1 P0 clusters closed (C01 / C02 / C03a / C05). **Ten** P1 Sprint 2 clusters closed (C04, C06+C07, C08, C09, C18, C13, C14, C12, **C15**). **3.2.33 = C15 Stage 5 = C15e Money Flow category-grouped visualization — closes C15 in full**. All five C15 sub-stages landed: C15a in 3.2.29, C15b in 3.2.30, C15c in 3.2.31, C15d in 3.2.32, C15e in 3.2.33. Remaining P1: C21 (PDF/XLSX export quality polish). Plus deferred follow-ups: Task #26, #27, #28, #24. Internal milestone markers only — per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens until every `UX_AUDIT` cluster (P0 through P3) is closed.
 **Platform**: Android (Kotlin, Jetpack Compose, Room — Gradle 9.4.1, AGP 9.2.1, Room 2.8.4, KSP 2.3.7, Kotlin 2.2.10)
 
 ## 1. Project Overview
@@ -345,6 +345,36 @@ in the APK).
 ## 6. Journal
 
 **Newest first.** Each entry: date · cluster(s) closed/touched · commit(s) · one-paragraph why-and-what.
+
+### 2026-05-27 — 3.2.40 (C11 closed — DateUtils.format(date, Style) API + dateFormat pref threaded into exports)
+
+**Type:** C11 closure. Second P2 cluster down. Audit §C11 #302, #307, #308, #309, #312, #325, #359, #360.
+
+**Internal milestone:** `3.2.40` / `versionCode = 163`. No Play Console upload per release-cadence ADR. **Data-integrity gate +15 tests** (`DateUtilsDataIntegrityTest`) → 137 tests / 12 classes / 0 failures.
+
+**`DateUtils.format(date, Style)` API added:**
+- `Style.Relative` — "today" / "yesterday" / "in N days" / "N weeks ago" / falls back to Compact at > 8 weeks. Uses C10's shared `pluralize` for day/week counts.
+- `Style.Compact` — user's chosen pattern (dd-MM-yyyy / MM-dd-yyyy / yyyy-MM-dd). Caller passes `compactPattern` explicitly; default falls back to `dd-MM-yyyy`.
+- `Style.Definitive` — "25 May 2026" (locale-agnostic month name).
+- `Style.ChartAxis` — "May 25" (for chart x-axis).
+- Defensive fallbacks: malformed input returns verbatim, malformed pattern uses default.
+- Formatter cache to avoid rebuilding `DateTimeFormatter` per call.
+
+**Back-compat preserved:** `formatToDisplay` + `parseInput` still work. `formatToDisplay` delegates to `format(dateStr, Style.Compact)` with default. Existing in-app call sites compile and behave identically.
+
+**Threading user dateFormat through exports:**
+- ExportUtility (3 PDF generators) + ExcelExportUtility.generateFullBackup gained `dateFormat: String` param.
+- PDF date cells reformat via `DateUtils.format(date, Compact, dateFormat)`.
+- XLSX date cells reformat via new `dt(iso)` helper (named `dt` not `d` to avoid shadowing `debts.forEach { d -> }` lambda parameter).
+- FinanceViewModel.exportToPDF / exportToXLSX gained the param. SettingsScreen passes the pref it already collects. Per-screen Export buttons (ReportsHubScreen, ProfitLossScreen, CustomerDetailScreen, MoneyFlowScreen) collect `UserPreferences.dateFormat(...)` and thread.
+
+**XLSX label fix:** Lending sheet `"Loan Date"` → `"Lent On"` — same field, same name everywhere.
+
+**Deferred follow-up: in-app rendering still uses default `dd-MM-yyyy`.** Making in-app Composable sites respect the user pref needs either a `LocalDateFormatPattern` CompositionLocal initialized at the root + `rememberFormatDate(dateStr)` helper, OR a static cache loaded at app init. Either is mechanical but touches every Composable that renders a date. The bulk of audit C11 (exports + formal API + label) closes here.
+
+**Pattern: same shape as C08 + C10.** Define helper once, sweep call sites, add a data-integrity test class to pin the contract. Defaults stay tolerant so existing callers don't break.
+
+**P2 remaining:** C16 (Color semantics), C17 (Disabled button hints), C19 (Empty states), C20 (Drawer cleanup).
 
 ### 2026-05-27 — 3.2.39 (C10 closed — shared Pluralize helper + 13-site sweep, first P2 cluster down)
 

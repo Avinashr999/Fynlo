@@ -564,6 +564,10 @@ object ExportUtility {
         // chart. Default empty → chart shows an empty-state instead of an
         // axis with nothing on it.
         snapshots: List<NetWorthSnapshot> = emptyList(),
+        // C11 (3.2.40): user's Date Format preference from Settings. PDF
+        // date cells render in this pattern instead of raw ISO. Default
+        // dd-MM-yyyy matches the in-app default.
+        dateFormat: String = DateUtils.DEFAULT_COMPACT_PATTERN,
     ) {
         val pdf = PdfDocument()
         val b = PdfBuilder(pdf, outputStream)
@@ -694,7 +698,9 @@ object ExportUtility {
                 b.drawTableRow(
                     listOf(
                         bo.name, fmt(bo.amount, currencyCode), fmt(bo.paid, currencyCode), "${bo.rate}%",
-                        bo.date, bo.due.ifBlank{"-"}, status, bo.notes,
+                        DateUtils.format(bo.date, DateUtils.Style.Compact, dateFormat),
+                        if (bo.due.isBlank()) "-" else DateUtils.format(bo.due, DateUtils.Style.Compact, dateFormat),
+                        status, bo.notes,
                     ),
                     lw, altBg = i % 2 == 0,
                     colors = listOf(
@@ -730,7 +736,9 @@ object ExportUtility {
                 b.drawTableRow(
                     listOf(
                         d.name, fmt(d.amount, currencyCode), fmt(d.paid, currencyCode), "${d.rate}%",
-                        d.date, d.due.ifBlank{"-"}, status, d.intType.ifBlank{"-"},
+                        DateUtils.format(d.date, DateUtils.Style.Compact, dateFormat),
+                        if (d.due.isBlank()) "-" else DateUtils.format(d.due, DateUtils.Style.Compact, dateFormat),
+                        status, d.intType.ifBlank{"-"},
                     ),
                     dw, altBg = i % 2 == 0,
                     colors = listOf(
@@ -750,7 +758,7 @@ object ExportUtility {
             investments.forEachIndexed { i, inv ->
                 val growth = inv.currentVal - inv.invested
                 b.drawTableRow(
-                    listOf(inv.name, inv.type, fmt(inv.invested, currencyCode), fmt(inv.currentVal, currencyCode), fmt(growth, currencyCode), inv.date),
+                    listOf(inv.name, inv.type, fmt(inv.invested, currencyCode), fmt(inv.currentVal, currencyCode), fmt(growth, currencyCode), DateUtils.format(inv.date, DateUtils.Style.Compact, dateFormat)),
                     iw, altBg = i % 2 == 0,
                     colors = listOf(COLOR_BLACK, COLOR_GRAY, COLOR_BLACK, COLOR_BLACK, if(growth>=0) COLOR_GREEN else COLOR_RED, COLOR_GRAY)
                 )
@@ -775,7 +783,7 @@ object ExportUtility {
             recent.forEachIndexed { i, t ->
                 val amtColor = if (t.type.equals("income", ignoreCase = true)) COLOR_GREEN else COLOR_RED
                 b.drawTableRow(
-                    listOf(t.date, t.type, t.category, t.desc, fmt(t.amount, currencyCode), t.fromAcct.ifBlank{t.toAcct}),
+                    listOf(DateUtils.format(t.date, DateUtils.Style.Compact, dateFormat), t.type, t.category, t.desc, fmt(t.amount, currencyCode), t.fromAcct.ifBlank{t.toAcct}),
                     tw, altBg = i % 2 == 0,
                     colors = listOf(COLOR_BLACK,COLOR_GRAY,COLOR_BLACK,COLOR_BLACK, amtColor, COLOR_GRAY)
                 )
@@ -805,6 +813,8 @@ object ExportUtility {
         projectName: String = "Personal",
         userEmail: String = "",
         periodLabel: String = "All time",
+        // C11 (3.2.40) — user's Date Format preference; default matches in-app.
+        dateFormat: String = DateUtils.DEFAULT_COMPACT_PATTERN,
     ) {
         val pdf = PdfDocument()
         val b = PdfBuilder(pdf, outputStream)
@@ -856,7 +866,7 @@ object ExportUtility {
                 else                  -> COLOR_PRIMARY
             }
             b.drawTableRow(
-                listOf(f.date, f.flowType.name, f.from, f.to, f.label, fmt(f.amount, currencyCode)),
+                listOf(DateUtils.format(f.date, DateUtils.Style.Compact, dateFormat), f.flowType.name, f.from, f.to, f.label, fmt(f.amount, currencyCode)),
                 fw, altBg = i % 2 == 0,
                 colors = listOf(COLOR_BLACK,COLOR_GRAY,COLOR_BLACK,COLOR_BLACK,COLOR_BLACK, color)
             )
@@ -881,6 +891,8 @@ object ExportUtility {
         // span the borrower's full loan history.
         projectName: String = "Personal",
         userEmail: String = "",
+        // C11 (3.2.40) — user's Date Format preference.
+        dateFormat: String = DateUtils.DEFAULT_COMPACT_PATTERN,
     ) {
         val pdf = PdfDocument()
         val b = PdfBuilder(pdf, outputStream)
@@ -910,8 +922,8 @@ object ExportUtility {
         val details = listOf(
             "Borrower Name"   to borrower.name,
             "Phone"           to borrower.phone.ifBlank { "-" },
-            "Loan Date"       to borrower.date,
-            "Due Date"        to borrower.due.ifBlank { "Not specified" },
+            "Lent On"         to DateUtils.format(borrower.date, DateUtils.Style.Compact, dateFormat),
+            "Due Date"        to (if (borrower.due.isBlank()) "Not specified" else DateUtils.format(borrower.due, DateUtils.Style.Compact, dateFormat)),
             "Principal"       to fmt(borrower.amount, currencyCode),
             "Interest Rate"   to "${borrower.rate}% p.a. ($typeLabel)",
             "Interest Accrued" to fmt(interest, currencyCode),
@@ -933,7 +945,7 @@ object ExportUtility {
             val rw = listOf(usable * 0.25f, usable * 0.25f, usable * 0.50f)
             b.drawTableRow(listOf("Date", "Amount", "Notes"), rw, isHeader = true)
             repayments.sortedByDescending { it.date }.forEachIndexed { i, t ->
-                b.drawTableRow(listOf(t.date, fmt(t.amount, currencyCode), t.notes.ifBlank{"-"}), rw, altBg = i % 2 == 0)
+                b.drawTableRow(listOf(DateUtils.format(t.date, DateUtils.Style.Compact, dateFormat), fmt(t.amount, currencyCode), t.notes.ifBlank{"-"}), rw, altBg = i % 2 == 0)
             }
         } else {
             b.canvas().drawText("No repayments recorded yet.", MARGIN, b.y, bodyPaint(COLOR_GRAY, 10f))

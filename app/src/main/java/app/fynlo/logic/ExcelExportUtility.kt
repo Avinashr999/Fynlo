@@ -101,6 +101,9 @@ object ExcelExportUtility {
         // tolerant for callers that haven't migrated.
         summary: FinancialSummary = FinancialSummary(),
         currencyCode: String = "INR",
+        // C11 (3.2.40) — user's Date Format preference; date cells reformat
+        // from ISO to the user's chosen pattern.
+        dateFormat: String = DateUtils.DEFAULT_COMPACT_PATTERN,
     ) {
         // C02: human-readable timestamp for the Metadata sheet.
         val recalcText = if (lastRecalcAt > 0L) {
@@ -116,6 +119,14 @@ object ExcelExportUtility {
         fun t(v: String): Cell = Cell.Text(v)
         fun n(v: Double): Cell = Cell.Number(v)
         fun c(v: Double): Cell = Cell.Currency(v)
+        // C11 (3.2.40) — date cell helper. Reformats ISO `yyyy-MM-dd`
+        // strings to the user's chosen Compact pattern. Blank stays blank
+        // so optional fields (Due Date) don't render "01-01-1970" or
+        // similar parser-fallback noise. Named `dt` (not `d`) so it
+        // doesn't shadow the `debts.forEach { d -> }` lambda parameter.
+        fun dt(iso: String): Cell =
+            if (iso.isBlank()) Cell.Text("")
+            else Cell.Text(DateUtils.format(iso, DateUtils.Style.Compact, dateFormat))
 
         // ── C21 Stage 4 — KPI inputs for the Summary sheet. Same cash-basis
         // exclusion + calendar-month window as the P&L Statement.
@@ -185,7 +196,7 @@ object ExcelExportUtility {
                         t("Category"), t("Description"), t("Notes")))
                     transactions.sortedByDescending { it.date }.forEach { tx ->
                         add(listOf(
-                            t(tx.date), t(tx.type), c(tx.amount),
+                            dt(tx.date), t(tx.type), c(tx.amount),
                             t(tx.fromAcct), t(tx.toAcct), t(tx.category),
                             t(tx.desc), t(tx.notes),
                         ))
@@ -196,12 +207,15 @@ object ExcelExportUtility {
             Sheet(
                 "Lending",
                 buildList {
+                    // Audit C11 — "Loan Date" → "Lent On" so the XLSX header
+                    // matches the in-app label and the PDF loan statement
+                    // column. One field, one name everywhere.
                     add(listOf(t("Name"), t("Phone"), t("Principal"), t("Rate %"), t("Interest Type"),
-                        t("Loan Date"), t("Due Date"), t("Paid"), t("Status"), t("Notes")))
+                        t("Lent On"), t("Due Date"), t("Paid"), t("Status"), t("Notes")))
                     borrowers.forEach { b ->
                         add(listOf(
                             t(b.name), t(b.phone), c(b.amount), n(b.rate), t(b.type),
-                            t(b.date), t(b.due), c(b.paid), t(b.status), t(b.notes),
+                            dt(b.date), dt(b.due), c(b.paid), t(b.status), t(b.notes),
                         ))
                     }
                 },
@@ -216,7 +230,7 @@ object ExcelExportUtility {
                     debts.forEach { d ->
                         add(listOf(
                             t(d.name), c(d.amount), n(d.rate), t(d.intType),
-                            t(d.date), t(d.due), c(d.paid), t(d.notes),
+                            dt(d.date), dt(d.due), c(d.paid), t(d.notes),
                         ))
                     }
                 },
@@ -234,7 +248,7 @@ object ExcelExportUtility {
                         add(listOf(
                             t(i.name), t(i.type),
                             c(i.invested), c(i.currentVal), c(growth), n(pct),
-                            t(i.date),
+                            dt(i.date),
                         ))
                     }
                 },
@@ -245,7 +259,7 @@ object ExcelExportUtility {
                 "Loan Repayments",
                 buildList {
                     add(listOf(t("Borrower"), t("Amount"), t("Date"), t("Notes")))
-                    payments.forEach { p -> add(listOf(t(p.name), c(p.amount), t(p.date), t(p.notes))) }
+                    payments.forEach { p -> add(listOf(t(p.name), c(p.amount), dt(p.date), t(p.notes))) }
                 },
                 autoFilterCols = 4,
             ),
@@ -253,7 +267,7 @@ object ExcelExportUtility {
                 "Debt Repayments",
                 buildList {
                     add(listOf(t("Creditor"), t("Amount"), t("Date"), t("Notes")))
-                    debtPayments.forEach { p -> add(listOf(t(p.name), c(p.amount), t(p.date), t(p.notes))) }
+                    debtPayments.forEach { p -> add(listOf(t(p.name), c(p.amount), dt(p.date), t(p.notes))) }
                 },
                 autoFilterCols = 4,
             ),

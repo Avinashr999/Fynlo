@@ -188,6 +188,9 @@ fun MoneyFlowScreen(viewModel: FinanceViewModel) {
                     // params threaded through to PDF generator.
                     val projectName = currentProject?.name ?: "Personal"
                     val userEmail   = remember { app.fynlo.data.AuthManager().userEmail }
+                    // C11 (3.2.40) — user's Date Format pref for the PDF.
+                    val dateFormat by app.fynlo.data.UserPreferences.dateFormat(context)
+                        .collectAsState(initial = app.fynlo.logic.DateUtils.DEFAULT_COMPACT_PATTERN)
                     DropdownMenu(expanded = showExportMenu, onDismissRequest = { showExportMenu = false }) {
                         DropdownMenuItem(
                             text = { Text("Export as CSV") },
@@ -217,6 +220,7 @@ fun MoneyFlowScreen(viewModel: FinanceViewModel) {
                                         projectName  = projectName,
                                         userEmail    = userEmail,
                                         periodLabel  = "All time",
+                                        dateFormat   = dateFormat,
                                     )
                                 }
                                 val uri  = FileProvider.getUriForFile(context, "${context.packageName}.provider", file)

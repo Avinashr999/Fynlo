@@ -74,6 +74,9 @@ fun ReportsHubScreen(
     // exported PDF. The on-screen Reports landing already uses these via
     // the tile preview computation; threading them to Export PDF too.
     val snapshots      by viewModel.getNetWorthSnapshots().collectAsState(initial = emptyList())
+    // C11 (3.2.40) — user's Date Format pref for the PDF date columns.
+    val dateFormat     by app.fynlo.data.UserPreferences.dateFormat(androidx.compose.ui.platform.LocalContext.current)
+        .collectAsState(initial = app.fynlo.logic.DateUtils.DEFAULT_COMPACT_PATTERN)
 
     var selectedRange by remember { mutableStateOf("This Month") }
     val ranges = listOf("This Month", "Last Month", "Last 3M", "Last 6M", "This Year", "All Time")
@@ -175,6 +178,7 @@ fun ReportsHubScreen(
                                 periodLabel  = periodLabel,
                                 debts        = debts,
                                 snapshots    = snapshots,
+                                dateFormat   = dateFormat,
                             )
                         }
                         val uri = androidx.core.content.FileProvider.getUriForFile(

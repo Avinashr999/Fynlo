@@ -56,6 +56,9 @@ fun ProfitLossScreen(viewModel: FinanceViewModel) {
     val debts          by viewModel.debts.collectAsState()
     // C21 Stage 3 — snapshots for the net-worth trend chart in the PDF.
     val snapshots      by viewModel.getNetWorthSnapshots().collectAsState(initial = emptyList())
+    // C11 (3.2.40) — user's Date Format pref for PDF date columns.
+    val dateFormat     by app.fynlo.data.UserPreferences.dateFormat(androidx.compose.ui.platform.LocalContext.current)
+        .collectAsState(initial = app.fynlo.logic.DateUtils.DEFAULT_COMPACT_PATTERN)
     val currentProject by viewModel.currentProject.collectAsState()
     val currencyCode    = currentProject?.currency ?: "INR"
     val summary        by viewModel.financialSummary.collectAsState()
@@ -167,6 +170,7 @@ fun ProfitLossScreen(viewModel: FinanceViewModel) {
                                 periodLabel  = "All time",
                                 debts        = debts,
                                 snapshots    = snapshots,
+                                dateFormat   = dateFormat,
                             )
                         }
                         val uri = androidx.core.content.FileProvider.getUriForFile(

@@ -56,6 +56,10 @@ val borrowers by viewModel.borrowers.collectAsState()
     val currencyCode = currentProject?.currency ?: "INR"
     val locale = Locale.getDefault()
 
+    // C11 (3.2.40) — user's Date Format pref for the loan-statement PDF.
+    val dateFormat by app.fynlo.data.UserPreferences.dateFormat(androidx.compose.ui.platform.LocalContext.current)
+        .collectAsState(initial = app.fynlo.logic.DateUtils.DEFAULT_COMPACT_PATTERN)
+
     val borrower = borrowers.find { it.id == borrowerId }
 
     if (borrower == null) {
@@ -348,6 +352,7 @@ val borrowers by viewModel.borrowers.collectAsState()
                                 currencyCode = currencyCode,
                                 projectName  = currentProject?.name ?: "Personal",
                                 userEmail    = app.fynlo.data.AuthManager().userEmail,
+                                dateFormat   = dateFormat,
                             )
                         }
                         val uri = androidx.core.content.FileProvider.getUriForFile(

@@ -950,7 +950,12 @@ class FinanceViewModel @Inject constructor(
         return csv
     }
 
-    suspend fun exportToPDF(outputStream: java.io.OutputStream) {
+    suspend fun exportToPDF(
+        outputStream: java.io.OutputStream,
+        // C11 (3.2.40) — user's Date Format pref, collected by the caller.
+        // Default matches the in-app default if caller hasn't migrated.
+        dateFormat: String = app.fynlo.logic.DateUtils.DEFAULT_COMPACT_PATTERN,
+    ) {
         val recalcAt = recalcCoordinator.runAndStamp()
         // C08 Stage 4: project currency threads through so the PDF cards +
         // tables render amounts in the user's configured format
@@ -974,6 +979,7 @@ class FinanceViewModel @Inject constructor(
             // Fetched via repository.getNetWorthSnapshots(pid).first() so
             // we get the current list without subscribing in this scope.
             snapshots   = repository.getNetWorthSnapshots(pid).first(),
+            dateFormat  = dateFormat,
         )
         app.fynlo.data.Analytics.dataExported("pdf")
     }
@@ -985,7 +991,11 @@ class FinanceViewModel @Inject constructor(
      * recalc-stamp contract as PDF / CSV / JSON (closes the C02 "all
      * formats" gap explicitly).
      */
-    suspend fun exportToXLSX(outputStream: java.io.OutputStream) {
+    suspend fun exportToXLSX(
+        outputStream: java.io.OutputStream,
+        // C11 (3.2.40) — user's Date Format pref, collected by the caller.
+        dateFormat: String = app.fynlo.logic.DateUtils.DEFAULT_COMPACT_PATTERN,
+    ) {
         val recalcAt = recalcCoordinator.runAndStamp()
         // C21 Stage 4 — thread the Summary-sheet KPIs (FinancialSummary)
         // and currency code so amounts render with the active currency
@@ -1002,6 +1012,7 @@ class FinanceViewModel @Inject constructor(
             lastRecalcAt = recalcAt,
             summary      = financialSummary.value,
             currencyCode = currentProject.value?.currency ?: "INR",
+            dateFormat   = dateFormat,
         )
         app.fynlo.data.Analytics.dataExported("xlsx")
     }

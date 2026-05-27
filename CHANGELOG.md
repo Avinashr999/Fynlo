@@ -2,6 +2,56 @@
 
 All notable changes to Fynlo are documented here.
 
+## [3.2.40] - 2026-05-27 *(Development milestone — C11 closed: DateUtils.format(date, Style) API + dateFormat pref threaded into exports + XLSX "Loan Date" → "Lent On"; not promoted per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`)*
+
+### Fixed
+- **C11 — Date formatting inconsistency (audit #302, #307, #308, #309, #312, #325, #359, #360).** Second P2 cluster closed.
+
+**`DateUtils.format(date, Style)` — formal 4-style API per DESIGN_SYSTEM §8.3:**
+- `Style.Relative` — "today" / "yesterday" / "tomorrow" / "N days ago" / "in N days" / "N weeks ago" / falls back to Compact at > 8 weeks. Uses the new shared `pluralize` helper from C10 so the day/week counts pluralize correctly.
+- `Style.Compact` — user's chosen pattern from Settings (`dd-MM-yyyy` / `MM-dd-yyyy` / `yyyy-MM-dd`). Caller passes `compactPattern: String` explicitly. Default falls back to `dd-MM-yyyy` (the in-app default).
+- `Style.Definitive` — `d MMM yyyy` (e.g., `25 May 2026`). Used on receipt/statement surfaces where locale-agnostic month names eliminate ambiguity.
+- `Style.ChartAxis` — `MMM d` (e.g., `May 25`). Used on chart x-axis labels.
+- Malformed input → returns verbatim (defensive: don't crash a UI render over a malformed legacy row).
+- Malformed compact pattern → falls back to default (Settings only stores 3 valid options, but defensive nonetheless).
+- Formatter cache so repeated calls don't rebuild `DateTimeFormatter` instances.
+- `LocalDate` variant + `String` (ISO `yyyy-MM-dd`) variant — both go through the same internal `format(LocalDate, ...)` core.
+
+**Back-compat preserved:**
+- `DateUtils.formatToDisplay(dateStr)` and `DateUtils.parseInput(...)` still work; `formatToDisplay` delegates to `format(dateStr, Style.Compact)` with the default pattern. Existing in-app call sites compile and behave identically; new code should use `format` directly so the style intent is explicit.
+
+**Threading user dateFormat preference through exports:**
+- `ExportUtility.generatePDF` / `generateMoneyFlowPDF` / `generateLoanStatementPDF` gained `dateFormat: String = DateUtils.DEFAULT_COMPACT_PATTERN` param. All PDF date cells (`borrower.date`, `borrower.due`, `debt.date`, `debt.due`, `investment.date`, `transaction.date`, `loanPayment.date`, `flow.date`) now reformat ISO → user pattern via `DateUtils.format(..., Style.Compact, dateFormat)`.
+- `ExcelExportUtility.generateFullBackup` gained `dateFormat` param + an internal `dt(iso)` helper (named `dt` not `d` to avoid shadowing the `debts.forEach { d -> }` lambda parameter). Every date cell across Transactions / Lending / Debts / Investments / Loan Repayments / Debt Repayments sheets reformats via `dt(iso)`.
+- `FinanceViewModel.exportToPDF` / `exportToXLSX` gained the param too; SettingsScreen's Export PDF + Export XLSX launchers pass the user's `dateFormat` collected via `UserPreferences.dateFormat(context).collectAsState()`.
+- Per-screen Export PDF buttons (ReportsHubScreen, ProfitLossScreen, CustomerDetailScreen, MoneyFlowScreen) collect `UserPreferences.dateFormat(...)` and thread it through.
+
+**XLSX label fix (audit "Loan Date" vs "Lent On"):**
+- Lending sheet header `"Loan Date"` → `"Lent On"` so the XLSX matches the in-app label and the PDF loan statement column. Same field, same name everywhere.
+
+**`DateUtilsDataIntegrityTest` — new test class, 15 cases:**
+- Compact respects default + override patterns (×3).
+- Definitive renders with 3-letter month name (×2 — May + Jan).
+- ChartAxis renders as month-and-day (×2).
+- Relative: today / yesterday / tomorrow / 2-6 day range (×2) / 7-56 day weeks range (×3) / falls back to compact at > 8 weeks.
+- Malformed input returns verbatim + back-compat formatToDisplay.
+
+### Deferred follow-up
+**In-app date rendering still uses the default `dd-MM-yyyy`.** Every `DateUtils.formatToDisplay(dateStr)` call site in Composables (LendingScreen rows, transaction list rows, etc.) keeps the back-compat default. Making in-app rendering respect the user pref needs either:
+- A `LocalDateFormatPattern` `CompositionLocal` initialized at the root + a Composable-aware `rememberFormatDate(dateStr)`, OR
+- A static cache (`DateFormatCache.current`) loaded at app init + invalidated on Settings save.
+
+Either approach is mechanical but touches every Composable site that renders a date. Logged as a follow-up. The bulk of audit C11 — exports and the formal API — closes here.
+
+### Closes
+- **C11 audit fixes #302, #307, #308, #309, #312, #325, #359, #360.** Second P2 cluster closed.
+
+### Changed
+- **`versionName`** `3.2.39` → `3.2.40`, **`versionCode`** `162` → `163`.
+
+### Data-integrity gate
+**+15 tests from `DateUtilsDataIntegrityTest`.** Total now **137 tests across 12 classes**, 0 failures (was 122/11 before C11).
+
 ## [3.2.39] - 2026-05-27 *(Development milestone — C10 closed: shared Pluralize helper + 13-site sweep; not promoted per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`)*
 
 ### Fixed
