@@ -2,6 +2,20 @@
 
 All notable changes to Fynlo are documented here.
 
+## [3.2.46] - 2026-05-27 *(Development milestone — About Resources row chevron visibility fix (3.2.45 smoke surface); not promoted per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`)*
+
+### Fixed
+- **AboutScreen Resources rows — chevron icon was barely visible.** Smoke surface for 3.2.45. The trailing `Icons.AutoMirrored.Filled.OpenInNew` icon was tinted with `MaterialTheme.colorScheme.outlineVariant` — that token is intended for hairline dividers (~3.5:1 contrast against the row's surfaceVariant background) and the chevron at 16dp was essentially invisible. Bumped to `onSurfaceVariant` (the standard "secondary icon/text" tone) and size 16dp → 18dp for parity with the leading icon. Chevron is now clearly visible.
+
+### Lesson logged
+- `outlineVariant` is for hairlines, not icons. When you want a secondary-but-visible icon, use `onSurfaceVariant`. Documented inline at the touch site.
+
+### Changed
+- **`versionName`** `3.2.45` → `3.2.46`, **`versionCode`** `168` → `169`.
+
+### Data-integrity gate
+Unchanged at **137 tests across 12 classes**, 0 failures (1-line tint + size change).
+
 ## [3.2.45] - 2026-05-27 *(Development milestone — C22 Stage 1: About-screen Resources section (Privacy / Licenses / Changelog); not promoted per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`)*
 
 ### Fixed

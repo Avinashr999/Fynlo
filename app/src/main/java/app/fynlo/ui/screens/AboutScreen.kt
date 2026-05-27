@@ -214,11 +214,15 @@ private fun AboutLinkRow(
         Icon(icon, contentDescription = null, modifier = Modifier.size(20.dp),
             tint = MaterialTheme.colorScheme.onSurfaceVariant)
         Text(label, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+        // C22 Stage 1 follow-up — was outlineVariant (intended for hairline
+        // dividers, ~3.5:1 contrast) and barely visible at 16dp on the
+        // row's surfaceVariant background. Bumped to onSurfaceVariant
+        // which is the standard "secondary icon/text" tone (higher contrast).
         Icon(
             Icons.AutoMirrored.Filled.OpenInNew,
             contentDescription = "Open in browser",
-            modifier = Modifier.size(16.dp),
-            tint = MaterialTheme.colorScheme.outlineVariant
+            modifier = Modifier.size(18.dp),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 }
