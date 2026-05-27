@@ -2,6 +2,25 @@
 
 All notable changes to Fynlo are documented here.
 
+## [3.2.48] - 2026-05-27 *(Development milestone — RecurringScreen FAB + AddRecurring dropdown discoverability (3.2.47 smoke surfaces); not promoted per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`)*
+
+### Fixed
+- **RecurringScreen populated state had no FAB.** Smoke surface for 3.2.47. Every other list screen in the app (Lending, Debt, Goal, Spend, People) has a bottom-right FloatingActionButton when populated; Recurring only had a small `+` IconButton in the header (added by C07 with the rationale of "no triple entry point" — but the populated-state-only FAB doesn't conflict). Added the matching FAB inside the `else` (populated) branch of the screen Box; empty state still uses the inline EmptyState CTA exclusively.
+- **AddRecurring Frequency picker was mistaken for a static label.** Smoke surface for 3.2.47. Pre-3.2.48 the `ExposedDropdownMenuBox` rendered an `OutlinedTextField` with a small default trailing arrow — visually indistinguishable from a normal text field, so users didn't realize they could tap it. Two changes:
+  - `supportingText = { Text("Tap to choose") }` renders a helper line below the field.
+  - Trailing icon swapped from the default tiny `ExposedDropdownMenuDefaults.TrailingIcon` to a 28dp `KeyboardArrowDown` (or `KeyboardArrowUp` when expanded) tinted primary-emerald. Picker affordance is now unambiguous.
+
+### Lesson logged
+- ExposedDropdownMenuBox's default trailing icon is too small to read as "this is a picker." When a dropdown lives inside an AlertDialog with multiple OutlinedTextFields above it, the user pattern-matches every TextField as input-only. Either:
+  - Use a SegmentedButtonRow (preferred when ≤4 options fit horizontally) — but the 3.2.10 finding said 4-label Frequency didn't fit.
+  - Or upgrade the dropdown's visual affordance: supportingText + larger primary-tinted arrow. Done here.
+
+### Changed
+- **`versionName`** `3.2.47` → `3.2.48`, **`versionCode`** `170` → `171`.
+
+### Data-integrity gate
+Unchanged at **137 tests across 12 classes**, 0 failures (UI-only).
+
 ## [3.2.47] - 2026-05-27 *(Development milestone — C22 Stage 2: Recurring last-day-of-month + preview + Goals deadline; not promoted per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`)*
 
 ### Fixed

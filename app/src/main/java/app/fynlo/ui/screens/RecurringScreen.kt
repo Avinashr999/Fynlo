@@ -159,6 +159,20 @@ fun RecurringScreen(viewModel: FinanceViewModel) {
                     }
                 }
             }
+            // C22 Stage 2 smoke-surface fix (3.2.48) — add proper FAB to the
+            // populated state, matching LendingScreen / DebtScreen / GoalScreen
+            // / SpendScreen / PeopleScreen convention. Pre-3.2.48 the only
+            // populated-state entry point was the small `+` IconButton in
+            // the header — easy to miss. Empty state still uses the inline
+            // EmptyState CTA (no FAB) so the audit C07 "no triple entry
+            // point" rule still holds.
+            FloatingActionButton(
+                onClick = { showAddDialog = true },
+                modifier = Modifier.align(Alignment.BottomEnd).padding(24.dp),
+                containerColor = MaterialTheme.colorScheme.primary
+            ) {
+                Icon(Icons.Default.Add, contentDescription = "Add Recurring")
+            }
         }
         }
     }
@@ -349,7 +363,23 @@ private fun AddRecurringDialog(
                         onValueChange = {},
                         readOnly = true,
                         label = { Text("Frequency") },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = frequencyExpanded) },
+                        // C22 Stage 2 smoke fix (3.2.48) — supportingText
+                        // makes the picker behaviour obvious. Smoke user
+                        // reported the dropdown was "very small to select
+                        // or even we cant notice" — the OutlinedTextField
+                        // visual was being mistaken for a static label.
+                        // Hint text + larger arrow makes the affordance
+                        // obvious.
+                        supportingText = { Text("Tap to choose") },
+                        trailingIcon = {
+                            Icon(
+                                if (frequencyExpanded) Icons.Default.KeyboardArrowUp
+                                else Icons.Default.KeyboardArrowDown,
+                                contentDescription = null,
+                                modifier = Modifier.size(28.dp),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        },
                         modifier = Modifier
                             .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, true)
                             .fillMaxWidth(),
