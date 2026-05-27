@@ -10,10 +10,16 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Notes
+import androidx.compose.material.icons.filled.Block
+import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.MoneyOff
+import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material.icons.filled.PictureAsPdf
+import androidx.compose.material.icons.filled.Sms
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -70,9 +76,13 @@ val borrowers by viewModel.borrowers.collectAsState()
 
     val context = androidx.compose.ui.platform.LocalContext.current
 
-    var showEditDialog by remember { mutableStateOf(false) }
+    var showEditDialog    by remember { mutableStateOf(false) }
     var showCollectDialog by remember { mutableStateOf(false) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
+    // C12 Stage 3 (3.2.28) — new action surfaces lifted from LendingCard.
+    var showReminderPicker by remember { mutableStateOf(false) }
+    var showDefaultConfirm by remember { mutableStateOf(false) }
+    var showWriteOffConfirm by remember { mutableStateOf(false) }
 
     if (showEditDialog) {
         AddLendingDialog(
@@ -123,6 +133,192 @@ val borrowers by viewModel.borrowers.collectAsState()
             dismissButton = {
                 TextButton(onClick = { showDeleteConfirm = false }) { Text("Cancel") }
             }
+        )
+    }
+
+    // C12 Stage 3 — Send Reminder picker. Consolidates the previously-separate
+    // WhatsApp and SMS list-row icons into a single channel-picker dialog per
+    // audit §C12 #8. The smart message builder (overdue-aware, includes per-day
+    // interest accrual) was lifted from the old LendingCard.
+    if (showReminderPicker) {
+        val phone = borrower.phone.trim()
+        val intlPhone = remember(phone) {
+            val p = phone.replace(" ", "").replace("-", "")
+            when {
+                p.startsWith("+") -> p
+                p.startsWith("91") && p.length == 12 -> "+$p"
+                p.length == 10 -> "+91$p"
+                else -> p
+            }
+        }
+        val today    = remember { java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd")) }
+        val daysOverdue: Long = if (borrower.due.isNotBlank() && borrower.due < today) {
+            InterestEngine.daysBetween(borrower.due, today)
+        } else 0L
+        val daysSince = InterestEngine.daysBetween(borrower.date, today)
+        val waMsg = buildString {
+            appendLine("Hi ${borrower.name},")
+            appendLine()
+            if (daysOverdue > 0) {
+                appendLine("This is a reminder that your loan repayment is *${daysOverdue} day${if (daysOverdue != 1L) "s" else ""} overdue*.")
+                appendLine()
+                appendLine("*Loan Summary:*")
+                appendLine("• Principal: ${CurrencyFormatter.detail(borrower.amount, currencyCode, locale)}")
+                if (borrower.rate > 0) appendLine("• Interest accrued (${borrower.rate}% ${InterestEngine.label(borrower.type)}): ${CurrencyFormatter.detail(interest, currencyCode, locale)}")
+                if (borrower.paid > 0)  appendLine("• Amount paid so far: ${CurrencyFormatter.detail(borrower.paid, currencyCode, locale)}")
+                appendLine("• *Total outstanding: ${CurrencyFormatter.detail(totalOutstanding, currencyCode, locale)}*")
+                appendLine()
+                append("Please arrange payment at your earliest. ")
+                if (borrower.rate > 0) {
+                    val dailyRate = borrower.amount * borrower.rate / 36500.0
+                    append("Interest is adding ~${CurrencyFormatter.detail(dailyRate, currencyCode, locale)}/day.")
+                }
+            } else {
+                val dueInfo = if (borrower.due.isNotBlank()) {
+                    val daysLeft = InterestEngine.daysBetween(today, borrower.due)
+                    " (due in $daysLeft day${if (daysLeft != 1L) "s" else ""})"
+                } else ""
+                appendLine("This is a friendly reminder about your outstanding loan$dueInfo.")
+                appendLine()
+                appendLine("*Loan Summary:*")
+                appendLine("• Principal: ${CurrencyFormatter.detail(borrower.amount, currencyCode, locale)}")
+                if (borrower.rate > 0) appendLine("• Interest so far ($daysSince days @ ${borrower.rate}%): ${CurrencyFormatter.detail(interest, currencyCode, locale)}")
+                if (borrower.paid > 0)  appendLine("• Paid: ${CurrencyFormatter.detail(borrower.paid, currencyCode, locale)}")
+                appendLine("• *Outstanding: ${CurrencyFormatter.detail(totalOutstanding, currencyCode, locale)}*")
+                appendLine()
+                append("Kindly arrange repayment at your convenience. Thank you!")
+            }
+            appendLine(); append("— Fynlo")
+        }.trimEnd()
+        val smsMsg = buildString {
+            if (daysOverdue > 0) append("Hi ${borrower.name}, your loan of ${CurrencyFormatter.detail(borrower.amount, currencyCode, locale)} is $daysOverdue days overdue. ")
+            else append("Hi ${borrower.name}, loan reminder: ")
+            append("Outstanding: ${CurrencyFormatter.detail(totalOutstanding, currencyCode, locale)}")
+            if (borrower.rate > 0) append(" (incl. interest)")
+            append(". Please repay soon. -Fynlo")
+        }
+
+        AlertDialog(
+            onDismissRequest = { showReminderPicker = false },
+            title = { Text("Send Reminder") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    if (phone.isBlank()) {
+                        Text(
+                            "No phone number on file. Tap Edit (top right) to add one before sending reminders.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    } else {
+                        Text("Send to $phone", style = MaterialTheme.typography.bodyMedium)
+                        Text(
+                            "WhatsApp uses the full message; SMS is trimmed to the essentials.",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                if (phone.isNotBlank()) {
+                    TextButton(onClick = {
+                        val uri = android.net.Uri.parse("https://wa.me/$intlPhone?text=${android.net.Uri.encode(waMsg)}")
+                        try {
+                            context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, uri))
+                        } catch (_: Exception) {
+                            context.startActivity(android.content.Intent.createChooser(
+                                android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                                    type = "text/plain"
+                                    putExtra(android.content.Intent.EXTRA_TEXT, waMsg)
+                                }, "Send Reminder"
+                            ))
+                        }
+                        showReminderPicker = false
+                    }) {
+                        Icon(Icons.Default.Call, null, Modifier.size(16.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text("WhatsApp")
+                    }
+                }
+            },
+            dismissButton = {
+                Row {
+                    if (phone.isNotBlank()) {
+                        TextButton(onClick = {
+                            context.startActivity(
+                                android.content.Intent(android.content.Intent.ACTION_SENDTO,
+                                    android.net.Uri.parse("smsto:$intlPhone")
+                                ).apply { putExtra("sms_body", smsMsg) }
+                            )
+                            showReminderPicker = false
+                        }) {
+                            Icon(Icons.Default.Sms, null, Modifier.size(16.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text("SMS")
+                        }
+                    }
+                    TextButton(onClick = { showReminderPicker = false }) { Text("Close") }
+                }
+            }
+        )
+    }
+
+    // C12 Stage 3 — Mark NPA / Restore confirmation (lifted from LendingScreen).
+    if (showDefaultConfirm) {
+        val isCurrentlyDefaulted = borrower.status == "Defaulted"
+        AlertDialog(
+            onDismissRequest = { showDefaultConfirm = false },
+            title = { Text(if (isCurrentlyDefaulted) "Restore to Performing?" else "Mark as Defaulted?") },
+            text = {
+                Text(
+                    if (isCurrentlyDefaulted)
+                        "This will mark ${borrower.name} as Active again and unfreeze interest accrual from today."
+                    else
+                        "Interest will be frozen at today's value. ${borrower.name} will be marked NPA.",
+                    style = MaterialTheme.typography.bodySmall
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        if (isCurrentlyDefaulted) viewModel.restoreBorrowerToActive(borrower)
+                        else viewModel.markBorrowerDefaulted(borrower)
+                        showDefaultConfirm = false
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (isCurrentlyDefaulted) Emerald500 else app.fynlo.ui.theme.SemanticAmber
+                    )
+                ) { Text(if (isCurrentlyDefaulted) "Restore" else "Mark NPA") }
+            },
+            dismissButton = { TextButton(onClick = { showDefaultConfirm = false }) { Text("Cancel") } }
+        )
+    }
+
+    // C12 Stage 3 — Write Off confirmation (lifted from LendingScreen).
+    if (showWriteOffConfirm) {
+        AlertDialog(
+            onDismissRequest = { showWriteOffConfirm = false },
+            title = { Text("Write Off Bad Debt?") },
+            text = {
+                Text(
+                    "This will create a Bad Debt expense in your P&L and remove ${borrower.name} from receivables. Cannot be undone.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        viewModel.writeOffBorrower(borrower)
+                        showWriteOffConfirm = false
+                        onNavigateBack()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) { Text("Write Off") }
+            },
+            dismissButton = { TextButton(onClick = { showWriteOffConfirm = false }) { Text("Cancel") } }
         )
     }
 
@@ -225,6 +421,63 @@ val borrowers by viewModel.borrowers.collectAsState()
                         Icon(Icons.Default.Payments, null, Modifier.size(18.dp))
                         Spacer(Modifier.width(8.dp))
                         Text("Collect Payment")
+                    }
+                }
+            }
+
+            // C12 Stage 3 — Send Reminder is a primary-tier action for the
+            // borrower workflow (chasing repayment is the most common action
+            // after Collect). Placed right under Collect; opens a channel
+            // picker so the user chooses WhatsApp vs SMS once instead of
+            // both icons cluttering the row.
+            item {
+                OutlinedButton(
+                    onClick = { showReminderPicker = true },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Icon(Icons.Default.NotificationsActive, null, Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Send Reminder")
+                }
+            }
+
+            // C12 Stage 3 — NPA + Write Off were per-card actions in the old
+            // LendingCard. They live here now as secondary buttons under the
+            // primary collect/reminder pair. Write Off is only meaningful while
+            // there's outstanding balance to charge off.
+            item {
+                val isDefaulted = borrower.status == "Defaulted"
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedButton(
+                        onClick = { showDefaultConfirm = true },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = if (isDefaulted) Emerald500 else app.fynlo.ui.theme.SemanticAmber
+                        )
+                    ) {
+                        Icon(
+                            if (isDefaulted) Icons.Default.Block else Icons.Default.Warning,
+                            null, Modifier.size(16.dp)
+                        )
+                        Spacer(Modifier.width(6.dp))
+                        Text(if (isDefaulted) "Restore Active" else "Mark NPA",
+                            style = MaterialTheme.typography.labelMedium)
+                    }
+                    if (totalOutstanding > 0) {
+                        OutlinedButton(
+                            onClick = { showWriteOffConfirm = true },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                contentColor = MaterialTheme.colorScheme.error
+                            )
+                        ) {
+                            Icon(Icons.Default.MoneyOff, null, Modifier.size(16.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text("Write Off", style = MaterialTheme.typography.labelMedium)
+                        }
                     }
                 }
             }

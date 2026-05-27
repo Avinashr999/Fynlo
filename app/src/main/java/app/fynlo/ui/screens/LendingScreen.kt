@@ -1,4 +1,4 @@
-package app.fynlo.ui.screens
+﻿package app.fynlo.ui.screens
 
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.clickable
@@ -39,6 +39,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.Notes
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.foundation.text.KeyboardOptions
@@ -63,18 +64,16 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
     LaunchedEffect(Unit) { app.fynlo.data.Analytics.screenView("Lending") }
     val haptic        = LocalHapticFeedback.current
     val borrowers     by viewModel.borrowers.collectAsState()
-    val accounts      by viewModel.accounts.collectAsState()
-    val people        by viewModel.people.collectAsState()  // for phone lookup
     val currentProject by viewModel.currentProject.collectAsState()
     val currencyCode = currentProject?.currency ?: "INR"
-    val currencySymbol = app.fynlo.logic.CurrencyUtils.symbolFor(currencyCode)
     var showEmiCalc by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
     var showAddDialog by remember { mutableStateOf(false) }
-    var editingBorrower by remember { mutableStateOf<Borrower?>(null) }
-    var collectingForBorrower by remember { mutableStateOf<Borrower?>(null) }
-    var defaultingBorrower by remember { mutableStateOf<Borrower?>(null) }
-    var writeOffBorrower by remember { mutableStateOf<Borrower?>(null) }
+
+    // C12 Stage 3 (3.2.28) — Collect / Mark-as-Defaulted / Write-Off dialogs
+    // and their state vars are gone from this screen per audit §C12 #6/#7;
+    // they're now hosted in CustomerDetailScreen as proper buttons. Only the
+    // Add flow (FAB → AddLendingDialog) remains on the list screen.
 
     // C12 Stage 2 (3.2.27) — replaced 3 filter UIs (Interest/Hand TabRow + sort
     // dropdown + collapsible Settled section) with a single Active/Overdue/Closed
@@ -119,92 +118,16 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
     }
 
     if (showEmiCalc) { EmiCalculatorDialog(onDismiss = { showEmiCalc = false }) }
-    if (showAddDialog || editingBorrower != null) {
+    if (showAddDialog) {
         AddLendingDialog(
             viewModel = viewModel,
-            onDismiss = { editingBorrower = null; showAddDialog = false },
+            onDismiss = { showAddDialog = false },
             onConfirm = { borrower, source ->
-                if (editingBorrower != null) viewModel.updateBorrower(borrower)
-                else viewModel.addBorrowerWithSource(borrower, source)
-                haptic.performHapticFeedback(HapticFeedbackType.LongPress); editingBorrower = null; showAddDialog = false
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                viewModel.addBorrowerWithSource(borrower, source)
+                showAddDialog = false
             },
-            initialBorrower = editingBorrower
-        )
-    }
-    if (collectingForBorrower != null) {
-        CollectPaymentDialog(
-            borrower  = collectingForBorrower!!,
-            accounts  = accounts,
-            onDismiss = { collectingForBorrower = null },
-            onConfirm = { payment, dest ->
-                haptic.performHapticFeedback(HapticFeedbackType.LongPress); viewModel.collectLoanPayment(payment, dest)
-                collectingForBorrower = null
-            }
-        )
-    }
-
-    // Mark as Defaulted / Restore to Active dialog (same dialog, toggles based on current status)
-    if (defaultingBorrower != null) {
-        val b = defaultingBorrower!!
-        val isCurrentlyDefaulted = b.status == "Defaulted"
-        AlertDialog(
-            onDismissRequest = { defaultingBorrower = null },
-            title = { Text(if (isCurrentlyDefaulted) "Restore to Performing?" else "Mark as Defaulted?") },
-            text  = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("${b.name}  •  ${CurrencyFormatter.detail(b.amount, currencyCode, java.util.Locale.getDefault())}")
-                    Text(
-                        if (isCurrentlyDefaulted)
-                            "This will mark the borrower as Active again and unfreeze interest accrual from today."
-                        else
-                            "Interest will be frozen at today's value. The borrower will be marked NPA.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        if (isCurrentlyDefaulted) viewModel.restoreBorrowerToActive(b)
-                        else viewModel.markBorrowerDefaulted(b)
-                        defaultingBorrower = null
-                    },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = if (isCurrentlyDefaulted) Emerald500 else SemanticAmber)
-                ) {
-                    Text(if (isCurrentlyDefaulted) "Restore to Active" else "Mark as NPA")
-                }
-            },
-            dismissButton = { TextButton(onClick = { defaultingBorrower = null }) { Text("Cancel") } }
-        )
-    }
-
-    // Write-off confirmation
-    if (writeOffBorrower != null) {
-        val b = writeOffBorrower!!
-        AlertDialog(
-            onDismissRequest = { writeOffBorrower = null },
-            title = { Text("Write Off Bad Debt?") },
-            text  = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("${b.name}  •  ${CurrencyFormatter.detail(b.amount, currencyCode, java.util.Locale.getDefault())}")
-                    Text("This will create a Bad Debt expense in your P&L and remove the borrower from receivables. Cannot be undone.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.error)
-                }
-            },
-            confirmButton = {
-                Button(onClick = {
-                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                    viewModel.writeOffBorrower(b)
-                    writeOffBorrower = null
-                }, colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)) {
-                    Text("Write Off")
-                }
-            },
-            dismissButton = { TextButton(onClick = { writeOffBorrower = null }) { Text("Cancel") } }
+            initialBorrower = null
         )
     }
 
@@ -314,17 +237,10 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
                     if (idx > 0) HorizontalDivider(thickness = 0.5.dp,
                         color = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f))
                     LendingCard(
-                        borrower  = borrower,
-                        people    = people,
-                        currencySymbol = currencySymbol,
+                        borrower     = borrower,
                         currencyCode = currencyCode,
-                        isOverdue = borrower.due.isNotBlank() && borrower.due < today,
-                        onDelete  = { viewModel.deleteBorrower(borrower) },
-                        onEdit    = { editingBorrower = borrower },
-                        onCollect = { collectingForBorrower = borrower },
-                        onClick   = { onNavigateToDetail(borrower.id) },
-                        onDefault = { defaultingBorrower = borrower },
-                        onWriteOff = { writeOffBorrower = borrower }
+                        isOverdue    = borrower.due.isNotBlank() && borrower.due < today && borrower.paid < borrower.amount,
+                        onClick      = { onNavigateToDetail(borrower.id) }
                     )
                 }
             }
@@ -340,386 +256,99 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
         }
 }
 @Composable
-fun LendingCard(borrower: Borrower, people: List<app.fynlo.data.model.Person> = emptyList(), currencySymbol: String = "₹", currencyCode: String = "INR", isOverdue: Boolean = false, onDelete: () -> Unit, onEdit: () -> Unit, onCollect: () -> Unit, onClick: () -> Unit, onDefault: () -> Unit = {}, onWriteOff: () -> Unit = {}) {
-    var showDeleteConfirm by remember { mutableStateOf(false) }
-    var menuOpen by remember { mutableStateOf(false) }
-    if (showDeleteConfirm) {
-        AlertDialog(
-            onDismissRequest = { showDeleteConfirm = false },
-            title = { Text("Delete loan?") },
-            text  = { Text("Delete the loan to \"${borrower.name}\" and its payment history? This also reverses the linked account entries and cannot be undone.") },
-            confirmButton = {
-                TextButton(onClick = { onDelete(); showDeleteConfirm = false },
-                    colors = ButtonDefaults.textButtonColors(contentColor = SemanticRed)) { Text("Delete") }
-            },
-            dismissButton = { TextButton(onClick = { showDeleteConfirm = false }) { Text("Cancel") } }
+fun LendingCard(
+    borrower: app.fynlo.data.model.Borrower,
+    currencyCode: String = "INR",
+    isOverdue: Boolean = false,
+    onClick: () -> Unit,
+) {
+    // C12 Stage 3 (3.2.28) — rebuilt to the audit §C12 #6 spec: icon + name +
+    // amount + chevron. One row tap navigates to CustomerDetailScreen, which
+    // owns every per-loan action as a proper labelled button (Collect / Send
+    // Reminder / Mark NPA / Write Off / Edit / Delete). The previous version
+    // packed 6+ inline action callbacks plus a 70-line WhatsApp message
+    // builder; all of that lifted to the detail screen so the list stays
+    // scannable. Matches DebtCard visually per audit #5.
+    val locale = java.util.Locale.getDefault()
+    val interest = app.fynlo.logic.InterestEngine.calcIntAccrued(
+        amount = borrower.amount, rate = borrower.rate,
+        loanDate = borrower.date, intType = borrower.type,
+        dueDate = borrower.due, totalPaid = borrower.paid
+    )
+    val outstanding = app.fynlo.logic.InterestEngine.calcOutstanding(borrower.amount, interest, borrower.paid)
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() }
+            .padding(vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        androidx.compose.foundation.layout.Box(
+            modifier = Modifier
+                .size(40.dp)
+                .clip(androidx.compose.foundation.shape.CircleShape)
+                .background((if (isOverdue) SemanticRed else Emerald500).copy(alpha = 0.15f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                Icons.Default.Person,
+                contentDescription = null,
+                tint = if (isOverdue) SemanticRed else Emerald500,
+                modifier = Modifier.size(20.dp)
+            )
+        }
+        Column(Modifier.weight(1f)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Text(
+                    borrower.name,
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold)
+                )
+                if (isOverdue) {
+                    Surface(color = SemanticRed.copy(alpha = 0.18f), shape = RoundedCornerShape(4.dp)) {
+                        Text(
+                            "OVERDUE",
+                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                            color = SemanticRed,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        )
+                    }
+                }
+            }
+            val sub = if (borrower.due.isNotBlank()) "Due ${DateUtils.formatToDisplay(borrower.due)}"
+                      else "Lent ${DateUtils.formatToDisplay(borrower.date)}"
+            Text(
+                sub,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        Column(horizontalAlignment = Alignment.End) {
+            Text(
+                CurrencyFormatter.detail(outstanding, currencyCode, locale),
+                style = MaterialTheme.typography.titleMedium.copy(
+                    fontWeight = FontWeight.Bold,
+                    color = if (isOverdue) SemanticRed else MaterialTheme.colorScheme.onSurface
+                )
+            )
+            Text(
+                "Outstanding",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        Icon(
+            Icons.AutoMirrored.Filled.KeyboardArrowRight,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+            modifier = Modifier.size(20.dp)
         )
     }
-    // Pulsing animation for overdue
-    val infiniteTransition = rememberInfiniteTransition(label = "pulse")
-    val pulseAlpha by infiniteTransition.animateFloat(
-        initialValue = 1f, targetValue = 0.3f, label = "pulseAlpha",
-        animationSpec = infiniteRepeatable(tween(800), RepeatMode.Reverse)
-    )
-    // Phone: use borrower.phone first, fall back to matching person in contact book
-    val phone = borrower.phone.ifBlank {
-        people.find { it.name.equals(borrower.name, ignoreCase = true) }?.phone ?: ""
-    }
-    // Normalize to international format
-    val intlPhone = remember(phone) {
-        val p = phone.trim().replace(" ", "").replace("-", "")
-        when {
-            p.startsWith("+") -> p          // already has country code
-            p.startsWith("91") && p.length == 12 -> "+$p"
-            p.length == 10 -> "+91$p"       // default to India if 10 digits
-            else -> p
-        }
-    }
-    val interest = InterestEngine.calcIntAccrued(
-        amount = borrower.amount,
-        rate = borrower.rate,
-        loanDate = borrower.date,
-        intType = borrower.type,
-        dueDate = borrower.due,
-        totalPaid = borrower.paid
-    )
-    val outs     = InterestEngine.calcOutstanding(borrower.amount, interest, borrower.paid)
-    val daysElapsed = InterestEngine.daysBetween(borrower.date, java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd")))
-    val perDayInterest = if (daysElapsed > 0) interest / daysElapsed else 0.0
-    val locale   = Locale.getDefault()
-    // For "Both" type — show SI and CI portions separately
-    val bothPortions = if (borrower.type == "Both") InterestEngine.calcBothPortions(
-        borrower.amount, borrower.rate, borrower.date, borrower.due, borrower.paid
-    ) else null
-    
-    Column(modifier = Modifier.fillMaxWidth().clickable { onClick() }.padding(vertical = 14.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Icon(Icons.Default.Person, null,
-                        tint = if (isOverdue) SemanticRed else MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(20.dp))
-                    Text(borrower.name,
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
-                    if (isOverdue) {
-                        Surface(
-                            color = SemanticRed.copy(alpha = pulseAlpha * 0.25f),
-                            shape = RoundedCornerShape(4.dp)
-                        ) {
-                            Text("OVERDUE",
-                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                                color = SemanticRed,
-                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
-                        }
-                    }
-                }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    val context = LocalContext.current
-                    if (phone.isNotBlank()) {
-                        val outstanding = InterestEngine.calcOutstanding(borrower.amount, interest, borrower.paid)
-                        val today       = java.time.LocalDate.now()
-                        val todayStr    = today.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd"))
-
-                        // ── Days overdue (only if due date passed) ──────────────────
-                        val daysOverdue: Long = if (borrower.due.isNotBlank() && borrower.due < todayStr) {
-                            InterestEngine.daysBetween(borrower.due, todayStr)
-                        } else 0L
-
-                        // ── Days since loan started ─────────────────────────────────
-                        val daysSince = InterestEngine.daysBetween(borrower.date, todayStr)
-
-                        // ── Build smart WhatsApp message ────────────────────────────
-                        val waMsg = buildString {
-                            appendLine("Hi ${borrower.name},")
-                            appendLine()
-
-                            if (daysOverdue > 0) {
-                                // Overdue path — more urgent, shows exact days late
-                                appendLine("This is a reminder that your loan repayment is *${daysOverdue} day${if (daysOverdue != 1L) "s" else ""} overdue*.")
-                                appendLine()
-                                appendLine("*Loan Summary:*")
-                                appendLine("• Principal: ${CurrencyFormatter.detail(borrower.amount, currencyCode, locale)}")
-                                if (borrower.rate > 0) {
-                                    appendLine("• Interest accrued (${borrower.rate}% ${app.fynlo.logic.InterestEngine.label(borrower.type)}): ${CurrencyFormatter.detail(interest, currencyCode, locale)}")
-                                }
-                                if (borrower.paid > 0) {
-                                    appendLine("• Amount paid so far: ${CurrencyFormatter.detail(borrower.paid, currencyCode, locale)}")
-                                }
-                                appendLine("• *Total outstanding: ${CurrencyFormatter.detail(outstanding, currencyCode, locale)}*")
-                                appendLine()
-                                append("Please arrange payment at your earliest. ")
-                                if (borrower.rate > 0) {
-                                    val dailyRate = borrower.amount * borrower.rate / 36500.0
-                                    append("Interest is adding ~${CurrencyFormatter.detail(dailyRate, currencyCode, locale)}/day.")
-                                }
-                            } else {
-                                // Not overdue — friendly reminder
-                                val dueInfo = if (borrower.due.isNotBlank()) {
-                                    val daysLeft = InterestEngine.daysBetween(todayStr, borrower.due)
-                                    " (due in ${daysLeft} day${if (daysLeft != 1L) "s" else ""})"
-                                } else ""
-                                appendLine("This is a friendly reminder about your outstanding loan${dueInfo}.")
-                                appendLine()
-                                appendLine("*Loan Summary:*")
-                                appendLine("• Principal: ${CurrencyFormatter.detail(borrower.amount, currencyCode, locale)}")
-                                if (borrower.rate > 0) {
-                                    appendLine("• Interest so far (${daysSince} days @ ${borrower.rate}%): ${CurrencyFormatter.detail(interest, currencyCode, locale)}")
-                                }
-                                if (borrower.paid > 0) {
-                                    appendLine("• Paid: ${CurrencyFormatter.detail(borrower.paid, currencyCode, locale)}")
-                                }
-                                appendLine("• *Outstanding: ${CurrencyFormatter.detail(outstanding, currencyCode, locale)}*")
-                                appendLine()
-                                append("Kindly arrange repayment at your convenience. Thank you!")
-                            }
-                            appendLine()
-                            append("— Fynlo")
-                        }.trimEnd()
-
-                        // SMS is shorter — just the essentials
-                        val smsMsg = buildString {
-                            if (daysOverdue > 0) {
-                                append("Hi ${borrower.name}, your loan of ${CurrencyFormatter.detail(borrower.amount, currencyCode, locale)} is ${daysOverdue} days overdue. ")
-                            } else {
-                                append("Hi ${borrower.name}, loan reminder: ")
-                            }
-                            append("Outstanding: ${CurrencyFormatter.detail(outstanding, currencyCode, locale)}")
-                            if (borrower.rate > 0) append(" (incl. interest)")
-                            append(". Please repay soon. -Fynlo")
-                        }
-
-                        IconButton(onClick = {
-                            val uri = android.net.Uri.parse("https://wa.me/$intlPhone?text=${android.net.Uri.encode(waMsg)}")
-                            try { context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, uri)) }
-                            catch (e: Exception) {
-                                context.startActivity(android.content.Intent.createChooser(
-                                    android.content.Intent(android.content.Intent.ACTION_SEND).apply {
-                                        type = "text/plain"; putExtra(android.content.Intent.EXTRA_TEXT, waMsg)
-                                    }, "Send Reminder"
-                                ))
-                            }
-                        }) {
-                            // WhatsApp branded button — green bubble with phone icon
-                            androidx.compose.foundation.layout.Box(
-                                modifier = Modifier.size(22.dp)
-                                    .background(Color(0xFF25D366), androidx.compose.foundation.shape.RoundedCornerShape(6.dp)),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(Icons.Default.Call, null, Modifier.size(13.dp), tint = Color.White)
-                            }
-                        }
-                        IconButton(onClick = {
-                            context.startActivity(
-                                android.content.Intent(android.content.Intent.ACTION_SENDTO,
-                                    android.net.Uri.parse("smsto:$intlPhone")
-                                ).apply { putExtra("sms_body", smsMsg) }
-                            )
-                        }) {
-                            Icon(Icons.Default.Sms, "SMS", Modifier.size(22.dp), tint = SemanticBlue)
-                        }
-                    } else {
-                        // No phone — show clear hint
-                        TextButton(
-                            onClick = onEdit,
-                            contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp)
-                        ) {
-                            Icon(Icons.Default.PhoneEnabled, null, Modifier.size(14.dp),
-                                tint = MaterialTheme.colorScheme.primary)
-                            Spacer(Modifier.width(4.dp))
-                            Text("Add Phone",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.primary)
-                        }
-                    }
-                    IconButton(onClick = {
-                        // Share loan summary as text
-                        val outstanding = InterestEngine.calcOutstanding(borrower.amount, interest, borrower.paid)
-                        val summary = buildString {
-                            appendLine("=== Loan Summary ===")
-                            appendLine("Borrower : ${borrower.name}")
-                            appendLine("Principal: ${CurrencyFormatter.detail(borrower.amount, currencyCode, locale)}")
-                            appendLine("Interest : ${borrower.rate}% (${borrower.type})")
-                            appendLine("Lent On  : ${borrower.date}")
-                            if (borrower.due.isNotBlank()) appendLine("Due Date : ${borrower.due}")
-                            appendLine("Paid     : ${CurrencyFormatter.detail(borrower.paid, currencyCode, locale)}")
-                            appendLine("Interest : ${CurrencyFormatter.detail(interest, currencyCode, locale)}")
-                            appendLine("Outstanding: ${CurrencyFormatter.detail(outstanding, currencyCode, locale)}")
-                            appendLine()
-                            appendLine("Generated by Fynlo App")
-                        }
-                        context.startActivity(android.content.Intent.createChooser(
-                            android.content.Intent(android.content.Intent.ACTION_SEND).apply {
-                                type = "text/plain"
-                                putExtra(android.content.Intent.EXTRA_SUBJECT, "Loan Summary - ${borrower.name}")
-                                putExtra(android.content.Intent.EXTRA_TEXT, summary)
-                            }, "Share Loan Summary"
-                        ))
-                    }) {
-                        Icon(Icons.Default.Sms, "SMS", Modifier.size(16.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                    Box {
-                        IconButton(onClick = { menuOpen = true }, Modifier.size(32.dp)) {
-                            Icon(Icons.Default.MoreVert, "More", Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                        DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                            DropdownMenuItem(text = { Text("Edit") }, onClick = { menuOpen = false; onEdit() })
-                            DropdownMenuItem(text = { Text("Delete", color = SemanticRed) }, onClick = { menuOpen = false; showDeleteConfirm = true })
-                        }
-                    }
-
-
-                }
-            }
-            
-            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-            
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Column {
-                    Text("Principal", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text(CurrencyFormatter.detail(borrower.amount, currencyCode, locale), style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold))
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("Lent: ${DateUtils.formatToDisplay(borrower.date)}", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
-                        if (borrower.sourceAccount.isNotBlank()) {
-                            Text("  •  ${borrower.sourceAccount}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
-                        }
-                    }
-                    
-                    if (borrower.due.isNotEmpty()) {
-                        Spacer(Modifier.height(4.dp))
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.Event, contentDescription = null, modifier = Modifier.size(12.dp), tint = MaterialTheme.colorScheme.error)
-                            Spacer(Modifier.width(4.dp))
-                            Text("DUE: ${DateUtils.formatToDisplay(borrower.due)}", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold), color = MaterialTheme.colorScheme.error)
-                        }
-                    }
-                }
-                Column(horizontalAlignment = Alignment.End) {
-                    Text("Interest (${borrower.rate}%)", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text(CurrencyFormatter.detail(interest, currencyCode, locale), style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold, color = Emerald500))
-                    Text(borrower.type, style = MaterialTheme.typography.labelSmall, color = Color.Gray)
-                }
-            }
-
-            // For "Both" type show SI + CI split
-            if (bothPortions != null) {
-                Spacer(Modifier.height(6.dp))
-                Surface(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f), shape = RoundedCornerShape(8.dp)) {
-                    Column(Modifier.fillMaxWidth().padding(10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
-                            Text("➔ SI (until due date)", style = MaterialTheme.typography.labelSmall, color = Emerald500)
-                            Text(CurrencyFormatter.detail(bothPortions.first, currencyCode, locale), style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold), color = Emerald500)
-                        }
-                        Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
-                            Text("➔ CI (after due date)", style = MaterialTheme.typography.labelSmall, color = SemanticRed)
-                            Text(CurrencyFormatter.detail(bothPortions.second, currencyCode, locale), style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold), color = SemanticRed)
-                        }
-                    }
-                }
-            }
-
-            // Days elapsed + per day interest
-            Spacer(Modifier.height(10.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Column {
-                    Text("Days Elapsed", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text("$daysElapsed days", style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold))
-                }
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("Per Day Interest", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text(CurrencyFormatter.detail(perDayInterest, currencyCode, locale), style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold), color = Emerald500)
-                }
-                Column(horizontalAlignment = Alignment.End) {
-                    Text("Paid So Far", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text(CurrencyFormatter.detail(borrower.paid, currencyCode, locale), style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold), color = MaterialTheme.colorScheme.primary)
-                }
-            }
-            
-            Spacer(Modifier.height(12.dp))
-            
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 4.dp)
-            ) {
-                Column {
-                    Text("Total Outstanding", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text(
-                        CurrencyFormatter.detail(outs, currencyCode, locale),
-                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.error)
-                    )
-                }
-            }
-
-            // Collect Payment button + NPA toggle row
-            Spacer(Modifier.height(12.dp))
-            Button(
-                onClick = onCollect,
-                modifier = Modifier.fillMaxWidth().height(40.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Emerald500),
-                shape = RoundedCornerShape(10.dp)
-            ) {
-                Icon(Icons.Default.MonetizationOn, null, Modifier.size(16.dp))
-                Spacer(Modifier.width(6.dp))
-                Text("Collect Payment", style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold))
-            }
-            Spacer(Modifier.height(4.dp))
-            // NPA toggle button
-            if (borrower.status == "Defaulted") {
-                OutlinedButton(
-                    onClick = onDefault,
-                    modifier = Modifier.fillMaxWidth().height(32.dp),
-                    shape = RoundedCornerShape(8.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Emerald500),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, Emerald500.copy(alpha = 0.5f)),
-                    contentPadding = PaddingValues(horizontal = 8.dp)
-                ) {
-                    Icon(Icons.Default.CheckCircle, null, Modifier.size(14.dp))
-                    Spacer(Modifier.width(4.dp))
-                    Text("NPA — Tap to Restore Active", style = MaterialTheme.typography.labelSmall)
-                }
-            } else {
-                TextButton(
-                    onClick = onDefault,
-                    modifier = Modifier.fillMaxWidth().height(32.dp),
-                    contentPadding = PaddingValues(horizontal = 8.dp)
-                ) {
-                    Icon(Icons.Default.Warning, null, Modifier.size(14.dp), tint = SemanticAmber)
-                    Spacer(Modifier.width(4.dp))
-                    Text("Mark as Defaulted / NPA",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = SemanticAmber)
-                }
-            }
-
-            if (borrower.notes.isNotEmpty()) {
-                Spacer(Modifier.height(10.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        Icons.AutoMirrored.Filled.Notes,
-                        contentDescription = null,
-                        modifier = Modifier.size(14.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        borrower.notes,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-        }
-    }
+}
 
 @Composable
 fun EmptyLendingState(onAdd: () -> Unit = {}) {

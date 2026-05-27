@@ -1,6 +1,7 @@
 package app.fynlo.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.shape.CircleShape
@@ -10,6 +11,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.Notes
 import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.Delete
@@ -42,11 +44,14 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DebtScreen(viewModel: FinanceViewModel, showHeader: Boolean = true) {
+fun DebtScreen(
+    viewModel: FinanceViewModel,
+    onNavigateToDetail: (String) -> Unit = {},
+    showHeader: Boolean = true
+) {
     LaunchedEffect(Unit) { app.fynlo.data.Analytics.screenView("Debts") }
         val haptic = LocalHapticFeedback.current
 val debts by viewModel.debts.collectAsState()
-    val accounts by viewModel.accounts.collectAsState()
     val currentProject by viewModel.currentProject.collectAsState()
     val currencyCode = currentProject?.currency ?: "INR"
     val locale = Locale.getDefault()
@@ -74,36 +79,22 @@ val debts by viewModel.debts.collectAsState()
         "Closed"  -> closedDebts
         else      -> activeDebts
     }
-    var editingDebt   by remember { mutableStateOf<Debt?>(null) }
-    var payingDebt    by remember { mutableStateOf<Debt?>(null) }
     var showAddDialog by remember { mutableStateOf(false) }
 
-    if (showAddDialog || editingDebt != null) {
+    // C12 Stage 3 (3.2.28) — Edit + Pay flows moved to DebtDetailScreen per
+    // audit §C12 #6/#7 (no per-row action icons). Only the Add flow stays
+    // here; tapping a row navigates to DebtDetailScreen which hosts all
+    // per-debt actions as proper buttons.
+    if (showAddDialog) {
         AddDebtDialog(
             viewModel = viewModel,
-            onDismiss = { editingDebt = null; showAddDialog = false },
+            onDismiss = { showAddDialog = false },
             onConfirm = { debt, dest ->
-                if (editingDebt?.id?.isNotBlank() == true) {
-                    viewModel.updateDebt(debt)
-                } else {
-                    haptic.performHapticFeedback(HapticFeedbackType.LongPress); viewModel.addDebtWithDestination(debt, dest)
-                }
-                editingDebt = null
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                viewModel.addDebtWithDestination(debt, dest)
                 showAddDialog = false
             },
-            initialDebt = editingDebt
-        )
-    }
-
-    if (payingDebt != null) {
-        PayDebtDialog(
-            debt = payingDebt!!,
-            accounts = accounts,
-            onDismiss = { payingDebt = null },
-            onConfirm = { payment: DebtPayment, source: String ->
-                haptic.performHapticFeedback(HapticFeedbackType.LongPress); viewModel.payDebt(payment, source)
-                payingDebt = null
-            }
+            initialDebt = null
         )
     }
 
@@ -216,9 +207,7 @@ val debts by viewModel.debts.collectAsState()
                     DebtCard(
                         debt = debt,
                         currencyCode = currencyCode,
-                        onEdit = { editingDebt = debt },
-                        onDelete = { viewModel.deleteDebt(debt) },
-                        onPay = { payingDebt = debt }
+                        onClick = { onNavigateToDetail(debt.id) }
                     )
                     if (index < filteredDebts.lastIndex) {
                         HorizontalDivider(thickness = 0.5.dp,
@@ -232,156 +221,93 @@ val debts by viewModel.debts.collectAsState()
 }
 
 }
+/**
+ * C12 Stage 3 (3.2.28) — DebtCard is now a clickable row per audit §C12 #6:
+ * "icon + name + amount + chevron. One row tap → detail screen. NO action
+ * icons in row." All per-debt actions (Pay / Edit / Delete) moved to
+ * [DebtDetailScreen]. Matches [LendingCard] visually per audit #5 ("standardize
+ * Lent vs Owed rows to identical visual structure").
+ */
 @Composable
-fun DebtCard(debt: Debt, currencyCode: String = "INR", onEdit: () -> Unit, onDelete: () -> Unit, onPay: () -> Unit) {
-    var showDeleteConfirm by remember { mutableStateOf(false) }
-    var menuOpen by remember { mutableStateOf(false) }
-    if (showDeleteConfirm) {
-        AlertDialog(
-            onDismissRequest = { showDeleteConfirm = false },
-            title = { Text("Delete debt?") },
-            text  = { Text("Delete \"${debt.name}\" and its payment history? This also reverses the linked account entries and cannot be undone.") },
-            confirmButton = {
-                TextButton(onClick = { onDelete(); showDeleteConfirm = false },
-                    colors = ButtonDefaults.textButtonColors(contentColor = SemanticRed)) { Text("Delete") }
-            },
-            dismissButton = { TextButton(onClick = { showDeleteConfirm = false }) { Text("Cancel") } }
+fun DebtCard(
+    debt: Debt,
+    currencyCode: String = "INR",
+    onClick: () -> Unit,
+) {
+    val locale = Locale.getDefault()
+    val today  = remember { java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd")) }
+    val isOverdue = debt.due.isNotBlank() && debt.due < today && debt.paid < debt.amount
+
+    val interest = InterestEngine.calcIntAccrued(
+        amount = debt.amount, rate = debt.rate,
+        loanDate = debt.date, intType = debt.intType,
+        dueDate = debt.due, totalPaid = debt.paid
+    )
+    val outstanding = InterestEngine.calcOutstanding(debt.amount, interest, debt.paid)
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() }
+            .padding(vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Box(
+            Modifier.size(40.dp).clip(CircleShape).background(SemanticRed.copy(alpha = 0.15f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(Icons.Default.CreditCard, null, tint = SemanticRed, modifier = Modifier.size(20.dp))
+        }
+        Column(Modifier.weight(1f)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Text(
+                    debt.name,
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold)
+                )
+                if (isOverdue) {
+                    Surface(color = SemanticRed.copy(alpha = 0.18f), shape = RoundedCornerShape(4.dp)) {
+                        Text(
+                            "OVERDUE",
+                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                            color = SemanticRed,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        )
+                    }
+                }
+            }
+            val sub = if (debt.due.isNotBlank()) "Due ${DateUtils.formatToDisplay(debt.due)}"
+                      else "Borrowed ${DateUtils.formatToDisplay(debt.date)}"
+            Text(
+                sub,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        Column(horizontalAlignment = Alignment.End) {
+            Text(
+                CurrencyFormatter.detail(outstanding, currencyCode, locale),
+                style = MaterialTheme.typography.titleMedium.copy(
+                    fontWeight = FontWeight.Bold,
+                    color = if (isOverdue) SemanticRed else MaterialTheme.colorScheme.onSurface
+                )
+            )
+            Text(
+                "Outstanding",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        Icon(
+            Icons.AutoMirrored.Filled.KeyboardArrowRight,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+            modifier = Modifier.size(20.dp)
         )
     }
-    val locale = Locale.getDefault()
-    val today  = java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd"))
-    val interestAccrued = InterestEngine.calcIntAccrued(
-        amount    = debt.amount,
-        rate      = debt.rate,
-        loanDate  = debt.date,
-        intType   = debt.intType,
-        dueDate   = debt.due,
-        totalPaid = debt.paid
-    )
-    val daysElapsed    = InterestEngine.daysBetween(debt.date, today)
-    val perDayInterest = if (daysElapsed > 0) interestAccrued / daysElapsed else 0.0
-    val bothPortions   = if (debt.intType == "Both") InterestEngine.calcBothPortions(
-        debt.amount, debt.rate, debt.date, debt.due, debt.paid
-    ) else null
-    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        Modifier.size(36.dp).clip(CircleShape).background(SemanticRed.copy(alpha = 0.15f)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(Icons.Default.CreditCard, null, tint = SemanticRed, modifier = Modifier.size(18.dp))
-                    }
-                    Spacer(Modifier.width(10.dp))
-                    Text(
-                        debt.name,
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
-                    )
-                }
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Badge(
-                        containerColor = if (debt.status == "Active") Emerald500.copy(alpha = 0.12f) else SemanticRed.copy(alpha = 0.1f),
-                        contentColor   = if (debt.status == "Active") Emerald500 else SemanticRed
-                    ) {
-                        Text(debt.status, style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium))
-                    }
-                    Box {
-                        IconButton(onClick = { menuOpen = true }, Modifier.size(32.dp)) {
-                            Icon(Icons.Default.MoreVert, "More", Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                        DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                            DropdownMenuItem(text = { Text("Edit") }, onClick = { menuOpen = false; onEdit() })
-                            DropdownMenuItem(text = { Text("Delete", color = SemanticRed) }, onClick = { menuOpen = false; showDeleteConfirm = true })
-                        }
-                    }
-                }
-            }
-            
-            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-            
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Column {
-                    Text("Borrowed Amount", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text(CurrencyFormatter.detail(debt.amount, currencyCode, locale), style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold))
-                    Text("Borrowed: ${DateUtils.formatToDisplay(debt.date)}", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
-                    if (debt.due.isNotBlank()) {
-                        val isOverdue = debt.due < java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd"))
-                        Text("Due: ${DateUtils.formatToDisplay(debt.due)}",
-                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium),
-                            color = if (isOverdue) SemanticRed else Color.Gray)
-                    }
-                }
-                Column(horizontalAlignment = Alignment.End) {
-                    Text("Interest (${debt.rate}%)", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text(CurrencyFormatter.detail(interestAccrued, currencyCode, locale), style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold, color = SemanticRed))
-                    Text("Type: ${debt.intType}", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
-                }
-            }
-
-            // For "Both" type show SI + CI split
-            if (bothPortions != null) {
-                Spacer(Modifier.height(10.dp))
-                Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
-                        Text("➔ SI (until due date)", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text(CurrencyFormatter.detail(bothPortions.first, currencyCode, locale), style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold))
-                    }
-                    Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
-                        Text("➔ CI (after due date)", style = MaterialTheme.typography.labelSmall, color = SemanticRed)
-                        Text(CurrencyFormatter.detail(bothPortions.second, currencyCode, locale), style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold), color = SemanticRed)
-                    }
-                }
-            }
-
-            // Days elapsed strip
-            Spacer(Modifier.height(12.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Column(horizontalAlignment = Alignment.Start) {
-                    Text("Days Elapsed", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text("$daysElapsed days", style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold))
-                }
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("Per Day Interest", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text(CurrencyFormatter.detail(perDayInterest, currencyCode, locale), style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold), color = SemanticRed)
-                }
-                Column(horizontalAlignment = Alignment.End) {
-                    Text("Paid So Far", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text(CurrencyFormatter.detail(debt.paid, currencyCode, locale), style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold), color = MaterialTheme.colorScheme.primary)
-                }
-            }
-
-            // Pay button — full width at bottom
-            Spacer(Modifier.height(12.dp))
-            Button(
-                onClick = onPay,
-                modifier = Modifier.fillMaxWidth().height(40.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Emerald500),
-                shape = RoundedCornerShape(10.dp)
-            ) {
-                Icon(Icons.Default.Payment, null, Modifier.size(16.dp))
-                Spacer(Modifier.width(6.dp))
-                Text("Pay Instalment", style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold))
-            }
-
-            if (debt.notes.isNotEmpty()) {
-                Spacer(Modifier.height(10.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(Icons.AutoMirrored.Filled.Notes, contentDescription = null, modifier = Modifier.size(14.dp), tint = Color.Gray)
-                    Spacer(Modifier.width(8.dp))
-                    Text(debt.notes, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
-                }
-            }
-        }
 }
 
 

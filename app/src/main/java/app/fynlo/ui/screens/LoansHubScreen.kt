@@ -49,6 +49,7 @@ import app.fynlo.ui.theme.PremiumScreenHeader
 fun LoansHubScreen(
     viewModel: FinanceViewModel,
     onNavigateToDetail: (String) -> Unit = {},
+    onNavigateToDebtDetail: (String) -> Unit = {},
     onNavigateToCalendar: () -> Unit = {},
     initialTab: Int = 0
 ) {
@@ -149,7 +150,11 @@ fun LoansHubScreen(
                     showHeader = false
                 )
             } else {
-                DebtScreen(viewModel = viewModel, showHeader = false)
+                DebtScreen(
+                    viewModel = viewModel,
+                    onNavigateToDetail = onNavigateToDebtDetail,
+                    showHeader = false
+                )
             }
         }
     }

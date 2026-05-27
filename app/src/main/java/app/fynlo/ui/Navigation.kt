@@ -587,6 +587,7 @@ fun MainNavigation(viewModel: FinanceViewModel) {
                     LoansHubScreen(
                         viewModel = viewModel,
                         onNavigateToDetail = { id -> navController.navigate("customer/$id") },
+                        onNavigateToDebtDetail = { id -> navController.navigate("debt/$id") },
                         onNavigateToCalendar = { navController.navigate(Screen.Calendar.route) },
                         initialTab = backStackEntry.arguments?.getInt("tab") ?: 0
                     )
@@ -598,7 +599,12 @@ fun MainNavigation(viewModel: FinanceViewModel) {
                         onNavigateToCalendar = { navController.navigate(Screen.Calendar.route) }
                     )
                 }
-                composable(Screen.Debts.route) { DebtScreen(viewModel) }
+                composable(Screen.Debts.route) {
+                    DebtScreen(
+                        viewModel = viewModel,
+                        onNavigateToDetail = { id -> navController.navigate("debt/$id") }
+                    )
+                }
                 composable(Screen.Invest.route) { InvestmentScreen(viewModel) }
                 composable(Screen.Spend.route) { SpendScreen(viewModel) }
                 composable(Screen.Settings.route) {
@@ -667,6 +673,19 @@ fun MainNavigation(viewModel: FinanceViewModel) {
                     val borrowerId = backStackEntry.arguments?.getString("borrowerId") ?: ""
                     CustomerDetailScreen(
                         borrowerId = borrowerId,
+                        viewModel = viewModel,
+                        onNavigateBack = { navController.navigateUp() }
+                    )
+                }
+
+                // C12 Stage 3 (3.2.28) — Owed-side detail screen (audit §C12 #5–#7).
+                // Mirrors customer/{borrowerId}: tap a row in DebtScreen / Loans Hub
+                // (Owed tab) → DebtDetailScreen hosts Pay / Edit / Delete + payment
+                // history. The row itself is now action-free per audit #6.
+                composable("debt/{debtId}") { backStackEntry ->
+                    val debtId = backStackEntry.arguments?.getString("debtId") ?: ""
+                    DebtDetailScreen(
+                        debtId = debtId,
                         viewModel = viewModel,
                         onNavigateBack = { navController.navigateUp() }
                     )

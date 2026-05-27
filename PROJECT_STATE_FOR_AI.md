@@ -158,7 +158,7 @@ AI_AGENT_PROTOCOL.md to match.
 
 # Fynlo - Complete AI Portability File
 **Project Name**: Fynlo
-**Version**: 3.2.27 on `master` (`versionName = "3.2.27"`, `versionCode = 150`). All four Sprint-1 P0 clusters closed (C01 / C02 / C03a / C05). Eight P1 Sprint 2 clusters closed (C04, C06+C07, C08, C09, C18, C13, C14). C12 Stages 1+2 of 3 landed; **3.2.27 = C12 Stage 2 (filter consolidation across LendingScreen + DebtScreen — audit #3 + #4)**. Stage 3 (per-row action removal + Send-reminder picker) pending. Remaining P1: C12 Stage 3, C15 (Reports, 4 sub-screens), C21 (PDF/XLSX export quality polish). Plus deferred follow-ups: Task #26, #27, #28, #24. Internal milestone markers only — per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens until every `UX_AUDIT` cluster (P0 through P3) is closed.
+**Version**: 3.2.28 on `master` (`versionName = "3.2.28"`, `versionCode = 151`). All four Sprint-1 P0 clusters closed (C01 / C02 / C03a / C05). **Nine** P1 Sprint 2 clusters closed (C04, C06+C07, C08, C09, C18, C13, C14, **C12**). **3.2.28 = C12 Stage 3 (row simplification + Send Reminder picker + new `DebtDetailScreen`) — closes C12 in full**. Audit fix #4 (column-header sort) deferred. Remaining P1: C15 (Reports, 4 sub-screens), C21 (PDF/XLSX export quality polish). Plus deferred follow-ups: Task #26, #27, #28, #24. Internal milestone markers only — per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens until every `UX_AUDIT` cluster (P0 through P3) is closed.
 **Platform**: Android (Kotlin, Jetpack Compose, Room — Gradle 9.4.1, AGP 9.2.1, Room 2.8.4, KSP 2.3.7, Kotlin 2.2.10)
 
 ## 1. Project Overview
@@ -345,6 +345,54 @@ in the APK).
 ## 6. Journal
 
 **Newest first.** Each entry: date · cluster(s) closed/touched · commit(s) · one-paragraph why-and-what.
+
+### 2026-05-27 — 3.2.28 (C12 Stage 3 of 3 — closes C12: row simplification + Send Reminder picker + new DebtDetailScreen)
+
+**Type:** Stage 3 of 3 for C12 — **closes C12 in full**. Row simplification (audit #5, #6), action lift to detail screens (audit #7), WhatsApp+SMS consolidation into single Send Reminder picker (audit #8). One audit point (§C12 #4 column-header sort affordance) deferred since the row layout has no column headers to tap.
+
+**Internal milestone:** `3.2.28` / `versionCode = 151`. No Play Console upload per release-cadence ADR. No test gate change (114 tests / 10 classes / 0 failures — same as 3.2.27 — UI-only restructure with no logic or state-shape change).
+
+**LendingCard (radical strip — was ~380 lines, now 93):**
+- Down to icon + name + OVERDUE chip + sub-line + outstanding + chevron per audit #6.
+- Stripped 5 inline action callbacks (`onDelete`, `onEdit`, `onCollect`, `onDefault`, `onWriteOff`) — kept only `onClick`.
+- Stripped the 70-line in-row WhatsApp smart-message builder, the SMS builder, the "Share loan summary" button, the "Add Phone" hint, the MoreVert dropdown menu, the inline Collect Payment button, the inline Mark NPA / Restore toggle, the duplicate Total Outstanding section, the Days Elapsed / Per Day Interest / Paid So Far strip, the Both interest type SI+CI portion split, the principal + interest two-column body.
+
+**DebtCard (parallel strip — was ~137 lines, now 88):**
+- Same shape as LendingCard so Lent + Owed look identical per audit #5.
+- Stripped 3 inline action callbacks (`onEdit`, `onDelete`, `onPay`) — kept only `onClick`.
+- Stripped MoreVert dropdown, status Badge (redundant with the segmented filter Stage 2 added), inline Pay Instalment button, Days Elapsed strip, Both portions block, Borrowed Amount + Interest two-column body.
+
+**LendingScreen state cleanup:**
+- Removed `editingBorrower`, `collectingForBorrower`, `defaultingBorrower`, `writeOffBorrower` state vars and their dialog blocks (CollectPaymentDialog, Mark-as-Defaulted AlertDialog, Write-Off AlertDialog).
+- Removed `val accounts`, `val people`, `val currencySymbol` references (no longer needed without the inline message builder).
+- AddLendingDialog simplified — Add flow only; Edit moved to detail.
+
+**DebtScreen state cleanup:**
+- Removed `editingDebt`, `payingDebt` state vars and their AddDebtDialog-as-editor + PayDebtDialog blocks.
+- Removed `val accounts` reference.
+- AddDebtDialog simplified — Add flow only; Edit + Pay moved to detail.
+
+**CustomerDetailScreen expansion:**
+- **Send Reminder OutlinedButton** under Collect Payment — opens AlertDialog channel-picker with WhatsApp + SMS buttons (audit #8 consolidation). Smart-message builder lifted from the old LendingCard (overdue-aware text, per-day interest accrual, full loan summary for WhatsApp; trimmed essentials for SMS). When phone is blank, dialog hides channel buttons and shows "Tap Edit to add a phone" hint.
+- **Mark NPA / Restore Active OutlinedButton** (toggles label based on borrower.status) with confirm dialog. Goes through the same `viewModel.markBorrowerDefaulted` / `restoreBorrowerToActive` methods the old LendingScreen dialog used.
+- **Write Off OutlinedButton** (only when totalOutstanding > 0) with confirm dialog routing through `viewModel.writeOffBorrower`. On confirm, navigates back since the borrower's gone from receivables.
+- Pair the Mark NPA + Write Off buttons in a single Row so they sit at the bottom of the action stack as secondary actions; primary actions (Collect, Send Reminder) stack above.
+
+**NEW: DebtDetailScreen** (`app/src/main/java/app/fynlo/ui/screens/DebtDetailScreen.kt`, ~285 lines):
+- Mirrors CustomerDetailScreen visual structure so Lent + Owed feel like one design (audit #5 carried through to detail too).
+- TopBar: Edit + Delete actions.
+- Body: hero outstanding number in red (liability), Make Payment primary button, Payment History list from `viewModel.debtPayments`, Notes card.
+- Doesn't have Send Reminder (you don't message yourself for debts) or NPA/Write-Off (receivable-side concepts only). Asymmetric on purpose.
+- Wired into nav graph at `debt/{debtId}` route. Added `onNavigateToDebtDetail` prop on LoansHubScreen + the top-level Debts route in Navigation.kt; threaded down to DebtScreen's new `onNavigateToDetail` param.
+
+**Pattern: drastic detail-screen vs list-row split.** The cluster's biggest UX win is breaking out of the "every card has all 6 actions inline" pattern that made the list noisy. The cost is one extra tap to reach actions, but the win is scannability — users can flip through the list looking for a name without parsing 6 buttons per row.
+
+**Lost in this commit:**
+- Per-row Pay button on debt cards. Now: tap row → detail → Make Payment.
+- Direct per-row WhatsApp icon. Now: tap row → detail → Send Reminder → pick WhatsApp.
+- "Add Phone" shortcut from no-phone borrowers in the list. Now: tap row → detail → Edit (TopBar).
+
+Each of those is one extra tap. Acceptable given the scannability gain. If user demand for direct-from-list shortcuts surfaces, can add a long-press menu to rows as a follow-up.
 
 ### 2026-05-27 — 3.2.27 (C12 Stage 2 of 3: filter consolidation across Lending + Debt screens)
 

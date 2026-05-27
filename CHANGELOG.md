@@ -2,6 +2,53 @@
 
 All notable changes to Fynlo are documented here.
 
+## [3.2.28] - 2026-05-27 *(Development milestone — C12 Stage 3: row simplification + Send Reminder picker + DebtDetailScreen — **closes C12**; not promoted per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`)*
+
+### Fixed
+- **C12 Stage 3 of 3 — row simplification + action lift to detail screens (audit fixes #5, #6, #7, #8).** Final stage closing C12. List rows in LendingScreen and DebtScreen reduced to the audit's spec — icon + name + amount + chevron, one row tap navigates to detail screen, NO action icons in row. Both rows now visually identical (audit #5: "standardize Lent vs Owed rows to identical visual structure").
+
+**LendingCard — stripped:**
+- All 5 inline action callbacks gone: `onDelete`, `onEdit`, `onCollect`, `onDefault`, `onWriteOff`. Only `onClick` (row-tap → detail) remains.
+- 70-line in-row WhatsApp smart-message builder, the SMS builder, the "Share loan summary" button, the "Add Phone" hint, the MoreVert dropdown menu, the inline "Collect Payment" button, the inline "Mark as Defaulted / NPA" toggle, the inline "Total Outstanding" duplicate, the "Days Elapsed / Per Day Interest / Paid So Far" strip, the "Both" SI+CI portion split — all moved to or duplicated in `CustomerDetailScreen`. Composable shrank from ~380 lines to 93.
+
+**DebtCard — stripped:**
+- All 3 inline action callbacks gone: `onEdit`, `onDelete`, `onPay`. Only `onClick` remains.
+- MoreVert dropdown (Edit / Delete menu items), inline status Badge (redundant — the Stage-2 segmented filter makes status implicit), inline Pay Instalment button, inline Days Elapsed strip, inline "Both" portions block, inline Borrowed Amount + Interest columns — all moved to the new `DebtDetailScreen`. Composable shrank from ~137 lines to 88.
+
+**LendingScreen — stripped state:**
+- `editingBorrower`, `collectingForBorrower`, `defaultingBorrower`, `writeOffBorrower` state vars all removed.
+- `CollectPaymentDialog`, the Mark-as-Defaulted `AlertDialog`, and the Write-Off `AlertDialog` blocks all removed.
+- `val accounts`, `val people`, `val currencySymbol` references removed (no longer needed without the inline message builder).
+- `AddLendingDialog` invocation simplified — Add flow only; Edit flow now lives in detail.
+
+**DebtScreen — stripped state:**
+- `editingDebt`, `payingDebt` state vars and their `AddDebtDialog`-as-editor + `PayDebtDialog` blocks removed.
+- `val accounts` reference removed.
+- `AddDebtDialog` invocation simplified — Add flow only; Edit + Pay flows now live in detail.
+
+**CustomerDetailScreen — added:**
+- **Send Reminder button** (OutlinedButton under Collect Payment) → opens an `AlertDialog` channel-picker with WhatsApp + SMS options (audit #8). Smart-message builder lifted from the old LendingCard; same overdue-aware text, same dispatching intents. If no phone on file, shows hint to use Edit instead of channel buttons.
+- **Mark NPA / Restore Active button** (OutlinedButton, toggles label based on `borrower.status == "Defaulted"`) with confirm dialog.
+- **Write Off button** (OutlinedButton, only shown when `totalOutstanding > 0`) with confirm dialog.
+- All three actions land in the same `viewModel` methods the LendingScreen dialogs used to call — same business logic, new home.
+
+**DebtDetailScreen — NEW (`app/src/main/java/app/fynlo/ui/screens/DebtDetailScreen.kt`, ~285 lines):**
+- Mirrors `CustomerDetailScreen` visual structure so Lent + Owed detail surfaces feel like one design (audit #5).
+- TopBar: Edit + Delete actions.
+- Body: hero outstanding number (red because it's a liability) → Make Payment primary button (`PayDebtDialog` triggered here) → Payment History list (reads `viewModel.debtPayments`) → Notes card.
+- Wired into nav graph at route `debt/{debtId}`. New `onNavigateToDebtDetail` prop on `LoansHubScreen` flows from `Navigation.kt` → `LoansHubScreen` → `DebtScreen.onNavigateToDetail`. Top-level Debts route also wired.
+
+### Closes
+- **C12 audit fixes #5, #6, #7, #8** (this stage).
+- **C12 cluster closed in full** — Stage 1 (3.2.25) closed #1, #2, #9. Stage 2 (3.2.27) closed #3 + dropped #4. Stage 3 (this commit) closes #5, #6, #7, #8.
+- Audit fix #4 (column-header sort affordance) deferred — list-row layout has no column headers to tap; revisit if user demand surfaces.
+
+### Changed
+- **`versionName`** `3.2.27` → `3.2.28`, **`versionCode`** `150` → `151`.
+
+### Data-integrity gate
+Unchanged at **114 tests across 10 classes**, 0 failures (pure UI restructure; no logic / state-shape / data path change — every business-logic call routes through the same `viewModel` methods that already exist).
+
 ## [3.2.27] - 2026-05-27 *(Development milestone — C12 Stage 2: filter consolidation across Lending + Debt screens; not promoted per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`)*
 
 ### Fixed
