@@ -225,9 +225,20 @@ fun SettingsScreen(
                         ThemeController.darkModeOverride = if (useSystem) null else isCurrentlyDark
                         ThemeController.save(context)
                     },
+                    // 3.2.22 — added explicit uncheckedColors. M3 defaults
+                    // were `outline` thumb on `surfaceContainerHighest` track,
+                    // both very light greys that disappeared into the
+                    // SettingsCard's `surfaceVariant` background in light
+                    // mode (user reported "not clearly visible"). Now uses
+                    // `onSurfaceVariant` for the unchecked thumb so the dot
+                    // is clearly visible against the track in both themes.
                     colors = SwitchDefaults.colors(
-                        checkedThumbColor = Emerald500,
-                        checkedTrackColor = Emerald500.copy(alpha = 0.4f))
+                        checkedThumbColor   = Emerald500,
+                        checkedTrackColor   = Emerald500.copy(alpha = 0.4f),
+                        uncheckedThumbColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        uncheckedTrackColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        uncheckedBorderColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 )
             }
             // Row 2: Dark mode (only shown when "Follow system" is OFF)
@@ -431,9 +442,20 @@ fun SettingsScreen(
                         // is idempotent (uses ExistingPeriodicWorkPolicy.KEEP).
                         if (it) app.fynlo.notifications.ReminderScheduler.schedule(context)
                     },
+                    // 3.2.22 — added explicit uncheckedColors. M3 defaults
+                    // were `outline` thumb on `surfaceContainerHighest` track,
+                    // both very light greys that disappeared into the
+                    // SettingsCard's `surfaceVariant` background in light
+                    // mode (user reported "not clearly visible"). Now uses
+                    // `onSurfaceVariant` for the unchecked thumb so the dot
+                    // is clearly visible against the track in both themes.
                     colors = SwitchDefaults.colors(
-                        checkedThumbColor = Emerald500,
-                        checkedTrackColor = Emerald500.copy(alpha = 0.4f))
+                        checkedThumbColor   = Emerald500,
+                        checkedTrackColor   = Emerald500.copy(alpha = 0.4f),
+                        uncheckedThumbColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        uncheckedTrackColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        uncheckedBorderColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 )
             }
             SettingsDivider()
@@ -457,9 +479,20 @@ fun SettingsScreen(
                         scope.launch { UserPreferences.setBudgetAlertsEnabled(context, it) }
                         if (it) app.fynlo.notifications.ReminderScheduler.schedule(context)
                     },
+                    // 3.2.22 — added explicit uncheckedColors. M3 defaults
+                    // were `outline` thumb on `surfaceContainerHighest` track,
+                    // both very light greys that disappeared into the
+                    // SettingsCard's `surfaceVariant` background in light
+                    // mode (user reported "not clearly visible"). Now uses
+                    // `onSurfaceVariant` for the unchecked thumb so the dot
+                    // is clearly visible against the track in both themes.
                     colors = SwitchDefaults.colors(
-                        checkedThumbColor = Emerald500,
-                        checkedTrackColor = Emerald500.copy(alpha = 0.4f))
+                        checkedThumbColor   = Emerald500,
+                        checkedTrackColor   = Emerald500.copy(alpha = 0.4f),
+                        uncheckedThumbColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        uncheckedTrackColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        uncheckedBorderColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 )
             }
         }

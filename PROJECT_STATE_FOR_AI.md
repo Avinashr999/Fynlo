@@ -158,7 +158,7 @@ AI_AGENT_PROTOCOL.md to match.
 
 # Fynlo - Complete AI Portability File
 **Project Name**: Fynlo
-**Version**: 3.2.21 on `master` (`versionName = "3.2.21"`, `versionCode = 144`). All four Sprint-1 P0 clusters closed (C01 / C02 / C03a / C05). Six P1 Sprint 2 clusters closed (C04, C06+C07, C08, C09, C18). **3.2.21 = out-of-band theme picker UX redesign + first-launch setup screen theme-step removal + setup-screen theme-aware background migration** (user-driven, not from an audit cluster). Remaining P1: C12-C15 (screen redesigns), C21 (PDF/XLSX export quality polish), Task #26 (Report-a-Bug in-app form). Internal milestone markers only — per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens until every `UX_AUDIT` cluster (P0 through P3) is closed.
+**Version**: 3.2.22 on `master` (`versionName = "3.2.22"`, `versionCode = 145`). All four Sprint-1 P0 clusters closed (C01 / C02 / C03a / C05). Six P1 Sprint 2 clusters closed (C04, C06+C07, C08, C09, C18). 3.2.21 = theme picker UX redesign + setup screen migrations. **3.2.22 = light-mode toggle visibility fix (user smoke surfaced the issue)**. Remaining P1: C12-C15 (screen redesigns), C21 (PDF/XLSX export quality polish), Task #26 (Report-a-Bug in-app form). Internal milestone markers only — per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens until every `UX_AUDIT` cluster (P0 through P3) is closed.
 **Platform**: Android (Kotlin, Jetpack Compose, Room — Gradle 9.4.1, AGP 9.2.1, Room 2.8.4, KSP 2.3.7, Kotlin 2.2.10)
 
 ## 1. Project Overview
@@ -345,6 +345,20 @@ in the APK).
 ## 6. Journal
 
 **Newest first.** Each entry: date · cluster(s) closed/touched · commit(s) · one-paragraph why-and-what.
+
+### 2026-05-27 — 3.2.22 (light-mode toggle visibility fix — smoke surface)
+
+**Type:** one-line-class UX fix surfaced by smoke of 3.2.21. User reset all data, went through the new theme-aware setup wizard (confirmed background looks good), then opened Settings to verify the redesigned Personalization Switches and reported "not clearly visible" in light mode. Same root cause hit the SelectionCards in the setup wizard's NotificationStep.
+
+**Internal milestone:** `3.2.22` / `versionCode = 145`. No Play Console upload per release-cadence ADR. No test gate change.
+
+**Root cause:** M3 default unchecked Switch colors (`outline` thumb on `surfaceContainerHighest` track) are intentionally subtle, and they faded into the SettingsCard's `surfaceVariant` background in light mode. Similarly, 3.2.21's SelectionCard unselected background `surfaceVariant.copy(alpha = 0.4f)` was too washed-out against the theme-aware page gradient.
+
+**Two fixes:**
+1. All 4 new Switches (Settings Notifications + Personalization, added in 3.2.20 and 3.2.21) got explicit `uncheckedThumbColor = onSurfaceVariant` and `uncheckedBorderColor = onSurfaceVariant`. OFF state now definitely visible in both themes.
+2. SelectionCard unselected: bumped from `surfaceVariant.copy(alpha=0.4f)` to full-opacity `surfaceVariant`, plus a visible `outline.copy(alpha=0.4f)` border so the card is distinct from the page.
+
+**Pattern logged:** when migrating from a hardcoded-color theme to a Material-theme-aware design, MUST verify in both light AND dark mode. Defaults like `surfaceVariant.copy(alpha = 0.4f)` look fine on dark mode (because dark base color is dark grey, alpha is barely visible) but disappear into a light page background. Pure `surfaceVariant` reads as a tonal step in both modes.
 
 ### 2026-05-27 — 3.2.21 (theme picker UX redesign + setup-screen theme removal + theme-aware setup bg)
 

@@ -513,10 +513,14 @@ private fun SelectionCard(
     onClick: () -> Unit,
     content: @Composable () -> Unit
 ) {
-    // 3.2.21 — theme-aware border + background. Selected state keeps emerald
-    // accent (brand). Unselected falls back to surfaceVariant so the card is
-    // visible on light backgrounds (the prior `Color.White.copy(alpha=0.06f)`
-    // disappeared into a light bg).
+    // 3.2.22 — bumped the unselected card's contrast for light mode. The
+    // 3.2.21 attempt used `surfaceVariant.copy(alpha = 0.4f)` which on the
+    // light-mode theme-aware gradient (mostly `background`) faded into
+    // the page — user reported "not clearly visible." Now full-opacity
+    // `surfaceVariant` for the body + visible `outline` border so the
+    // card is distinct from the page in both modes. Dark mode still
+    // reads correctly because `surfaceVariant` is a step-up tonal from
+    // `background` in both themes.
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -525,12 +529,12 @@ private fun SelectionCard(
                 if (selected) Modifier.border(
                     2.dp, Emerald500, RoundedCornerShape(14.dp)
                 ) else Modifier.border(
-                    1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(14.dp)
+                    1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.4f), RoundedCornerShape(14.dp)
                 )
             )
             .background(
                 if (selected) Emerald500.copy(alpha = 0.15f)
-                else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+                else MaterialTheme.colorScheme.surfaceVariant
             )
             .clickable(onClick = onClick)
     ) {

@@ -2,6 +2,18 @@
 
 All notable changes to Fynlo are documented here.
 
+## [3.2.22] - 2026-05-27 *(Development milestone — light-mode toggle visibility fix; not promoted per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`)*
+
+### Fixed
+- **Settings Switches: unchecked state visibility on light mode** — user reset all data, went through the new theme-aware setup wizard (3.2.21), then opened Settings to verify the redesigned Personalization Switches and reported "not clearly visible." Cause: M3's default `uncheckedThumbColor = outline` (light grey) on `uncheckedTrackColor = surfaceContainerHighest` (very light grey) faded into the SettingsCard's `surfaceVariant` background in light mode. The OFF state was effectively invisible. Now explicitly sets `uncheckedThumbColor = onSurfaceVariant` (darker, definitely visible) and `uncheckedBorderColor = onSurfaceVariant`. Applied to all 4 Switches that 3.2.20 / 3.2.21 added — Notifications "Loan reminders" + "Budget alerts" (3.2.20), Personalization "Follow system theme" + "Dark mode" (3.2.21).
+- **First-launch setup `SelectionCard` unselected state visibility** — same root cause as above. The 3.2.21 SelectionCard unselected background used `surfaceVariant.copy(alpha = 0.4f)` which on the theme-aware light gradient (mostly `background`) faded into the page. Now full-opacity `surfaceVariant` plus a visible `outline.copy(alpha=0.4f)` border. Distinct from the page in both modes; dark mode still reads correctly because `surfaceVariant` is a step-up tonal from `background` in both themes.
+
+### Changed
+- **`versionName`** `3.2.21` → `3.2.22`, **`versionCode`** `144` → `145`.
+
+### Data-integrity gate
+Unchanged at **114 tests across 10 classes**, 0 failures (UI color tweak — no logic).
+
 ## [3.2.21] - 2026-05-27 *(Development milestone — theme picker UX redesign + setup-screen theme-step removal + setup-screen theme-aware backgrounds; not promoted per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`)*
 
 ### Fixed (3 related UX improvements per user feedback)
