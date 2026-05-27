@@ -2,6 +2,47 @@
 
 All notable changes to Fynlo are documented here.
 
+## [3.2.29] - 2026-05-27 *(Development milestone — C15 Stage 1: Reports landing converted to pure launcher with previewed tiles (C15a); not promoted per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`)*
+
+### Fixed
+- **C15 Stage 1 of 5 — C15a Reports landing converted to pure launcher with previewed tiles (audit fixes C15a #1, #2, #3, #4).** First of 5 stages closing C15. ReportsHubScreen no longer mixes inline rollups with launcher tiles — it's now a clean Home-archetype launcher where every tile carries a one-line preview value computed against the selected date range.
+
+**ReportsHubScreen — stripped (audit C15a #1 + #4):**
+- **Income / Expense two-column block** that inlined sums for the selected range — exact same data the P&L Statement renders in full.
+- **Net Cash Flow + Savings Rate** row underneath — same data in the same target screen.
+- **Net Worth Trend mini-chart** (Canvas line chart over `getNetWorthSnapshots()`) with first/last date labels — Net Worth History detail owns this.
+- **"Where Money Went" section** with category bars (top 6, sorted) — same data in P&L Statement and Spend tab.
+- **"Where Money Came From" section** with category rows (top 5) — same data in P&L Statement.
+
+**ReportsHubScreen — added (audit C15a #2 + #3):**
+- **`ReportTileCard` composable** replacing `ReportLinkCard`. Same shape across every tile — 36-dp icon circle + label + preview-value row, `heightIn(min = 116.dp)` so rows have consistent height. Audit fix #2.
+- **One-line preview value per tile** computed from a memoised `RangeAggregate` over the selected range. Audit fix #3:
+  - P&L Statement: `+₹35K` / `-₹12K` with green/red based on sign of (income − expense), financing activities excluded (same exclusion the screen used to use).
+  - Net Worth: current `summary.netWorth` formatted as listRow currency.
+  - Money Flow: gross movement total in the range (`No activity` if zero).
+  - Interest Income: sum of `income` transactions where `category == "Interest"` in the range.
+  - Monthly Summary: always shows **this calendar month's net** regardless of selected range (that screen has its own month picker; the tile surfaces the most-useful snapshot).
+  - Debt Payoff: current outstanding debt total (`totalDebtPrincipal + totalDebtInterest`); shows `Debt free` when zero.
+  - EMI Calculator: `Calculator` label (it's a tool, no data preview makes sense).
+
+**ReportsHubScreen — kept:**
+- Date-range chip row at the top — drives every tile preview value below.
+- Export-PDF button — utility unchanged.
+- Tile grid layout (3 tiles per row, two full rows + one partial row with EMI tile + 2 weighted spacers).
+- All seven nav callbacks (`onNavigateToPL`, `onNavigateToNetWorth`, `onNavigateToMoneyFlow`, `onNavigateToInterest`, `onNavigateToMonthly`, `onNavigateToDebtPayoff`, `onNavigateToLoanCalc`).
+
+**Stages 2-5 pending:** C15b P&L Statement (line chart + callout cards), C15c Net Worth History (chart + backfill), C15d Monthly Summary (bar chart + axis labels), C15e Money Flow (build a Sankey-style flow visualization or remove the tile).
+
+### Closes
+- **C15a audit fixes #1, #2, #3, #4** (this stage).
+- C15b, C15c, C15d, C15e still pending.
+
+### Changed
+- **`versionName`** `3.2.28` → `3.2.29`, **`versionCode`** `151` → `152`.
+
+### Data-integrity gate
+Unchanged at **114 tests across 10 classes**, 0 failures (UI restructure; preview-value calculations route through the same `summary` / `transactions` flows that already exist).
+
 ## [3.2.28] - 2026-05-27 *(Development milestone — C12 Stage 3: row simplification + Send Reminder picker + DebtDetailScreen — **closes C12**; not promoted per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`)*
 
 ### Fixed

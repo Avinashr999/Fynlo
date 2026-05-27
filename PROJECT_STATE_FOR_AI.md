@@ -158,7 +158,7 @@ AI_AGENT_PROTOCOL.md to match.
 
 # Fynlo - Complete AI Portability File
 **Project Name**: Fynlo
-**Version**: 3.2.28 on `master` (`versionName = "3.2.28"`, `versionCode = 151`). All four Sprint-1 P0 clusters closed (C01 / C02 / C03a / C05). **Nine** P1 Sprint 2 clusters closed (C04, C06+C07, C08, C09, C18, C13, C14, **C12**). **3.2.28 = C12 Stage 3 (row simplification + Send Reminder picker + new `DebtDetailScreen`) — closes C12 in full**. Audit fix #4 (column-header sort) deferred. Remaining P1: C15 (Reports, 4 sub-screens), C21 (PDF/XLSX export quality polish). Plus deferred follow-ups: Task #26, #27, #28, #24. Internal milestone markers only — per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens until every `UX_AUDIT` cluster (P0 through P3) is closed.
+**Version**: 3.2.29 on `master` (`versionName = "3.2.29"`, `versionCode = 152`). All four Sprint-1 P0 clusters closed (C01 / C02 / C03a / C05). Nine P1 Sprint 2 clusters closed (C04, C06+C07, C08, C09, C18, C13, C14, C12). **C15 Stage 1 of 5 landed in 3.2.29 — C15a Reports landing converted to pure launcher with previewed tiles**. C15 Stages 2-5 pending (C15b P&L chart, C15c Net Worth history chart + backfill, C15d Monthly Summary bar chart, C15e Money Flow build-or-remove). Remaining P1: C15 Stages 2-5, C21 (PDF/XLSX export quality polish). Plus deferred follow-ups: Task #26, #27, #28, #24. Internal milestone markers only — per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens until every `UX_AUDIT` cluster (P0 through P3) is closed.
 **Platform**: Android (Kotlin, Jetpack Compose, Room — Gradle 9.4.1, AGP 9.2.1, Room 2.8.4, KSP 2.3.7, Kotlin 2.2.10)
 
 ## 1. Project Overview
@@ -345,6 +345,38 @@ in the APK).
 ## 6. Journal
 
 **Newest first.** Each entry: date · cluster(s) closed/touched · commit(s) · one-paragraph why-and-what.
+
+### 2026-05-27 — 3.2.29 (C15 Stage 1 of 5: C15a Reports landing converted to pure launcher with previewed tiles)
+
+**Type:** Stage 1 of 5 for C15. Cleanup pass on Reports landing per audit §C15a — converted from "inline rollup + tile grid" hybrid to a clean Home-archetype launcher where every tile carries a one-line preview value computed against the selected date range. Closes audit C15a fixes #1, #2, #3, #4. Stages 2-5 (C15b/c/d/e) follow.
+
+**Internal milestone:** `3.2.29` / `versionCode = 152`. No Play Console upload per release-cadence ADR. No test gate change (114 tests / 10 classes / 0 failures — UI restructure with no logic change).
+
+**ReportsHubScreen stripped (audit C15a #1 + #4):**
+- Income + Expense two-column block (duplicates P&L Statement).
+- Net Cash Flow + Savings Rate row (duplicates P&L Statement).
+- Net Worth Trend mini-chart with Canvas line + first/last date labels (duplicates Net Worth History).
+- "Where Money Went" section with category bars top-6 (duplicates P&L + Spend tab).
+- "Where Money Came From" section with category rows top-5 (duplicates P&L).
+
+**ReportsHubScreen added (audit C15a #2 + #3):**
+- `ReportTileCard` replacing `ReportLinkCard` — same shape across every tile (`heightIn(min = 116.dp)`, 36-dp icon circle, label, preview-value row). Standardized sizing.
+- One-line preview value per tile computed from a memoised `RangeAggregate`:
+  - P&L: signed net (+/− amount, green/red).
+  - Net Worth: current value (green if positive, red if negative).
+  - Money Flow: gross movement total or "No activity".
+  - Interest Income: sum of income txns where category = "Interest" in range.
+  - Monthly Summary: always this calendar month's net regardless of selectedRange (that screen has its own month picker).
+  - Debt Payoff: total outstanding debt or "Debt free" when zero.
+  - EMI Calculator: "Calculator" label (no data preview makes sense for a tool).
+
+**Pattern: drill-down preview tiles.** The audit's load-bearing C15a fix is "tiles preview the report data they link to" — that's what makes a Home-archetype launcher useful instead of just a menu of names. The user can see "P&L this month: +₹35K" without tapping in; if it's interesting they tap to drill.
+
+**Stages 2-5 pending:**
+- C15b — P&L Statement: line chart of monthly income vs expense over rolling 12 months, type_chart_hero Net P&L above, callout cards (This Month / Last Month / YTD / vs Last Year), fix "Total Lent Out" definition.
+- C15c — Net Worth History: line chart, type_chart_hero Current Net Worth, callout cards (1M / 6M / All-Time High), backfill from transaction history, remove "open daily" nag.
+- C15d — Monthly Summary: type_chart_hero "Net for May ₹X", bar chart (income green + expense red) last 12 months, y-axis labels + reference lines, callout cards (Best Month / Worst Month / Avg / Trend), projection line, CSV export.
+- C15e — Money Flow: build a Sankey or category-grouped flow visualization, or remove the tile if not building.
 
 ### 2026-05-27 — 3.2.28 (C12 Stage 3 of 3 — closes C12: row simplification + Send Reminder picker + new DebtDetailScreen)
 
