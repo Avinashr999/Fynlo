@@ -158,7 +158,7 @@ AI_AGENT_PROTOCOL.md to match.
 
 # Fynlo - Complete AI Portability File
 **Project Name**: Fynlo
-**Version**: 3.2.29 on `master` (`versionName = "3.2.29"`, `versionCode = 152`). All four Sprint-1 P0 clusters closed (C01 / C02 / C03a / C05). Nine P1 Sprint 2 clusters closed (C04, C06+C07, C08, C09, C18, C13, C14, C12). **C15 Stage 1 of 5 landed in 3.2.29 — C15a Reports landing converted to pure launcher with previewed tiles**. C15 Stages 2-5 pending (C15b P&L chart, C15c Net Worth history chart + backfill, C15d Monthly Summary bar chart, C15e Money Flow build-or-remove). Remaining P1: C15 Stages 2-5, C21 (PDF/XLSX export quality polish). Plus deferred follow-ups: Task #26, #27, #28, #24. Internal milestone markers only — per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens until every `UX_AUDIT` cluster (P0 through P3) is closed.
+**Version**: 3.2.30 on `master` (`versionName = "3.2.30"`, `versionCode = 153`). All four Sprint-1 P0 clusters closed (C01 / C02 / C03a / C05). Nine P1 Sprint 2 clusters closed (C04, C06+C07, C08, C09, C18, C13, C14, C12). **C15 Stages 1-2 of 5 landed: 3.2.29 = C15a (Reports launcher), 3.2.30 = C15b (P&L Statement chart hero + callouts + Total Lent Out fix)**. C15 Stages 3-5 pending (C15c Net Worth history chart + backfill, C15d Monthly Summary bar chart, C15e Money Flow build-or-remove). Remaining P1: C15 Stages 3-5, C21 (PDF/XLSX export quality polish). Plus deferred follow-ups: Task #26, #27, #28, #24. Internal milestone markers only — per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens until every `UX_AUDIT` cluster (P0 through P3) is closed.
 **Platform**: Android (Kotlin, Jetpack Compose, Room — Gradle 9.4.1, AGP 9.2.1, Room 2.8.4, KSP 2.3.7, Kotlin 2.2.10)
 
 ## 1. Project Overview
@@ -345,6 +345,32 @@ in the APK).
 ## 6. Journal
 
 **Newest first.** Each entry: date · cluster(s) closed/touched · commit(s) · one-paragraph why-and-what.
+
+### 2026-05-27 — 3.2.30 (C15 Stage 2 of 5: C15b P&L Statement chart hero + callout cards + Total Lent Out fix)
+
+**Type:** Stage 2 of 5 for C15. Audit §C15b fixes #1–#5 all in this commit. Stage 3 (C15c Net Worth History) follows.
+
+**Internal milestone:** `3.2.30` / `versionCode = 153`. No Play Console upload per release-cadence ADR. No test gate change (114 tests / 10 classes / 0 failures — UI restructure + same-source calculations; only formula change is the Total Lent Out split which is a deterministic sum over borrower data).
+
+**ProfitLossScreen added:**
+- `MonthlyPLLineChart` Canvas composable — rolling-12 income (green) + expense (red) lines, shared y-axis, point markers, month axis labels (every third + last).
+- Chart sits inside the same surface as the Net P&L hero number for the `type_chart_hero` shape per DESIGN_SYSTEM §1.2.
+- 4 callout-card row: This Month / Last Month / YTD / vs Last Year. `vs Last Year` is the YTD delta (this year YTD minus prior-year same-window), not absolute.
+- Legend dots under the chart for the Income/Expense colour mapping.
+- Empty-state hint when every monthly bucket is zero.
+
+**ProfitLossScreen fixed:**
+- "Total Lent Out" was `activeBorrowers.sum(amount)` — excluded written-off loans (not lifetime) AND included already-recovered principal (not outstanding). Split into two rows:
+  - `Total Lent Out (lifetime)` = every borrower's original principal including write-offs.
+  - `Currently Lent Out` = active borrowers' outstanding (amount − paidPrincipal, floored at 0).
+- Static "You are profitable ↑" subtitle replaced with cash-basis arithmetic: "Cash basis · income X − expenses Y". User sees WHY rather than just the green ↑.
+
+**Pattern: chart-hero treatment doesn't require a separate component.** I put the chart + hero number in the same surface (rounded background, single padding block) so they read as one element rather than two stacked. That's what makes it `type_chart_hero` instead of `type_hero` + `type_chart`.
+
+**Stages 3-5 pending:**
+- C15c — Net Worth History: line chart, type_chart_hero Current Net Worth, callout cards (1M / 6M / All-Time High), backfill from transaction history, remove "open daily" nag.
+- C15d — Monthly Summary: type_chart_hero "Net for May ₹X", bar chart (income green + expense red) last 12 months, y-axis labels + reference lines, callout cards (Best/Worst/Avg/Trend), projection line, CSV export.
+- C15e — Money Flow: build Sankey or category-grouped flow visualization, or remove the tile.
 
 ### 2026-05-27 — 3.2.29 (C15 Stage 1 of 5: C15a Reports landing converted to pure launcher with previewed tiles)
 

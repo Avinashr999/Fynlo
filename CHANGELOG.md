@@ -2,6 +2,45 @@
 
 All notable changes to Fynlo are documented here.
 
+## [3.2.30] - 2026-05-27 *(Development milestone — C15 Stage 2: P&L Statement chart hero + callout cards + Total Lent Out fix (C15b); not promoted per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`)*
+
+### Fixed
+- **C15 Stage 2 of 5 — C15b P&L Statement: chart hero + callout cards + Total Lent Out fix (audit fixes C15b #1, #2, #3, #4, #5).** Second of 5 stages closing C15. ProfitLossScreen now opens with a `type_chart_hero` block (Net P&L number above a rolling-12 income-vs-expense line chart), four headline callout cards directly under that, and a Lending Business section that correctly distinguishes lifetime-lent from currently-lent.
+
+**ProfitLossScreen — added (audit C15b #1 + #2):**
+- **Rolling-12 line chart** (`MonthlyPLLineChart`) under the Net P&L number, both inside one rounded surface so the hero reads as a single `type_chart_hero` unit per `DESIGN_SYSTEM.md §1.2`. Dual lines: income (green) + expense (red), shared y-axis (max of either series), 3-dp stroke with point markers at each month.
+- **Month axis labels** along the bottom, every third month + the last one. `MMM` compact form.
+- **Legend dots** under the chart (Income green / Expense red) so the colour mapping is explicit.
+- **Empty-state hint** ("Log a few transactions to see the rolling-12 trend") when every monthly bucket is zero.
+
+**ProfitLossScreen — added (audit C15b #3):**
+- **Four callout cards** in a single Row directly under the chart hero: `This Month`, `Last Month`, `YTD`, `vs Last Year`. Each shows a signed net (`+₹X` / `−₹X`) in green/red based on sign. YTD = Jan 1 → today. `vs Last Year` = YTD this year minus the matching window last year (delta, not absolute). `PLCallout` composable, equal-weight tiles.
+
+**ProfitLossScreen — fixed (audit C15b #4):**
+- **"Total Lent Out" was previously misleading.** The old code summed `activeBorrowers.sumOf { it.amount }` — that excluded written-off loans (so not lifetime) but also included already-recovered principal (so not outstanding either). Two replacements:
+  - **`Total Lent Out (lifetime)`** = `borrowers.sumOf { it.amount }` — every borrower's original principal, INCLUDING written-off (they're part of historical lending activity).
+  - **`Currently Lent Out`** (new row) = `activeBorrowers.sumOf { (it.amount - it.paidPrincipal).coerceAtLeast(0.0) }` — what's still on the books.
+
+**ProfitLossScreen — replaced (audit C15b #5):**
+- **Static "You are profitable ↑" subtitle** replaced with the actual cash-basis arithmetic: `"Cash basis · income ₹X − expenses ₹Y"`. Stating the numbers means the user sees WHY P&L is positive (or negative) instead of an affirmation that doesn't match the underlying flow. The grossRevenue and total-expense values include interest paid + bad debt write-offs so the subtitle ties cleanly to the four PL sections below.
+
+**ProfitLossScreen — kept:**
+- All four PL sections: Revenue / Expenses / Lending Business (with audit #4 fix applied) / Investments.
+- Project name header + Export PDF button at the top.
+- Cash-basis financing-category exclusion unchanged.
+
+**Stages 3-5 of C15 still pending:** C15c Net Worth History (line chart + backfill), C15d Monthly Summary (bar chart + axis labels + projection), C15e Money Flow (build a flow visualization or remove).
+
+### Closes
+- **C15b audit fixes #1, #2, #3, #4, #5** (this stage).
+- C15a closed in 3.2.29. C15c, C15d, C15e still pending.
+
+### Changed
+- **`versionName`** `3.2.29` → `3.2.30`, **`versionCode`** `152` → `153`.
+
+### Data-integrity gate
+Unchanged at **114 tests across 10 classes**, 0 failures (UI restructure + same-source calculations; the only formula change is the Lending Business section's Total Lent Out + Currently Lent Out split, both deterministic sums over already-validated borrower data).
+
 ## [3.2.29] - 2026-05-27 *(Development milestone — C15 Stage 1: Reports landing converted to pure launcher with previewed tiles (C15a); not promoted per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`)*
 
 ### Fixed
