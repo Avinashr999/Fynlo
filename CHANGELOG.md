@@ -2,6 +2,39 @@
 
 All notable changes to Fynlo are documented here.
 
+## [3.2.32] - 2026-05-27 *(Development milestone — C15 Stage 4: Monthly Summary chart-hero + 12-month bar chart + axis labels + callout cards + linear-regression projection + CSV export (C15d); not promoted per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`)*
+
+### Fixed
+- **C15 Stage 4 of 5 — C15d Monthly Summary: chart-hero + 12-month bar chart with axes + standardized callouts + projection + CSV export (audit fixes C15d #1, #2, #3, #4, #5, #6).** Fourth of 5 stages closing C15. Last remaining sub-stage is C15e Money Flow (build-or-remove).
+
+**MonthlySummaryScreen — restructured (all six audit points):**
+- **#1** `type_chart_hero` block — Net for current month (e.g., `Net for May +₹35K`) sits above the bar chart in one shared surface. Same shape established for C15b P&L Statement (3.2.30) and C15c Net Worth History (3.2.31). Subtitle states `Income ₹X · Expense ₹Y` so the user sees the underlying arithmetic.
+- **#2** Bar chart extended from 6 months to **last 12 months**. Income (green) + expense (red) bars side-by-side per month. Financing categories (`Debt Received`, `Debt Repayment`, `Lending`, `Loan Recovery`, `Loan Repayment`, `Investment`, `Investment Returns`) excluded from both series — same cash-basis exclusion as the P&L Statement.
+- **#3** **Y-axis labels** along the left edge of the chart (5 labels at 0/25/50/75/100% of max). **Four horizontal reference lines** at 25/50/75/100% of max so the user can read magnitudes off the chart.
+- **#4** Four standardized callout cards replace the prior 6M Income / 6M Expense / Net Saved 3-chip row:
+  - `Best Month` — month with highest (income − expense) net + the signed amount.
+  - `Worst Month` — month with lowest net + the signed amount.
+  - `Avg / Month` — mean monthly net across the 12 months.
+  - `Trend` — recent-6-month avg minus prior-6-month avg (signed delta) with `vs prior 6m` subtitle.
+- **#5** **Projection** — independent linear regression of the income series and expense series over the 12 historical months; the next 3 months projected and rendered as ghost bars at `alpha = 0.4` at the right edge of the chart. A vertical dashed divider separates historical from projected zones. Projected month labels are prefixed with `·` and use dimmed colour. Negative regression outputs are clamped to 0 (no negative income / expense bars). Legend dot under chart adds `Projected` in semi-transparent green.
+- **#6** **CSV export** — `FilledTonalIconButton` (TableChart icon) at the top-right of the hero block. Writes a `Month,Income,Expense,Net` CSV of the 12 historical months (with currency code in headers) to the app cache directory and launches an `ACTION_SEND` chooser via the existing `FileProvider`. Latest month at the top.
+
+**MonthlySummaryScreen — kept:**
+- Idle Fund Alert at the top when more than 60% of net worth is sitting in cash. Outside the audit's scope but a good UX touch — survives the redesign.
+- Month-by-Month Breakdown list at the bottom (the 12-month roll showing income / expense / saved per row), unchanged.
+
+**Stage 5 of C15 still pending:** C15e Money Flow — decide build (Sankey or category-grouped flow visualization) vs remove the tile.
+
+### Closes
+- **C15d audit fixes #1, #2, #3, #4, #5, #6** (this stage).
+- C15a closed in 3.2.29. C15b closed in 3.2.30. C15c closed in 3.2.31. C15e still pending.
+
+### Changed
+- **`versionName`** `3.2.31` → `3.2.32`, **`versionCode`** `154` → `155`.
+
+### Data-integrity gate
+Unchanged at **114 tests across 10 classes**, 0 failures. The new projection uses pure linear-regression math (no data-layer call); CSV export writes through the same `FileProvider` that PDF export already uses; the cash-basis category exclusion is identical to what P&L Statement already validates.
+
 ## [3.2.31] - 2026-05-27 *(Development milestone — C15 Stage 3: Net Worth History chart-hero + callout cards + backfill + nag removal (C15c); not promoted per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`)*
 
 ### Fixed

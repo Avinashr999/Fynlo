@@ -158,7 +158,7 @@ AI_AGENT_PROTOCOL.md to match.
 
 # Fynlo - Complete AI Portability File
 **Project Name**: Fynlo
-**Version**: 3.2.31 on `master` (`versionName = "3.2.31"`, `versionCode = 154`). All four Sprint-1 P0 clusters closed (C01 / C02 / C03a / C05). Nine P1 Sprint 2 clusters closed (C04, C06+C07, C08, C09, C18, C13, C14, C12). **C15 Stages 1-3 of 5 landed: 3.2.29 = C15a (Reports launcher), 3.2.30 = C15b (P&L chart-hero), 3.2.31 = C15c (Net Worth History chart-hero + callouts + backfill + nag removal)**. C15 Stages 4-5 pending (C15d Monthly Summary bar chart, C15e Money Flow build-or-remove). Remaining P1: C15 Stages 4-5, C21 (PDF/XLSX export quality polish). Plus deferred follow-ups: Task #26, #27, #28, #24. Internal milestone markers only — per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens until every `UX_AUDIT` cluster (P0 through P3) is closed.
+**Version**: 3.2.32 on `master` (`versionName = "3.2.32"`, `versionCode = 155`). All four Sprint-1 P0 clusters closed (C01 / C02 / C03a / C05). Nine P1 Sprint 2 clusters closed (C04, C06+C07, C08, C09, C18, C13, C14, C12). **C15 Stages 1-4 of 5 landed: 3.2.29 = C15a (Reports launcher), 3.2.30 = C15b (P&L chart-hero), 3.2.31 = C15c (Net Worth History chart-hero + backfill), 3.2.32 = C15d (Monthly Summary chart-hero + 12-month bar chart + axes + callouts + projection + CSV)**. C15 Stage 5 pending (C15e Money Flow build-or-remove). Remaining P1: C15 Stage 5, C21 (PDF/XLSX export quality polish). Plus deferred follow-ups: Task #26, #27, #28, #24. Internal milestone markers only — per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens until every `UX_AUDIT` cluster (P0 through P3) is closed.
 **Platform**: Android (Kotlin, Jetpack Compose, Room — Gradle 9.4.1, AGP 9.2.1, Room 2.8.4, KSP 2.3.7, Kotlin 2.2.10)
 
 ## 1. Project Overview
@@ -345,6 +345,29 @@ in the APK).
 ## 6. Journal
 
 **Newest first.** Each entry: date · cluster(s) closed/touched · commit(s) · one-paragraph why-and-what.
+
+### 2026-05-27 — 3.2.32 (C15 Stage 4 of 5: C15d Monthly Summary chart-hero + 12-month bar chart + axes + callouts + projection + CSV)
+
+**Type:** Stage 4 of 5 for C15. Audit §C15d fixes #1–#6 all in this commit. Only Stage 5 (C15e Money Flow build-or-remove) remains for C15 closure.
+
+**Internal milestone:** `3.2.32` / `versionCode = 155`. No Play Console upload per release-cadence ADR. No test gate change (114 tests / 10 classes / 0 failures — pure UI + linear-regression math; CSV writes through same FileProvider as PDF export).
+
+**MonthlySummaryScreen restructured:**
+- type_chart_hero block: "Net for May +₹X" hero + 12-month bar chart in one shared surface. Same shape as C15b (P&L) and C15c (Net Worth History).
+- Bar chart extended 6 → 12 months. Cash-basis exclusion of financing categories matches P&L Statement.
+- Y-axis labels + 4 horizontal reference lines (25/50/75/100% of max) so the user can read magnitudes off the chart.
+- 4 callout cards replacing prior 3-chip row: Best Month / Worst Month / Avg/Month / Trend (recent-6 vs prior-6 avg delta).
+- Linear-regression projection of income + expense series independently. Next 3 months rendered as alpha=0.4 ghost bars to the right of a dashed vertical divider. Projected month labels prefixed with "·" and dimmed.
+- CSV export FilledTonalIconButton (TableChart icon) at top-right of hero. Writes Month,Income,Expense,Net via FileProvider + ACTION_SEND chooser.
+
+**Pattern: independent series projection.** I projected income and expense series independently rather than projecting the (net) series. Reasoning: income and expense have different drivers and trends; the user sees both projected trend lines and can compare. Projecting only the net would lose the magnitude story.
+
+**MonthlySummaryScreen kept:**
+- Idle Fund Alert (60% cash threshold).
+- Month-by-Month Breakdown list at bottom (12 rows now instead of 6).
+
+**Stage 5 pending:**
+- C15e — Money Flow: build a Sankey or category-grouped flow visualization showing Income sources → categories → end balances, OR remove the tile if not building. Decision-heavy more than work-heavy.
 
 ### 2026-05-27 — 3.2.31 (C15 Stage 3 of 5: C15c Net Worth History chart-hero + callouts + backfill + nag removal)
 
