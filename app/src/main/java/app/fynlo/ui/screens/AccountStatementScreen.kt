@@ -124,6 +124,8 @@ private fun QuickBalanceEditDialog(
     val newBalance = input.toDoubleOrNull()
 
     AlertDialog(
+        modifier = Modifier.fillMaxWidth(0.95f),
+        properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false),
         onDismissRequest = onDismiss,
         title = { Text("Edit Balance") },
         text = {

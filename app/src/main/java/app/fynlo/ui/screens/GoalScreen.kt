@@ -182,6 +182,8 @@ fun AddGoalDialog(currencySymbol: String, onDismiss: () -> Unit, onConfirm: (Goa
     var deadline by remember { mutableStateOf("") }
 
     AlertDialog(
+        modifier = Modifier.fillMaxWidth(0.95f),
+        properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false),
         onDismissRequest = onDismiss,
         title = { Text("Add Savings Goal") },
         text = {

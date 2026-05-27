@@ -390,6 +390,8 @@ fun AddBudgetDialog(
     val finalCategory = if (selectedCategory == "Custom") customCategory else selectedCategory
 
     AlertDialog(
+        modifier = Modifier.fillMaxWidth(0.95f),
+        properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false),
         onDismissRequest = onDismiss,
         title = { Text("Set Category Limit") },
         text = {

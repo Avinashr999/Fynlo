@@ -421,6 +421,8 @@ fun EmiCalculatorDialog(onDismiss: () -> Unit) {
     val interest = total?.let { it - (principal.toDoubleOrNull() ?: 0.0) }
 
     AlertDialog(
+        modifier = Modifier.fillMaxWidth(0.95f),
+        properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false),
         onDismissRequest = onDismiss,
         title = { Text("EMI Calculator") },
         text = {

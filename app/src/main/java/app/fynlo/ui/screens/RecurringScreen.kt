@@ -286,6 +286,8 @@ private fun AddRecurringDialog(
     }
 
     AlertDialog(
+        modifier = Modifier.fillMaxWidth(0.95f),
+        properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false),
         onDismissRequest = onDismiss,
         title = { Text("Add Recurring Transaction") },
         text = {

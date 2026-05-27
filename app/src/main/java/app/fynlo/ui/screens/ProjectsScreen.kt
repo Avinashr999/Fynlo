@@ -192,6 +192,8 @@ private fun AddProjectDialog(
     var selectedColor by remember { mutableStateOf(colors.first()) }
 
     AlertDialog(
+        modifier = Modifier.fillMaxWidth(0.95f),
+        properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false),
         onDismissRequest = onDismiss,
         title = { Text("New Project") },
         text = {

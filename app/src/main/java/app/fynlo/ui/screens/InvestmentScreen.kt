@@ -608,6 +608,8 @@ fun UpdateInvestmentValueDialog(
     val locale   = java.util.Locale.getDefault()
 
     AlertDialog(
+        modifier = Modifier.fillMaxWidth(0.95f),
+        properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false),
         onDismissRequest = onDismiss,
         title = { Text("Log New Valuation") },
         text = {
@@ -663,6 +665,8 @@ fun ValuationHistoryDialog(
     onDismiss: () -> Unit
 ) {
     AlertDialog(
+        modifier = Modifier.fillMaxWidth(0.95f),
+        properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false),
         onDismissRequest = onDismiss,
         title = { Text("Valuation History") },
         text = {

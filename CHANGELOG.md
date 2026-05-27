@@ -2,6 +2,40 @@
 
 All notable changes to Fynlo are documented here.
 
+## [3.2.52] - 2026-05-27 *(Development milestone — form dialogs widened to 95% screen — Material 3 platform default was too narrow; not promoted per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`)*
+
+### Fixed
+- **Form AlertDialogs were rendering at ~280dp wide on a 1272dp-wide device (~22% of screen)** — Material 3's `usePlatformDefaultWidth = true` default. User feedback: "no margins and dialog screen was more narrow it have to be compact." Right — the dialog itself was too narrow regardless of content padding; fields inside ended up cramped horizontally even with the verticalScroll fix from 3.2.51.
+
+**Fix applied to all 8 form-shaped AlertDialogs across 8 screens:**
+- `BudgetScreen.AddBudgetDialog`
+- `GoalScreen.AddGoalDialog`
+- `PeopleScreen.PersonDialog`
+- `ProjectsScreen.NewProjectDialog`
+- `LendingScreen.EmiCalculatorDialog`
+- `InvestmentScreen.LogValuationDialog` + `HistoryDialog` (both at once via the replace_all sweep)
+- `RecurringScreen.AddRecurringDialog`
+- `AccountStatementScreen.EditBalanceDialog`
+
+Each gained two new params:
+- `modifier = Modifier.fillMaxWidth(0.95f)` — the dialog itself fills 95% of available screen width instead of the ~280dp Material default. Leaves ~2.5% padding each side.
+- `properties = DialogProperties(usePlatformDefaultWidth = false)` — required for the modifier above to take effect; without it the platform-default-width still wins.
+
+Picked 0.95f over 1.0f so there's a visible edge between the dialog and the dim background — purely a visual breathing room thing. Picked over 0.85f / 0.9f because the user explicitly asked for "compact" — the more screen width the dialog claims, the less the content cramps.
+
+### Lesson logged
+Two-step rule for Material 3 AlertDialog form dialogs:
+1. Wrap the form Column in `Modifier.verticalScroll(rememberScrollState())` (lesson from 3.2.50–3.2.51).
+2. Set `modifier = Modifier.fillMaxWidth(0.95f)` + `properties = DialogProperties(usePlatformDefaultWidth = false)` (this lesson — 3.2.52).
+
+Without both, form dialogs either clip vertically OR cramp horizontally. Candidate for `LINT_RULES.md` as a Material 3 AlertDialog hygiene rule.
+
+### Changed
+- **`versionName`** `3.2.51` → `3.2.52`, **`versionCode`** `174` → `175`.
+
+### Data-integrity gate
+Unchanged at **137 tests across 12 classes**, 0 failures.
+
 ## [3.2.51] - 2026-05-27 *(Development milestone — cross-dialog verticalScroll sweep — applying the AddRecurring lesson to every other form dialog proactively; not promoted per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`)*
 
 ### Fixed

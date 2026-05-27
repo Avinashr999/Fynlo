@@ -288,6 +288,8 @@ fun AddPersonDialog(initial: Person? = null, onDismiss: () -> Unit, onConfirm: (
     val fullPhone = if (phoneNumber.isNotBlank()) "${selectedCode.code}$phoneNumber" else ""
 
     AlertDialog(
+        modifier = Modifier.fillMaxWidth(0.95f),
+        properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false),
         onDismissRequest = onDismiss,
         title = { Text(if (isEdit) "Edit Contact" else "Add New Contact") },
         text = {
