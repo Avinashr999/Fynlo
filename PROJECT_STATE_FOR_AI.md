@@ -158,7 +158,7 @@ AI_AGENT_PROTOCOL.md to match.
 
 # Fynlo - Complete AI Portability File
 **Project Name**: Fynlo
-**Version**: 3.2.18 on `master` (`versionName = "3.2.18"`, `versionCode = 141`). All four Sprint-1 P0 clusters closed (C01 / C02 / C03a / C05). **Four P1 Sprint 2 clusters closed: C04 at 3.2.6, C06 + C07 at 3.2.12, C08 at 3.2.18 (Stages 1-4 across 3.2.13 / .14 / .15 / .18, with 3.2.16 + 3.2.17 as out-of-band EMI Calculator polish + nav fix).** Remaining P1: C09 (UTF-8 in dialogs), C12-C15 (screen redesigns), C18 (Settings cleanup), C21 (PDF/XLSX export quality polish — page breaks, group totals, embedded glyphs). Internal milestone markers only — per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens until every `UX_AUDIT` cluster (P0 through P3) is closed.
+**Version**: 3.2.19 on `master` (`versionName = "3.2.19"`, `versionCode = 142`). All four Sprint-1 P0 clusters closed (C01 / C02 / C03a / C05). **Five P1 Sprint 2 clusters closed: C04 at 3.2.6, C06+C07 at 3.2.12, C08 at 3.2.18, C09 at 3.2.19.** Remaining P1: C12-C15 (screen redesigns), C18 (Settings cleanup), C21 (PDF/XLSX export quality polish — page breaks, group totals, embedded glyphs). Internal milestone markers only — per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens until every `UX_AUDIT` cluster (P0 through P3) is closed.
 **Platform**: Android (Kotlin, Jetpack Compose, Room — Gradle 9.4.1, AGP 9.2.1, Room 2.8.4, KSP 2.3.7, Kotlin 2.2.10)
 
 ## 1. Project Overview
@@ -345,6 +345,27 @@ in the APK).
 ## 6. Journal
 
 **Newest first.** Each entry: date · cluster(s) closed/touched · commit(s) · one-paragraph why-and-what.
+
+### 2026-05-27 — 3.2.19 (C09 CLOSURE: UTF-8 mojibake fixes + regression guard)
+
+**Type:** quick P1 cluster — small in scope (3 files, ~18 mojibake fixes) but high visibility for the user (the warning emojis in the 3 destructive-action dialogs now render correctly). Audit asked for this as a "small, quick cluster, good warm-up." Done in one session with full regression coverage.
+
+**Internal milestone:** `3.2.19` / `versionCode = 142`. No Play Console upload per release-cadence ADR.
+
+**Root cause:** the audit hypothesized "Resources.getString() returning ISO-8859-1" — **wrong**. The strings aren't in `strings.xml`; they're Compose `Text("...")` literals in `.kt` files. The real cause: three source files (`SettingsScreen.kt`, `FinanceViewModel.kt`, `Navigation.kt`) had been saved through a Windows-1252-thinking editor at some prior commit, scrambling every multi-byte UTF-8 codepoint into 3-char Latin-1 mojibake sequences. Inspection via `Get-Item ... -ReadAllBytes` confirmed no BOM and the bytes match the typical CP1252-misencoding pattern.
+
+**What landed:**
+- **4 user-facing string fixes:** `SettingsScreen.kt:539` (`âš ï¸` → `⚠️` in Load Test Data dialog), `:555` (`â‚¹` × 2 → `₹` × 2 in Restore Real Data dialog), `:562` (`âš ï¸` → `⚠️` in Wipe ALL Data dialog), `FinanceViewModel.kt:1102` (`â‚¹` → `₹` in dummy-data note).
+- **14 comment / section-divider mojibake instances** cleaned up (em-dashes `â€"` → `—`, box-drawing `â"€` → `─`). Cosmetic — these are inside `//` comments and `// ── Section ─────` dividers, no runtime impact, but the file is now valid UTF-8 throughout.
+- **NEW `Utf8MojibakeDataIntegrityTest`** with 2 cases: (a) walks `src/main/`, parses every `.kt` and `.xml`, fails on any of 6 known mojibake byte sequences (`â‚¹`, `âš `, `ï¸`, `â€"`, `â€"`, `â"€`); (b) lockdown test that the detection patterns themselves are 3-char sequences (prevents future contributors from adding ambiguous patterns that'd false-positive on legitimate Latin-1 prose).
+
+**Implementation note (Edit-tool limitation):** the standard Edit tool couldn't grab the `âš ï¸` byte sequence as `old_string` — the mojibake includes characters in the U+00A0–U+00FF range (Latin-1 supplementary) that the Edit tool's byte-level matching rejected. Switched to PowerShell with regex anchored on surrounding ASCII context (`{ Text("[^A-Za-z]+?This will DELETE`) for the warning-emoji replacements, and `[char]0x00E2 + [char]0x20AC + [char]0x201D` for the explicit-codepoint em-dash replacement. Worth remembering for any future mojibake / non-ASCII source fixes.
+
+**Audit's PDF-date `20260525` claim not reproduced** — `ExportUtility` uses `LocalDate.now()` which toString()s as `2026-05-27` (ISO 8601 with dashes). Likely fixed in a prior commit; current behaviour matches the audit's acceptance criterion.
+
+**Data-integrity gate state:** 112 → **114 tests across 10 classes** (+2 from `Utf8MojibakeDataIntegrityTest`), 0 failures. The gate-class count finally crosses double digits.
+
+**5 of 9 P1 Sprint 2 clusters closed.** Remaining: C12-C15 (screen redesigns — sizable), C18 (Settings cleanup — medium), C21 (PDF/XLSX export quality polish: page breaks, group totals, embedded glyph fonts for ₹ and अ — depends partially on the C08 numeric-cell foundation).
 
 ### 2026-05-27 — 3.2.18 (C08 Stage 4 + C08 CLOSURE: PDF + XLSX export migration)
 

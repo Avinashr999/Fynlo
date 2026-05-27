@@ -2,6 +2,36 @@
 
 All notable changes to Fynlo are documented here.
 
+## [3.2.19] - 2026-05-27 *(Development milestone — C09 CLOSURE: UTF-8 mojibake fixes + regression guard; not promoted per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`)*
+
+### Fixed
+- **C09 — UTF-8 encoding pipeline bug in dialogs. CLOSES C09.** The audit's three named dialogs (Load Test Data, Restore Real Data, Wipe ALL Data) rendered garbled characters: `âš ï¸` instead of `⚠️` and `â‚¹` instead of `₹`. **Root cause confirmed not at the rendering pipeline level** (no `strings.xml` issue, no resource-decoding bug) — the source files themselves had been saved through a Windows-1252-thinking editor at some prior commit, scrambling every multi-byte UTF-8 codepoint into 3-char Latin-1 sequences. Fixed:
+  - **4 user-facing string literals** restored to proper Unicode:
+    - `SettingsScreen.kt:539` — Load Test Data dialog: `âš ï¸` → `⚠️`
+    - `SettingsScreen.kt:555` — Restore Real Data dialog: `â‚¹3,962` / `â‚¹1,22,500` → `₹3,962` / `₹1,22,500`
+    - `SettingsScreen.kt:562` — Wipe ALL Data dialog: `âš ï¸` → `⚠️`
+    - `FinanceViewModel.kt:1102` — Dummy data note: `EMI â‚¹2500` → `EMI ₹2500` (only visible to users who load test data)
+  - **14 comment / section-divider mojibake instances** cleaned up across the same 3 files: em-dashes (`â€"` → `—`) and box-drawing horizontals (`â"€` → `─`). Code hygiene; no runtime user impact, but the file is now valid UTF-8 throughout.
+
+### Added
+- **NEW `Utf8MojibakeDataIntegrityTest`** in `app/src/test/java/app/fynlo/data/` — 2 cases that scan every `.kt` / `.xml` file under `src/main/` and fail the CI data-integrity gate if any of 6 known mojibake byte sequences appear (`â‚¹`, `âš `, `ï¸`, `â€"`, `â€"`, `â"€`). Catches future regressions before they ship — if someone edits a source file on Windows with an editor that re-saves as CP1252, the test fails with `file:line — mojibake for 'X'` listing every offending site.
+
+### Notes
+- **PDF date format `20260525` from the audit was NOT reproduced in current code.** `ExportUtility` uses `LocalDate.now()` which already toString()s as `2026-05-27` (ISO 8601 with dashes). The audit-described bug was likely fixed in a prior commit; current behaviour matches the audit's acceptance criterion (`25-05-2026` per user date-format setting).
+- **The audit's "Resources.getString() returning ISO-8859-1" hypothesis (fix point #1) turned out to be wrong.** The dialog strings aren't in `strings.xml` — they're Compose `Text("...")` literals in `.kt` files. The root cause was just a source-file encoding issue, no resource-pipeline issue. Documented for future cluster work.
+
+### Closes
+- **UX_AUDIT §C09 — UTF-8 / encoding pipeline bug in dialogs**. 5th P1 Sprint 2 cluster closed.
+
+### Changed
+- **`versionName`** `3.2.18` → `3.2.19`, **`versionCode`** `141` → `142`.
+
+### Data-integrity gate
+**112 → 114 tests across 10 classes** (+2 from `Utf8MojibakeDataIntegrityTest`), 0 failures.
+
+### Sprint 2 P1 milestone
+After this commit, **five P1 Sprint 2 clusters are CLOSED**: C04 (3.2.6), C06+C07 (3.2.12), C08 (3.2.18), **C09 (3.2.19)**. Remaining P1: C12-C15 (screen redesigns), C18 (Settings cleanup), C21 (PDF/XLSX export quality polish).
+
 ## [3.2.18] - 2026-05-27 *(Development milestone — C08 Stage 4 + C08 CLOSURE: PDF + XLSX export migration; not promoted per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`)*
 
 ### Fixed

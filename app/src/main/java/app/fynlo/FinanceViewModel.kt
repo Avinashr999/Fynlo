@@ -161,7 +161,7 @@ class FinanceViewModel @Inject constructor(
 
         val totalReceivables = activeBrws.sumOf { b ->
             val accrued = if (b.status == "Defaulted" && b.frozenInterest > 0)
-                b.frozenInterest  // frozen at default date â€” no further accrual
+                b.frozenInterest  // frozen at default date — no further accrual
             else
                 app.fynlo.logic.InterestEngine.calcIntAccrued(
                     b.amount, b.rate, b.date, b.type, b.due,
@@ -213,7 +213,7 @@ class FinanceViewModel @Inject constructor(
             )
         }
         // Exclude journal_only entries (Bad Debt write-offs, Interest Expense P&L entries)
-        // from cash flow totals â€” they are accounting entries, not actual cash movements
+        // from cash flow totals — they are accounting entries, not actual cash movements
         val cashTrans     = trans.filter { it.tags != "journal_only" }
         val totalExpenses = cashTrans.filter { it.type.lowercase() == "expense" }.sumOf { it.amount }
         val totalIncome   = cashTrans.filter { it.type.lowercase() == "income"  }.sumOf { it.amount }
@@ -488,7 +488,7 @@ class FinanceViewModel @Inject constructor(
         }
     }
 
-    // â”€â”€â”€ Add investment â€” pick the right repository function by source type â”€â”€â”€â”€â”€
+    // ─── Add investment — pick the right repository function by source type ─────
     fun addInvestmentFundedByAccount(investment: Investment, accountName: String) {
         viewModelScope.launch(Dispatchers.IO) { repository.insertInvestmentFundedByAccount(investment.copy(projectId = pid), accountName, pid) }
     }
@@ -1099,7 +1099,7 @@ class FinanceViewModel @Inject constructor(
             val debt1 = Debt(
                 "d1", "Home Loan", amount = 150000.0, rate = 8.5,
                 date = "2023-01-01", paid = 20000.0,
-                notes = "Monthly EMI â‚¹2500. 15 years tenure.", projectId = pid
+                notes = "Monthly EMI ₹2500. 15 years tenure.", projectId = pid
             )
             repository.insertDebtWithDestination(debt1, "HDFC Bank", pid)
 

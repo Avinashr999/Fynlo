@@ -80,7 +80,7 @@ fun SettingsScreen(
     LaunchedEffect(displayNameFlow) { if (displayName.isEmpty()) displayName = displayNameFlow }
 
 
-    // â"€â"€ Export launchers â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
+    // ── Export launchers ────────────────────────────────────────────────────
     val jsonLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("application/json")
     ) { uri -> uri?.let { scope.launch {
@@ -223,7 +223,7 @@ fun SettingsScreen(
 
         Spacer(Modifier.height(16.dp))
 
-        // â"€â"€ Cloud Backup â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
+        // ── Cloud Backup ─────────────────────────────────────────────────────
         // ── Backup & Export ──────────────────────────────────────────────────
         SettingsSectionLabel("Backup & Export")
         SettingsCard {
@@ -338,7 +338,7 @@ fun SettingsScreen(
 
         Spacer(Modifier.height(16.dp))
 
-        // â"€â"€ Notifications â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
+        // ── Notifications ────────────────────────────────────────────────────
         SettingsSectionLabel("Notifications")
         SettingsCard {
             // Notification toggle
@@ -459,7 +459,7 @@ fun SettingsScreen(
 
 
 
-        // â"€â"€ App Info â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
+        // ── App Info ─────────────────────────────────────────────────────────
         // PIN manager retained for the Danger Zone reset gate; the PIN &
         // biometric controls now live in Profile & Security (ProfileScreen).
         val pinManager = remember { app.fynlo.data.PinManager(context) }
@@ -523,7 +523,7 @@ fun SettingsScreen(
             }
         }
 
-        // â"€â"€ Developer (debug only) â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
+        // ── Developer (debug only) ───────────────────────────────────────────
         if (app.fynlo.BuildConfig.DEBUG) {
             Spacer(Modifier.height(16.dp))
             SettingsSectionLabel("Developer")
@@ -536,7 +536,7 @@ fun SettingsScreen(
                 if (showSeedConfirm) AlertDialog(
                     onDismissRequest = { showSeedConfirm = false },
                     title = { Text("Load Test Data?") },
-                    text  = { Text("âš ï¸ This will DELETE all existing data and replace with QA test data.") },
+                    text  = { Text("⚠️ This will DELETE all existing data and replace with QA test data.") },
                     confirmButton = { Button(onClick = { viewModel.loadDummyData(); showSeedConfirm = false },
                         colors = ButtonDefaults.buttonColors(containerColor = Red)
                     ) { Text("Load") } },
@@ -552,14 +552,14 @@ fun SettingsScreen(
                 if (showRestoreConfirm) AlertDialog(
                     onDismissRequest = { showRestoreConfirm = false },
                     title = { Text("Restore Real Data?") },
-                    text  = { Text("Clears all transactions and restores Cash in Hand â‚¹3,962 + HDFC Bank â‚¹1,22,500.") },
+                    text  = { Text("Clears all transactions and restores Cash in Hand ₹3,962 + HDFC Bank ₹1,22,500.") },
                     confirmButton = { Button(onClick = { viewModel.restoreRealData(); showRestoreConfirm = false }) { Text("Restore") } },
                     dismissButton = { TextButton(onClick = { showRestoreConfirm = false }) { Text("Cancel") } }
                 )
                 if (showWipeConfirm) AlertDialog(
                     onDismissRequest = { showWipeConfirm = false },
                     title = { Text("Wipe ALL Data?") },
-                    text  = { Text("âš ï¸ PERMANENT DESTRUCTION: This will delete everything from this phone AND Google Cloud. This cannot be undone.") },
+                    text  = { Text("⚠️ PERMANENT DESTRUCTION: This will delete everything from this phone AND Google Cloud. This cannot be undone.") },
                     confirmButton = { Button(onClick = { viewModel.wipeAllData(); showWipeConfirm = false },
                         colors = ButtonDefaults.buttonColors(containerColor = Red)
                     ) { Text("WIPE EVERYTHING") } },
@@ -594,7 +594,7 @@ fun SettingsScreen(
             }
         }
 
-        // â"€â"€ Version â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
+        // ── Version ──────────────────────────────────────────────────────────
         // ── Danger Zone ──────────────────────────────────────────────────────
         Spacer(Modifier.height(16.dp))
         Row(
@@ -714,7 +714,7 @@ fun SettingsScreen(
     }
 }
 
-// â"€â"€ Shared composables â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
+// ── Shared composables ──────────────────────────────────────────────────────
 
 @Composable
 private fun SettingsSectionLabel(title: String) {

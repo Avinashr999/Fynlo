@@ -137,7 +137,7 @@ fun MainNavigation(viewModel: FinanceViewModel) {
         return
     }
 
-    // Offline banner â€" use real network state, not Firestore status
+    // Offline banner — use real network state, not Firestore status
     val isOffline = remember {
         val cm = context.getSystemService(android.content.Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
         val network = cm.activeNetwork
@@ -323,7 +323,7 @@ fun MainNavigation(viewModel: FinanceViewModel) {
 
                     Spacer(Modifier.height(8.dp))
 
-                    // â"€â"€ Account â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
+                    // ── Account ──────────────────────────────────────────────
                     DrawerSectionLabel("Account")
                     DrawerItem(Icons.Default.Person, "Profile & Security",
                         currentRoute == Screen.Profile.route) {
@@ -343,7 +343,7 @@ fun MainNavigation(viewModel: FinanceViewModel) {
 
                     DrawerDivider()
 
-                    // â"€â"€ Finance Tools â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
+                    // ── Finance Tools ─────────────────────────────────────────
                     DrawerSectionLabel("Finance Tools")
                     DrawerItem(Icons.Default.PieChart, "Budgeting",
                         currentRoute == Screen.Budgets.route) {
@@ -393,7 +393,7 @@ fun MainNavigation(viewModel: FinanceViewModel) {
 
                     DrawerDivider()
 
-                    // â"€â"€ Logout â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
+                    // ── Logout ────────────────────────────────────────────────
                     NavigationDrawerItem(
                         icon     = { Icon(Icons.AutoMirrored.Filled.Logout, null,
                             tint = SemanticRed) },
@@ -761,7 +761,7 @@ fun ActionItem(icon: ImageVector, label: String, color: Color, onClick: () -> Un
     }
 }
 
-// â"€â"€ Drawer helper composables â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
+// ── Drawer helper composables ────────────────────────────────────────
 
 @Composable
 fun DrawerSectionLabel(title: String) {
