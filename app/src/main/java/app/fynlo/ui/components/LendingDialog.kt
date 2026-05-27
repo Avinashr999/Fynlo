@@ -50,7 +50,6 @@ fun AddLendingDialog(
     var notes by remember { mutableStateOf(initialBorrower?.notes ?: "") }
     val isPro by app.fynlo.billing.BillingManager.isPro.collectAsState()
     var selectedType by remember { mutableStateOf(initialBorrower?.type ?: "Simple Interest") }
-    var showAdvancedInterest by remember { mutableStateOf(selectedType != "Simple Interest") }
 
     val accountOptions = if (accounts.isNotEmpty()) accounts
         else listOf(app.fynlo.data.model.Account(id = "cash", name = "Cash in Hand", type = "Cash", balance = 0.0))
@@ -147,38 +146,54 @@ fun AddLendingDialog(
                 Spacer(Modifier.height(20.dp))
 
                 // ── Interest type ─────────────────────────────────────────────
+                // 3.2.26 — unified with DebtDialog's widget (audit consistency
+                // surfaced during C12 Stage 1 smoke). Was a `FlowRow<FilterChip>`
+                // with Simple Interest always visible and a `Pro`-gated
+                // "Advanced options" TextButton that revealed Reducing / Compound
+                // / SI+CI chips. Now: a single `ExposedDropdownMenuBox` matching
+                // DebtDialog. Free vs Pro gating is preserved by varying the
+                // dropdown's options — free users see only "Simple Interest";
+                // Pro users see all 4. Eliminates the extra-tap "Advanced
+                // options" affordance for Pro users (they already paid for
+                // these options, no point hiding them) while still gating
+                // free-tier users from the engine's advanced modes.
+                //
+                // Edge case: if a free user has a borrower previously saved
+                // with an advanced type (Pro downgrade or admin override),
+                // the field still displays it correctly via `InterestEngine.label`,
+                // and the dropdown won't offer the advanced types — they
+                // can only switch back to Simple Interest from there.
                 Text("Interest type", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Spacer(Modifier.height(8.dp))
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    FilterChip(
-                        selected = selectedType == "Simple Interest",
-                        onClick = { selectedType = "Simple Interest" },
-                        label = { Text("Simple Interest") },
+                val interestOptions = remember(isPro) {
+                    if (isPro) listOf("Simple Interest") + advancedInterestTypes
+                    else listOf("Simple Interest")
+                }
+                var interestExpanded by remember { mutableStateOf(false) }
+                ExposedDropdownMenuBox(
+                    expanded = interestExpanded,
+                    onExpandedChange = { interestExpanded = !interestExpanded },
+                ) {
+                    OutlinedTextField(
+                        value = app.fynlo.logic.InterestEngine.label(selectedType),
+                        onValueChange = {}, readOnly = true,
+                        label = { Text("Interest Type") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = interestExpanded) },
+                        modifier = Modifier
+                            .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, true)
+                            .fillMaxWidth(),
                         shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = Emerald500.copy(alpha = 0.16f),
-                            selectedLabelColor = Emerald500)
                     )
-                    if (showAdvancedInterest) {
-                        // C12 (3.2.25) — chip label via InterestEngine.label() so
-                        // "Both" renders as "SI + CI" per audit fix #9. Stored
-                        // value stays raw.
-                        advancedInterestTypes.forEach { type ->
-                            FilterChip(
-                                selected = selectedType == type,
-                                onClick = { selectedType = type },
-                                label = { Text(app.fynlo.logic.InterestEngine.label(type)) },
-                                shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
-                                colors = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = Emerald500.copy(alpha = 0.16f),
-                                    selectedLabelColor = Emerald500)
+                    ExposedDropdownMenu(expanded = interestExpanded, onDismissRequest = { interestExpanded = false }) {
+                        interestOptions.forEach { type ->
+                            DropdownMenuItem(
+                                text = { Text(app.fynlo.logic.InterestEngine.label(type)) },
+                                onClick = {
+                                    selectedType = type
+                                    interestExpanded = false
+                                },
                             )
                         }
-                    }
-                }
-                if (!showAdvancedInterest && isPro) {
-                    TextButton(onClick = { showAdvancedInterest = true }, contentPadding = PaddingValues(horizontal = 4.dp)) {
-                        Text("Advanced options", color = Emerald500, style = MaterialTheme.typography.labelMedium)
                     }
                 }
 

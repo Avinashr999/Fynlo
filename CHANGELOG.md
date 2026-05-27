@@ -2,6 +2,23 @@
 
 All notable changes to Fynlo are documented here.
 
+## [3.2.26] - 2026-05-27 *(Development milestone — LendingDialog interest picker unified with DebtDialog; not promoted per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`)*
+
+### Fixed
+- **LendingDialog interest-type picker now uses the same `ExposedDropdownMenuBox` widget as DebtDialog** — user smoke of C12 Stage 1 (3.2.25) surfaced the inconsistency: DebtDialog has a clean dropdown listing all 4 interest types, but LendingDialog had a `FlowRow<FilterChip>` with Simple Interest always visible and a `Pro`-gated "Advanced options" `TextButton` that revealed Reducing / Compound / SI+CI chips. Both pickers serve the same purpose; one widget for both.
+  - **Free vs Pro gating preserved** by varying the dropdown's options at construction time:
+    - Free user → dropdown lists only `["Simple Interest"]`
+    - Pro user → dropdown lists `["Simple Interest", "Reducing Balance", "Compound Interest", "Both"]` (rendered as `"SI + CI"` via `InterestEngine.label`)
+  - **Eliminates the extra-tap "Advanced options" affordance** for Pro users — they already paid for these options, no point hiding them behind a click. Free-tier gating still enforced because the advanced types simply aren't in their dropdown.
+  - **Edge case handled** — if a free user has a borrower previously saved with an advanced type (Pro downgrade or admin override), the field still displays the current type correctly via `InterestEngine.label`, and the dropdown won't offer the advanced types — they can only switch back to Simple Interest from there.
+  - **Dropped** the `showAdvancedInterest` state variable + the "Advanced options" TextButton. Cleaner code, fewer states.
+
+### Changed
+- **`versionName`** `3.2.25` → `3.2.26`, **`versionCode`** `148` → `149`.
+
+### Data-integrity gate
+Unchanged at **114 tests across 10 classes**, 0 failures (UI widget swap; no logic change — same `selectedType` state, same persistence path).
+
 ## [3.2.25] - 2026-05-27 *(Development milestone — C12 Stage 1: LoansHub hero + "Both"→"SI + CI" rename; not promoted per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`)*
 
 ### Fixed

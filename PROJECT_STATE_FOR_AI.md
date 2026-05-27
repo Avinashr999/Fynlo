@@ -158,7 +158,7 @@ AI_AGENT_PROTOCOL.md to match.
 
 # Fynlo - Complete AI Portability File
 **Project Name**: Fynlo
-**Version**: 3.2.25 on `master` (`versionName = "3.2.25"`, `versionCode = 148`). All four Sprint-1 P0 clusters closed (C01 / C02 / C03a / C05). Eight P1 Sprint 2 clusters closed (C04, C06+C07, C08, C09, C18, C13, C14). **C12 Stage 1 of 3 landed at 3.2.25** (LoansHub hero + "Both"→"SI + CI" rename); Stage 2 (filter consolidation) and Stage 3 (per-row action removal + Send-reminder picker) pending. Remaining P1: C12 Stages 2-3, C15 (Reports, 4 sub-screens), C21 (PDF/XLSX export quality polish). Plus deferred follow-ups: Task #26, #27, #28, #24. Internal milestone markers only — per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens until every `UX_AUDIT` cluster (P0 through P3) is closed.
+**Version**: 3.2.26 on `master` (`versionName = "3.2.26"`, `versionCode = 149`). All four Sprint-1 P0 clusters closed (C01 / C02 / C03a / C05). Eight P1 Sprint 2 clusters closed (C04, C06+C07, C08, C09, C18, C13, C14). C12 Stage 1 of 3 landed at 3.2.25; **3.2.26 = smoke-surfaced consistency fix (LendingDialog interest picker unified to dropdown matching DebtDialog)**. Stage 2 (filter consolidation) and Stage 3 (per-row action removal + Send-reminder picker) pending. Remaining P1: C12 Stages 2-3, C15 (Reports, 4 sub-screens), C21 (PDF/XLSX export quality polish). Plus deferred follow-ups: Task #26, #27, #28, #24. Internal milestone markers only — per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens until every `UX_AUDIT` cluster (P0 through P3) is closed.
 **Platform**: Android (Kotlin, Jetpack Compose, Room — Gradle 9.4.1, AGP 9.2.1, Room 2.8.4, KSP 2.3.7, Kotlin 2.2.10)
 
 ## 1. Project Overview
@@ -345,6 +345,18 @@ in the APK).
 ## 6. Journal
 
 **Newest first.** Each entry: date · cluster(s) closed/touched · commit(s) · one-paragraph why-and-what.
+
+### 2026-05-27 — 3.2.26 (LendingDialog interest picker unified to dropdown — smoke surface)
+
+**Type:** consistency fix surfaced by C12 Stage 1 smoke. User observed: "why the interest type dropdown not done in lent section?" — fair question, because DebtDialog had been migrated to a dropdown widget while LendingDialog still used a chip picker with a Pro-gated "Advanced options" TextButton. Both pickers serve the same purpose; one widget for both.
+
+**Internal milestone:** `3.2.26` / `versionCode = 149`. No Play Console upload per release-cadence ADR. No test gate change.
+
+**What landed:** LendingDialog switched to `ExposedDropdownMenuBox` matching DebtDialog's widget. Free vs Pro gating preserved by varying the dropdown's options at construction time — free users see only `["Simple Interest"]`, Pro users see all 4 (with `"Both"` rendered as `"SI + CI"` via `InterestEngine.label`). The "Advanced options" TextButton is gone — Pro users see all options immediately (they already paid for them). Free-tier gating still enforced through the option list itself.
+
+**Edge case:** if a free user has a borrower previously saved with an advanced type (Pro downgrade or admin override), the field displays the current type via `InterestEngine.label`, but the dropdown only offers Simple Interest — they can switch back, but not to another advanced type without upgrading.
+
+**Pattern reinforced:** when migrating widget types (chip → dropdown), do it across all matching surfaces in one pass. C12 Stage 1's `Both`→`SI+CI` rename touched 6 sites; the widget swap for LendingDialog should've gone with it. Smoke-surfaced inconsistencies are normal and expected — that's why we smoke between stages.
 
 ### 2026-05-27 — 3.2.25 (C12 Stage 1 of 3: LoansHub hero + Both→SI+CI rename)
 
