@@ -145,12 +145,24 @@ fun ReportsHubScreen(
                 Arrangement.End, Alignment.CenterVertically
             ) {
                 val context = androidx.compose.ui.platform.LocalContext.current
+                val projectName = currentProject?.name ?: "Personal"
+                val periodLabel = if (selectedRange == "All Time") "All time"
+                                  else "${fromDate.format(DateTimeFormatter.ofPattern("dd MMM yyyy"))} – ${toDate.format(DateTimeFormatter.ofPattern("dd MMM yyyy"))}"
                 FilledTonalButton(
                     onClick = {
-                        val file = java.io.File(context.cacheDir, "report_${today}.pdf")
+                        // C21 Stage 1 — standardized filename + identity row.
+                        val file = java.io.File(
+                            context.cacheDir,
+                            app.fynlo.logic.ExportUtility.filename("Report", projectName, "pdf")
+                        )
                         file.outputStream().use {
                             app.fynlo.logic.ExportUtility.generatePDF(
-                                it, summary, transactions, emptyList(), emptyList())
+                                it, summary, transactions, emptyList(), emptyList(),
+                                currencyCode = currencyCode,
+                                projectName  = projectName,
+                                userEmail    = app.fynlo.data.AuthManager().userEmail,
+                                periodLabel  = periodLabel,
+                            )
                         }
                         val uri = androidx.core.content.FileProvider.getUriForFile(
                             context, "${context.packageName}.provider", file)

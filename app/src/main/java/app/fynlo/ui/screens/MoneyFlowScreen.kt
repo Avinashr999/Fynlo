@@ -184,6 +184,10 @@ fun MoneyFlowScreen(viewModel: FinanceViewModel) {
                         Spacer(Modifier.width(4.dp))
                         Text("Export")
                     }
+                    // C21 Stage 1 — standardized filename pattern + identity
+                    // params threaded through to PDF generator.
+                    val projectName = currentProject?.name ?: "Personal"
+                    val userEmail   = remember { app.fynlo.data.AuthManager().userEmail }
                     DropdownMenu(expanded = showExportMenu, onDismissRequest = { showExportMenu = false }) {
                         DropdownMenuItem(
                             text = { Text("Export as CSV") },
@@ -191,7 +195,7 @@ fun MoneyFlowScreen(viewModel: FinanceViewModel) {
                             onClick = {
                                 showExportMenu = false
                                 val csv  = ExportUtility.generateMoneyFlowCSV(allFlows, currencyCode)
-                                val file = File(context.cacheDir, "money_flow_${java.time.LocalDate.now()}.csv")
+                                val file = File(context.cacheDir, ExportUtility.filename("MoneyFlow", projectName, "csv"))
                                 file.writeText(csv)
                                 val uri  = FileProvider.getUriForFile(context, "${context.packageName}.provider", file)
                                 context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply {
@@ -205,8 +209,16 @@ fun MoneyFlowScreen(viewModel: FinanceViewModel) {
                             leadingIcon = { Icon(Icons.Default.PictureAsPdf, null) },
                             onClick = {
                                 showExportMenu = false
-                                val file = File(context.cacheDir, "money_flow_${java.time.LocalDate.now()}.pdf")
-                                file.outputStream().use { ExportUtility.generateMoneyFlowPDF(it, allFlows, currencyCode) }
+                                val file = File(context.cacheDir, ExportUtility.filename("MoneyFlow", projectName, "pdf"))
+                                file.outputStream().use {
+                                    ExportUtility.generateMoneyFlowPDF(
+                                        it, allFlows,
+                                        currencyCode = currencyCode,
+                                        projectName  = projectName,
+                                        userEmail    = userEmail,
+                                        periodLabel  = "All time",
+                                    )
+                                }
                                 val uri  = FileProvider.getUriForFile(context, "${context.packageName}.provider", file)
                                 context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply {
                                     type = "application/pdf"; putExtra(Intent.EXTRA_STREAM, uri)

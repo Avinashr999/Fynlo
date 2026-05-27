@@ -25,6 +25,65 @@ object ExportUtility {
     private val locale = Locale.getDefault()
 
     /**
+     * C21 Stage 1 (3.2.35) — standardized filename pattern per audit §C21 #2.
+     * Replaces the prior `report_<epoch>.pdf` / `report_<date>.pdf` ad-hoc
+     * names with a consistent `Fynlo_<ReportType>_<yyyy-MM-dd>_<Subject>.<ext>`
+     * shape. Subject is sanitized to alphanumeric + underscore so filenames
+     * survive Windows / Android Files / Drive / email attachments without
+     * URL-encoding artefacts.
+     *
+     * Examples:
+     *  - `Fynlo_Report_2026-05-27_Personal.pdf`
+     *  - `Fynlo_LoanStatement_2026-05-27_Mohan_Rao.pdf`
+     *  - `Fynlo_MoneyFlow_2026-05-27_Personal.csv`
+     */
+    fun filename(reportType: String, subject: String, ext: String): String {
+        val safeSubject = subject.trim()
+            .replace(Regex("[^A-Za-z0-9]+"), "_")
+            .trim('_')
+            .ifBlank { "Untitled" }
+        val date = LocalDate.now()
+        return "Fynlo_${reportType}_${date}_$safeSubject.$ext"
+    }
+
+    /**
+     * C21 Stage 1 — header info row rendered at the top of every PDF cover.
+     * Audit §C21 #8 + #9: "Project: ... | User: ... | Period: ... | Currency: ..."
+     *
+     * Defaults are tolerant — User segment is omitted entirely when blank
+     * (anonymous / fresh-install case), Period defaults to "All time" so
+     * generators that don't have a date filter still produce a sensible
+     * line.
+     */
+    private fun headerInfoLine(
+        projectName: String,
+        userEmail: String,
+        periodLabel: String,
+        currencyCode: String,
+    ): String {
+        val parts = mutableListOf<String>()
+        parts += "Project: ${projectName.ifBlank { "Personal" }}"
+        if (userEmail.isNotBlank()) parts += "User: $userEmail"
+        parts += "Period: ${periodLabel.ifBlank { "All time" }}"
+        val sym = CurrencyUtils.symbolFor(currencyCode)
+        parts += "Currency: $currencyCode${if (sym.isNotBlank()) " ($sym)" else ""}"
+        return parts.joinToString(" | ")
+    }
+
+    /**
+     * C21 Stage 1 — Android PdfDocument framework limitation note (audit #18
+     * "Set PDF metadata: Title / Author / Subject"). Accepted limitation:
+     * `android.graphics.pdf.PdfDocument` does NOT expose an info-dictionary
+     * setter — Title / Author / Subject can't be written through the public
+     * API. Migrating to a different PDF library (iText / PDFBox / OpenPDF)
+     * for the sake of metadata would be a bigger dependency change than
+     * the user-visible benefit warrants; the header info row inside the
+     * PDF cover (above) carries the same Title / Project / Period data
+     * onto a page that opens directly when the user views the file.
+     */
+    private const val PDF_METADATA_LIMITATION_NOTE = "" // documented only
+
+    /**
      * C08 Stage 4 (3.2.18) — currency-aware number formatting for PDF cells.
      * Pre-3.2.18 this was a private `fmt(v) = "₹${String.format(locale, "%,.2f", v)}"`
      * helper that hardcoded ₹ and `.2f` precision regardless of project
@@ -169,6 +228,11 @@ object ExportUtility {
         // Default INR preserves backwards-compat with any caller that
         // hasn't migrated.
         currencyCode: String = "INR",
+        // C21 Stage 1 (audit #8 + #9): identity + period + currency on the
+        // cover. Defaults stay tolerant — callers can opt in incrementally.
+        projectName: String = "Personal",
+        userEmail: String = "",
+        periodLabel: String = "All time",
     ) {
         val pdf = PdfDocument()
         val b = PdfBuilder(pdf, outputStream)
@@ -179,6 +243,12 @@ object ExportUtility {
         b.nl(26f)
         b.canvas().drawText("Comprehensive Financial Report", MARGIN, b.y, bodyPaint(COLOR_GRAY, 14f))
         b.nl(18f)
+        // C21 Stage 1 — identity row (Project | User | Period | Currency).
+        b.canvas().drawText(
+            headerInfoLine(projectName, userEmail, periodLabel, currencyCode),
+            MARGIN, b.y, bodyPaint(COLOR_BLACK, 10f, bold = true)
+        )
+        b.nl(14f)
         b.canvas().drawText("Generated: ${LocalDate.now()} | Personal Finance Tracker",
             MARGIN, b.y, bodyPaint(COLOR_GRAY, 10f))
         b.nl(12f)
@@ -306,6 +376,10 @@ object ExportUtility {
         outputStream: OutputStream,
         flows: List<FlowEntry>,
         currencyCode: String = "INR",
+        // C21 Stage 1 — same identity row as the main PDF for consistency.
+        projectName: String = "Personal",
+        userEmail: String = "",
+        periodLabel: String = "All time",
     ) {
         val pdf = PdfDocument()
         val b = PdfBuilder(pdf, outputStream)
@@ -315,6 +389,11 @@ object ExportUtility {
         b.nl(26f)
         b.canvas().drawText("Money Flow Report", MARGIN, b.y, bodyPaint(COLOR_GRAY, 14f))
         b.nl(18f)
+        b.canvas().drawText(
+            headerInfoLine(projectName, userEmail, periodLabel, currencyCode),
+            MARGIN, b.y, bodyPaint(COLOR_BLACK, 10f, bold = true)
+        )
+        b.nl(14f)
         b.canvas().drawText("Generated: ${LocalDate.now()}", MARGIN, b.y, bodyPaint(COLOR_GRAY, 10f))
         b.nl(24f)
 
@@ -372,6 +451,11 @@ object ExportUtility {
         interest: Double,
         outstanding: Double,
         currencyCode: String = "INR",
+        // C21 Stage 1 — borrower name carries identity; project + user added
+        // for parity. periodLabel defaults to "All time" since loan statements
+        // span the borrower's full loan history.
+        projectName: String = "Personal",
+        userEmail: String = "",
     ) {
         val pdf = PdfDocument()
         val b = PdfBuilder(pdf, outputStream)
@@ -383,7 +467,13 @@ object ExportUtility {
         b.nl(22f)
         val subCenter = bodyPaint(COLOR_GRAY, 10f).apply { textAlign = Align.CENTER }
         b.canvas().drawText("Fynlo | ${LocalDate.now()}", PAGE_W / 2f, b.y, subCenter)
-        b.nl(24f)
+        b.nl(18f)
+        // Audit #8/#9 — identity row, left-aligned under the centered title.
+        b.canvas().drawText(
+            headerInfoLine(projectName, userEmail, "All time", currencyCode),
+            MARGIN, b.y, bodyPaint(COLOR_BLACK, 10f, bold = true)
+        )
+        b.nl(20f)
 
         // Borrower detail table
         b.sectionHeader("Borrower Details")

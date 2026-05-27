@@ -957,11 +957,18 @@ class FinanceViewModel @Inject constructor(
         // (₹2,41,663 / $241,663 / etc.) instead of the pre-3.2.18
         // hardcoded "₹X,XXX.XX".
         val currencyCode = currentProject.value?.currency ?: "INR"
+        // C21 Stage 1 — thread project name + signed-in email onto the PDF
+        // cover. AuthManager is lightweight to instantiate (just wraps
+        // Firebase.auth singleton); reaching for it directly avoids adding
+        // a constructor-injection just for the export read path.
         app.fynlo.logic.ExportUtility.generatePDF(
             outputStream, financialSummary.value,
             transactions.value, borrowers.value, investments.value,
             lastRecalcAt = recalcAt,
             currencyCode = currencyCode,
+            projectName = currentProject.value?.name ?: "Personal",
+            userEmail   = app.fynlo.data.AuthManager().userEmail,
+            periodLabel = "All time",
         )
         app.fynlo.data.Analytics.dataExported("pdf")
     }

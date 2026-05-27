@@ -158,7 +158,7 @@ AI_AGENT_PROTOCOL.md to match.
 
 # Fynlo - Complete AI Portability File
 **Project Name**: Fynlo
-**Version**: 3.2.34 on `master` (`versionName = "3.2.34"`, `versionCode = 157`). MoneyFlowScreen layout fix from 3.2.33 smoke — wrapper Column around Export button was using `fillMaxSize()` which gobbled all remaining vertical space and made the LazyColumn render at zero height. Changed to `fillMaxWidth()`; everything in the LazyColumn (including the new C15e visualization) is visible again. All four Sprint-1 P0 clusters closed (C01 / C02 / C03a / C05). **Ten** P1 Sprint 2 clusters closed (C04, C06+C07, C08, C09, C18, C13, C14, C12, **C15**). **3.2.33 = C15 Stage 5 = C15e Money Flow category-grouped visualization — closes C15 in full**. All five C15 sub-stages landed: C15a in 3.2.29, C15b in 3.2.30, C15c in 3.2.31, C15d in 3.2.32, C15e in 3.2.33. Remaining P1: C21 (PDF/XLSX export quality polish). Plus deferred follow-ups: Task #26, #27, #28, #24. Internal milestone markers only — per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens until every `UX_AUDIT` cluster (P0 through P3) is closed.
+**Version**: 3.2.35 on `master` (`versionName = "3.2.35"`, `versionCode = 158`). All four Sprint-1 P0 clusters closed. **Ten** P1 Sprint 2 clusters closed (C04, C06+C07, C08, C09, C18, C13, C14, C12, C15). **C21 Stage 1 of 4 landed in 3.2.35 — PDF identity + cover header + standardized filename pattern**. C21 Stages 2-4 pending. Remaining P1: C21 Stages 2-4. Plus deferred follow-ups: Task #26, #27, #28, #24. Internal milestone markers only — per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens until every `UX_AUDIT` cluster (P0 through P3) is closed. All four Sprint-1 P0 clusters closed (C01 / C02 / C03a / C05). **Ten** P1 Sprint 2 clusters closed (C04, C06+C07, C08, C09, C18, C13, C14, C12, **C15**). **3.2.33 = C15 Stage 5 = C15e Money Flow category-grouped visualization — closes C15 in full**. All five C15 sub-stages landed: C15a in 3.2.29, C15b in 3.2.30, C15c in 3.2.31, C15d in 3.2.32, C15e in 3.2.33. Remaining P1: C21 (PDF/XLSX export quality polish). Plus deferred follow-ups: Task #26, #27, #28, #24. Internal milestone markers only — per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens until every `UX_AUDIT` cluster (P0 through P3) is closed.
 **Platform**: Android (Kotlin, Jetpack Compose, Room — Gradle 9.4.1, AGP 9.2.1, Room 2.8.4, KSP 2.3.7, Kotlin 2.2.10)
 
 ## 1. Project Overview
@@ -345,6 +345,30 @@ in the APK).
 ## 6. Journal
 
 **Newest first.** Each entry: date · cluster(s) closed/touched · commit(s) · one-paragraph why-and-what.
+
+### 2026-05-27 — 3.2.35 (C21 Stage 1 of 4: PDF identity + cover header + standardized filename pattern)
+
+**Type:** Stage 1 of 4 for C21 (last remaining P1 cluster). Audit §C21 fixes #1, #2, #8, #9 land here. #18 accepted as Android PdfDocument framework limitation.
+
+**Internal milestone:** `3.2.35` / `versionCode = 158`. No Play Console upload per release-cadence ADR. No test gate change (114 tests / 10 classes / 0 failures — pure helpers + caller threading; no data path change).
+
+**ExportUtility added:**
+- `filename(reportType, subject, ext)` — `Fynlo_<Type>_<yyyy-MM-dd>_<safeSubject>.<ext>`. Subject sanitized via Regex to alphanumeric+underscore.
+- `headerInfoLine(project, user, period, currencyCode)` — `Project: X | User: Y | Period: Z | Currency: INR (₹)`. User omitted when blank.
+
+**ExportUtility PDF generators (3 of them) all gained:**
+- `projectName: String = "Personal"`, `userEmail: String = ""`, `periodLabel: String = "All time"` params (loan statements skip periodLabel since they always span the full loan history).
+- Identity row rendered as bold 10pt on the cover, immediately under the title.
+
+**Five caller sites updated:**
+- FinanceViewModel.exportToPDF, ReportsHubScreen, ProfitLossScreen, CustomerDetailScreen, MoneyFlowScreen (PDF + CSV), MonthlySummaryScreen CSV. All use `ExportUtility.filename(...)` for the file path and thread project + email + period (where available).
+
+**Accepted limitation (audit #18):** Android's `PdfDocument` doesn't expose Title/Author/Subject info-dictionary setters. The identity row inside the PDF cover carries the same data onto a page that opens directly when the user views the file. Documented in `ExportUtility.PDF_METADATA_LIMITATION_NOTE`.
+
+**Stages 2-4 pending:**
+- Stage 2 — PDF data correctness: Debts section in generatePDF, dynamic Status (Active/Overdue/Closed) computed from due+paid, no column truncation, "Recent Transactions" title fix, wider Type column, no silent Interest Type default.
+- Stage 3 — PDF charts + KPIs: asset allocation donut + monthly income/expense bar + net worth trend line; 5 new KPIs (Total Liabilities / Total Lent Out / Monthly Income / Monthly Expense / Net Cash Flow).
+- Stage 4 — XLSX overhaul: currency-format numeric cells, conditional formatting for overdue / negative growth, frozen first row + auto-filter, totals rows, Summary as first sheet.
 
 ### 2026-05-27 — 3.2.33 (C15 Stage 5 of 5 — closes C15: C15e Money Flow category-grouped visualization)
 

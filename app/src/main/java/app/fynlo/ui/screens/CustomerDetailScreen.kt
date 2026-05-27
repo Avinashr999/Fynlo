@@ -336,14 +336,18 @@ val borrowers by viewModel.borrowers.collectAsState()
                         Icon(Icons.Default.Edit, contentDescription = "Edit")
                     }
                     IconButton(onClick = {
+                        // C21 Stage 1 — standardized filename + identity row
+                        // (project + signed-in email on the PDF cover).
                         val file = java.io.File(
                             context.cacheDir,
-                            "loan_statement_${borrower.name.replace(" ", "_")}.pdf"
+                            app.fynlo.logic.ExportUtility.filename("LoanStatement", borrower.name, "pdf")
                         )
                         file.outputStream().use { os ->
                             app.fynlo.logic.ExportUtility.generateLoanStatementPDF(
                                 os, borrower, emptyList(), interest, totalOutstanding,
                                 currencyCode = currencyCode,
+                                projectName  = currentProject?.name ?: "Personal",
+                                userEmail    = app.fynlo.data.AuthManager().userEmail,
                             )
                         }
                         val uri = androidx.core.content.FileProvider.getUriForFile(

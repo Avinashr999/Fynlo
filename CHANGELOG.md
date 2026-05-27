@@ -2,6 +2,47 @@
 
 All notable changes to Fynlo are documented here.
 
+## [3.2.35] - 2026-05-27 *(Development milestone — C21 Stage 1: PDF identity, cover header, standardized filename pattern; not promoted per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`)*
+
+### Fixed
+- **C21 Stage 1 of 4 — PDF identity + cover header + filename pattern (audit fixes C21 #1, #2, #8, #9; documents #18 as framework limit).** First of 4 stages closing C21. Every exported PDF and CSV now uses the same `Fynlo_<ReportType>_<yyyy-MM-dd>_<Subject>.<ext>` filename and renders an identity row (Project | User | Period | Currency) directly under the title on the cover.
+
+**ExportUtility — added:**
+- **`filename(reportType, subject, ext)`** helper. Produces `Fynlo_Report_2026-05-27_Personal.pdf` / `Fynlo_LoanStatement_2026-05-27_Mohan_Rao.pdf` / `Fynlo_MoneyFlow_2026-05-27_Personal.csv` etc. Subject sanitized to alphanumeric + underscore (replace via `Regex("[^A-Za-z0-9]+")` → `_`, trim leading/trailing underscores, fall back to `Untitled` on empty) so filenames survive Windows / Drive / email attachments without URL-encoding artefacts.
+- **`headerInfoLine(project, user, period, currencyCode)`** helper. Renders `Project: X | User: Y | Period: Z | Currency: INR (₹)`. User segment omitted when blank (anonymous / fresh-install). Period defaults to "All time" when caller has no date range.
+
+**ExportUtility.generatePDF / generateMoneyFlowPDF / generateLoanStatementPDF — added params:**
+- `projectName: String = "Personal"`
+- `userEmail: String = ""` (omitted from header when blank)
+- `periodLabel: String = "All time"` (generatePDF + generateMoneyFlowPDF; loan statements span the borrower's full history so always "All time")
+- Identity row rendered as bold 10pt text on the cover, immediately under the screen title. Generated/Recalculated lines stay below in grey.
+
+**Callers updated (5 sites):**
+- **`FinanceViewModel.exportToPDF`** — threads `currentProject.value?.name` + `AuthManager().userEmail` + "All time".
+- **`ReportsHubScreen`** — threads current project name + signed-in email + period string built from the active range chip (e.g., `01 May 2026 – 27 May 2026` or `All time`). New filename: `Fynlo_Report_<date>_<project>.pdf`.
+- **`ProfitLossScreen`** — threads project + email + "All time". New filename: `Fynlo_PL_Report_<date>_<project>.pdf`.
+- **`CustomerDetailScreen`** — threads project + email. New filename: `Fynlo_LoanStatement_<date>_<borrowerName>.pdf` (replaces `loan_statement_<name>.pdf`).
+- **`MoneyFlowScreen`** — threads project + email (`remember`'d so it's stable across recompositions) + "All time" for both PDF and CSV exports. New filenames: `Fynlo_MoneyFlow_<date>_<project>.{pdf,csv}` (replaces `money_flow_<date>.{pdf,csv}`).
+- **`MonthlySummaryScreen`** CSV — filename only (no PDF generator for this surface yet). New filename: `Fynlo_MonthlySummary_<date>_Personal.csv`.
+
+### Accepted limitation (audit #18)
+
+Android's `android.graphics.pdf.PdfDocument` does NOT expose a public API for setting PDF info-dictionary metadata (Title / Author / Subject). Migrating to a different PDF library (iText / PDFBox / OpenPDF) for the sake of these three fields would be a larger dependency change than the user-visible benefit warrants. The identity row inside the PDF cover (above) carries the same Title / Project / Period data onto a page that opens directly when the user views the file. Logged in `ExportUtility.PDF_METADATA_LIMITATION_NOTE` (constant lives in source only — not rendered).
+
+**Stages 2-4 of C21 still pending:**
+- Stage 2 — PDF data correctness (#3 Debts section, #4 no truncation / auto-size, #5 dynamic Status, #6 Recent Transactions title fix, #7 Type column, #17 no silent Interest Type default).
+- Stage 3 — PDF charts + KPIs (#10 asset allocation donut + monthly income/expense bar + net worth trend line; #11 5 new KPIs: Total Liabilities / Total Lent Out / Monthly Income / Monthly Expense / Net Cash Flow).
+- Stage 4 — XLSX overhaul (#12 currency-format numeric cells, #13 conditional formatting, #14 frozen panes + auto-filter, #15 totals rows, #16 Summary sheet first).
+
+### Closes
+- **C21 audit fixes #1, #2, #8, #9** (this stage). #18 accepted limitation.
+
+### Changed
+- **`versionName`** `3.2.34` → `3.2.35`, **`versionCode`** `157` → `158`.
+
+### Data-integrity gate
+Unchanged at **114 tests across 10 classes**, 0 failures. New helpers (`filename`, `headerInfoLine`) are pure string-building; callers route through the same `OutputStream` and `FileProvider` paths that were already validated.
+
 ## [3.2.34] - 2026-05-27 *(Development milestone — MoneyFlowScreen layout fix (3.2.33 smoke surface); not promoted per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`)*
 
 ### Fixed

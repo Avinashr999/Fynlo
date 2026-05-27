@@ -147,10 +147,19 @@ fun ProfitLossScreen(viewModel: FinanceViewModel) {
                 )
                 FilledTonalButton(
                     onClick = {
-                        val file = java.io.File(context.cacheDir, "pl_report_${LocalDate.now()}.pdf")
+                        // C21 Stage 1 — standardized filename + identity row.
+                        val projectName = currentProject?.name ?: "Personal"
+                        val file = java.io.File(
+                            context.cacheDir,
+                            app.fynlo.logic.ExportUtility.filename("PL_Report", projectName, "pdf")
+                        )
                         file.outputStream().use {
                             app.fynlo.logic.ExportUtility.generatePDF(
-                                it, summary, transactions, borrowers, investments
+                                it, summary, transactions, borrowers, investments,
+                                currencyCode = currencyCode,
+                                projectName  = projectName,
+                                userEmail    = app.fynlo.data.AuthManager().userEmail,
+                                periodLabel  = "All time",
                             )
                         }
                         val uri = androidx.core.content.FileProvider.getUriForFile(

@@ -509,8 +509,14 @@ private fun exportMonthsAsCsv(
     months: List<Triple<String, Double, Double>>,
     currencyCode: String,
 ) {
-    val today = LocalDate.now()
-    val file = java.io.File(context.cacheDir, "monthly_summary_${today}.csv")
+    // C21 Stage 1 — standardized filename: Fynlo_MonthlySummary_<date>_<project>.csv
+    // The project name isn't readily available at this helper's call site so
+    // the subject defaults to the report type itself; matches the pattern
+    // for cases where there's no per-project subject to embed.
+    val file = java.io.File(
+        context.cacheDir,
+        app.fynlo.logic.ExportUtility.filename("MonthlySummary", "Personal", "csv")
+    )
     file.bufferedWriter().use { w ->
         w.appendLine("Month,Income ($currencyCode),Expense ($currencyCode),Net ($currencyCode)")
         // Reverse so the latest month is at the top of the CSV.
