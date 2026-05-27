@@ -377,6 +377,10 @@ private fun AddRecurringDialog(
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp))
                 }
+                // C17 (3.2.42) — inline reason for the disabled Add button.
+                app.fynlo.ui.components.DisabledButtonHint(
+                    if (name.isBlank()) "Enter a name to continue" else null
+                )
             }
         },
         confirmButton = {

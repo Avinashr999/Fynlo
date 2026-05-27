@@ -300,6 +300,9 @@ fun CollectPaymentDialog(
                         colors = ButtonDefaults.buttonColors(containerColor = app.fynlo.ui.theme.Emerald500)
                     ) { Text("Confirm ${CurrencyFormatter.detail(totalAmount, currencyCode, locale)}") }
                 }
+                // C17 (3.2.42) — both PaymentDialog action buttons gate on
+                // totalAmount > 0; surface that as an inline hint when zero.
+                DisabledButtonHint(if (isValid) null else "Enter an amount to continue")
             }
         }
     }

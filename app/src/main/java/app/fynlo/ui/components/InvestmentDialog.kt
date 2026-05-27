@@ -101,12 +101,20 @@ fun AddInvestmentDialog(
     }
 
     val amountDouble = amount.toDoubleOrNull() ?: 0.0
-    val canSave = name.isNotBlank() && amountDouble > 0 && when (sourceType) {
-        SOURCE_ACCOUNT       -> selectedAccount != null || activeAccounts.isEmpty()
-        SOURCE_EXISTING_DEBT -> selectedDebt != null
-        SOURCE_NEW_LOAN      -> lenderName.isNotBlank()
-        else                 -> true
+    // C17 (3.2.42) — compute the disabled reason first; canSave just checks
+    // the reason for null. Lets us surface which field is missing inline.
+    val disabledReason: String? = when {
+        name.isBlank()        -> "Enter an investment name to continue"
+        amountDouble <= 0.0   -> "Enter the invested amount to continue"
+        sourceType == SOURCE_ACCOUNT && selectedAccount == null && activeAccounts.isNotEmpty() ->
+            "Pick a source account to continue"
+        sourceType == SOURCE_EXISTING_DEBT && selectedDebt == null ->
+            "Pick the debt that funded this investment"
+        sourceType == SOURCE_NEW_LOAN && lenderName.isBlank() ->
+            "Enter the lender's name to continue"
+        else -> null
     }
+    val canSave = disabledReason == null
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -424,6 +432,7 @@ fun AddInvestmentDialog(
                         Text(if (isNew) "Save Investment" else "Update")
                     }
                 }
+                DisabledButtonHint(disabledReason)
             }
         }
     }

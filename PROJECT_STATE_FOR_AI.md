@@ -158,7 +158,7 @@ AI_AGENT_PROTOCOL.md to match.
 
 # Fynlo - Complete AI Portability File
 **Project Name**: Fynlo
-**Version**: 3.2.41 on `master` (`versionName = "3.2.41"`, `versionCode = 164`). All four Sprint-1 P0 clusters closed. P1 backlog closed in full. **Three P2 clusters closed: C10 (3.2.39 Pluralization), C11 (3.2.40 Date formatting), C16 (3.2.41 Color semantics).** P2 remaining: C17 (Disabled button hints), C19 (Empty states), C20 (Drawer cleanup). Plus C22 v4+ backlog (P3), C03b breaking schema migration, infrastructure backlog INF01-INF06, deferred follow-ups (Task #24/#26/#27/#28). Internal milestone markers only — per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens until every `UX_AUDIT` cluster (P0 through P3) is closed. All four Sprint-1 P0 clusters closed (C01 / C02 / C03a / C05). **Ten** P1 Sprint 2 clusters closed (C04, C06+C07, C08, C09, C18, C13, C14, C12, **C15**). **3.2.33 = C15 Stage 5 = C15e Money Flow category-grouped visualization — closes C15 in full**. All five C15 sub-stages landed: C15a in 3.2.29, C15b in 3.2.30, C15c in 3.2.31, C15d in 3.2.32, C15e in 3.2.33. Remaining P1: C21 (PDF/XLSX export quality polish). Plus deferred follow-ups: Task #26, #27, #28, #24. Internal milestone markers only — per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens until every `UX_AUDIT` cluster (P0 through P3) is closed.
+**Version**: 3.2.42 on `master` (`versionName = "3.2.42"`, `versionCode = 165`). All four Sprint-1 P0 clusters closed. P1 backlog closed in full. **Four P2 clusters closed: C10 (Pluralization), C11 (Date formatting), C16 (Color semantics), C17 (Disabled button hints).** P2 remaining: C19 (Empty states), C20 (Drawer cleanup). Plus C22 v4+ backlog (P3), C03b breaking schema migration, infrastructure backlog INF01-INF06, deferred follow-ups (Task #24/#26/#27/#28). Internal milestone markers only — per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens until every `UX_AUDIT` cluster (P0 through P3) is closed. All four Sprint-1 P0 clusters closed (C01 / C02 / C03a / C05). **Ten** P1 Sprint 2 clusters closed (C04, C06+C07, C08, C09, C18, C13, C14, C12, **C15**). **3.2.33 = C15 Stage 5 = C15e Money Flow category-grouped visualization — closes C15 in full**. All five C15 sub-stages landed: C15a in 3.2.29, C15b in 3.2.30, C15c in 3.2.31, C15d in 3.2.32, C15e in 3.2.33. Remaining P1: C21 (PDF/XLSX export quality polish). Plus deferred follow-ups: Task #26, #27, #28, #24. Internal milestone markers only — per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens until every `UX_AUDIT` cluster (P0 through P3) is closed.
 **Platform**: Android (Kotlin, Jetpack Compose, Room — Gradle 9.4.1, AGP 9.2.1, Room 2.8.4, KSP 2.3.7, Kotlin 2.2.10)
 
 ## 1. Project Overview
@@ -345,6 +345,27 @@ in the APK).
 ## 6. Journal
 
 **Newest first.** Each entry: date · cluster(s) closed/touched · commit(s) · one-paragraph why-and-what.
+
+### 2026-05-27 — 3.2.42 (C17 closed — DisabledButtonHint(reason) composable + 9-site sweep)
+
+**Type:** C17 closure. Fourth P2 cluster down. Audit fixes #18, #169, #203, #210, #232, #233.
+
+**Internal milestone:** `3.2.42` / `versionCode = 165`. No Play Console upload per release-cadence ADR. No test gate change (UI-only addition).
+
+**New: `DisabledButtonHint(reason: String?)`** — 11sp `onSurfaceVariant` label below the button when reason is non-null; reserved 14dp spacer when null so the column doesn't shift up as the user completes the form.
+
+**Nine sites swept:**
+- TransactionDialog — amount + category + Custom-category-text reasons.
+- LendingDialog — pick-borrower + loan-amount reasons.
+- DebtDialog — lender-name + amount reasons.
+- InvestmentDialog — refactored `canSave` into deterministic `disabledReason: String?` branching on sourceType (account/existing-debt/new-loan).
+- PaymentDialog (CollectPayment + PayDebt) — totalAmount > 0 reason.
+- BudgetScreen AddBudget — category + positive-limit reasons.
+- PeopleScreen, ProjectsScreen, RecurringScreen — name-blank reasons.
+
+**Pattern: AlertDialog vs raw Dialog.** AlertDialog's `confirmButton` slot expects exactly one button composable — can't fit a hint underneath. For those forms the hint goes inside the `text` slot as the last item. For raw Dialog forms (Transaction, Lending, etc.) the hint sits directly under the button. Same composable, slightly different placement per dialog type.
+
+**P2 remaining:** C19 (Empty states), C20 (Drawer cleanup).
 
 ### 2026-05-27 — 3.2.41 (C16 closed — color semantics: Outstanding emerald on Lent, project active-indicator radio)
 

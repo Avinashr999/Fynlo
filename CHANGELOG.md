@@ -2,6 +2,38 @@
 
 All notable changes to Fynlo are documented here.
 
+## [3.2.42] - 2026-05-27 *(Development milestone — C17 closed: DisabledButtonHint(reason) composable + 9-site sweep; not promoted per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`)*
+
+### Fixed
+- **C17 — Disabled button hints (audit #18, #169, #203, #210, #232, #233).** Fourth P2 cluster closed.
+
+**`DisabledButtonHint(reason: String?)` — new composable:**
+- Renders a small 11sp `onSurfaceVariant` centered label below the button when the reason is non-null.
+- When reason is null, renders a 14dp reserved spacer so the button column doesn't shift up as the user fills the missing field — no layout jump on the primary action.
+- Companion-style usage: caller computes the disabledReason inline as a `when`-expression, passes it to both `enabled = reason == null` and `DisabledButtonHint(reason)`.
+
+**Nine sites swept:**
+1. **`TransactionDialog`** — was `enabled = amount > 0`; now also gates on category being picked + (Custom category requires text). Reasons: "Enter an amount to continue" / "Pick a category to continue" / "Type a custom category to continue".
+2. **`LendingDialog`** — was `enabled = (selectedPerson != null || isEdit) && amount > 0`. Reasons: "Pick a borrower to continue" / "Enter the loan amount to continue".
+3. **`DebtDialog`** — was `enabled = isValid` where `isValid = lenderName.isNotBlank() && amount.isNotEmpty()`. Reasons: "Enter the lender's name to continue" / "Enter the borrowed amount to continue".
+4. **`InvestmentDialog`** — refactored the existing `canSave` into a deterministic `disabledReason: String?` first; canSave just checks reason for null. Reasons branch on `sourceType` (account / existing debt / new loan) so the hint matches whichever source picker is showing.
+5. **`PaymentDialog`** (CollectPaymentDialog + PayDebtDialog) — both use `isValid = totalAmount > 0.0`. Same hint: "Enter an amount to continue".
+6. **`BudgetScreen.AddBudgetDialog`** — reasons: "Pick a category to continue" / "Enter a positive monthly limit to continue". Hint sits inside the dialog's `text` slot (above the buttons) since AlertDialog's confirmButton slot only accepts a single button composable.
+7. **`PeopleScreen`** Add/Edit Person — reason: "Enter a name to continue".
+8. **`ProjectsScreen`** New Project — reason: "Enter a project name to continue".
+9. **`RecurringScreen`** Add Recurring — reason: "Enter a name to continue".
+
+**Pattern lesson:** AlertDialog's slot API doesn't let you put a hint inline beneath the confirm button (the slot expects exactly one button). For dialog-based forms the hint goes inside the `text` slot as the last item. For Dialog-based forms (TransactionDialog, LendingDialog, etc., which use raw `Dialog`/`Card` composition), the hint sits directly under the button.
+
+### Closes
+- **C17 audit fixes #18, #169, #203, #210, #232, #233.** Fourth P2 cluster closed.
+
+### Changed
+- **`versionName`** `3.2.41` → `3.2.42`, **`versionCode`** `164` → `165`.
+
+### Data-integrity gate
+Unchanged at **137 tests across 12 classes**, 0 failures (UI-only addition; no logic / state-shape change).
+
 ## [3.2.41] - 2026-05-27 *(Development milestone — C16 closed: color semantics fixes — Outstanding emerald on Lent / project active-indicator radio; not promoted per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`)*
 
 ### Fixed

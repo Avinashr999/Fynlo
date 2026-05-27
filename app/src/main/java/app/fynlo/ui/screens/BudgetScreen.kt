@@ -423,6 +423,19 @@ fun AddBudgetDialog(
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     modifier = androidx.compose.ui.Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp))
+
+                // C17 (3.2.42) — inline reason rendered inside the dialog
+                // text slot (above the buttons) explaining what's blocking
+                // the Save button. AlertDialog's confirmButton slot only
+                // accepts a single button so the hint sits with the form
+                // fields rather than under the button.
+                val limitNum = limit.toDoubleOrNull() ?: 0.0
+                val disabledReason: String? = when {
+                    finalCategory.isBlank() -> "Pick a category to continue"
+                    limitNum <= 0.0         -> "Enter a positive monthly limit to continue"
+                    else                    -> null
+                }
+                app.fynlo.ui.components.DisabledButtonHint(disabledReason)
             }
         },
         confirmButton = {

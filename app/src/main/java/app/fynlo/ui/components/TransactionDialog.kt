@@ -245,13 +245,31 @@ fun AddTransactionDialog(
                         onRecordCategory(isIncome, finalCategory)
                         onConfirm(txn)
                     },
-                    enabled = (amount.toDoubleOrNull() ?: 0.0) > 0.0,
+                    // C17 (3.2.42) — was just enabled-on-amount-positive;
+                    // now uses a per-field disabledReason so the user sees
+                    // *what* needs filling rather than staring at a greyed
+                    // Add button.
+                    enabled = run {
+                        val amt = amount.toDoubleOrNull() ?: 0.0
+                        amt > 0.0 && selectedCategory.isNotBlank() &&
+                            (selectedCategory != "Custom" || customCategory.isNotBlank())
+                    },
                     modifier = Modifier.fillMaxWidth().height(52.dp),
                     shape = RoundedCornerShape(16.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Emerald500)
                 ) {
                     Text(if (isIncome) "Add Income" else "Add Expense",
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
+                }
+                run {
+                    val amt = amount.toDoubleOrNull() ?: 0.0
+                    val reason: String? = when {
+                        amt <= 0.0                                            -> "Enter an amount to continue"
+                        selectedCategory.isBlank()                            -> "Pick a category to continue"
+                        selectedCategory == "Custom" && customCategory.isBlank() -> "Type a custom category to continue"
+                        else                                                  -> null
+                    }
+                    DisabledButtonHint(reason)
                 }
             }
         }

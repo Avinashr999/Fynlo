@@ -221,6 +221,13 @@ fun AddDebtDialog(
                         enabled = isValid
                     ) { Text("Save") }
                 }
+                // C17 (3.2.42) — disabled-button hint.
+                val debtDisabledReason: String? = when {
+                    lenderName.isBlank() -> "Enter the lender's name to continue"
+                    amount.isEmpty()     -> "Enter the borrowed amount to continue"
+                    else                 -> null
+                }
+                DisabledButtonHint(debtDisabledReason)
             }
         }
     }

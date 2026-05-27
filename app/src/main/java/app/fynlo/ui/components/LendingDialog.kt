@@ -236,6 +236,16 @@ fun AddLendingDialog(
                     Text(if (isEdit) "Save Changes" else "Add Loan",
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
                 }
+                // C17 (3.2.42) — surface which field is blocking the Add.
+                run {
+                    val amt = amount.toDoubleOrNull() ?: 0.0
+                    val reason: String? = when {
+                        !isEdit && selectedPerson == null -> "Pick a borrower to continue"
+                        amt <= 0.0                        -> "Enter the loan amount to continue"
+                        else                              -> null
+                    }
+                    DisabledButtonHint(reason)
+                }
             }
         }
     }

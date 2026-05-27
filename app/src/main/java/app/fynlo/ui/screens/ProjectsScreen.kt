@@ -246,6 +246,10 @@ private fun AddProjectDialog(
                         }
                     }
                 }
+                // C17 (3.2.42) — inline reason for the disabled Create button.
+                app.fynlo.ui.components.DisabledButtonHint(
+                    if (name.isBlank()) "Enter a project name to continue" else null
+                )
             }
         },
         confirmButton = {

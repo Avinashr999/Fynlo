@@ -387,6 +387,10 @@ fun AddPersonDialog(initial: Person? = null, onDismiss: () -> Unit, onConfirm: (
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
+                // C17 (3.2.42) — inline reason for the disabled Save button.
+                app.fynlo.ui.components.DisabledButtonHint(
+                    if (name.isBlank()) "Enter a name to continue" else null
+                )
             }
         },
         confirmButton = {
