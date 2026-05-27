@@ -70,6 +70,10 @@ fun ReportsHubScreen(
     val currentProject by viewModel.currentProject.collectAsState()
     val currencyCode   = currentProject?.currency ?: "INR"
     val locale         = remember { Locale.getDefault() }
+    // C21 Stage 3 — net-worth snapshots for the trend-line chart in the
+    // exported PDF. The on-screen Reports landing already uses these via
+    // the tile preview computation; threading them to Export PDF too.
+    val snapshots      by viewModel.getNetWorthSnapshots().collectAsState(initial = emptyList())
 
     var selectedRange by remember { mutableStateOf("This Month") }
     val ranges = listOf("This Month", "Last Month", "Last 3M", "Last 6M", "This Year", "All Time")
@@ -170,6 +174,7 @@ fun ReportsHubScreen(
                                 userEmail    = app.fynlo.data.AuthManager().userEmail,
                                 periodLabel  = periodLabel,
                                 debts        = debts,
+                                snapshots    = snapshots,
                             )
                         }
                         val uri = androidx.core.content.FileProvider.getUriForFile(

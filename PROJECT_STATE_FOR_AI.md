@@ -158,7 +158,7 @@ AI_AGENT_PROTOCOL.md to match.
 
 # Fynlo - Complete AI Portability File
 **Project Name**: Fynlo
-**Version**: 3.2.36 on `master` (`versionName = "3.2.36"`, `versionCode = 159`). All four Sprint-1 P0 clusters closed. Ten P1 Sprint 2 clusters closed (C04, C06+C07, C08, C09, C18, C13, C14, C12, C15). **C21 Stages 1-2 of 4 landed: 3.2.35 = Stage 1 (identity + cover header + filename), 3.2.36 = Stage 2 (Debts section + word-wrap + dynamic Status + Type column + interest-type default)**. C21 Stages 3-4 pending (charts + KPIs, XLSX overhaul). Remaining P1: C21 Stages 3-4. Plus deferred follow-ups: Task #26, #27, #28, #24. Internal milestone markers only — per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens until every `UX_AUDIT` cluster (P0 through P3) is closed. All four Sprint-1 P0 clusters closed (C01 / C02 / C03a / C05). **Ten** P1 Sprint 2 clusters closed (C04, C06+C07, C08, C09, C18, C13, C14, C12, **C15**). **3.2.33 = C15 Stage 5 = C15e Money Flow category-grouped visualization — closes C15 in full**. All five C15 sub-stages landed: C15a in 3.2.29, C15b in 3.2.30, C15c in 3.2.31, C15d in 3.2.32, C15e in 3.2.33. Remaining P1: C21 (PDF/XLSX export quality polish). Plus deferred follow-ups: Task #26, #27, #28, #24. Internal milestone markers only — per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens until every `UX_AUDIT` cluster (P0 through P3) is closed.
+**Version**: 3.2.37 on `master` (`versionName = "3.2.37"`, `versionCode = 160`). All four Sprint-1 P0 clusters closed. Ten P1 Sprint 2 clusters closed (C04, C06+C07, C08, C09, C18, C13, C14, C12, C15). **C21 Stages 1-3 of 4 landed: 3.2.35 = Stage 1 (identity + cover header + filename), 3.2.36 = Stage 2 (Debts section + word-wrap + dynamic Status + Type column + interest-type default), 3.2.37 = Stage 3 (PDF charts + 5 new KPI cards)**. C21 Stage 4 pending (XLSX overhaul). Remaining P1: C21 Stage 4. Plus deferred follow-ups: Task #26, #27, #28, #24. Internal milestone markers only — per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens until every `UX_AUDIT` cluster (P0 through P3) is closed. All four Sprint-1 P0 clusters closed (C01 / C02 / C03a / C05). **Ten** P1 Sprint 2 clusters closed (C04, C06+C07, C08, C09, C18, C13, C14, C12, **C15**). **3.2.33 = C15 Stage 5 = C15e Money Flow category-grouped visualization — closes C15 in full**. All five C15 sub-stages landed: C15a in 3.2.29, C15b in 3.2.30, C15c in 3.2.31, C15d in 3.2.32, C15e in 3.2.33. Remaining P1: C21 (PDF/XLSX export quality polish). Plus deferred follow-ups: Task #26, #27, #28, #24. Internal milestone markers only — per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens until every `UX_AUDIT` cluster (P0 through P3) is closed.
 **Platform**: Android (Kotlin, Jetpack Compose, Room — Gradle 9.4.1, AGP 9.2.1, Room 2.8.4, KSP 2.3.7, Kotlin 2.2.10)
 
 ## 1. Project Overview
@@ -345,6 +345,31 @@ in the APK).
 ## 6. Journal
 
 **Newest first.** Each entry: date · cluster(s) closed/touched · commit(s) · one-paragraph why-and-what.
+
+### 2026-05-27 — 3.2.37 (C21 Stage 3 of 4: PDF charts + 5 new KPI cards)
+
+**Type:** Stage 3 of 4 for C21. Audit §C21 fixes #10 (3 charts) and #11 (5 new KPIs) land here.
+
+**Internal milestone:** `3.2.37` / `versionCode = 160`. No Play Console upload per release-cadence ADR. No test gate change (114 tests / 10 classes / 0 failures — pure render code + reads from already-validated paths).
+
+**ExportUtility added 5 new KPI cards:**
+- Row 1 (5 cards across, balance sheet view): NET WORTH | TOTAL ASSETS | TOTAL LIABILITIES | TOTAL CASH | INVEST GROWTH
+- Row 2 (4 cards across, activity view): MONTHLY INCOME | MONTHLY EXPENSE | NET CASH FLOW | TOTAL LENT OUT
+- Monthly income/expense use calendar-month + financing-categories exclusion (matches P&L Statement so debt receipts don't inflate income).
+- Total Lent Out = lifetime principal (audit #4's fix from C15b applied here too).
+
+**ExportUtility added 3 chart panels:**
+- `drawAssetAllocationDonut` — Cash + Investments + Receivables slices. Donut hole at 55% inner radius. Legend with name + amount + %. Hidden when totalAssets is 0.
+- `drawMonthlyBarChart` — 12-month income (green) + expense (red) bars. Y-axis labels + reference grid lines. Same financing exclusion as P&L. Tiny legend below.
+- `drawNetWorthTrendLine` — connects NetWorthSnapshot points chronologically. Area-fill under the line. Min/mid/max y-axis labels, endpoint date labels. Empty-state hint when < 2 snapshots.
+
+**generatePDF added `snapshots: List<NetWorthSnapshot> = emptyList()` param.** Callers updated:
+- FinanceViewModel.exportToPDF: `repository.getNetWorthSnapshots(pid).first()`.
+- ReportsHubScreen + ProfitLossScreen: `viewModel.getNetWorthSnapshots().collectAsState(initial = emptyList())`.
+
+**Pattern: each chart panel does its own checkBreak()** so any chart that won't fit on the cover starts on a fresh page. The cover may flow to a 2nd page on installs with little data + big charts — that's fine; the data tables underneath still chain via existing checkBreak in drawTableRow.
+
+**Stage 4 pending:** XLSX overhaul — currency-format numeric cells, conditional formatting (overdue red / negative red), frozen first row + auto-filter, totals rows, Summary sheet first. Closes C21 and the last remaining P1 cluster.
 
 ### 2026-05-27 — 3.2.36 (C21 Stage 2 of 4: PDF data correctness — Debts section + word-wrap + dynamic Status + Type column + interest-type default)
 

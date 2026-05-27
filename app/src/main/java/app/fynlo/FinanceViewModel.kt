@@ -970,6 +970,10 @@ class FinanceViewModel @Inject constructor(
             userEmail   = app.fynlo.data.AuthManager().userEmail,
             periodLabel = "All time",
             debts       = debts.value,
+            // C21 Stage 3 — snapshots for the net-worth trend chart.
+            // Fetched via repository.getNetWorthSnapshots(pid).first() so
+            // we get the current list without subscribing in this scope.
+            snapshots   = repository.getNetWorthSnapshots(pid).first(),
         )
         app.fynlo.data.Analytics.dataExported("pdf")
     }

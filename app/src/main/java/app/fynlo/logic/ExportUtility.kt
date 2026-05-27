@@ -288,6 +288,241 @@ object ExportUtility {
         else -> "Active"
     }
 
+    // ── Chart helpers (C21 Stage 3, audit #10) ────────────────────────────────
+    //
+    // All three charts share the same panel shape: a section-header style
+    // title rendered in primary green + a fixed-height drawing area below.
+    // Page-breaks are handled by checkBreak() before each panel.
+
+    private val CHART_PANEL_TITLE_H = 22f
+    private val CHART_PANEL_PAD     = 6f
+
+    /**
+     * Asset allocation donut — slices of `totalAssets` by Cash / Investments
+     * / Receivables. Hidden when totalAssets is 0 so a fresh-install PDF
+     * doesn't render an empty circle.
+     *
+     * Layout: small donut on the left (radius 50dp), legend rows aligned
+     * to its right with category name + amount + percentage.
+     */
+    private fun PdfBuilder.drawAssetAllocationDonut(
+        summary: FinancialSummary,
+        currencyCode: String,
+    ) {
+        val slices = listOf(
+            Triple("Cash",        summary.totalCash,        COLOR_PRIMARY),
+            Triple("Investments", summary.totalInvestments, COLOR_GREEN),
+            Triple("Receivables", summary.totalReceivables, Color.rgb(59, 130, 246)),  // blue-ish
+        ).filter { it.second > 0 }
+        val total = slices.sumOf { it.second }
+        if (total <= 0.0) return
+
+        checkBreak(160f)
+        canvas().drawText("Asset Allocation", MARGIN, y, bodyPaint(COLOR_PRIMARY, 12f, true))
+        y += CHART_PANEL_TITLE_H
+
+        val panelTop = y
+        val cx = MARGIN + 60f
+        val cy = panelTop + 60f
+        val r  = 50f
+        val rect = android.graphics.RectF(cx - r, cy - r, cx + r, cy + r)
+
+        var startAngle = -90f
+        slices.forEach { (_, value, color) ->
+            val sweep = (value / total * 360.0).toFloat()
+            val p = Paint().apply {
+                this.color = color
+                style = Paint.Style.FILL
+                isAntiAlias = true
+            }
+            canvas().drawArc(rect, startAngle, sweep, true, p)
+            startAngle += sweep
+        }
+        // Donut hole — white circle ~55% of outer radius.
+        canvas().drawCircle(cx, cy, r * 0.55f, fillPaint(COLOR_WHITE))
+
+        // Legend to the right of the donut
+        val legendX = cx + r + 16f
+        var legendY = panelTop + 20f
+        slices.forEach { (label, value, color) ->
+            canvas().drawRect(legendX, legendY - 8f, legendX + 10f, legendY + 2f, fillPaint(color))
+            val pct = (value / total * 100).toInt()
+            val text = "$label   ${fmt(value, currencyCode)}   ($pct%)"
+            canvas().drawText(text, legendX + 16f, legendY, bodyPaint(COLOR_BLACK, 10f))
+            legendY += 16f
+        }
+        // Advance below the donut (whichever's taller — donut or legend).
+        y = panelTop + maxOf(r * 2 + CHART_PANEL_PAD, legendY - panelTop)
+        nl(8f)
+    }
+
+    /**
+     * Monthly income vs expense bar chart — last 12 months, dual bars per
+     * month. Income green, expense red. Y-axis labels along the left at
+     * 0/50/100% of max. Same cash-basis exclusion as the P&L Statement
+     * (financingCats excluded so debt receipts don't inflate income).
+     */
+    private fun PdfBuilder.drawMonthlyBarChart(
+        transactions: List<Transaction>,
+        currencyCode: String,
+        financingCats: Set<String>,
+    ) {
+        val today = LocalDate.now()
+        val months = (11 downTo 0).map { off ->
+            val date = today.minusMonths(off.toLong())
+            val key  = date.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM"))
+            val list = transactions.filter {
+                it.date.startsWith(key) && it.tags != "journal_only" && it.category !in financingCats
+            }
+            val label = date.format(java.time.format.DateTimeFormatter.ofPattern("MMM"))
+            Triple(
+                label,
+                list.filter { it.type.equals("income",  true) }.sumOf { it.amount },
+                list.filter { it.type.equals("expense", true) }.sumOf { it.amount },
+            )
+        }
+        val maxVal = months.flatMap { listOf(it.second, it.third) }.maxOrNull()?.takeIf { it > 0 } ?: 0.0
+        if (maxVal <= 0.0) return  // no activity → skip the chart
+
+        checkBreak(180f)
+        canvas().drawText("Monthly Income vs Expense (last 12 months)", MARGIN, y, bodyPaint(COLOR_PRIMARY, 12f, true))
+        y += CHART_PANEL_TITLE_H
+
+        val chartLeft   = MARGIN + 48f  // leave 48dp for y-axis labels
+        val chartRight  = (PAGE_W - MARGIN).toFloat()
+        val chartTop    = y
+        val chartH      = 110f
+        val chartBottom = chartTop + chartH
+        val chartW      = chartRight - chartLeft
+
+        // Reference grid lines + y-axis labels at 0/50/100% of max.
+        val gridPaint = Paint().apply { color = Color.rgb(229, 231, 235); strokeWidth = 0.5f }
+        listOf(0.0, 0.5, 1.0).forEach { frac ->
+            val yy = chartBottom - (chartH * frac).toFloat()
+            canvas().drawLine(chartLeft, yy, chartRight, yy, gridPaint)
+            canvas().drawText(
+                fmt(maxVal * frac, currencyCode),
+                MARGIN, yy + 3f, bodyPaint(COLOR_GRAY, 7f)
+            )
+        }
+
+        val cellW    = chartW / months.size
+        val barWidth = cellW * 0.32f
+        months.forEachIndexed { i, (_, inc, exp) ->
+            val baseX = chartLeft + i * cellW
+            val incH  = ((inc / maxVal) * chartH).toFloat()
+            val expH  = ((exp / maxVal) * chartH).toFloat()
+            if (incH > 0) {
+                canvas().drawRect(
+                    baseX + cellW * 0.15f, chartBottom - incH,
+                    baseX + cellW * 0.15f + barWidth, chartBottom,
+                    fillPaint(COLOR_GREEN)
+                )
+            }
+            if (expH > 0) {
+                canvas().drawRect(
+                    baseX + cellW * 0.50f, chartBottom - expH,
+                    baseX + cellW * 0.50f + barWidth, chartBottom,
+                    fillPaint(COLOR_RED)
+                )
+            }
+        }
+        // Month labels along the bottom.
+        val labelY = chartBottom + 12f
+        months.forEachIndexed { i, (label, _, _) ->
+            val baseX = chartLeft + i * cellW
+            canvas().drawText(label, baseX + cellW * 0.25f, labelY, bodyPaint(COLOR_GRAY, 7f))
+        }
+        // Tiny legend.
+        canvas().drawRect(chartLeft, labelY + 8f, chartLeft + 8f, labelY + 16f, fillPaint(COLOR_GREEN))
+        canvas().drawText("Income", chartLeft + 12f, labelY + 15f, bodyPaint(COLOR_GREEN, 8f))
+        canvas().drawRect(chartLeft + 60f, labelY + 8f, chartLeft + 68f, labelY + 16f, fillPaint(COLOR_RED))
+        canvas().drawText("Expense", chartLeft + 72f, labelY + 15f, bodyPaint(COLOR_RED, 8f))
+
+        y = labelY + 24f
+        nl(4f)
+    }
+
+    /**
+     * Net worth trend line — connects snapshot points chronologically.
+     * Renders an empty-state hint when fewer than 2 snapshots are available
+     * (one point doesn't make a trend).
+     */
+    private fun PdfBuilder.drawNetWorthTrendLine(
+        snapshots: List<NetWorthSnapshot>,
+        currencyCode: String,
+    ) {
+        val sorted = snapshots.sortedBy { it.date }
+        checkBreak(150f)
+        canvas().drawText("Net Worth Trend", MARGIN, y, bodyPaint(COLOR_PRIMARY, 12f, true))
+        y += CHART_PANEL_TITLE_H
+
+        if (sorted.size < 2) {
+            canvas().drawText(
+                "Not enough snapshots yet — open the app a few more days, or use the in-app Backfill action.",
+                MARGIN, y + 12f, bodyPaint(COLOR_GRAY, 9f)
+            )
+            y += 28f
+            return
+        }
+
+        val chartLeft   = MARGIN + 48f
+        val chartRight  = (PAGE_W - MARGIN).toFloat()
+        val chartTop    = y
+        val chartH      = 90f
+        val chartBottom = chartTop + chartH
+        val chartW      = chartRight - chartLeft
+
+        val maxNW = sorted.maxOf { it.netWorth }
+        val minNW = sorted.minOf { it.netWorth }
+        val range = (maxNW - minNW).takeIf { it > 0 } ?: 1.0
+
+        // Reference grid + y-axis labels at min/mid/max.
+        val gridPaint = Paint().apply { color = Color.rgb(229, 231, 235); strokeWidth = 0.5f }
+        listOf(0.0, 0.5, 1.0).forEach { frac ->
+            val yy = chartBottom - (chartH * frac).toFloat()
+            canvas().drawLine(chartLeft, yy, chartRight, yy, gridPaint)
+            val label = minNW + range * frac
+            canvas().drawText(fmt(label, currencyCode), MARGIN, yy + 3f, bodyPaint(COLOR_GRAY, 7f))
+        }
+
+        val points = sorted.mapIndexed { i, s ->
+            val xx = chartLeft + (i.toFloat() / (sorted.size - 1)) * chartW
+            val yy = chartBottom - ((s.netWorth - minNW) / range * chartH).toFloat()
+            xx to yy.coerceIn(chartTop, chartBottom)
+        }
+        // Area fill under the line
+        val fillPath = android.graphics.Path().apply {
+            moveTo(points.first().first, chartBottom)
+            points.forEach { (xx, yy) -> lineTo(xx, yy) }
+            lineTo(points.last().first, chartBottom); close()
+        }
+        canvas().drawPath(
+            fillPath,
+            Paint().apply { color = Color.argb(40, 5, 150, 105); style = Paint.Style.FILL; isAntiAlias = true }
+        )
+        // Line itself
+        val linePath = android.graphics.Path().apply {
+            moveTo(points.first().first, points.first().second)
+            points.drop(1).forEach { (xx, yy) -> lineTo(xx, yy) }
+        }
+        canvas().drawPath(
+            linePath,
+            Paint().apply {
+                color = COLOR_PRIMARY; style = Paint.Style.STROKE
+                strokeWidth = 2f; isAntiAlias = true; strokeCap = Paint.Cap.ROUND
+            }
+        )
+        // Endpoint date labels.
+        canvas().drawText(sorted.first().date, chartLeft, chartBottom + 12f, bodyPaint(COLOR_GRAY, 7f))
+        val lastLabel = sorted.last().date
+        val lastPaint = bodyPaint(COLOR_GRAY, 7f).apply { textAlign = Align.RIGHT }
+        canvas().drawText(lastLabel, chartRight, chartBottom + 12f, lastPaint)
+
+        y = chartBottom + 18f
+        nl(4f)
+    }
+
     // ── Section header ─────────────────────────────────────────────────────────
     private fun PdfBuilder.sectionHeader(title: String) {
         checkBreak(40f)
@@ -325,6 +560,10 @@ object ExportUtility {
         // C21 Stage 2 (audit #3): Debts list for the new Liabilities &
         // Debts section. Default empty for callers that haven't migrated.
         debts: List<Debt> = emptyList(),
+        // C21 Stage 3 (audit #10): net-worth snapshots for the trend-line
+        // chart. Default empty → chart shows an empty-state instead of an
+        // axis with nothing on it.
+        snapshots: List<NetWorthSnapshot> = emptyList(),
     ) {
         val pdf = PdfDocument()
         val b = PdfBuilder(pdf, outputStream)
@@ -357,22 +596,69 @@ object ExportUtility {
         b.canvas().drawText(recalcLabel, MARGIN, b.y, bodyPaint(COLOR_GRAY, 10f))
         b.nl(24f)
 
-        // Summary cards — 4 across
-        val cardW = (PAGE_W - MARGIN * 2) / 4f
-        val cards = listOf(
-            Triple("NET WORTH",     fmt(summary.netWorth, currencyCode),         if (summary.netWorth >= 0) COLOR_GREEN else COLOR_RED),
-            Triple("TOTAL ASSETS",  fmt(summary.totalAssets, currencyCode),       COLOR_PRIMARY),
-            Triple("TOTAL CASH",    fmt(summary.totalCash, currencyCode),         COLOR_PRIMARY),
-            Triple("INVEST GROWTH", fmt(summary.investmentGrowth, currencyCode),  COLOR_GREEN)
+        // ── KPI cards (audit C21 #11) — 2 rows of cards.
+        // Row 1 (balance sheet): NET WORTH | TOTAL ASSETS | TOTAL LIABILITIES | TOTAL CASH | INVEST GROWTH
+        // Row 2 (activity):      MONTHLY INCOME | MONTHLY EXPENSE | NET CASH FLOW | TOTAL LENT OUT
+        // Total Lent Out = lifetime principal (matches C15b's audit-#4 fix
+        // for the P&L Statement screen). Monthly Income / Monthly Expense
+        // are calendar-month, financing-categories-excluded (same exclusion
+        // as the P&L Statement so a debt receipt doesn't inflate income).
+        val financingCats = setOf(
+            "Debt Received", "Debt Repayment", "Lending",
+            "Loan Recovery", "Loan Repayment", "Investment", "Investment Returns"
         )
-        val cardTop = b.y - LINE_H + 2f
-        cards.forEachIndexed { i, (label, value, color) ->
-            val lx = MARGIN + cardW * i
-            b.rect(lx, cardTop, lx + cardW - 4f, cardTop + 44f, COLOR_LIGHT_BG)
-            b.canvas().drawText(label, lx + 6f, cardTop + 13f, bodyPaint(COLOR_GRAY, 8f))
-            b.canvas().drawText(value, lx + 6f, cardTop + 32f, bodyPaint(color, 11f, true))
+        val nowDate    = LocalDate.now()
+        val monthStart = nowDate.withDayOfMonth(1).toString()
+        val monthEnd   = nowDate.toString()
+        val monthlyTxn = transactions.filter {
+            it.date in monthStart..monthEnd && it.tags != "journal_only" && it.category !in financingCats
         }
-        b.nl(50f)
+        val monthlyIncome  = monthlyTxn.filter { it.type.equals("income",  true) }.sumOf { it.amount }
+        val monthlyExpense = monthlyTxn.filter { it.type.equals("expense", true) }.sumOf { it.amount }
+        val netCashFlow    = monthlyIncome - monthlyExpense
+        val totalLiabilities = summary.totalDebtPrincipal + summary.totalDebtInterest
+        val totalLentOut     = borrowers.sumOf { it.amount }  // lifetime (incl. WrittenOff)
+
+        val row1 = listOf(
+            Triple("NET WORTH",         fmt(summary.netWorth, currencyCode),      if (summary.netWorth >= 0) COLOR_GREEN else COLOR_RED),
+            Triple("TOTAL ASSETS",      fmt(summary.totalAssets, currencyCode),   COLOR_PRIMARY),
+            Triple("TOTAL LIABILITIES", fmt(totalLiabilities, currencyCode),      if (totalLiabilities > 0) COLOR_RED else COLOR_GRAY),
+            Triple("TOTAL CASH",        fmt(summary.totalCash, currencyCode),     COLOR_PRIMARY),
+            Triple("INVEST GROWTH",     fmt(summary.investmentGrowth, currencyCode), if (summary.investmentGrowth >= 0) COLOR_GREEN else COLOR_RED),
+        )
+        val row2 = listOf(
+            Triple("MONTHLY INCOME",  fmt(monthlyIncome,  currencyCode), COLOR_GREEN),
+            Triple("MONTHLY EXPENSE", fmt(monthlyExpense, currencyCode), COLOR_RED),
+            Triple("NET CASH FLOW",   fmt(netCashFlow, currencyCode),    if (netCashFlow >= 0) COLOR_GREEN else COLOR_RED),
+            Triple("TOTAL LENT OUT",  fmt(totalLentOut, currencyCode),   COLOR_PRIMARY),
+        )
+
+        val cardW = (PAGE_W - MARGIN * 2) / 5f   // 5 cards across row 1
+        val cardH = 44f
+        fun drawKpiRow(cards: List<Triple<String, String, Int>>, top: Float) {
+            cards.forEachIndexed { i, (label, value, color) ->
+                val lx = MARGIN + cardW * i
+                b.rect(lx, top, lx + cardW - 4f, top + cardH, COLOR_LIGHT_BG)
+                b.canvas().drawText(label, lx + 6f, top + 13f, bodyPaint(COLOR_GRAY, 8f))
+                b.canvas().drawText(value, lx + 6f, top + 32f, bodyPaint(color, 10f, true))
+            }
+        }
+        val cardTop1 = b.y - LINE_H + 2f
+        drawKpiRow(row1, cardTop1)
+        val cardTop2 = cardTop1 + cardH + 6f
+        drawKpiRow(row2, cardTop2)
+        // Advance past both card rows.
+        b.nl(cardH * 2 + 14f)
+
+        // ── Charts (audit C21 #10) — three panels stacked under KPIs:
+        //   (1) Asset allocation donut       — breakdown of totalAssets
+        //   (2) Monthly income vs expense    — last 12 months, bar chart
+        //   (3) Net worth trend              — snapshots over time, line
+        // Each panel has its own checkBreak() so the chart starts on a fresh
+        // page if it doesn't fit in the remaining cover space.
+        b.drawAssetAllocationDonut(summary, currencyCode)
+        b.drawMonthlyBarChart(transactions, currencyCode, financingCats)
+        b.drawNetWorthTrendLine(snapshots, currencyCode)
 
         // 1. Accounts
         if (summary.accountBreakdown.isNotEmpty()) {

@@ -2,6 +2,47 @@
 
 All notable changes to Fynlo are documented here.
 
+## [3.2.37] - 2026-05-27 *(Development milestone — C21 Stage 3: PDF charts + 5 new KPI cards; not promoted per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`)*
+
+### Fixed
+- **C21 Stage 3 of 4 — PDF charts + 5 new KPIs (audit fixes C21 #10, #11).** Third of 4 stages closing C21. The cover now opens with 2 rows of KPI cards (was 1 row of 4) followed by three chart panels (asset allocation donut, monthly income/expense bar, net worth trend line).
+
+**ExportUtility — added 5 new KPI cards (audit #11):**
+- Row 1 (balance-sheet view, 5 cards across): `NET WORTH | TOTAL ASSETS | TOTAL LIABILITIES | TOTAL CASH | INVEST GROWTH`. `TOTAL LIABILITIES = totalDebtPrincipal + totalDebtInterest`; red when > 0, grey when zero.
+- Row 2 (activity view, 4 cards across): `MONTHLY INCOME | MONTHLY EXPENSE | NET CASH FLOW | TOTAL LENT OUT`. Income/Expense are calendar-month, same financing-categories exclusion as the P&L Statement (so a debt receipt doesn't inflate income). `NET CASH FLOW = Monthly Income − Monthly Expense`, signed green/red. `TOTAL LENT OUT = borrowers.sum(amount)` lifetime — matches C15b's audit-#4 fix.
+- Card width recomputed for 5-across layout: `(usable / 5)`. Card height unchanged at 44dp. Row 2 left-aligned (4 cards using same width as row 1).
+
+**ExportUtility — added 3 chart panels (audit #10):**
+- **`drawAssetAllocationDonut`** — slices of `totalAssets` by Cash (emerald) / Investments (green) / Receivables (blue). Donut hole at 55% inner radius. Legend to the right with category name + amount + percentage. Hidden when `totalAssets` is 0 so a fresh-install PDF doesn't render an empty circle.
+- **`drawMonthlyBarChart`** — last 12 months income (green) + expense (red) side-by-side bars. Y-axis labels along the left at 0/50/100% of max; reference grid lines. Month abbreviations along the bottom. Tiny legend underneath. Hidden when every monthly bucket is 0.
+- **`drawNetWorthTrendLine`** — line chart connecting `NetWorthSnapshot` points chronologically. Area-fill under the line at 16% alpha. Min/mid/max y-axis labels. Endpoint date labels along the bottom. Empty-state hint ("Not enough snapshots yet — open the app a few more days, or use the in-app Backfill action.") when fewer than 2 snapshots are available.
+
+**ExportUtility.generatePDF — new param:**
+- `snapshots: List<NetWorthSnapshot> = emptyList()` — feeds the net-worth trend chart. Default empty for callers that haven't migrated; chart renders the empty-state hint in that case.
+
+**Callers updated (3 sites):**
+- **`FinanceViewModel.exportToPDF`** — fetches snapshots via `repository.getNetWorthSnapshots(pid).first()` so the suspend method gets the current list without a side-channel subscription.
+- **`ReportsHubScreen`** — added `viewModel.getNetWorthSnapshots().collectAsState(initial = emptyList())` and threads through.
+- **`ProfitLossScreen`** — same.
+
+### Page-break handling
+
+Each chart panel calls `checkBreak(panelHeight)` before drawing, so any chart that doesn't fit on the cover page automatically starts on a fresh page. The data tables underneath still chain via existing `checkBreak` logic in `drawTableRow`.
+
+### Stage 4 of C21 still pending
+
+XLSX overhaul (audit #12, #13, #14, #15, #16): currency-format numeric cells, conditional formatting (overdue red / negative red), frozen first row + auto-filter, totals rows on Accounts / Lending / Debts, Summary sheet as first sheet.
+
+### Closes
+- **C21 audit fixes #10, #11** (this stage).
+- C21 #1, #2, #8, #9 closed in 3.2.35. #3, #4, #5, #6, #7, #17 closed in 3.2.36. #18 accepted as Android framework limit.
+
+### Changed
+- **`versionName`** `3.2.36` → `3.2.37`, **`versionCode`** `159` → `160`.
+
+### Data-integrity gate
+Unchanged at **114 tests across 10 classes**, 0 failures. Charts are pure render code; KPI computations route through the same already-validated `FinancialSummary` + transaction filtering paths.
+
 ## [3.2.36] - 2026-05-27 *(Development milestone — C21 Stage 2: PDF data correctness — Debts section, word-wrap, dynamic Status, Type column, interest-type default; not promoted per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`)*
 
 ### Fixed
