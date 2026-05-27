@@ -1,12 +1,16 @@
 package app.fynlo.ui.screens
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -15,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.fynlo.BuildConfig
@@ -124,6 +129,49 @@ fun AboutScreen() {
 
         Spacer(Modifier.height(20.dp))
 
+        // ── Resources (C22 Stage 1 — UX_AUDIT §C22 about items #254/#256/#257) ─
+        // External links rendered as a single surface with rows. Each row
+        // opens its target in the user's browser via ACTION_VIEW.
+        Text(
+            "Resources",
+            style    = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+            modifier = Modifier.padding(bottom = 10.dp)
+        )
+        val context = LocalContext.current
+        fun openUrl(url: String) {
+            // Best-effort URL open; if no browser is installed (very rare)
+            // the intent silently no-ops rather than crashing.
+            runCatching {
+                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+            }
+        }
+        Column(
+            Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp))
+                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+        ) {
+            AboutLinkRow(
+                icon  = Icons.Default.Shield,
+                label = "Privacy Policy",
+                onClick = { openUrl("https://github.com/Avinashr999/Fynlo/blob/master/PRIVACY_POLICY.md") }
+            )
+            HorizontalDivider(thickness = 0.5.dp,
+                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f))
+            AboutLinkRow(
+                icon  = Icons.Default.MenuBook,
+                label = "Open Source Licenses",
+                onClick = { openUrl("https://github.com/Avinashr999/Fynlo/blob/master/LICENSES.md") }
+            )
+            HorizontalDivider(thickness = 0.5.dp,
+                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f))
+            AboutLinkRow(
+                icon  = Icons.Default.History,
+                label = "Changelog",
+                onClick = { openUrl("https://github.com/Avinashr999/Fynlo/blob/master/CHANGELOG.md") }
+            )
+        }
+
+        Spacer(Modifier.height(20.dp))
+
         // ── Footer ───────────────────────────────────────────────────────────
         Column(
             Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp))
@@ -142,6 +190,36 @@ fun AboutScreen() {
         }
 
         Spacer(Modifier.height(100.dp))
+    }
+}
+
+/**
+ * C22 Stage 1 — single-line link row used in the new Resources section.
+ * Mirrors the SettingsActionRow shape for consistency: leading icon +
+ * label + trailing "open-in-new" chevron. Whole row tappable.
+ */
+@Composable
+private fun AboutLinkRow(
+    icon: ImageVector,
+    label: String,
+    onClick: () -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
+        Icon(icon, contentDescription = null, modifier = Modifier.size(20.dp),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(label, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+        Icon(
+            Icons.AutoMirrored.Filled.OpenInNew,
+            contentDescription = "Open in browser",
+            modifier = Modifier.size(16.dp),
+            tint = MaterialTheme.colorScheme.outlineVariant
+        )
     }
 }
 

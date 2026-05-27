@@ -158,7 +158,7 @@ AI_AGENT_PROTOCOL.md to match.
 
 # Fynlo - Complete AI Portability File
 **Project Name**: Fynlo
-**Version**: 3.2.44 on `master` (`versionName = "3.2.44"`, `versionCode = 167`). All four Sprint-1 P0 clusters closed. P1 backlog closed in full. **P2 backlog closed in full.** Six P2 clusters all closed: C10 (Pluralization), C11 (Date formatting), C16 (Color semantics), C17 (Disabled button hints), C19 (Empty states), C20 (Drawer cleanup). Remaining work: **C22 v4+ backlog (P3, required before first public release per release-cadence ADR)**, C03b breaking schema migration, infrastructure backlog INF01-INF06, deferred follow-ups (Task #24/#26/#27/#28, #22). Internal milestone markers only — per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens until every `UX_AUDIT` cluster (P0 through P3) is closed. All four Sprint-1 P0 clusters closed (C01 / C02 / C03a / C05). **Ten** P1 Sprint 2 clusters closed (C04, C06+C07, C08, C09, C18, C13, C14, C12, **C15**). **3.2.33 = C15 Stage 5 = C15e Money Flow category-grouped visualization — closes C15 in full**. All five C15 sub-stages landed: C15a in 3.2.29, C15b in 3.2.30, C15c in 3.2.31, C15d in 3.2.32, C15e in 3.2.33. Remaining P1: C21 (PDF/XLSX export quality polish). Plus deferred follow-ups: Task #26, #27, #28, #24. Internal milestone markers only — per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens until every `UX_AUDIT` cluster (P0 through P3) is closed.
+**Version**: 3.2.45 on `master` (`versionName = "3.2.45"`, `versionCode = 168`). All four Sprint-1 P0 clusters closed. P1 + P2 backlogs closed in full. **C22 P3 v4+ backlog in progress. Stage 1 landed in 3.2.45 — About-screen Resources section with Privacy Policy / Open Source Licenses / Changelog links + new LICENSES.md at repo root.** C22 remaining items: import contacts from phonebook, Savings Goals target-date / icon picker, Recurring end-date / last-day-of-month, Projects clone / description / icon, Budgeting auto-suggest / alert thresholds, Search recent / filter chips / fuzzy / voice, Encrypted backups, Receipt OCR, Snowball/avalanche debt payoff, Extra-payment scenarios, Dark mode, AI categorization, Bank statement import, NAV/stock auto-import, Multi-project scoping (needs C03b first). Plus C03b breaking schema migration, INF01-INF06, deferred Task #22/#24/#26/#27/#28. Internal milestone markers only — per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens until every `UX_AUDIT` cluster (P0 through P3) is closed. All four Sprint-1 P0 clusters closed (C01 / C02 / C03a / C05). **Ten** P1 Sprint 2 clusters closed (C04, C06+C07, C08, C09, C18, C13, C14, C12, **C15**). **3.2.33 = C15 Stage 5 = C15e Money Flow category-grouped visualization — closes C15 in full**. All five C15 sub-stages landed: C15a in 3.2.29, C15b in 3.2.30, C15c in 3.2.31, C15d in 3.2.32, C15e in 3.2.33. Remaining P1: C21 (PDF/XLSX export quality polish). Plus deferred follow-ups: Task #26, #27, #28, #24. Internal milestone markers only — per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens until every `UX_AUDIT` cluster (P0 through P3) is closed.
 **Platform**: Android (Kotlin, Jetpack Compose, Room — Gradle 9.4.1, AGP 9.2.1, Room 2.8.4, KSP 2.3.7, Kotlin 2.2.10)
 
 ## 1. Project Overview
@@ -345,6 +345,25 @@ in the APK).
 ## 6. Journal
 
 **Newest first.** Each entry: date · cluster(s) closed/touched · commit(s) · one-paragraph why-and-what.
+
+### 2026-05-27 — 3.2.45 (C22 Stage 1 — About-screen Resources section + new LICENSES.md)
+
+**Type:** C22 P3 backlog first stage. Audit C22 items #254 Privacy Policy, #256 Open Source Licenses, #257 Changelog land here. #258 proper-logo deferred (no drawable asset to ship).
+
+**Internal milestone:** `3.2.45` / `versionCode = 168`. No Play Console upload per release-cadence ADR. No test gate change (UI-only).
+
+**New file:** `LICENSES.md` at repo root. Static list of major OSS deps with their licenses (Apache 2.0 / EPL 1.0 / MIT) + canonical text URLs. Categorized by area (Kotlin/Coroutines, Android Jetpack, DI, Firebase, Test infrastructure, etc.).
+
+**`AboutScreen` Resources section:**
+- Three clickable rows under the Legal Disclaimer card. Each opens a GitHub URL via `ACTION_VIEW`:
+  - Privacy Policy → PRIVACY_POLICY.md (file already existed; just unlinked from UI).
+  - Open Source Licenses → LICENSES.md (newly created).
+  - Changelog → CHANGELOG.md.
+- New `AboutLinkRow(icon, label, onClick)` private composable. Mirrors SettingsActionRow shape: leading icon + label + trailing OpenInNew chevron. Whole row tappable; `runCatching` so absent browser no-ops.
+
+**C22 audit items remaining:** import contacts from phonebook, Savings Goals target-date / icon picker, Recurring end-date / last-day-of-month / preview, Projects clone / description / icon, Budgeting auto-suggest / alert thresholds, Search recent / filter chips / fuzzy / voice, Encrypted backups, Receipt OCR, Snowball/avalanche debt payoff, Extra-payment scenarios, Dark mode, AI categorization, Bank statement import, NAV/stock auto-import, Multi-project scoping (needs C03b first), proper logo asset.
+
+**Pattern: open the P3 cluster with a small contained change** before tackling the larger items (OCR, AI, bank parse). Builds momentum + verifies the staging cadence works for the v4 backlog.
 
 ### 2026-05-27 — 3.2.44 (C20 closed — drawer cleanup; **closes P2 backlog**)
 

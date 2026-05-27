@@ -2,6 +2,35 @@
 
 All notable changes to Fynlo are documented here.
 
+## [3.2.45] - 2026-05-27 *(Development milestone — C22 Stage 1: About-screen Resources section (Privacy / Licenses / Changelog); not promoted per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`)*
+
+### Fixed
+- **C22 Stage 1 — About-screen quick wins (audit C22 items #254 Privacy Policy URL, #256 Open Source licenses, #257 Changelog link; #258 proper-logo deferred).** First slice of the P3 v4+ backlog. Opens the cluster with a small contained change before tackling the larger items (OCR, AI categorization, bank statement parse, etc.).
+
+**`LICENSES.md` — new file at repo root:**
+- Static list of major OSS dependencies with their licenses (Apache 2.0 / EPL 1.0 / MIT) + canonical-text URLs. Categorized by area (Kotlin, Android Jetpack, DI, Firebase, etc.). Required by the audit's "Open Source licenses" point so users can audit the supply chain.
+- Issue-tracker URL at the bottom for users to flag omissions.
+
+**`AboutScreen` — new "Resources" section:**
+- Three clickable rows below the Legal Disclaimer card, each opening a GitHub URL in the user's browser via `ACTION_VIEW`:
+  - **Privacy Policy** (Shield icon) → `https://github.com/Avinashr999/Fynlo/blob/master/PRIVACY_POLICY.md` (file already existed in the repo, just unlinked from the UI).
+  - **Open Source Licenses** (MenuBook icon) → `https://github.com/Avinashr999/Fynlo/blob/master/LICENSES.md` (newly created).
+  - **Changelog** (History icon) → `https://github.com/Avinashr999/Fynlo/blob/master/CHANGELOG.md` (already existed).
+- New private `AboutLinkRow(icon, label, onClick)` composable mirroring `SettingsActionRow` shape — leading icon + label + trailing `AutoMirrored.Filled.OpenInNew` chevron. Whole row tappable.
+- `runCatching { context.startActivity(...) }` so an absent browser silently no-ops rather than crashing.
+
+### Audit #258 (proper logo) deferred
+- The current logo is `Icons.Default.AccountBalanceWallet` rendered as a Material icon. A proper logo requires an actual drawable asset (PNG / vector) which isn't part of this commit's scope. Logged as a deferred follow-up — the audit's point is valid but blocked on the design side.
+
+### Closes (partial — C22 is the v4 backlog cluster)
+- **C22 audit items #254, #256, #257** (this stage). #258 deferred (asset blocker).
+
+### Changed
+- **`versionName`** `3.2.44` → `3.2.45`, **`versionCode`** `167` → `168`.
+
+### Data-integrity gate
+Unchanged at **137 tests across 12 classes**, 0 failures (UI-only).
+
 ## [3.2.44] - 2026-05-27 *(Development milestone — C20 closed: drawer cleanup — **closes P2 backlog**; not promoted per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`)*
 
 ### Fixed
