@@ -2,6 +2,35 @@
 
 All notable changes to Fynlo are documented here.
 
+## [3.2.23] - 2026-05-27 *(Development milestone — C13 Expenses tab Home-archetype migration; not promoted per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`)*
+
+### Fixed
+- **C13 — Expenses tab Home-archetype migration (5 of 10 audit fix points landed; #5-9 feature-adds deferred).** First of the C12-C15 P1 screen-redesign series. SpendScreen already had most of the Home-archetype skeleton (hero number, category-split bars, recent list); the three gaps the audit called out are now closed:
+  - **Hero MoM delta** (audit #1) — was just "₹X spent in May 2026". Now also shows a coloured arrow line: `↑ ₹500 more than last month` (red when spending up) / `↓ ₹500 less than last month` (Emerald when spending down) / `→ same as last month`. Hidden when there's no previous month's data (first month of usage). 1-second read of trajectory.
+  - **Top-category callout** (audit acceptance "mostly on Food") — added a "Mostly on $cat — ₹X (NN%)" line below the hero, but only when one category clearly dominates (≥30% share of total). Below that threshold the "mostly" framing is misleading, so we hide it. Surfaces the audit's "1-second insight" requirement.
+  - **Sectioned recent list** (audit #3) — was sorted-by-date-only. Now bucketed: **Today / Yesterday / This Week / Earlier**, only non-empty buckets render their header. Cap raised 15 → 20 rows (more headroom for users who log many txns/day). Bucket cutoffs: Today = exact match, Yesterday = today−1, This Week = within last 7 days (exclusive of today/yesterday), Earlier = everything else.
+  - **Duplicate Add entry-point removed** (audit #4) — removed the in-page "Add" `FilledTonalButton` that sat above the Month selector. Per audit ("remove duplicate add entry points"), the Scaffold FAB owned by Navigation is the single Add affordance for this tab. The dialog wiring stays — empty-state CTA + FAB-launched flow both reuse it.
+  - **Audit #2 (small donut/bar showing category split)** — **already done** (pre-C13). The existing Category Breakdown section renders horizontal bars per category sorted by amount, with budget-aware colour (Red ≥100%, Amber ≥80%) and budget-limit subtitle. Bars qualify as "small bar showing category split"; no new visual needed.
+  - **Audit #10 (literal "Expense" category bug)** — **already done in C03a / C05** (TransactionValidator now sanitises "Expense" → "Uncategorized", and the chip picker is per-type).
+
+### Deferred (Task #27 — C13 features deferred from 3.2.23 closure)
+- **#5 Recurring toggle on transactions** — needs RecurringTransaction integration + new dialog affordance.
+- **#6 Receipt photo attach** (camera + gallery picker, Storage backend).
+- **#7 Tags field** (free-text comma-separated, persistence + filtering).
+- **#8 Split transactions** (one ₹1000 grocery → 60% Food, 40% Household — schema implication on Transaction model).
+- **#9 Edit Transaction supporting Type + Account changes** (currently EditTransactionDialog locks type and account; this needs a more complete edit dialog).
+
+Each is a meaningful feature with its own scope; land independently when called for. Cluster-spirit closure (Home archetype) is what C13 was about; these are feature-adds that happen to live on the Expenses tab.
+
+### Closes
+- **UX_AUDIT §C13 — Expenses tab Home-archetype migration** (effectively, modulo deferred features). 1st of 4 P1 screen-redesign clusters (C12-C15) closed.
+
+### Changed
+- **`versionName`** `3.2.22` → `3.2.23`, **`versionCode`** `145` → `146`.
+
+### Data-integrity gate
+Unchanged at **114 tests across 10 classes**, 0 failures (pure UI restructure — no logic / state changes).
+
 ## [3.2.22] - 2026-05-27 *(Development milestone — light-mode toggle visibility fix; not promoted per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`)*
 
 ### Fixed

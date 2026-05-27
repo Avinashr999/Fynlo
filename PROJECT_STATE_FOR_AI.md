@@ -158,7 +158,7 @@ AI_AGENT_PROTOCOL.md to match.
 
 # Fynlo - Complete AI Portability File
 **Project Name**: Fynlo
-**Version**: 3.2.22 on `master` (`versionName = "3.2.22"`, `versionCode = 145`). All four Sprint-1 P0 clusters closed (C01 / C02 / C03a / C05). Six P1 Sprint 2 clusters closed (C04, C06+C07, C08, C09, C18). 3.2.21 = theme picker UX redesign + setup screen migrations. **3.2.22 = light-mode toggle visibility fix (user smoke surfaced the issue)**. Remaining P1: C12-C15 (screen redesigns), C21 (PDF/XLSX export quality polish), Task #26 (Report-a-Bug in-app form). Internal milestone markers only — per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens until every `UX_AUDIT` cluster (P0 through P3) is closed.
+**Version**: 3.2.23 on `master` (`versionName = "3.2.23"`, `versionCode = 146`). All four Sprint-1 P0 clusters closed (C01 / C02 / C03a / C05). **Seven P1 Sprint 2 clusters closed: C04, C06+C07, C08, C09, C18, C13.** Remaining P1: C12 (Loans), C14 (Invest), C15 (Reports, 4 sub-screens), C21 (PDF/XLSX export quality polish). Plus deferred follow-ups: Task #26 (Report-a-Bug form), Task #27 (C13 features), Task #24 (EMI Calculator features). Internal milestone markers only — per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens until every `UX_AUDIT` cluster (P0 through P3) is closed.
 **Platform**: Android (Kotlin, Jetpack Compose, Room — Gradle 9.4.1, AGP 9.2.1, Room 2.8.4, KSP 2.3.7, Kotlin 2.2.10)
 
 ## 1. Project Overview
@@ -345,6 +345,37 @@ in the APK).
 ## 6. Journal
 
 **Newest first.** Each entry: date · cluster(s) closed/touched · commit(s) · one-paragraph why-and-what.
+
+### 2026-05-27 — 3.2.23 (C13 Expenses tab Home-archetype migration)
+
+**Type:** first of the C12-C15 P1 screen-redesign series. Investigation showed SpendScreen already had most of the Home-archetype skeleton from earlier work (hero number from baseline, category-split bars, recent list from C08-era state) — only 4 of 10 audit fix points needed real work, and 2 were already done elsewhere (audit #2 done as bars, audit #10 done in C03a/C05).
+
+**Internal milestone:** `3.2.23` / `versionCode = 146`. No Play Console upload per release-cadence ADR. No test gate change.
+
+**What landed (4 fixes):**
+1. **MoM delta on hero** — coloured arrow line (`↑ red`, `↓ Emerald`, `→ neutral`) below the total amount. "₹500 more / less than last month." Hidden when there's no previous month's data.
+2. **Top-category callout** — "Mostly on $cat — ₹X (NN%)" line below the hero, only shown when one category has ≥30% share. Below that the "mostly" framing is misleading, so suppress.
+3. **Sectioned recent list** — bucketed Today / Yesterday / This Week / Earlier, only non-empty buckets render their header. Cap raised 15 → 20 rows.
+4. **In-page Add button removed** — Scaffold FAB owned by Navigation is the single Add affordance now. AddTransactionDialog wiring kept for the empty-state CTA + FAB-launched flow.
+
+**Already done before this commit:**
+- Audit #2 (small bar showing category split) — Category Breakdown already renders horizontal bars per category sorted by amount.
+- Audit #10 (literal "Expense" category bug) — C03a / C05 closed this; TransactionValidator sanitises "Expense" → "Uncategorized", and the chip picker is per-type.
+
+**Deferred (Task #27):**
+- #5 Recurring toggle (needs RecurringTransaction integration + dialog affordance)
+- #6 Receipt photo attach (camera + gallery + Storage backend)
+- #7 Tags field (free-text + persistence + filtering)
+- #8 Split transactions (Transaction model schema implication)
+- #9 Edit Transaction Type + Account changes (EditTransactionDialog rewrite)
+
+Each is a meaningful feature with its own scope; land independently when called for. C13's "Home archetype" spirit is closed; these are feature-adds.
+
+**Pattern reinforced from C18:** the audit estimates effort assuming all fix points need building from scratch. Investigation often shows 2-4 are already done or covered elsewhere — meaningful triage before estimating. C18 was "M (2-3 days)" → done in 1 commit + 1 follow-up because 5 were already done. C13 was "L (1 week)" → done in 1 commit because 6 were already done.
+
+**Pattern: feature-vs-redesign distinction.** When an audit cluster mixes "redesign the layout" with "add new features," doing the redesign first (clean closure) and deferring features (own tasks) keeps each commit cohesive. Audit acceptance for cluster closure is the redesign; features that "happen to live on the same tab" are independent work.
+
+**7 of 9 P1 Sprint 2 clusters closed.** Remaining: C12 (Loans, XL — biggest user-pain), C14 (Invest, L), C15 (Reports, XL across 4 sub-screens), C21 (PDF/XLSX export quality polish).
 
 ### 2026-05-27 — 3.2.22 (light-mode toggle visibility fix — smoke surface)
 
