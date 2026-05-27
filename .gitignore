@@ -56,3 +56,6 @@ firestore-tests/node_modules/
 /reports.png
 /moneyflow*.png
 /fynlo_check.png
+
+# All repo-root PNGs (ad-hoc screencaps) — drawables stay tracked under app/src/main/res/drawable/
+/*.png
