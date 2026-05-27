@@ -158,7 +158,7 @@ AI_AGENT_PROTOCOL.md to match.
 
 # Fynlo - Complete AI Portability File
 **Project Name**: Fynlo
-**Version**: 3.2.32 on `master` (`versionName = "3.2.32"`, `versionCode = 155`). All four Sprint-1 P0 clusters closed (C01 / C02 / C03a / C05). Nine P1 Sprint 2 clusters closed (C04, C06+C07, C08, C09, C18, C13, C14, C12). **C15 Stages 1-4 of 5 landed: 3.2.29 = C15a (Reports launcher), 3.2.30 = C15b (P&L chart-hero), 3.2.31 = C15c (Net Worth History chart-hero + backfill), 3.2.32 = C15d (Monthly Summary chart-hero + 12-month bar chart + axes + callouts + projection + CSV)**. C15 Stage 5 pending (C15e Money Flow build-or-remove). Remaining P1: C15 Stage 5, C21 (PDF/XLSX export quality polish). Plus deferred follow-ups: Task #26, #27, #28, #24. Internal milestone markers only — per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens until every `UX_AUDIT` cluster (P0 through P3) is closed.
+**Version**: 3.2.33 on `master` (`versionName = "3.2.33"`, `versionCode = 156`). All four Sprint-1 P0 clusters closed (C01 / C02 / C03a / C05). **Ten** P1 Sprint 2 clusters closed (C04, C06+C07, C08, C09, C18, C13, C14, C12, **C15**). **3.2.33 = C15 Stage 5 = C15e Money Flow category-grouped visualization — closes C15 in full**. All five C15 sub-stages landed: C15a in 3.2.29, C15b in 3.2.30, C15c in 3.2.31, C15d in 3.2.32, C15e in 3.2.33. Remaining P1: C21 (PDF/XLSX export quality polish). Plus deferred follow-ups: Task #26, #27, #28, #24. Internal milestone markers only — per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens until every `UX_AUDIT` cluster (P0 through P3) is closed.
 **Platform**: Android (Kotlin, Jetpack Compose, Room — Gradle 9.4.1, AGP 9.2.1, Room 2.8.4, KSP 2.3.7, Kotlin 2.2.10)
 
 ## 1. Project Overview
@@ -345,6 +345,37 @@ in the APK).
 ## 6. Journal
 
 **Newest first.** Each entry: date · cluster(s) closed/touched · commit(s) · one-paragraph why-and-what.
+
+### 2026-05-27 — 3.2.33 (C15 Stage 5 of 5 — closes C15: C15e Money Flow category-grouped visualization)
+
+**Type:** Stage 5 of 5 for C15. **Closes C15 cluster in full.** Audit §C15e #1 (build flow visualization) landed here. Tenth P1 Sprint-2 cluster closed.
+
+**Internal milestone:** `3.2.33` / `versionCode = 156`. No Play Console upload per release-cadence ADR. No test gate change (114 tests / 10 classes / 0 failures — pure UI; reads existing `allFlows` list).
+
+**MoneyFlowScreen added:**
+- `MoneyFlowVisualization` composable at the top of the LazyColumn (above Account Flows). Two parallel columns in one surface:
+  - **Inflows** (Emerald, left) — top 5 by amount from `INCOME` + `DEBT_RECEIVED` flows grouped by `flow.from`. Rest → `Other` bucket.
+  - **Outflows** (SemanticRed, right) — top 5 from `EXPENSE` + `DEBT_REPAY` flows grouped by `flow.to`. Rest → `Other`.
+- Each row: category label + amount (color-coded, right-aligned) above a proportional horizontal bar. Independently scaled per column. Bars floor at 4% width so near-zero categories stay visible.
+- Empty-state placeholders for either side when no flows of that direction exist yet.
+- LENDING / TRANSFER / INVESTMENT excluded — lending principal already in Flow Summary as "Lent Out"; transfers and investments are internal movements, not real wallet inflows/outflows.
+
+**MoneyFlowScreen kept (existing surface preserved):**
+- Account Flows (top accounts by total movement).
+- Flow Summary (Total Inflow / Outflow / Lent Out / Net Flow).
+- Transaction Flows filter-chip list (All / Income / Expense / Transfer / Lending / Debt).
+- CSV + PDF export dropdown.
+
+**Pattern: visualization layered on top of existing functionality.** The user's smoke surfaced that the screen wasn't actually empty — it had real list functionality. So instead of replacing or removing, the visualization layered on top satisfies the audit's "build flow visualization" call without losing what was useful.
+
+**C15 closed in full.** All five sub-stages landed:
+- C15a (3.2.29) — Reports landing → pure launcher with previewed tiles.
+- C15b (3.2.30) — P&L Statement chart-hero + callout cards + Total Lent Out fix.
+- C15c (3.2.31) — Net Worth History chart-hero + callouts + transaction-history backfill + open-daily nag removal.
+- C15d (3.2.32) — Monthly Summary chart-hero + 12-month bar chart + axis labels + reference lines + callouts + linear-regression projection + CSV export.
+- C15e (3.2.33, this commit) — Money Flow category-grouped visualization.
+
+**Tenth P1 cluster closed.** Remaining P1: C21 (PDF/XLSX export quality polish). Plus deferred Task #24/#26/#27/#28. P2 cluster work (C10/C11/C16/C17/C19/C20) and C22 v4+ backlog (P3) still pending per release-cadence ADR — no Play Console upload until all are closed.
 
 ### 2026-05-27 — 3.2.32 (C15 Stage 4 of 5: C15d Monthly Summary chart-hero + 12-month bar chart + axes + callouts + projection + CSV)
 

@@ -2,6 +2,39 @@
 
 All notable changes to Fynlo are documented here.
 
+## [3.2.33] - 2026-05-27 *(Development milestone — C15 Stage 5: Money Flow category-grouped visualization (C15e) — **closes C15**; not promoted per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`)*
+
+### Fixed
+- **C15 Stage 5 of 5 — C15e Money Flow category-grouped visualization (audit fix C15e #1).** Fifth and final stage closing C15. MoneyFlowScreen now opens with a "Where Money Flows" block showing the top inflow + outflow categories side by side as proportional horizontal bars; existing functionality (Account Flows, Flow Summary, filter-chip transaction list, CSV/PDF export) preserved underneath.
+
+**MoneyFlowScreen — added:**
+- **`MoneyFlowVisualization` composable** at the top of the LazyColumn (above Account Flows). Two parallel columns inside one surface:
+  - **Inflows** (left, Emerald) — top 5 by amount from `INCOME` + `DEBT_RECEIVED` flows grouped by `flow.from` (which is `transaction.category` for income, lender name for debt-received). Rest bucketed as `Other` if non-zero.
+  - **Outflows** (right, SemanticRed) — same shape, top 5 from `EXPENSE` + `DEBT_REPAY` flows grouped by `flow.to` (which is `transaction.category` for expense, lender name for debt-repay). Rest bucketed as `Other`.
+- **Per-row layout** — category label + amount (right-aligned, color-coded) above a proportional-width bar. Each column independently scaled — the longest bar in each side hits ~100% width, others scale proportionally. Bars floor at 4% width so near-zero categories stay visible.
+- **Empty-state placeholders** for either column when the user has no inflows or no outflows yet.
+- **Exclusion** — `LENDING` (principal outflow), `TRANSFER`, `INVESTMENT` flows are NOT in the viz. Lending principal already surfaces in the Flow Summary block as "Lent Out"; transfers and investments are internal movements, not real wallet inflows/outflows.
+
+**MoneyFlowScreen — kept:**
+- Account Flows (top 5 accounts by total movement, with inflow + outflow + net).
+- Flow Summary (Total Inflow / Total Outflow / Lent Out / Net Flow).
+- Transaction Flows section with filter chips (All / Income / Expense / Transfer / Lending / Debt) — the per-flow list.
+- CSV + PDF export dropdown.
+
+### Audit C15c #4 follow-up
+
+The audit notes C15c #4 ("X snapshots" plural bug) is "covered by C10". The localized `pluralCount` helper landed in 3.2.31's NetWorthHistoryScreen — sufficient for that specific surface. Broader C10 plural-form cluster work remains in the P2 backlog.
+
+### Closes
+- **C15e audit fix #1** (this stage).
+- **C15 cluster closed in full** — all 5 sub-stages landed: C15a (3.2.29), C15b (3.2.30), C15c (3.2.31), C15d (3.2.32), C15e (3.2.33).
+
+### Changed
+- **`versionName`** `3.2.32` → `3.2.33`, **`versionCode`** `155` → `156`.
+
+### Data-integrity gate
+Unchanged at **114 tests across 10 classes**, 0 failures. New `MoneyFlowVisualization` reads from the same `allFlows` list the rest of the screen already uses; no new data path.
+
 ## [3.2.32] - 2026-05-27 *(Development milestone — C15 Stage 4: Monthly Summary chart-hero + 12-month bar chart + axis labels + callout cards + linear-regression projection + CSV export (C15d); not promoted per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`)*
 
 ### Fixed

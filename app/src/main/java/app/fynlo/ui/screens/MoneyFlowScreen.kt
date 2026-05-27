@@ -215,10 +215,55 @@ fun MoneyFlowScreen(viewModel: FinanceViewModel) {
             }
         }
 
+        // ── C15e (3.2.33) — Category-grouped flow visualization. Inflow
+        // categories on the left (green), outflow categories on the right
+        // (red). Bar widths proportional to amount; top 5 of each surface
+        // plus an "Other" bucket. INCOME + DEBT_RECEIVED flows use
+        // `flow.from` as the category (income.category or lender name);
+        // EXPENSE + DEBT_REPAY use `flow.to`. Lending principal / transfers /
+        // investments are internal movements — excluded from this viz so the
+        // chart only shows what actually entered or left the wallet.
+        val inflowByCat = remember(allFlows) {
+            allFlows
+                .filter { it.flowType == FlowType.INCOME || it.flowType == FlowType.DEBT_RECEIVED }
+                .groupBy { it.from.ifBlank { "Other" } }
+                .mapValues { it.value.sumOf { f -> f.amount } }
+                .entries.sortedByDescending { it.value }
+        }
+        val outflowByCat = remember(allFlows) {
+            allFlows
+                .filter { it.flowType == FlowType.EXPENSE || it.flowType == FlowType.DEBT_REPAY }
+                .groupBy { it.to.ifBlank { "Other" } }
+                .mapValues { it.value.sumOf { f -> f.amount } }
+                .entries.sortedByDescending { it.value }
+        }
+        fun topNWithOther(list: List<Map.Entry<String, Double>>, n: Int): List<Pair<String, Double>> {
+            if (list.size <= n) return list.map { it.key to it.value }
+            val top    = list.take(n).map { it.key to it.value }
+            val rest   = list.drop(n).sumOf { it.value }
+            return if (rest > 0) top + ("Other" to rest) else top
+        }
+        val inflowBars  = topNWithOther(inflowByCat,  5)
+        val outflowBars = topNWithOther(outflowByCat, 5)
+
         LazyColumn(
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+
+            // C15e visualization sits at the top so the user gets the "where
+            // money flows" answer in the first screenful. Hidden when both
+            // sides are empty (fresh install).
+            if (inflowBars.isNotEmpty() || outflowBars.isNotEmpty()) {
+                item {
+                    MoneyFlowVisualization(
+                        inflows      = inflowBars,
+                        outflows     = outflowBars,
+                        currencyCode = currencyCode,
+                        locale       = locale,
+                    )
+                }
+            }
 
             item {
                 Text("Account Flows", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
@@ -365,5 +410,145 @@ private fun FlowSummaryRow(label: String, value: String, color: Color, bold: Boo
             else MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Text(value, style = if (bold) MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.ExtraBold)
             else MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold), color = color)
+    }
+}
+
+/**
+ * C15e (3.2.33) — Category-grouped flow visualization. Two parallel
+ * horizontal-bar mini-charts side by side: inflows (green, left) and
+ * outflows (red, right). Each side independently scaled — the longest
+ * bar in each column hits ~100% width, others scale proportionally.
+ *
+ * Lifetime totals — no date filter (matches the rest of the screen).
+ * The bottom Flow Summary block already shows Total Inflow / Outflow,
+ * so this viz adds the per-category breakdown without duplicating
+ * scalar totals.
+ */
+@Composable
+private fun MoneyFlowVisualization(
+    inflows: List<Pair<String, Double>>,
+    outflows: List<Pair<String, Double>>,
+    currencyCode: String,
+    locale: Locale,
+) {
+    val maxIn  = inflows.maxOfOrNull { it.second }?.takeIf { it > 0 } ?: 1.0
+    val maxOut = outflows.maxOfOrNull { it.second }?.takeIf { it > 0 } ?: 1.0
+    Column(
+        Modifier.fillMaxWidth()
+            .clip(RoundedCornerShape(20.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Text(
+            "Where Money Flows",
+            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold)
+        )
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            // Inflows column
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    "Inflows",
+                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                    color = Emerald500
+                )
+                if (inflows.isEmpty()) {
+                    Text(
+                        "No inflows recorded yet.",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                } else {
+                    inflows.forEach { (label, amount) ->
+                        CategoryBar(
+                            label  = label,
+                            amount = amount,
+                            fraction = (amount / maxIn).toFloat().coerceIn(0f, 1f),
+                            color  = Emerald500,
+                            currencyCode = currencyCode,
+                            locale = locale,
+                        )
+                    }
+                }
+            }
+            // Outflows column
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    "Outflows",
+                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                    color = SemanticRed
+                )
+                if (outflows.isEmpty()) {
+                    Text(
+                        "No outflows recorded yet.",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                } else {
+                    outflows.forEach { (label, amount) ->
+                        CategoryBar(
+                            label  = label,
+                            amount = amount,
+                            fraction = (amount / maxOut).toFloat().coerceIn(0f, 1f),
+                            color  = SemanticRed,
+                            currencyCode = currencyCode,
+                            locale = locale,
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * One row of the category-grouped visualization: category name + amount
+ * caption above, proportional-width bar below. Bar always renders at
+ * least 4-dp wide so a near-zero category is still visible (otherwise
+ * it disappears entirely and the label looks orphaned).
+ */
+@Composable
+private fun CategoryBar(
+    label: String,
+    amount: Double,
+    fraction: Float,
+    color: Color,
+    currencyCode: String,
+    locale: Locale,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                label,
+                style = MaterialTheme.typography.labelSmall,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f, false)
+            )
+            Spacer(Modifier.width(4.dp))
+            Text(
+                CurrencyFormatter.listRow(amount, currencyCode, locale),
+                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                color = color,
+                maxLines = 1
+            )
+        }
+        Box(
+            Modifier.fillMaxWidth()
+                .height(6.dp)
+                .clip(RoundedCornerShape(3.dp))
+                .background(color.copy(alpha = 0.15f))
+        ) {
+            Box(
+                Modifier.fillMaxWidth(fraction.coerceAtLeast(0.04f))
+                    .fillMaxHeight()
+                    .clip(RoundedCornerShape(3.dp))
+                    .background(color)
+            )
+        }
     }
 }
