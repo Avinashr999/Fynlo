@@ -55,11 +55,17 @@ class RecurringWorker(
 
     private fun shouldRunToday(r: RecurringTransaction, today: LocalDate): Boolean {
         if (r.lastRun == today.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))) return false
+        // C22 Stage 2 (3.2.47) — last-day-of-month support per audit §C22 #218.
+        // If the user picked day 29/30/31, fire on the actual last day for
+        // months that are shorter (Feb 28, Apr/Jun/Sep/Nov 30). Computed as
+        // min(target, monthLength) so day 31 → Feb 28, Apr 30; day 28 →
+        // Feb 28 always. Days 1-27 fire on the exact target day as before.
+        val targetDay = minOf(r.dayOfMonth, today.lengthOfMonth())
         return when (r.frequency) {
             "Daily"   -> true
             "Weekly"  -> today.dayOfWeek.value == 1  // Monday
-            "Monthly" -> today.dayOfMonth == r.dayOfMonth
-            "Yearly"  -> today.dayOfMonth == r.dayOfMonth && today.monthValue == 1
+            "Monthly" -> today.dayOfMonth == targetDay
+            "Yearly"  -> today.dayOfMonth == targetDay && today.monthValue == 1
             else      -> false
         }
     }

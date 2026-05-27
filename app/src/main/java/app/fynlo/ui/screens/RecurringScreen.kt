@@ -372,10 +372,96 @@ private fun AddRecurringDialog(
                 }
 
                 if (frequency == "Monthly" || frequency == "Yearly") {
-                    OutlinedTextField(value = dayOfMonth, onValueChange = { dayOfMonth = it },
-                        label = { Text("Day of month (1-28)") }, singleLine = true,
+                    // C22 Stage 2 (3.2.47) — "last day of month" support
+                    // (audit §C22 #218). When checked, dayOfMonth is forced
+                    // to 31 (sentinel — RecurringWorker clamps it to
+                    // today.lengthOfMonth(), so Feb fires the 28th, Apr the
+                    // 30th, etc.). When unchecked, the user types a number
+                    // 1-31 (was 1-28 pre-C22 due to lack of clamp in worker).
+                    val isLastDay = dayOfMonth.toIntOrNull() == 31
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Checkbox(
+                            checked = isLastDay,
+                            onCheckedChange = { checked ->
+                                dayOfMonth = if (checked) "31" else "1"
+                            }
+                        )
+                        Text(
+                            "Use last day of month",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                    OutlinedTextField(
+                        value = dayOfMonth,
+                        onValueChange = { newVal ->
+                            // Only allow valid 1-31 input; drop anything else.
+                            val n = newVal.toIntOrNull()
+                            if (newVal.isEmpty() || (n != null && n in 1..31)) {
+                                dayOfMonth = newVal
+                            }
+                        },
+                        label = { Text("Day of month (1-31)") },
+                        singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp))
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        enabled = !isLastDay,
+                    )
+                }
+
+                // C22 Stage 2 (3.2.47) — preview next 3 occurrences (audit
+                // §C22 #220). Pure-UI calc; no schema impact. Helps users
+                // sanity-check date / frequency before saving — especially
+                // useful for "last day of month" so they see how Feb shifts.
+                val previewDates = remember(frequency, dayOfMonth) {
+                    val today  = java.time.LocalDate.now()
+                    val target = dayOfMonth.toIntOrNull() ?: 1
+                    val out    = mutableListOf<java.time.LocalDate>()
+                    when (frequency) {
+                        "Daily" -> for (i in 1..3) out += today.plusDays(i.toLong())
+                        "Weekly" -> {
+                            // Next 3 Mondays.
+                            var d = today.plusDays(1)
+                            while (out.size < 3) {
+                                if (d.dayOfWeek.value == 1) out += d
+                                d = d.plusDays(1)
+                            }
+                        }
+                        "Monthly" -> {
+                            // Walk forward month-by-month, clamping target to
+                            // each month's length so day-31 still produces a
+                            // valid date in shorter months.
+                            var ym = java.time.YearMonth.from(today)
+                            while (out.size < 3) {
+                                val day = minOf(target, ym.lengthOfMonth())
+                                val date = ym.atDay(day)
+                                if (date.isAfter(today)) out += date
+                                ym = ym.plusMonths(1)
+                            }
+                        }
+                        "Yearly" -> {
+                            var y = today.year
+                            while (out.size < 3) {
+                                val ym = java.time.YearMonth.of(y, 1)
+                                val day = minOf(target, ym.lengthOfMonth())
+                                val date = ym.atDay(day)
+                                if (date.isAfter(today)) out += date
+                                y += 1
+                            }
+                        }
+                    }
+                    out
+                }
+                if (previewDates.isNotEmpty()) {
+                    val fmt = java.time.format.DateTimeFormatter.ofPattern("d MMM yyyy")
+                    Text(
+                        "Next occurrences: " + previewDates.joinToString(" · ") { it.format(fmt) },
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
                 // C17 (3.2.42) — inline reason for the disabled Add button.
                 app.fynlo.ui.components.DisabledButtonHint(
@@ -403,7 +489,10 @@ private fun AddRecurringDialog(
                             fromAcct   = if (type == "Expense") fromAcct else "",
                             toAcct     = if (type == "Income") fromAcct else "",
                             frequency  = frequency,
-                            dayOfMonth = dayOfMonth.toIntOrNull()?.coerceIn(1, 28) ?: 1
+                            // C22 Stage 2 — range now 1-31. Worker clamps to
+                            // month.lengthOfMonth() at run time so day-31
+                            // safely fires on Feb 28 / Apr 30 / etc.
+                            dayOfMonth = dayOfMonth.toIntOrNull()?.coerceIn(1, 31) ?: 1
                         ))
                     }
                 },

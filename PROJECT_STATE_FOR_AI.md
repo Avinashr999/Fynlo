@@ -158,7 +158,7 @@ AI_AGENT_PROTOCOL.md to match.
 
 # Fynlo - Complete AI Portability File
 **Project Name**: Fynlo
-**Version**: 3.2.45 on `master` (`versionName = "3.2.45"`, `versionCode = 168`). All four Sprint-1 P0 clusters closed. P1 + P2 backlogs closed in full. **C22 P3 v4+ backlog in progress. Stage 1 landed in 3.2.45 — About-screen Resources section with Privacy Policy / Open Source Licenses / Changelog links + new LICENSES.md at repo root.** C22 remaining items: import contacts from phonebook, Savings Goals target-date / icon picker, Recurring end-date / last-day-of-month, Projects clone / description / icon, Budgeting auto-suggest / alert thresholds, Search recent / filter chips / fuzzy / voice, Encrypted backups, Receipt OCR, Snowball/avalanche debt payoff, Extra-payment scenarios, Dark mode, AI categorization, Bank statement import, NAV/stock auto-import, Multi-project scoping (needs C03b first). Plus C03b breaking schema migration, INF01-INF06, deferred Task #22/#24/#26/#27/#28. Internal milestone markers only — per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens until every `UX_AUDIT` cluster (P0 through P3) is closed. All four Sprint-1 P0 clusters closed (C01 / C02 / C03a / C05). **Ten** P1 Sprint 2 clusters closed (C04, C06+C07, C08, C09, C18, C13, C14, C12, **C15**). **3.2.33 = C15 Stage 5 = C15e Money Flow category-grouped visualization — closes C15 in full**. All five C15 sub-stages landed: C15a in 3.2.29, C15b in 3.2.30, C15c in 3.2.31, C15d in 3.2.32, C15e in 3.2.33. Remaining P1: C21 (PDF/XLSX export quality polish). Plus deferred follow-ups: Task #26, #27, #28, #24. Internal milestone markers only — per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens until every `UX_AUDIT` cluster (P0 through P3) is closed.
+**Version**: 3.2.47 on `master` (`versionName = "3.2.47"`, `versionCode = 170`). All four Sprint-1 P0 clusters closed. P1 + P2 backlogs closed in full. **C22 P3 backlog in progress. Stage 1 (3.2.45) — About Resources section + LICENSES.md. Stage 2 (3.2.47) — Recurring last-day-of-month + preview + Goals deadline.** C22 remaining items: Recurring end-date (#219, needs schema migration), Goals icon picker / account linkage, Projects clone / description / icon, Budgeting auto-suggest / alert thresholds, Search recent / filter chips / fuzzy / voice, Encrypted backups, Receipt OCR, Snowball/avalanche debt payoff, Extra-payment scenarios, Dark mode, AI categorization, Bank statement import, NAV/stock auto-import, Multi-project scoping (needs C03b), proper logo, contacts import. Plus C03b, INF01-INF06, deferred Task #22/#24/#26/#27/#28. Internal milestone markers only — per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens until every `UX_AUDIT` cluster (P0 through P3) is closed. All four Sprint-1 P0 clusters closed (C01 / C02 / C03a / C05). **Ten** P1 Sprint 2 clusters closed (C04, C06+C07, C08, C09, C18, C13, C14, C12, **C15**). **3.2.33 = C15 Stage 5 = C15e Money Flow category-grouped visualization — closes C15 in full**. All five C15 sub-stages landed: C15a in 3.2.29, C15b in 3.2.30, C15c in 3.2.31, C15d in 3.2.32, C15e in 3.2.33. Remaining P1: C21 (PDF/XLSX export quality polish). Plus deferred follow-ups: Task #26, #27, #28, #24. Internal milestone markers only — per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens until every `UX_AUDIT` cluster (P0 through P3) is closed.
 **Platform**: Android (Kotlin, Jetpack Compose, Room — Gradle 9.4.1, AGP 9.2.1, Room 2.8.4, KSP 2.3.7, Kotlin 2.2.10)
 
 ## 1. Project Overview
@@ -345,6 +345,23 @@ in the APK).
 ## 6. Journal
 
 **Newest first.** Each entry: date · cluster(s) closed/touched · commit(s) · one-paragraph why-and-what.
+
+### 2026-05-27 — 3.2.47 (C22 Stage 2 — Recurring last-day + preview + Goals deadline)
+
+**Type:** C22 P3 backlog second stage. Audit items #218, #220, #207. End-date #219 deferred to its own stage (needs Room migration v17→v18).
+
+**Internal milestone:** `3.2.47` / `versionCode = 170`. No Play Console upload. No test gate change (UI + 1 worker logic clamp; no schema impact).
+
+**Changes:**
+- `RecurringWorker.shouldRunToday` — clamps target dayOfMonth to `today.lengthOfMonth()` so day-31 fires on Feb 28 / Apr 30 / etc. Days 1-27 unchanged.
+- `RecurringScreen.AddRecurringDialog`:
+  - "Use last day of month" checkbox (sets value to 31; worker handles the clamp).
+  - dayOfMonth range widened 1-28 → 1-31 with as-you-type validation.
+  - "Next occurrences" caption below the input — shows next 3 firing dates given (frequency, dayOfMonth). Pure UI calc; rebuilds on input change.
+- `GoalScreen.AddGoalDialog` — exposes the `Goal.deadline` field that was already in the model but never UI-bound. Optional yyyy-MM-dd input.
+- `GoalCard` — renders "Target by <date>" below the progress bar when deadline is set.
+
+**Pattern: schema-free P3 polish.** Two of these (#220 preview, #207 deadline-expose) needed zero data changes. #218 needed only a worker logic tweak (one line). #219 (end-date) is the only schema-touching one; isolated to a separate stage.
 
 ### 2026-05-27 — 3.2.45 (C22 Stage 1 — About-screen Resources section + new LICENSES.md)
 

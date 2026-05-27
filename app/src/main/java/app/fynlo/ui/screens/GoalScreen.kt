@@ -155,6 +155,16 @@ fun GoalCard(goal: Goal, currencyCode: String, locale: Locale, onDelete: () -> U
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
+            // C22 Stage 2 — surface target date when set so the user sees
+            // their deadline at a glance. Empty deadline stays hidden.
+            if (goal.deadline.isNotBlank()) {
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    "Target by ${app.fynlo.logic.DateUtils.formatToDisplay(goal.deadline)}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
 }
 
@@ -163,6 +173,11 @@ fun AddGoalDialog(currencySymbol: String, onDismiss: () -> Unit, onConfirm: (Goa
     var name by remember { mutableStateOf("") }
     var target by remember { mutableStateOf("") }
     var saved by remember { mutableStateOf("") }
+    // C22 Stage 2 (3.2.47) — target-date field per audit §C22 #207. Goal
+    // model already had a `deadline: String = ""` field (yyyy-MM-dd or
+    // blank) — just wasn't exposed by the dialog before. Empty stays
+    // valid for goals without a deadline.
+    var deadline by remember { mutableStateOf("") }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -172,6 +187,13 @@ fun AddGoalDialog(currencySymbol: String, onDismiss: () -> Unit, onConfirm: (Goa
                 OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Goal Name (e.g., New Car)") })
                 OutlinedTextField(value = target, onValueChange = { target = it }, label = { Text("Target Amount ($currencySymbol)") })
                 OutlinedTextField(value = saved, onValueChange = { saved = it }, label = { Text("Already Saved ($currencySymbol)") })
+                OutlinedTextField(
+                    value = deadline,
+                    onValueChange = { deadline = it },
+                    label = { Text("Target Date (yyyy-MM-dd, optional)") },
+                    placeholder = { Text("e.g. 2026-12-31") },
+                    singleLine = true
+                )
             }
         },
         confirmButton = {
@@ -180,7 +202,11 @@ fun AddGoalDialog(currencySymbol: String, onDismiss: () -> Unit, onConfirm: (Goa
                     id = UUID.randomUUID().toString(),
                     name = name,
                     targetAmount = target.toDoubleOrNull() ?: 0.0,
-                    savedAmount = saved.toDoubleOrNull() ?: 0.0
+                    savedAmount = saved.toDoubleOrNull() ?: 0.0,
+                    // Pass through deadline as user-typed; if blank or
+                    // malformed it stays as-is. Goal.deadline default = ""
+                    // so empty input is preserved.
+                    deadline = deadline.trim()
                 ))
             }) { Text("Save") }
         },

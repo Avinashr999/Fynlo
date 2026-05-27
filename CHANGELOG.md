@@ -2,6 +2,41 @@
 
 All notable changes to Fynlo are documented here.
 
+## [3.2.47] - 2026-05-27 *(Development milestone — C22 Stage 2: Recurring last-day-of-month + preview + Goals deadline; not promoted per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`)*
+
+### Fixed
+- **C22 Stage 2 — 3 P3 audit items in 2 surfaces (audit items #218 last-day-of-month, #220 preview next occurrences, #207 Goals target-date). End-date #219 deferred — needs Room migration v17→v18; will land in its own commit.**
+
+**`RecurringWorker.shouldRunToday` — last-day-of-month support (audit #218):**
+- Pre-Stage-2: monthly recurrings fired only when `today.dayOfMonth == r.dayOfMonth` exactly. Months shorter than the target (Feb 28, Apr 30, etc.) silently skipped the run.
+- Now: clamps the target to the month's actual length — `targetDay = minOf(r.dayOfMonth, today.lengthOfMonth())`. A user who picks day 31 gets:
+  - Feb 28 / Feb 29 in leap years (the actual last day)
+  - Apr / Jun / Sep / Nov: day 30
+  - Jan / Mar / May / Jul / Aug / Oct / Dec: day 31
+- Days 1-27 unchanged (always fire on the exact target day, no clamping).
+- Yearly recurrings get the same clamp.
+
+**`RecurringScreen.AddRecurringDialog` — last-day toggle + preview (audit #218 + #220):**
+- New "Use last day of month" checkbox above the day-of-month input. Sets the value to 31 (worker's clamp does the rest) and disables the input. Unchecking restores to "1".
+- Day-of-month input range widened from 1-28 → 1-31. Input validation rejects values outside that range as the user types. Confirm-button save also clamps to 1-31.
+- New "Next occurrences" caption below the day input — shows the next 3 firing dates given (frequency, dayOfMonth). Pure-UI computation; rebuilds via `remember(frequency, dayOfMonth)`. Helps the user sanity-check before saving, especially useful for "last day of month" so they see how Feb shifts to the 28th.
+
+**`GoalScreen.AddGoalDialog` — target-date field (audit #207):**
+- `Goal.deadline` field already existed in the model (`""` default — yyyy-MM-dd or blank). Pre-Stage-2 the dialog never exposed it; now there's a 4th OutlinedTextField "Target Date (yyyy-MM-dd, optional)" with a placeholder.
+- `GoalCard` shows the deadline below the progress bar when non-blank: "Target by 31 Dec 2026" (formatted via `DateUtils.formatToDisplay`).
+
+### Deferred: Recurring end-date (audit #219)
+- Adding `endDate: String` to the `RecurringTransaction` entity requires a Room migration v17 → v18 + a schema export under `app/schemas/` + a new `FynloDatabaseMigrationTest` case. Treating it as a separate stage so it stays isolated from the UI-only changes here.
+
+### Closes
+- **C22 audit items #218, #220, #207 (this stage).** #219 deferred (schema migration).
+
+### Changed
+- **`versionName`** `3.2.46` → `3.2.47`, **`versionCode`** `169` → `170`.
+
+### Data-integrity gate
+Unchanged at **137 tests across 12 classes**, 0 failures (UI-only + 1 worker logic clamp; no schema change).
+
 ## [3.2.46] - 2026-05-27 *(Development milestone — About Resources row chevron visibility fix (3.2.45 smoke surface); not promoted per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`)*
 
 ### Fixed
