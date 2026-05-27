@@ -31,6 +31,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.dp
 import app.fynlo.billing.BillingManager
+import app.fynlo.data.AuthManager
 import androidx.navigation.NavController
 import androidx.navigation.NavType
 import androidx.navigation.navArgument
@@ -284,55 +285,114 @@ fun MainNavigation(viewModel: FinanceViewModel) {
                     modifier = Modifier.fillMaxHeight().verticalScroll(rememberScrollState())
                 ) {
 
-                    // ── Brand Header — flat (matches dashboard) ──────────────────
-                    Column(
+                    // ── C20 (3.2.44) — Compact header per audit §C20 ──────────────
+                    // Pre-C20 the header was 52dp icon + "Fynlo" headline + a
+                    // "Personal Finance Manager" tagline = ~120dp tall (~25%
+                    // of drawer vertical). Now it's a single row: 40dp avatar
+                    // + user name + email. Drops the tagline (it's still on
+                    // the About screen) and surfaces the signed-in identity
+                    // (audit: "Avinash's name/email exists per Profile but
+                    // isn't surfaced here").
+                    val authForDrawer = remember { AuthManager() }
+                    val drawerUserName  = authForDrawer.userName.ifBlank { "Signed in" }
+                    val drawerUserEmail = authForDrawer.userEmail.ifBlank { "Tap Profile to sign in" }
+
+                    Row(
                         modifier = Modifier.fillMaxWidth()
-                            .padding(start = 20.dp, end = 20.dp, top = 44.dp, bottom = 12.dp)
+                            .padding(start = 16.dp, end = 16.dp, top = 36.dp, bottom = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
+                        // Avatar — emerald-circle Person icon. Firebase photoUrl
+                        // is exposed by AuthManager.userPhoto but rendering it
+                        // would require an image-loading dep (Coil); not part
+                        // of audit C20 spec, so keep the icon for now.
                         Box(
-                            modifier = Modifier
-                                .size(52.dp)
-                                .clip(CircleShape)
+                            modifier = Modifier.size(40.dp).clip(CircleShape)
                                 .background(Emerald500.copy(alpha = 0.12f)),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
-                                Icons.Default.AccountBalanceWallet, null,
-                                Modifier.size(26.dp), tint = Emerald500
+                                Icons.Default.Person, null,
+                                modifier = Modifier.size(22.dp),
+                                tint = Emerald500
                             )
                         }
-                        Spacer(Modifier.height(12.dp))
-                        Text(
-                            "Fynlo",
-                            style = MaterialTheme.typography.headlineSmall.copy(
-                                fontWeight = FontWeight.ExtraBold, color = Emerald500
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                drawerUserName,
+                                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                                maxLines = 1,
+                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                             )
-                        )
-                        Text(
-                            "Personal Finance Manager",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                            Text(
+                                drawerUserEmail,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                            )
+                        }
                     }
 
                     HorizontalDivider(
-                        modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 12.dp),
+                        modifier = Modifier.padding(horizontal = 16.dp),
                         thickness = 0.5.dp,
                         color = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f)
                     )
 
                     Spacer(Modifier.height(8.dp))
 
-                    // ── Account ──────────────────────────────────────────────
-                    DrawerSectionLabel("Account")
+                    // ── C20 (3.2.44) — Items ordered by usage frequency per audit
+                    // §C20 fix #3 ("Order items by usage frequency, not semantic
+                    // group. Top 3-5: most-tapped destinations"). The top group
+                    // gets primary tint via accent=true; secondary items below
+                    // stay grey. Bottom-nav destinations (Home/Loans/Invest/
+                    // Reports/Expenses) are NOT in the drawer — they have
+                    // primary entry points already; the drawer is the
+                    // *secondary* navigation surface.
+                    //
+                    // Removed "Investments" drawer entry — it was a duplicate
+                    // of the bottom-nav "Invest" tab; reduces noise + matches
+                    // the audit's icon-consistency point (drawer ShowChart vs
+                    // bottom-nav TrendingUp).
+                    DrawerItem(Icons.Default.Settings, "Settings",
+                        currentRoute == Screen.Settings.route,
+                        accent = true) {
+                        navController.navigate(Screen.Settings.route)
+                        scope.launch { drawerState.close() }
+                    }
                     DrawerItem(Icons.Default.Person, "Profile & Security",
-                        currentRoute == Screen.Profile.route) {
+                        currentRoute == Screen.Profile.route,
+                        accent = true) {
                         navController.navigate(Screen.Profile.route)
                         scope.launch { drawerState.close() }
                     }
+                    DrawerItem(Icons.Default.AccountBalanceWallet, "Budgeting",
+                        currentRoute == Screen.Budgets.route,
+                        accent = true) {
+                        navController.navigate(Screen.Budgets.route)
+                        scope.launch { drawerState.close() }
+                    }
+                    DrawerItem(Icons.Default.Star, "Savings Goals",
+                        currentRoute == Screen.Goals.route,
+                        accent = true) {
+                        navController.navigate(Screen.Goals.route)
+                        scope.launch { drawerState.close() }
+                    }
                     DrawerItem(Icons.Default.Group, "Contact Book",
-                        currentRoute == Screen.People.route) {
+                        currentRoute == Screen.People.route,
+                        accent = true) {
                         navController.navigate(Screen.People.route)
+                        scope.launch { drawerState.close() }
+                    }
+
+                    DrawerDivider()
+
+                    // Secondary destinations (grey tint).
+                    DrawerItem(Icons.Default.Repeat, "Recurring Transactions",
+                        currentRoute == Screen.Recurring.route) {
+                        navGated(Screen.Recurring.route)
                         scope.launch { drawerState.close() }
                     }
                     DrawerItem(Icons.Default.Business, "Manage Projects",
@@ -340,49 +400,12 @@ fun MainNavigation(viewModel: FinanceViewModel) {
                         navController.navigate(Screen.Projects.route)
                         scope.launch { drawerState.close() }
                     }
-
-                    DrawerDivider()
-
-                    // ── Finance Tools ─────────────────────────────────────────
-                    DrawerSectionLabel("Finance Tools")
-                    DrawerItem(Icons.Default.PieChart, "Budgeting",
-                        currentRoute == Screen.Budgets.route) {
-                        navController.navigate(Screen.Budgets.route)
-                        scope.launch { drawerState.close() }
-                    }
-                    DrawerItem(Icons.Default.Star, "Savings Goals",
-                        currentRoute == Screen.Goals.route) {
-                        navController.navigate(Screen.Goals.route)
-                        scope.launch { drawerState.close() }
-                    }
-                    DrawerItem(Icons.Default.Repeat, "Recurring Transactions",
-                        currentRoute == Screen.Recurring.route) {
-                        navGated(Screen.Recurring.route)
-                        scope.launch { drawerState.close() }
-                    }
-                    DrawerItem(Icons.AutoMirrored.Filled.ShowChart, "Investments",
-                        currentRoute == Screen.Invest.route) {
-                        navController.navigate(Screen.Invest.route)
-                        scope.launch { drawerState.close() }
-                    }
                     // 3.2.17 — EMI Calculator was registered as a route since 3.0
-                    // but had ZERO entry points in the UI. User couldn't find it
-                    // even after the 3.2.16 polish + rename ("where can I find it?").
-                    // Adding here under Finance Tools, where it conceptually belongs.
-                    // Also exposed as a tile on the Reports hub for cross-discovery.
+                    // but had ZERO entry points in the UI. Adding here keeps it
+                    // discoverable; also exposed as a tile on the Reports hub.
                     DrawerItem(Icons.Default.Calculate, "EMI Calculator",
                         currentRoute == Screen.LoanCalc.route) {
                         navController.navigate(Screen.LoanCalc.route)
-                        scope.launch { drawerState.close() }
-                    }
-
-                    DrawerDivider()
-
-                    // ── App ──────────────────────────────────────────────────────
-                    DrawerSectionLabel("App")
-                    DrawerItem(Icons.Default.Settings, "Settings",
-                        currentRoute == Screen.Settings.route) {
-                        navController.navigate(Screen.Settings.route)
                         scope.launch { drawerState.close() }
                     }
                     DrawerItem(Icons.Default.Info, "About & Disclaimer",
@@ -796,21 +819,37 @@ fun DrawerSectionLabel(title: String) {
     )
 }
 
+/**
+ * C20 (3.2.44) — `accent: Boolean` gives frequently-used items a primary
+ * (emerald) tint on the icon even when not selected, per audit §C20 fix #5
+ * ("most-used items get fynlo_green_primary tint; rest stay grey"). The
+ * selected state still overrides everything with the full emerald treatment
+ * + fill background.
+ */
 @Composable
 fun DrawerItem(
     icon: ImageVector,
     label: String,
     selected: Boolean,
-    onClick: () -> Unit
+    accent: Boolean = false,
+    onClick: () -> Unit,
 ) {
+    val iconTint = when {
+        selected -> Emerald500
+        accent   -> Emerald500
+        else     -> MaterialTheme.colorScheme.onSurfaceVariant
+    }
+    val labelColor = when {
+        selected -> Emerald500
+        else     -> MaterialTheme.colorScheme.onSurface
+    }
     NavigationDrawerItem(
         icon     = {
             Icon(
                 imageVector        = icon,
                 contentDescription = null,
                 modifier           = Modifier.size(20.dp),
-                tint               = if (selected) Emerald500
-                                     else MaterialTheme.colorScheme.onSurfaceVariant
+                tint               = iconTint
             )
         },
         label    = {
@@ -819,8 +858,7 @@ fun DrawerItem(
                 style      = MaterialTheme.typography.bodyMedium.copy(
                     fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal
                 ),
-                color      = if (selected) Emerald500
-                             else MaterialTheme.colorScheme.onSurface
+                color      = labelColor
             )
         },
         selected = selected,

@@ -158,7 +158,7 @@ AI_AGENT_PROTOCOL.md to match.
 
 # Fynlo - Complete AI Portability File
 **Project Name**: Fynlo
-**Version**: 3.2.43 on `master` (`versionName = "3.2.43"`, `versionCode = 166`). All four Sprint-1 P0 clusters closed. P1 backlog closed in full. **Five P2 clusters closed: C10 (Pluralization), C11 (Date formatting), C16 (Color semantics), C17 (Disabled button hints), C19 (Empty states).** P2 remaining: **C20 (Drawer cleanup) — last P2 cluster**. Plus C22 v4+ backlog (P3), C03b breaking schema migration, infrastructure backlog INF01-INF06, deferred follow-ups (Task #24/#26/#27/#28). Internal milestone markers only — per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens until every `UX_AUDIT` cluster (P0 through P3) is closed. All four Sprint-1 P0 clusters closed (C01 / C02 / C03a / C05). **Ten** P1 Sprint 2 clusters closed (C04, C06+C07, C08, C09, C18, C13, C14, C12, **C15**). **3.2.33 = C15 Stage 5 = C15e Money Flow category-grouped visualization — closes C15 in full**. All five C15 sub-stages landed: C15a in 3.2.29, C15b in 3.2.30, C15c in 3.2.31, C15d in 3.2.32, C15e in 3.2.33. Remaining P1: C21 (PDF/XLSX export quality polish). Plus deferred follow-ups: Task #26, #27, #28, #24. Internal milestone markers only — per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens until every `UX_AUDIT` cluster (P0 through P3) is closed.
+**Version**: 3.2.44 on `master` (`versionName = "3.2.44"`, `versionCode = 167`). All four Sprint-1 P0 clusters closed. P1 backlog closed in full. **P2 backlog closed in full.** Six P2 clusters all closed: C10 (Pluralization), C11 (Date formatting), C16 (Color semantics), C17 (Disabled button hints), C19 (Empty states), C20 (Drawer cleanup). Remaining work: **C22 v4+ backlog (P3, required before first public release per release-cadence ADR)**, C03b breaking schema migration, infrastructure backlog INF01-INF06, deferred follow-ups (Task #24/#26/#27/#28, #22). Internal milestone markers only — per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens until every `UX_AUDIT` cluster (P0 through P3) is closed. All four Sprint-1 P0 clusters closed (C01 / C02 / C03a / C05). **Ten** P1 Sprint 2 clusters closed (C04, C06+C07, C08, C09, C18, C13, C14, C12, **C15**). **3.2.33 = C15 Stage 5 = C15e Money Flow category-grouped visualization — closes C15 in full**. All five C15 sub-stages landed: C15a in 3.2.29, C15b in 3.2.30, C15c in 3.2.31, C15d in 3.2.32, C15e in 3.2.33. Remaining P1: C21 (PDF/XLSX export quality polish). Plus deferred follow-ups: Task #26, #27, #28, #24. Internal milestone markers only — per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens until every `UX_AUDIT` cluster (P0 through P3) is closed.
 **Platform**: Android (Kotlin, Jetpack Compose, Room — Gradle 9.4.1, AGP 9.2.1, Room 2.8.4, KSP 2.3.7, Kotlin 2.2.10)
 
 ## 1. Project Overview
@@ -345,6 +345,25 @@ in the APK).
 ## 6. Journal
 
 **Newest first.** Each entry: date · cluster(s) closed/touched · commit(s) · one-paragraph why-and-what.
+
+### 2026-05-27 — 3.2.44 (C20 closed — drawer cleanup; **closes P2 backlog**)
+
+**Type:** C20 closure. **Sixth and final P2 cluster down. P2 backlog closed.** Audit §C20 fixes #181–#186.
+
+**Internal milestone:** `3.2.44` / `versionCode = 167`. No Play Console upload per release-cadence ADR. No test gate change (UI-only restructure of the drawer).
+
+**Drawer changes:**
+- Compact header — 40dp Person-icon avatar + signed-in user name + email in one Row. Replaced the prior 52dp icon + Fynlo headline + "Personal Finance Manager" tagline (~120dp / ~25% of drawer vertical pre-C20). User identity from `AuthManager.userName / userEmail`; falls back to "Signed in" / "Tap Profile to sign in" for anonymous. Photo-avatar via `userPhoto` deferred — needs Coil.
+- Flat list ordered by frequency, one divider. Removed "ACCOUNT / FINANCE TOOLS / APP" section labels. Top 5 (primary emerald via new `accent = true` on DrawerItem): Settings, Profile & Security, Budgeting, Savings Goals, Contact Book. Bottom 4 (grey): Recurring Transactions, Manage Projects, EMI Calculator, About & Disclaimer. Logout stays at bottom in red.
+- Removed duplicate "Investments" drawer entry — same route as bottom-nav "Invest" tab.
+
+**`DrawerItem` API addition:** `accent: Boolean = false` param. When true (and not selected), tints the icon primary emerald. Param order: `(icon, label, selected, accent, onClick)` so the trailing-lambda still binds to `onClick`.
+
+**Lessons logged:**
+- Trailing-lambda binding: new boolean params must go BEFORE the lambda param.
+- Package-path shadowing: when a Composable scope has `val app = ...`, can't fully-qualify with `app.fynlo.*` from that scope. Add a direct import.
+
+**P2 backlog closed.** Six clusters: C10, C11, C16, C17, C19, C20. Combined with the 4 P0 + 11 P1 clusters, that's **21 of 22 UX_AUDIT clusters now closed**. Only **C22 (P3 v4+ backlog)** remains for the release-cadence ADR's "all clusters closed before Play Console upload" condition.
 
 ### 2026-05-27 — 3.2.43 (C19 closed — empty-state standardization across the 3 remaining outliers)
 

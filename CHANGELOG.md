@@ -2,6 +2,53 @@
 
 All notable changes to Fynlo are documented here.
 
+## [3.2.44] - 2026-05-27 *(Development milestone — C20 closed: drawer cleanup — **closes P2 backlog**; not promoted per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`)*
+
+### Fixed
+- **C20 — Drawer cleanup (audit #181, #182, #183, #184, #185, #186). Closes C20 + closes the P2 backlog (6 of 6 P2 clusters now done).**
+
+**Compact header (audit #1 + #2 + drawer-user-identifier):**
+- Pre-C20 the header was a 52dp `AccountBalanceWallet` icon + "Fynlo" headline + "Personal Finance Manager" tagline, total ~120dp tall (~25% of drawer vertical).
+- Now: a single 40dp Person-icon avatar + signed-in user's name + email in one Row. Tagline dropped (it's on the About screen). The user's name + email come from `AuthManager.userName / userEmail`; falls back to `"Signed in"` / `"Tap Profile to sign in"` for the anonymous case.
+- Photo-avatar rendering via `AuthManager.userPhoto` deferred — needs an image-loading library (Coil); not part of the audit spec. Person icon in emerald circle is the audit-default.
+
+**Frequency-ordered flat list (audit #3 + #5):**
+- Pre-C20 the items were grouped by semantic label (`ACCOUNT` / `FINANCE TOOLS` / `APP`) — the audit calls that out as not aligned with usage frequency.
+- Now: flat list ordered by frequency, with one divider between the top group and the rest. Top group (primary emerald tint via new `accent = true` flag on `DrawerItem`): **Settings · Profile & Security · Budgeting · Savings Goals · Contact Book**. Bottom group (grey, secondary): Recurring Transactions · Manage Projects · EMI Calculator · About & Disclaimer. Logout stays at the very bottom, red.
+- Section-label uppercase headers gone. The frequency ordering + tint difference does the same affordance work without the visual weight.
+
+**Removed duplicate "Investments" drawer entry (audit #4):**
+- The drawer's "Investments" entry pointed to `Screen.Invest.route` — the SAME route the bottom-nav "Invest" tab navigates to. Drawer entry removed to eliminate the duplicate and frees a slot. Reduces the audit's icon-mismatch concern at the same time (drawer used `AutoMirrored.Filled.ShowChart`, bottom-nav uses `AutoMirrored.Filled.TrendingUp` — no longer a contradiction since the drawer entry is gone).
+
+**`DrawerItem` API addition:**
+- New `accent: Boolean = false` param. When true (and not selected), renders the icon in primary emerald and keeps the label in onSurface. Used for the top-5 frequently-used items so they read as "this is the main stuff" without going as far as the full selected-state fill background.
+- Param ordering: `(icon, label, selected, accent, onClick)` — `onClick` last so the trailing-lambda convention still binds correctly.
+
+### Pattern lessons logged
+
+- **Trailing-lambda binding** — when adding a new `Boolean = false` param to a Composable that callers invoke with a trailing lambda, the new param must go BEFORE the lambda param. First attempt put `accent` after `onClick` — callers' trailing `{ ... }` then bound to `accent` (type mismatch) instead of `onClick` (missing value).
+- **Package-path shadowing** — fully-qualified `app.fynlo.data.AuthManager()` failed to resolve inside a Composable scope that already had `val app = context.applicationContext as app.fynlo.FynloApplication`. The local `val app` shadows the package root. Fix: add a direct `import app.fynlo.data.AuthManager` and call it unqualified. Same pattern surfaced in C10's ReminderWorker — worth a general lesson: when a screen has `val app = ...`, never fully-qualify with `app.fynlo.*` from that scope; use imports.
+
+### Closes
+- **C20 audit fixes #181–#186. P2 backlog closed.**
+- Six P2 clusters now done: C10 (3.2.39), C11 (3.2.40), C16 (3.2.41), C17 (3.2.42), C19 (3.2.43), C20 (3.2.44).
+
+### Changed
+- **`versionName`** `3.2.43` → `3.2.44`, **`versionCode`** `166` → `167`.
+
+### Data-integrity gate
+Unchanged at **137 tests across 12 classes**, 0 failures (UI-only restructure).
+
+### Remaining work after C20
+| | |
+|---|---|
+| ⏳ P3 | C22 v4+ backlog (required before first public release per release-cadence ADR) |
+| ⏳ Breaking schema | C03b |
+| ⏳ Infra | INF01–INF06 |
+| ⏳ Deferred features | Task #24 (EMI features), #26 (Report-a-Bug form), #27 (C13 features), #28 (C14 features), #22 (NetWorthWidget DataStore) |
+
+Per the release-cadence ADR no Play Console upload happens until **all** of that closes, including C22.
+
 ## [3.2.43] - 2026-05-27 *(Development milestone — C19 closed: empty-state standardization across 3 remaining surfaces; not promoted per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`)*
 
 ### Fixed
