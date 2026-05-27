@@ -7,6 +7,24 @@ import java.time.temporal.ChronoUnit
 object InterestEngine {
     private val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
 
+    /**
+     * C12 (3.2.25) — display-label translator for stored interest-type codes.
+     * The audit's fix #9 calls for renaming "Both" to "SI + CI" everywhere
+     * the user sees it. The stored value stays "Both" (database rows + the
+     * `when (intType)` branch on line ~73 below depend on it; migrating
+     * the stored value would require a schema migration and breaks the
+     * engine). So all UI display sites should route through this helper:
+     *
+     *   Text("Type: ${InterestEngine.label(debt.intType)}")
+     *
+     * and the dropdown pickers can use it to render menu items while
+     * still saving the raw value back to storage.
+     */
+    fun label(storedType: String): String = when (storedType) {
+        "Both" -> "SI + CI"
+        else   -> storedType
+    }
+
     fun daysBetween(start: String, end: String): Long {
         return try {
             val startDate = LocalDate.parse(start, formatter)

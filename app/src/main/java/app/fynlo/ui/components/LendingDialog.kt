@@ -160,11 +160,14 @@ fun AddLendingDialog(
                             selectedLabelColor = Emerald500)
                     )
                     if (showAdvancedInterest) {
+                        // C12 (3.2.25) — chip label via InterestEngine.label() so
+                        // "Both" renders as "SI + CI" per audit fix #9. Stored
+                        // value stays raw.
                         advancedInterestTypes.forEach { type ->
                             FilterChip(
                                 selected = selectedType == type,
                                 onClick = { selectedType = type },
-                                label = { Text(type) },
+                                label = { Text(app.fynlo.logic.InterestEngine.label(type)) },
                                 shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
                                 colors = FilterChipDefaults.filterChipColors(
                                     selectedContainerColor = Emerald500.copy(alpha = 0.16f),

@@ -513,7 +513,7 @@ fun LendingCard(borrower: Borrower, people: List<app.fynlo.data.model.Person> = 
                                 appendLine("*Loan Summary:*")
                                 appendLine("• Principal: ${CurrencyFormatter.detail(borrower.amount, currencyCode, locale)}")
                                 if (borrower.rate > 0) {
-                                    appendLine("• Interest accrued (${borrower.rate}% ${borrower.type}): ${CurrencyFormatter.detail(interest, currencyCode, locale)}")
+                                    appendLine("• Interest accrued (${borrower.rate}% ${app.fynlo.logic.InterestEngine.label(borrower.type)}): ${CurrencyFormatter.detail(interest, currencyCode, locale)}")
                                 }
                                 if (borrower.paid > 0) {
                                     appendLine("• Amount paid so far: ${CurrencyFormatter.detail(borrower.paid, currencyCode, locale)}")

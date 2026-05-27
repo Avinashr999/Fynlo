@@ -158,7 +158,7 @@ AI_AGENT_PROTOCOL.md to match.
 
 # Fynlo - Complete AI Portability File
 **Project Name**: Fynlo
-**Version**: 3.2.24 on `master` (`versionName = "3.2.24"`, `versionCode = 147`). All four Sprint-1 P0 clusters closed (C01 / C02 / C03a / C05). **Eight P1 Sprint 2 clusters closed: C04, C06+C07, C08, C09, C18, C13, C14.** Remaining P1: C12 (Loans, XL — biggest user-pain), C15 (Reports, 4 sub-screens), C21 (PDF/XLSX export quality polish). Plus deferred follow-ups: Task #26 (Report-a-Bug form), #27 (C13 features), #28 (C14 features), #24 (EMI Calculator features). Internal milestone markers only — per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens until every `UX_AUDIT` cluster (P0 through P3) is closed.
+**Version**: 3.2.25 on `master` (`versionName = "3.2.25"`, `versionCode = 148`). All four Sprint-1 P0 clusters closed (C01 / C02 / C03a / C05). Eight P1 Sprint 2 clusters closed (C04, C06+C07, C08, C09, C18, C13, C14). **C12 Stage 1 of 3 landed at 3.2.25** (LoansHub hero + "Both"→"SI + CI" rename); Stage 2 (filter consolidation) and Stage 3 (per-row action removal + Send-reminder picker) pending. Remaining P1: C12 Stages 2-3, C15 (Reports, 4 sub-screens), C21 (PDF/XLSX export quality polish). Plus deferred follow-ups: Task #26, #27, #28, #24. Internal milestone markers only — per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens until every `UX_AUDIT` cluster (P0 through P3) is closed.
 **Platform**: Android (Kotlin, Jetpack Compose, Room — Gradle 9.4.1, AGP 9.2.1, Room 2.8.4, KSP 2.3.7, Kotlin 2.2.10)
 
 ## 1. Project Overview
@@ -345,6 +345,32 @@ in the APK).
 ## 6. Journal
 
 **Newest first.** Each entry: date · cluster(s) closed/touched · commit(s) · one-paragraph why-and-what.
+
+### 2026-05-27 — 3.2.25 (C12 Stage 1 of 3: LoansHub hero + Both→SI+CI rename)
+
+**Type:** first of 3 stages closing C12 (audit's "biggest UX disaster," 10 fix points, XL effort estimate). Per the C12 staging plan: Stage 1 (Home-archetype hero + naming polish) tonight; Stage 2 (filter consolidation) and Stage 3 (row simplification + Send-reminder picker) follow.
+
+**Internal milestone:** `3.2.25` / `versionCode = 148`. No Play Console upload per release-cadence ADR. No test gate change.
+
+**What landed (3 audit fix points):**
+
+1. **#1 + #2 Total Outstanding hero** on LoansHubScreen above the Lent/Owed segmented row. "Total Outstanding" label → big colour-coded amount (Emerald for Lent, Red for Owed) → "Across N loans / debts" subtitle with proper pluralisation. Numbers sourced from already-computed `financialSummary.totalReceivables` and `totalDebtPrincipal + totalDebtInterest` — no extra fetch. Active count predicates mirror `LendingScreen.isActive`. Hero hidden when zero entries.
+
+2. **#9 "Both" → "SI + CI"** at every user-facing site. Stored value stays `"Both"` (DB rows + `InterestEngine` branch logic depend on it; migrating would need a schema migration and breaks the engine). NEW `InterestEngine.label(storedType)` helper translates display-only. Routed through at 6 sites: PaymentDialog interest subtitle, CustomerDetailScreen rate row, DebtScreen card type line, LendingScreen share-copy line, DebtDialog dropdown (field + menu items), LendingDialog chip picker.
+
+3. **#10 FAB padding** — already done in C06.
+
+**Deferred to C12 Stages 2-3:**
+
+- **Stage 2 (audit #3, #4):** replace 3 filter UIs (Lent/Owed tab + Interest/Hand internal tab + sort dropdown) with single `Active / Overdue / Closed` segmented control. Drop sort dropdown. Structural change to filter logic.
+- **Stage 3 (audit #5, #6, #7, #8):** standardise Lent vs Owed row visual; remove per-row action icons (move to CustomerDetailScreen); consolidate WhatsApp + SMS into "Send reminder" picker. Touches both screens' row layouts + CustomerDetailScreen action surface.
+
+**Pattern continued:** C12 is too big for one commit per the audit's XL estimate. Splitting into 3 stages where Stage 1 (this commit) is the Home-archetype skeleton — most user-visible immediate change — lets the user smoke-test the redesign idea before the bigger structural Stage 2 + 3 work commits to a path. Same staging philosophy as C08 (which took 4 stages over 5 commits).
+
+**Remaining P1 work:**
+- C12 Stages 2-3
+- C15 Reports redesign (4 sub-screens, XL)
+- C21 PDF/XLSX export quality polish
 
 ### 2026-05-27 — 3.2.24 (C14 Invest tab Home-archetype migration)
 

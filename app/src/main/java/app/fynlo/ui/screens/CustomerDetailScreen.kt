@@ -206,7 +206,7 @@ val borrowers by viewModel.borrowers.collectAsState()
                     if (borrower.rate > 0) {
                         Spacer(Modifier.height(8.dp))
                         Text(
-                            "Rate: ${borrower.rate}% • ${borrower.type}",
+                            "Rate: ${borrower.rate}% • ${app.fynlo.logic.InterestEngine.label(borrower.type)}",
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )

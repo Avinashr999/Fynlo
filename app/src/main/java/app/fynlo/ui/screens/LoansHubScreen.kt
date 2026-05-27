@@ -2,22 +2,29 @@ package app.fynlo.ui.screens
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.fynlo.FinanceViewModel
+import app.fynlo.logic.CurrencyFormatter
 import app.fynlo.ui.theme.Emerald500
 import app.fynlo.ui.theme.SemanticRed
 import app.fynlo.ui.theme.PremiumScreenHeader
@@ -26,6 +33,16 @@ import app.fynlo.ui.theme.PremiumScreenHeader
  * Combined Loans hub — one tab for "money lent out" (Lending) and "money owed"
  * (Debts), toggled with a segmented control. Embeds the existing screens
  * headerless so each keeps its own list, search and actions.
+ *
+ * C12 Stage 1 (3.2.25) — added the Home-archetype hero per audit §C12 fix
+ * #1 + #2: "Total Outstanding ₹X · Across Y loans/debts" sitting above
+ * the Lent/Owed segmented row. The number is computed from
+ * `financialSummary` (already-precomputed `totalReceivables` for Lent;
+ * `totalDebtPrincipal + totalDebtInterest` for Owed) so no extra work on
+ * this screen. The active count is the audit's "across Y" pluralisation
+ * — derived from the same isActive predicates LendingScreen / DebtScreen
+ * apply to their lists. Colour semantic: Lent = Emerald (asset),
+ * Owed = SemanticRed (liability).
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -36,12 +53,71 @@ fun LoansHubScreen(
     initialTab: Int = 0
 ) {
     var tab by remember { mutableIntStateOf(initialTab) }
+    val summary by viewModel.financialSummary.collectAsState()
+    val borrowers by viewModel.borrowers.collectAsState()
+    val debts by viewModel.debts.collectAsState()
+    val currentProject by viewModel.currentProject.collectAsState()
+    val currencyCode = currentProject?.currency ?: "INR"
+    val locale = remember { java.util.Locale.getDefault() }
+
+    // Active-borrower count — mirrors `LendingScreen.isActive`: not settled,
+    // not written off, still has outstanding balance (hand loans use `paid`,
+    // interest loans use `paidPrincipal`).
+    val activeLentCount = remember(borrowers) {
+        borrowers.count { b ->
+            b.status !in listOf("Settled", "WrittenOff") && (
+                if (b.rate <= 0) b.paid < b.amount
+                else b.paidPrincipal < b.amount
+            )
+        }
+    }
+    val activeOwedCount = remember(debts) {
+        debts.count { it.paid < it.amount }
+    }
+
+    // Pick the hero metrics based on which tab is active. financialSummary's
+    // totalReceivables already excludes written-off borrowers; debt total is
+    // principal-remaining + interest-accrued (full liability).
+    val heroAmount = if (tab == 0) summary.totalReceivables
+                     else (summary.totalDebtPrincipal + summary.totalDebtInterest)
+    val heroCount  = if (tab == 0) activeLentCount else activeOwedCount
+    val heroColour = if (tab == 0) Emerald500 else SemanticRed
+    val countNoun  = if (tab == 0) {
+        if (heroCount == 1) "1 loan" else "$heroCount loans"
+    } else {
+        if (heroCount == 1) "1 debt" else "$heroCount debts"
+    }
 
     Column(Modifier.fillMaxSize()) {
         PremiumScreenHeader(
             title = "Loans",
             subtitle = if (tab == 0) "Money you've lent out" else "Money you owe"
         )
+
+        // C12 Stage 1 hero block — Total Outstanding for the active tab,
+        // hidden when the tab has zero entries (the Lent/Owed segmented +
+        // empty-state messaging in the child screen handles that case).
+        if (heroCount > 0 || heroAmount > 0) {
+            Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp)) {
+                Text(
+                    "Total Outstanding",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    CurrencyFormatter.detail(heroAmount, currencyCode, locale),
+                    style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.ExtraBold),
+                    color = heroColour,
+                )
+                Text(
+                    "Across $countNoun",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Spacer(Modifier.height(4.dp))
+        }
+
         SingleChoiceSegmentedButtonRow(
             Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 4.dp)
         ) {

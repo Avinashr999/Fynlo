@@ -2,6 +2,32 @@
 
 All notable changes to Fynlo are documented here.
 
+## [3.2.25] - 2026-05-27 *(Development milestone — C12 Stage 1: LoansHub hero + "Both"→"SI + CI" rename; not promoted per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`)*
+
+### Fixed
+- **C12 Stage 1 of 3 — Loans tab Home-archetype hero + interest-type label rename.** First of 3 stages closing C12 (audit's "biggest UX disaster," 10 fix points, XL effort). Stage 2 (filter consolidation) and Stage 3 (per-row action removal + Send-reminder picker) follow. Three fixes land tonight:
+  - **Total Outstanding hero** on LoansHubScreen (audit #1, #2) — above the Lent/Owed segmented row. Shows "Total Outstanding" label → big colour-coded amount (`Emerald500` when Lent tab, `SemanticRed` when Owed) → "Across N loans" / "Across N debts" subtitle with proper singular/plural. Numbers sourced from already-computed `financialSummary.totalReceivables` (Lent) and `totalDebtPrincipal + totalDebtInterest` (Owed). Active count mirrors `LendingScreen.isActive` for Lent and `paid < amount` for Owed. Hero hidden when both `heroAmount == 0` and `heroCount == 0` so empty-state UX in the child screen takes over.
+  - **"Both" → "SI + CI" everywhere user-facing** (audit #9). Stored value stays `"Both"` (DB rows + `InterestEngine` branch logic depend on it; migrating the stored value would require a schema migration). NEW `InterestEngine.label(storedType)` helper translates `"Both"` → `"SI + CI"`; any other value passes through. Applied at every UI display site:
+    - `PaymentDialog.kt:115` — "Interest (% type)" subtitle
+    - `CustomerDetailScreen.kt:209` — "Rate: X% • type" detail row
+    - `DebtScreen.kt:290` — "Type: X" card line
+    - `LendingScreen.kt:516` — WhatsApp share-copy line
+    - `DebtDialog.kt:177` — Interest Type dropdown field + `:183` menu items
+    - `LendingDialog.kt:167` — Interest Type chip picker
+
+### Deferred to C12 Stages 2-3
+- **Stage 2 (audit #3, #4):** replace 3 filter UIs (Lent/Owed tab + Interest/Hand internal tab + sort dropdown) with single `Active / Overdue / Closed` segmented control. Drop the sort dropdown. Structural change to filter logic in LendingScreen + DebtScreen.
+- **Stage 3 (audit #5, #6, #7, #8):** standardise Lent vs Owed row visual; remove per-row action icons (move to CustomerDetailScreen); consolidate WhatsApp + SMS into a single "Send reminder" action with picker. Touches both screens' row layouts plus the CustomerDetailScreen action surface.
+
+### Already done elsewhere
+- **#10 FAB padding** — already done in C06 (`FabBottomPadding = 120.dp` constant applied to both LendingScreen and DebtScreen LazyColumns).
+
+### Changed
+- **`versionName`** `3.2.24` → `3.2.25`, **`versionCode`** `147` → `148`.
+
+### Data-integrity gate
+Unchanged at **114 tests across 10 classes**, 0 failures (no logic change — `InterestEngine.label()` is a pure-function helper; UI sites are pass-through display).
+
 ## [3.2.24] - 2026-05-27 *(Development milestone — C14 Invest tab Home-archetype migration; not promoted per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`)*
 
 ### Fixed

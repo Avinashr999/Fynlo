@@ -112,7 +112,7 @@ fun CollectPaymentDialog(
                         }
                         if (borrower.rate > 0) {
                             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
-                                Text("Interest (${borrower.rate}% ${borrower.type})",
+                                Text("Interest (${borrower.rate}% ${InterestEngine.label(borrower.type)})",
                                     style = MaterialTheme.typography.bodySmall)
                                 Text(CurrencyFormatter.detail(interestOutstanding, currencyCode, locale),
                                     style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),

@@ -173,14 +173,21 @@ fun AddDebtDialog(
                     modifier = Modifier.fillMaxWidth())
 
                 // ── Interest type ─────────────────────────────────────────
+                // C12 (3.2.25) — display labels routed through
+                // `InterestEngine.label(...)` so "Both" renders as "SI + CI"
+                // per audit fix #9. Stored value (`selectedIntType`) stays
+                // raw — DB schema and InterestEngine branch on the raw form.
                 ExposedDropdownMenuBox(expanded = expandedIntType, onExpandedChange = { expandedIntType = !expandedIntType }) {
-                    OutlinedTextField(value = selectedIntType, onValueChange = {}, readOnly = true,
+                    OutlinedTextField(value = app.fynlo.logic.InterestEngine.label(selectedIntType), onValueChange = {}, readOnly = true,
                         label = { Text("Interest Type") },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedIntType) },
                         modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, true).fillMaxWidth())
                     ExposedDropdownMenu(expanded = expandedIntType, onDismissRequest = { expandedIntType = false }) {
                         interestTypes.forEach { t ->
-                            DropdownMenuItem(text = { Text(t) }, onClick = { selectedIntType = t; expandedIntType = false })
+                            DropdownMenuItem(
+                                text = { Text(app.fynlo.logic.InterestEngine.label(t)) },
+                                onClick = { selectedIntType = t; expandedIntType = false },
+                            )
                         }
                     }
                 }
