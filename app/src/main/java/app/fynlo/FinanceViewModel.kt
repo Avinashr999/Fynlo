@@ -1006,6 +1006,75 @@ class FinanceViewModel @Inject constructor(
         }
     }
 
+    /**
+     * C15c (3.2.31) — Backfill month-end net-worth snapshots from transaction
+     * history (UX_AUDIT §C15c #5). For each calendar month-end between the
+     * user's earliest transaction and last completed month, computes an
+     * approximate net worth by walking the cash-basis cash flow forward to
+     * today: `approxNW(monthEnd) = currentNW − (cumulative cash flow from
+     * monthEnd+1 to today)`. Financing categories are excluded so debt
+     * received / loans extended / investments don't double-count.
+     *
+     * Investment unrealized value changes aren't reconstructable from history
+     * (we only know `currentVal`), so this is held flat. The result is a
+     * cash-flow-based curve — accurate enough to read trend direction without
+     * requiring a Pricing-history API. Existing snapshot dates are preserved.
+     *
+     * Calls [onDone] with the count of snapshots inserted (0 if no
+     * transactions or every month already had one).
+     */
+    fun backfillNetWorthHistory(onDone: (Int) -> Unit = {}) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val txns = transactions.value
+            if (txns.isEmpty()) {
+                kotlinx.coroutines.withContext(Dispatchers.Main) { onDone(0) }
+                return@launch
+            }
+            val financingCats = setOf(
+                "Debt Received", "Debt Repayment", "Lending",
+                "Loan Recovery", "Loan Repayment", "Investment", "Investment Returns"
+            )
+            val cashTxns = txns.filter { it.tags != "journal_only" && it.category !in financingCats }
+            if (cashTxns.isEmpty()) {
+                kotlinx.coroutines.withContext(Dispatchers.Main) { onDone(0) }
+                return@launch
+            }
+            val fmt    = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+            val today  = LocalDate.now()
+            val currentNW = financialSummary.value.netWorth
+            val existingDates = repository.getNetWorthSnapshots(pid).first().map { it.date }.toSet()
+            val earliest = runCatching { LocalDate.parse(cashTxns.minOf { it.date }) }.getOrNull() ?: run {
+                kotlinx.coroutines.withContext(Dispatchers.Main) { onDone(0) }
+                return@launch
+            }
+            var ym    = java.time.YearMonth.from(earliest)
+            val endYm = java.time.YearMonth.from(today).minusMonths(1)
+            var added = 0
+            while (!ym.isAfter(endYm)) {
+                val monthEnd = ym.atEndOfMonth().format(fmt)
+                if (monthEnd !in existingDates) {
+                    val cashFlowSince = cashTxns
+                        .filter { it.date > monthEnd }
+                        .sumOf { if (it.type.equals("income", true)) it.amount else -it.amount }
+                    val approxNW = currentNW - cashFlowSince
+                    repository.saveNetWorthSnapshot(
+                        app.fynlo.data.model.NetWorthSnapshot(
+                            date             = monthEnd,
+                            netWorth         = approxNW,
+                            totalAssets      = approxNW.coerceAtLeast(0.0),
+                            totalLiabilities = 0.0,
+                            projectId        = pid,
+                            createdAt        = System.currentTimeMillis()
+                        )
+                    )
+                    added++
+                }
+                ym = ym.plusMonths(1)
+            }
+            kotlinx.coroutines.withContext(Dispatchers.Main) { onDone(added) }
+        }
+    }
+
     val recurringTransactions: StateFlow<List<app.fynlo.data.model.RecurringTransaction>> = repository.getAllRecurringTransactions()
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 

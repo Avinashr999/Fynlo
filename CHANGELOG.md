@@ -2,6 +2,49 @@
 
 All notable changes to Fynlo are documented here.
 
+## [3.2.31] - 2026-05-27 *(Development milestone — C15 Stage 3: Net Worth History chart-hero + callout cards + backfill + nag removal (C15c); not promoted per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`)*
+
+### Fixed
+- **C15 Stage 3 of 5 — C15c Net Worth History: chart-hero + standardized callout cards + transaction-history backfill + open-daily nag removed (audit fixes C15c #1, #2, #3, #4, #5, #6).** Third of 5 stages closing C15. NetWorthHistoryScreen now opens with a `type_chart_hero` block (Current Net Worth above the line chart), three standardized callout cards, and a "Backfill from history" action that auto-generates month-end snapshots so the trend exists from day one instead of requiring weeks of daily app opens.
+
+**NetWorthHistoryScreen — added (audit C15c #1 + #2):**
+- **Chart-hero block** — Current Net Worth number + `NetWorthLineChart` Canvas now share one surface so they read as a single `type_chart_hero` unit per `DESIGN_SYSTEM.md §1.2`. Same shape established for C15b P&L Statement in 3.2.30.
+- **Migrated `Icons.Filled.ShowChart` → `Icons.AutoMirrored.Filled.ShowChart`** (was a pre-existing deprecation; touched the file anyway).
+
+**NetWorthHistoryScreen — added (audit C15c #3):**
+- **Standardized 3-tile callout row** replaces the prior Highest / Lowest / Change % row:
+  - `1-Month Change` — % change from the snapshot closest to (but not after) `today - 1 month`. Shows `Need more data` if no snapshot in range.
+  - `6-Month Change` — same logic with `today - 6 months`.
+  - `All-Time High` — `sorted.maxOf { netWorth }` formatted as listRow currency.
+- Color: green when current ≥ then, red when below, neutral when no comparison snapshot available.
+
+**NetWorthHistoryScreen — added (audit C15c #5):**
+- **"Backfill from history" button** (OutlinedButton with `History` icon) — primary CTA in empty state, secondary action when data exists. Calls `viewModel.backfillNetWorthHistory()` which walks transactions month by month, computes a cash-basis approximate net worth for each month-end, and inserts a snapshot for that date. Existing snapshot dates are preserved (REPLACE is technically the conflict strategy but the backfill checks `existingDates` first).
+- Status text appears under the button after each run: `"Added N month-end snapshots from history"` / `"Already up to date — no months to backfill."` so the user sees the result without a Toast/Snackbar.
+
+**NetWorthHistoryScreen — fixed (audit C15c #4):**
+- **"X snapshots recorded" pluralization** — added local `pluralCount(n, "snapshot", "snapshots")` helper so `1 snapshot recorded` no longer renders as `1 snapshots recorded`. Audit notes this is also covered by the broader C10 cluster but the local fix is the right thing on touch.
+
+**NetWorthHistoryScreen — removed (audit C15c #6):**
+- **"Open the app daily to track net worth trends" nag** from the empty state. The backfill CTA replaces it — instead of nagging the user to come back every day for weeks, generate the historical curve from data they already have.
+
+**FinanceViewModel — added:**
+- **`backfillNetWorthHistory(onDone: (Int) -> Unit = {})`** — for each calendar month-end between the user's earliest cash-basis transaction and the last completed month, computes `approxNW = currentNW − (cumulative cash flow from monthEnd+1 to today)`. Financing categories excluded so debt received / loans extended / investments don't double-count. Existing snapshot dates skipped via `repository.getNetWorthSnapshots(pid).first()`. Calls `onDone(added)` on Main with the count of snapshots inserted.
+
+**Limitation by design:** investment unrealized value changes can't be reconstructed from history (we only have `currentVal`), so the backfilled curve treats investment value as flat. The result is a cash-flow-based trend — accurate for direction reading without requiring a pricing-history API. Daily auto-save (`saveSnapshotNow()` on screen open) still runs, accumulating real point-in-time data going forward.
+
+**Stages 4-5 of C15 still pending:** C15d Monthly Summary (bar chart + axis labels + projection), C15e Money Flow (build a flow visualization or remove).
+
+### Closes
+- **C15c audit fixes #1, #2, #3, #4, #5, #6** (this stage).
+- C15a closed in 3.2.29. C15b closed in 3.2.30. C15d, C15e still pending.
+
+### Changed
+- **`versionName`** `3.2.30` → `3.2.31`, **`versionCode`** `153` → `154`.
+
+### Data-integrity gate
+Unchanged at **114 tests across 10 classes**, 0 failures. The new `backfillNetWorthHistory` method routes through the same `repository.saveNetWorthSnapshot` path that `saveSnapshotNow` already used — no new data path. Cash-flow approximation is bounded by the existing financing-category exclusion (already tested across `BackupDataIntegrityTest` and `TransactionValidatorDataIntegrityTest`).
+
 ## [3.2.30] - 2026-05-27 *(Development milestone — C15 Stage 2: P&L Statement chart hero + callout cards + Total Lent Out fix (C15b); not promoted per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`)*
 
 ### Fixed

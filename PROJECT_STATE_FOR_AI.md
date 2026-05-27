@@ -158,7 +158,7 @@ AI_AGENT_PROTOCOL.md to match.
 
 # Fynlo - Complete AI Portability File
 **Project Name**: Fynlo
-**Version**: 3.2.30 on `master` (`versionName = "3.2.30"`, `versionCode = 153`). All four Sprint-1 P0 clusters closed (C01 / C02 / C03a / C05). Nine P1 Sprint 2 clusters closed (C04, C06+C07, C08, C09, C18, C13, C14, C12). **C15 Stages 1-2 of 5 landed: 3.2.29 = C15a (Reports launcher), 3.2.30 = C15b (P&L Statement chart hero + callouts + Total Lent Out fix)**. C15 Stages 3-5 pending (C15c Net Worth history chart + backfill, C15d Monthly Summary bar chart, C15e Money Flow build-or-remove). Remaining P1: C15 Stages 3-5, C21 (PDF/XLSX export quality polish). Plus deferred follow-ups: Task #26, #27, #28, #24. Internal milestone markers only — per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens until every `UX_AUDIT` cluster (P0 through P3) is closed.
+**Version**: 3.2.31 on `master` (`versionName = "3.2.31"`, `versionCode = 154`). All four Sprint-1 P0 clusters closed (C01 / C02 / C03a / C05). Nine P1 Sprint 2 clusters closed (C04, C06+C07, C08, C09, C18, C13, C14, C12). **C15 Stages 1-3 of 5 landed: 3.2.29 = C15a (Reports launcher), 3.2.30 = C15b (P&L chart-hero), 3.2.31 = C15c (Net Worth History chart-hero + callouts + backfill + nag removal)**. C15 Stages 4-5 pending (C15d Monthly Summary bar chart, C15e Money Flow build-or-remove). Remaining P1: C15 Stages 4-5, C21 (PDF/XLSX export quality polish). Plus deferred follow-ups: Task #26, #27, #28, #24. Internal milestone markers only — per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens until every `UX_AUDIT` cluster (P0 through P3) is closed.
 **Platform**: Android (Kotlin, Jetpack Compose, Room — Gradle 9.4.1, AGP 9.2.1, Room 2.8.4, KSP 2.3.7, Kotlin 2.2.10)
 
 ## 1. Project Overview
@@ -345,6 +345,32 @@ in the APK).
 ## 6. Journal
 
 **Newest first.** Each entry: date · cluster(s) closed/touched · commit(s) · one-paragraph why-and-what.
+
+### 2026-05-27 — 3.2.31 (C15 Stage 3 of 5: C15c Net Worth History chart-hero + callouts + backfill + nag removal)
+
+**Type:** Stage 3 of 5 for C15. Audit §C15c fixes #1–#6 all in this commit. Stage 4 (C15d Monthly Summary) follows.
+
+**Internal milestone:** `3.2.31` / `versionCode = 154`. No Play Console upload per release-cadence ADR. No test gate change (114 tests / 10 classes / 0 failures — `backfillNetWorthHistory` routes through the same `saveNetWorthSnapshot` path as the daily auto-save).
+
+**NetWorthHistoryScreen added:**
+- Chart-hero block — Current Net Worth + `NetWorthLineChart` share one rounded surface so they read as a single `type_chart_hero` unit (same shape established for C15b P&L Statement in 3.2.30).
+- 3-callout row (replacing the prior Highest/Lowest/Change% row): `1-Month Change` / `6-Month Change` / `All-Time High`. The %-change cards use the snapshot closest-to-but-not-after the target date; show "Need more data" with neutral color when no snapshot in range.
+- "Backfill from history" OutlinedButton — primary CTA in empty state, secondary action when data exists. Status text appears under the button after each run.
+- Local `pluralCount(n, "snapshot", "snapshots")` helper so "1 snapshot recorded" doesn't render as "1 snapshots".
+
+**NetWorthHistoryScreen removed:**
+- "Open the app daily to track net worth trends" nag (audit #6). The backfill CTA replaces it.
+
+**FinanceViewModel added:**
+- `backfillNetWorthHistory(onDone)` — walks transactions month by month from the user's earliest cash-basis date to last completed month, computes `approxNW = currentNW − (cumulative cash flow from monthEnd+1 to today)` for each month-end, inserts as `NetWorthSnapshot`. Financing categories excluded so debt received / loans extended / investments don't double-count. Existing snapshot dates skipped via `getNetWorthSnapshots(pid).first()`. Returns count to UI for the status text.
+
+**Limitation by design:** investment unrealized value changes aren't reconstructable from history (we only have `currentVal`), so the backfilled curve treats investment value as flat. The result is a cash-flow-based trend — accurate for direction reading. Daily auto-save still runs, accumulating real point-in-time data going forward.
+
+**Pattern: backfill over nag.** The audit's load-bearing C15c insight is that asking users to "open daily for trends" is a bad UX. The data is already there in their transaction history — generate it. The cash-flow approximation isn't perfect (no investment-value reconstruction) but it gets the user a useful trend immediately instead of weeks later.
+
+**Stages 4-5 pending:**
+- C15d — Monthly Summary: type_chart_hero "Net for May ₹X", bar chart (income green + expense red) last 12 months, y-axis labels + reference lines, callout cards (Best/Worst/Avg/Trend), projection line, CSV export.
+- C15e — Money Flow: build Sankey or category-grouped flow visualization, or remove the tile.
 
 ### 2026-05-27 — 3.2.30 (C15 Stage 2 of 5: C15b P&L Statement chart hero + callout cards + Total Lent Out fix)
 
