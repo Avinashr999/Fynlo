@@ -2,6 +2,43 @@
 
 All notable changes to Fynlo are documented here.
 
+## [3.2.27] - 2026-05-27 *(Development milestone — C12 Stage 2: filter consolidation across Lending + Debt screens; not promoted per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`)*
+
+### Fixed
+- **C12 Stage 2 of 3 — Active/Overdue/Closed filter replaces 3 filter UIs (audit #3 + #4).** Second of 3 stages closing C12. Both child screens of LoansHubScreen (LendingScreen + DebtScreen) now use the same Active/Overdue/Closed segmented filter at the top of their list, with per-segment counts ("Active · 3", "Overdue · 1", "Closed · 0") for 1-second status readability.
+
+**LendingScreen — removed:**
+- **Interest Loans / Hand Loans `TabRow`** (the internal selectedTab — sorted by loan-type rather than status, which is less useful for daily UX). Hand vs interest distinction lives in the row (% rate displayed inline).
+- **Sort dropdown** (`Overdue / Amount / Name / Date` `DropdownMenu`) — audit #4. Processed list now uses a fixed default sort: overdue-first then by amount descending (matches the prior dropdown's default value).
+- **Stats line** "N interest · N hand · N settled" — replaced by per-segment counts on the new filter.
+- **Collapsible "Settled" section** at the bottom of the list — settled loans now live under the `Closed` filter where they're discoverable on one tap.
+- **In-screen "Total outstanding" hero summary** — redundant with LoansHubScreen's C12 Stage 1 hero (3.2.25) that already shows this at the parent level.
+- **Back-handler for the TabRow** — gone with the TabRow itself.
+
+**LendingScreen — kept:**
+- Search bar (search is not a filter — it's a query)
+- EMI calculator button + Calendar shortcut (these are tools, not filters)
+- Per-card actions (Stage 3 will simplify these and move full action surface to CustomerDetailScreen)
+
+**DebtScreen — removed:**
+- **In-screen "Total Outstanding" summary card** — same redundancy as LendingScreen; parent LoansHubScreen hero owns this read for the Owed tab.
+
+**DebtScreen — added:**
+- **Active/Overdue/Closed segmented filter** for parity with LendingScreen. `Active = paid < amount`, `Overdue = active AND due date past today`, `Closed = paid >= amount`. Filter-specific empty-state messages ("No overdue debts — you're on track 🎉", "No closed debts yet", "No active debts").
+
+### Sort dropdown lost user-toggleable sort modes
+- Pre-3.2.27 had Overdue / Amount / Name / Date sort modes via the dropdown. Stage 2's fixed sort (overdue-first then amount-desc) matches what most users wanted, but **user-toggleable sort is gone for now**. The audit's fix #4 calls for "column-header sort affordance instead" — meaningful but more work; deferred to a follow-up if user demand surfaces. If you used to sort by Name or Date specifically, that's the regression — let me know and we'll add it back as column-header taps.
+
+### Closes
+- **C12 audit fixes #3 + #4** (filter consolidation + sort dropdown removal).
+- Stage 1 (3.2.25) closed #1, #2, #9. Stage 2 (this commit) closes #3, #4. Stage 3 will close #5, #6, #7, #8 (row standardisation + per-row action removal + Send-reminder picker).
+
+### Changed
+- **`versionName`** `3.2.26` → `3.2.27`, **`versionCode`** `149` → `150`.
+
+### Data-integrity gate
+Unchanged at **114 tests across 10 classes**, 0 failures (UI restructure; no logic / state-shape change).
+
 ## [3.2.26] - 2026-05-27 *(Development milestone — LendingDialog interest picker unified with DebtDialog; not promoted per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`)*
 
 ### Fixed

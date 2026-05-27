@@ -158,7 +158,7 @@ AI_AGENT_PROTOCOL.md to match.
 
 # Fynlo - Complete AI Portability File
 **Project Name**: Fynlo
-**Version**: 3.2.26 on `master` (`versionName = "3.2.26"`, `versionCode = 149`). All four Sprint-1 P0 clusters closed (C01 / C02 / C03a / C05). Eight P1 Sprint 2 clusters closed (C04, C06+C07, C08, C09, C18, C13, C14). C12 Stage 1 of 3 landed at 3.2.25; **3.2.26 = smoke-surfaced consistency fix (LendingDialog interest picker unified to dropdown matching DebtDialog)**. Stage 2 (filter consolidation) and Stage 3 (per-row action removal + Send-reminder picker) pending. Remaining P1: C12 Stages 2-3, C15 (Reports, 4 sub-screens), C21 (PDF/XLSX export quality polish). Plus deferred follow-ups: Task #26, #27, #28, #24. Internal milestone markers only — per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens until every `UX_AUDIT` cluster (P0 through P3) is closed.
+**Version**: 3.2.27 on `master` (`versionName = "3.2.27"`, `versionCode = 150`). All four Sprint-1 P0 clusters closed (C01 / C02 / C03a / C05). Eight P1 Sprint 2 clusters closed (C04, C06+C07, C08, C09, C18, C13, C14). C12 Stages 1+2 of 3 landed; **3.2.27 = C12 Stage 2 (filter consolidation across LendingScreen + DebtScreen — audit #3 + #4)**. Stage 3 (per-row action removal + Send-reminder picker) pending. Remaining P1: C12 Stage 3, C15 (Reports, 4 sub-screens), C21 (PDF/XLSX export quality polish). Plus deferred follow-ups: Task #26, #27, #28, #24. Internal milestone markers only — per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens until every `UX_AUDIT` cluster (P0 through P3) is closed.
 **Platform**: Android (Kotlin, Jetpack Compose, Room — Gradle 9.4.1, AGP 9.2.1, Room 2.8.4, KSP 2.3.7, Kotlin 2.2.10)
 
 ## 1. Project Overview
@@ -345,6 +345,34 @@ in the APK).
 ## 6. Journal
 
 **Newest first.** Each entry: date · cluster(s) closed/touched · commit(s) · one-paragraph why-and-what.
+
+### 2026-05-27 — 3.2.27 (C12 Stage 2 of 3: filter consolidation across Lending + Debt screens)
+
+**Type:** Stage 2 of 3 for C12. Filter UI consolidation across both child screens of LoansHubScreen. Closes audit fixes #3 (single Active/Overdue/Closed filter) + #4 (drop sort dropdown). Stage 3 (per-row action removal + Send-reminder picker) follows.
+
+**Internal milestone:** `3.2.27` / `versionCode = 150`. No Play Console upload per release-cadence ADR. No test gate change.
+
+**LendingScreen changes (the bigger surface):**
+- **Removed Interest/Hand TabRow** — the internal selectedTab that switched between interest-loan and hand-loan rows. Audit's point: the Hand vs Interest distinction is a row attribute, not a top-level dimension worth its own tab. % rate inline on each card conveys it without a separate UI dimension.
+- **Removed sort dropdown** (audit #4) — `Overdue / Amount / Name / Date` `DropdownMenu`. Fixed sort now: overdue-first then amount-desc. Loses user-toggleable Name and Date sorts; if user demand surfaces, audit's "column-header sort affordance" (also #4) is the proper follow-up.
+- **Removed stats line** "X interest · Y hand · Z settled" — replaced by per-segment counts on the filter.
+- **Removed collapsible "Settled" section** at the bottom of the list — settled loans now live under the `Closed` filter, exposed in one tap.
+- **Removed in-screen Total Outstanding hero** — LoansHubScreen's C12 Stage 1 hero (3.2.25) owns this at the parent level.
+- **Removed BackHandler** for the TabRow — gone with the TabRow itself.
+- **Added Active/Overdue/Closed segmented filter** with per-segment counts.
+- **Filter-specific empty states**: "No overdue loans — you're up to date 🎉" / "No closed loans yet" / "No active loans" / (full empty) → existing EmptyLendingState illustration.
+
+**DebtScreen changes (simpler, parity):**
+- **Removed in-screen Total Outstanding summary card** — same parent-level redundancy.
+- **Added Active/Overdue/Closed segmented filter** with parity logic: `Active = paid < amount`, `Overdue = active AND due date past today`, `Closed = paid >= amount`.
+- **Filter-specific empty states** for each segment.
+
+**Pattern: when two parallel screens have different filter UIs, unify both in one commit.** I almost did just LendingScreen and let DebtScreen lag, but per the LendingDialog→DebtDialog widget-unification lesson from 3.2.26 ("when migrating widget types, do it across all matching surfaces in one pass"), doing both kept consistency.
+
+**Lost in this commit (potential regression):**
+- User-toggleable sort modes (Name / Date / Amount). The fixed overdue-first then amount-desc sort matches the prior dropdown's default. Audit's #4 wants "column-header sort affordance instead" — meaningful but more work. Deferred to follow-up if user demand surfaces.
+
+**C12 progress:** Stage 1 ✓ (hero + SI+CI rename), Stage 2 ✓ (filter consolidation), Stage 3 ⏳ (row simplification + Send-reminder picker — audit #5, #6, #7, #8).
 
 ### 2026-05-27 — 3.2.26 (LendingDialog interest picker unified to dropdown — smoke surface)
 

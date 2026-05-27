@@ -70,49 +70,53 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
     val currencySymbol = app.fynlo.logic.CurrencyUtils.symbolFor(currencyCode)
     var showEmiCalc by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
-    var sortBy      by remember { mutableStateOf("Overdue") } // Overdue, Amount, Name, Date
-    var showSortMenu by remember { mutableStateOf(false) }
     var showAddDialog by remember { mutableStateOf(false) }
     var editingBorrower by remember { mutableStateOf<Borrower?>(null) }
     var collectingForBorrower by remember { mutableStateOf<Borrower?>(null) }
     var defaultingBorrower by remember { mutableStateOf<Borrower?>(null) }
     var writeOffBorrower by remember { mutableStateOf<Borrower?>(null) }
-    var selectedTab by remember { mutableIntStateOf(0) } // 0=Interest Loans 1=Hand Loans
+
+    // C12 Stage 2 (3.2.27) — replaced 3 filter UIs (Interest/Hand TabRow + sort
+    // dropdown + collapsible Settled section) with a single Active/Overdue/Closed
+    // segmented control per audit fix #3. Default is "Active" — the most
+    // common state the user wants to see. Sort dropdown gone entirely
+    // (audit fix #4); processed list uses a fixed sort: overdue-first then
+    // by amount descending (the same default the dropdown defaulted to).
+    var statusFilter by remember { mutableStateOf("Active") }
     val today = java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd"))
 
-    val processed = remember(borrowers, searchQuery, sortBy) {
-        var list = if (searchQuery.isBlank()) borrowers
-                   else borrowers.filter {
-                       it.name.contains(searchQuery, ignoreCase = true) ||
-                       it.phone.contains(searchQuery)
-                   }
-        list = when (sortBy) {
-            "Amount"  -> list.sortedByDescending { it.amount }
-            "Name"    -> list.sortedBy { it.name }
-            "Date"    -> list.sortedBy { it.date }
-            else      -> list.sortedWith(compareByDescending<Borrower> {
+    val processed = remember(borrowers, searchQuery) {
+        val filtered = if (searchQuery.isBlank()) borrowers
+                       else borrowers.filter {
+                           it.name.contains(searchQuery, ignoreCase = true) ||
+                           it.phone.contains(searchQuery)
+                       }
+        // Default sort: overdue first (most actionable), then amount desc.
+        filtered.sortedWith(
+            compareByDescending<Borrower> {
                 it.due.isNotBlank() && it.due < today && it.paid < it.amount
-            }.thenByDescending { it.amount })
-        }
-        list
-    }
-    // Active = not settled, not written off, still has outstanding balance
-    // Hand loans (rate=0): use `paid` because old payments only updated paid, not paidPrincipal
-    // Interest loans (rate>0): use `paidPrincipal` so interest-only payments don't close the loan
-    val isActive: (app.fynlo.data.model.Borrower) -> Boolean = { b ->
-        b.status !in listOf("Settled", "WrittenOff") && (
-            if (b.rate <= 0) b.paid < b.amount          // hand loan: fully collected = settled
-            else b.paidPrincipal < b.amount              // interest loan: principal not yet recovered
+            }.thenByDescending { it.amount }
         )
     }
-    val interestLoans  = remember(processed) { processed.filter { it.rate > 0  && isActive(it) } }
-    val handLoans      = remember(processed) { processed.filter { it.rate <= 0 && isActive(it) } }
-    val defaultedLoans = processed.filter { it.status == "Defaulted" }
-    // Settled = marked Settled/WrittenOff, OR fully paid (using same logic as isActive)
-    val settledLoans   = processed.filter { b ->
-        !isActive(b) && b.status !in listOf("Defaulted", "WrittenOff")
+    // Active = not settled, not written off, still has outstanding balance.
+    // Hand loans (rate=0) use `paid` (old payments only updated paid, not paidPrincipal).
+    // Interest loans (rate>0) use `paidPrincipal` so interest-only payments don't close the loan.
+    val isActive: (app.fynlo.data.model.Borrower) -> Boolean = { b ->
+        b.status !in listOf("Settled", "WrittenOff") && (
+            if (b.rate <= 0) b.paid < b.amount
+            else b.paidPrincipal < b.amount
+        )
     }
-    val activeLoans    = if (selectedTab == 0) interestLoans else handLoans
+    val activeLoans  = remember(processed) { processed.filter { isActive(it) } }
+    val overdueLoans = remember(activeLoans) {
+        activeLoans.filter { it.due.isNotBlank() && it.due < today }
+    }
+    val closedLoans  = remember(processed) { processed.filterNot { isActive(it) } }
+    val displayed = when (statusFilter) {
+        "Overdue" -> overdueLoans
+        "Closed"  -> closedLoans
+        else      -> activeLoans
+    }
 
     if (showEmiCalc) { EmiCalculatorDialog(onDismiss = { showEmiCalc = false }) }
     if (showAddDialog || editingBorrower != null) {
@@ -204,10 +208,10 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
         )
     }
 
-    // Back gesture: if on Hand Loans tab, go back to Interest Loans tab first
-    androidx.activity.compose.BackHandler(enabled = selectedTab != 0) {
-        selectedTab = 0
-    }
+    // C12 Stage 2 — back-handler for the Interest/Hand TabRow is gone with
+    // the TabRow itself. The Active/Overdue/Closed segmented filter doesn't
+    // need a back-stack since "Active" is the default and the user can tap
+    // back to it any time.
 
     Column(modifier = Modifier.fillMaxSize()) {
         if (showHeader) PremiumScreenHeader("Lending", "Interest loans & hand loans")
@@ -218,36 +222,22 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
             verticalArrangement = Arrangement.spacedBy(10.dp),
             contentPadding = PaddingValues(bottom = FabBottomPadding)
         ) {
-            // Header
-            // Sub-header: stats + action buttons (scrolls with content)
+            // C12 Stage 2 — top toolbar row: EMI calculator + Calendar shortcut.
+            // The stats line ("X interest · Y hand · Z settled") is gone — the
+            // segmented filter below shows per-status counts, which is more
+            // useful UX. The sort dropdown is gone (audit #4) — processed list
+            // uses a fixed overdue-first / amount-desc sort.
             item {
-                // Stats on their own line — gives the action buttons room to breathe
-                Text("${interestLoans.size} interest • ${handLoans.size} hand loans • ${settledLoans.size} settled",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 10.dp, bottom = 10.dp))
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    // Sort
-                    Box(Modifier.weight(1f)) {
-                        FilledTonalButton(onClick = { showSortMenu = true }, shape = RoundedCornerShape(14.dp),
-                            modifier = Modifier.fillMaxWidth(),
-                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 10.dp)) {
-                            Icon(Icons.Default.Sort, null, Modifier.size(16.dp))
-                            Spacer(Modifier.width(6.dp))
-                            Text(sortBy, style = MaterialTheme.typography.labelMedium)
-                        }
-                        DropdownMenu(expanded = showSortMenu, onDismissRequest = { showSortMenu = false }) {
-                            listOf("Overdue", "Amount", "Name", "Date").forEach { opt ->
-                                DropdownMenuItem(text = { Text(opt) }, onClick = { sortBy = opt; showSortMenu = false })
-                            }
-                        }
-                    }
-                    // EMI calculator
+                Row(
+                    Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 4.dp),
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
                     FilledTonalButton(onClick = { showEmiCalc = true }, shape = RoundedCornerShape(14.dp),
                         contentPadding = PaddingValues(horizontal = 18.dp, vertical = 10.dp)) {
                         Text("EMI", style = MaterialTheme.typography.labelMedium)
                     }
-                    // Calendar — icon only
+                    Spacer(Modifier.width(8.dp))
                     FilledTonalButton(onClick = onNavigateToCalendar, shape = RoundedCornerShape(14.dp),
                         contentPadding = PaddingValues(horizontal = 14.dp, vertical = 10.dp)) {
                         Icon(Icons.Default.CalendarMonth, contentDescription = "Collection Calendar", Modifier.size(18.dp))
@@ -255,7 +245,7 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
                 }
             }
 
-            // Search
+            // Search bar
             item {
                 OutlinedTextField(
                     value = searchQuery, onValueChange = { searchQuery = it },
@@ -273,129 +263,69 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
                 )
             }
 
-            // Summary card
-            if (activeLoans.isNotEmpty()) {
-                item {
-                    val totalOut = activeLoans.sumOf {
-                        val interest = InterestEngine.calcIntAccrued(it.amount, it.rate, it.date, it.type, it.due, it.paid)
-                        InterestEngine.calcOutstanding(it.amount, interest, it.paid)
-                    }
-                    val overdueCount = activeLoans.count { it.due.isNotBlank() && it.due < today }
-                    // Flat hero (no card) — matches dashboard
-                    Row(Modifier.fillMaxWidth().padding(top = 6.dp, bottom = 6.dp), Arrangement.SpaceBetween, Alignment.CenterVertically) {
-                        Column {
-                            Text("Total outstanding", style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Text(CurrencyFormatter.detail(totalOut, currencyCode, java.util.Locale.getDefault()),
-                                fontSize = 32.sp, fontWeight = FontWeight.ExtraBold,
-                                color = MaterialTheme.colorScheme.onSurface)
-                        }
-                        if (overdueCount > 0) {
-                            Surface(color = SemanticRed.copy(alpha = 0.12f), shape = RoundedCornerShape(20.dp)) {
-                                Text("$overdueCount OVERDUE",
-                                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-                                    color = SemanticRed,
-                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp))
-                            }
-                        }
+            // C12 Stage 2 — Active/Overdue/Closed segmented filter. Replaces the
+            // Interest/Hand TabRow (which sorted by loan-type, not status — less
+            // useful for daily UX), the sort dropdown (audit #4), and the
+            // collapsible Settled section (now exposed via "Closed" filter).
+            item {
+                val filters = listOf(
+                    "Active"  to activeLoans.size,
+                    "Overdue" to overdueLoans.size,
+                    "Closed"  to closedLoans.size,
+                )
+                SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+                    filters.forEachIndexed { idx, (label, count) ->
+                        SegmentedButton(
+                            selected = statusFilter == label,
+                            onClick = { statusFilter = label },
+                            shape = SegmentedButtonDefaults.itemShape(idx, filters.size),
+                            icon = {},
+                            label = { Text("$label  ·  $count", style = MaterialTheme.typography.labelMedium) },
+                        )
                     }
                 }
             }
 
-            // Active loans
-            val hasAnyLoans = interestLoans.isNotEmpty() || handLoans.isNotEmpty() || settledLoans.isNotEmpty() || defaultedLoans.isNotEmpty()
-
-            if (!hasAnyLoans) {
-                item { EmptyLendingState(onAdd = { showAddDialog = true }) }
-            } else {
-                // Always show tabs whenever any loans exist
+            // List of borrowers for the current filter. Filter-specific empty
+            // messages make the absence of rows informative instead of just blank.
+            if (displayed.isEmpty()) {
                 item {
-                    TabRow(selectedTabIndex = selectedTab, modifier = Modifier.fillMaxWidth(),
-                        containerColor = MaterialTheme.colorScheme.surface) {
-                        Tab(selected = selectedTab == 0, onClick = { selectedTab = 0 }) {
-                            Column(Modifier.padding(vertical = 10.dp),
-                                horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally) {
-                                Text("Interest Loans", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold))
-                                Text("${interestLoans.size}", style = MaterialTheme.typography.labelSmall,
-                                    color = if (selectedTab == 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
-                            }
-                        }
-                        Tab(selected = selectedTab == 1, onClick = { selectedTab = 1 }) {
-                            Column(Modifier.padding(vertical = 10.dp),
-                                horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally) {
-                                Text("Hand Loans", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold))
-                                Text("${handLoans.size}", style = MaterialTheme.typography.labelSmall,
-                                    color = if (selectedTab == 1) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
-                            }
-                        }
+                    val msg = when (statusFilter) {
+                        "Overdue" -> "No overdue loans — you're up to date 🎉"
+                        "Closed"  -> "No closed loans yet"
+                        else      -> if (borrowers.isEmpty()) null
+                                     else "No active loans"
                     }
-                }
-
-                if (activeLoans.isEmpty()) {
-                    // Current tab is empty — show friendly message
-                    item {
+                    if (msg != null) {
                         androidx.compose.foundation.layout.Box(
                             modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp),
                             contentAlignment = androidx.compose.ui.Alignment.Center
                         ) {
-                            Text(
-                                if (selectedTab == 0) "No interest loans" else "No hand loans",
+                            Text(msg,
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+                                color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
-                    }
-                } else {
-                    itemsIndexed(activeLoans, key = { _, it -> it.id }) { idx, borrower ->
-                        if (idx > 0) HorizontalDivider(thickness = 0.5.dp,
-                            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f))
-                        LendingCard(
-                            borrower  = borrower,
-                            people    = people,
-                            currencySymbol = currencySymbol,
-                            currencyCode = currencyCode,
-                            isOverdue = borrower.due.isNotBlank() && borrower.due < today,
-                            onDelete  = { viewModel.deleteBorrower(borrower) },
-                            onEdit    = { editingBorrower = borrower },
-                            onCollect = { collectingForBorrower = borrower },
-                            onClick   = { onNavigateToDetail(borrower.id) },
-                            onDefault = { defaultingBorrower = borrower },
-                            onWriteOff = { writeOffBorrower = borrower }
-                        )
+                    } else {
+                        EmptyLendingState(onAdd = { showAddDialog = true })
                     }
                 }
-
-                // Settled section
-                if (settledLoans.isNotEmpty()) {
-                    item {
-                        var showSettled by remember { mutableStateOf(false) }
-                        Column {
-                            Row(Modifier.fillMaxWidth().clickable { showSettled = !showSettled }
-                                .padding(vertical = 8.dp), Arrangement.SpaceBetween, Alignment.CenterVertically) {
-                                Text("Settled (${settledLoans.size})",
-                                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                Icon(if (showSettled) Icons.Default.ExpandLess else Icons.Default.ExpandMore, null,
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                            }
-                            if (showSettled) {
-                                settledLoans.forEach { borrower ->
-                                    LendingCard(
-                                        borrower  = borrower,
-                                        people    = people,
-                                        currencySymbol = currencySymbol,
-                                        currencyCode = currencyCode,
-                                        isOverdue = false,
-                                        onDelete  = { viewModel.deleteBorrower(borrower) },
-                                        onEdit    = { editingBorrower = borrower },
-                                        onCollect = { collectingForBorrower = borrower },
-                                        onClick   = { onNavigateToDetail(borrower.id) }
-                                    )
-                                    Spacer(Modifier.height(8.dp))
-                                }
-                            }
-                        }
-                    }
+            } else {
+                itemsIndexed(displayed, key = { _, it -> it.id }) { idx, borrower ->
+                    if (idx > 0) HorizontalDivider(thickness = 0.5.dp,
+                        color = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f))
+                    LendingCard(
+                        borrower  = borrower,
+                        people    = people,
+                        currencySymbol = currencySymbol,
+                        currencyCode = currencyCode,
+                        isOverdue = borrower.due.isNotBlank() && borrower.due < today,
+                        onDelete  = { viewModel.deleteBorrower(borrower) },
+                        onEdit    = { editingBorrower = borrower },
+                        onCollect = { collectingForBorrower = borrower },
+                        onClick   = { onNavigateToDetail(borrower.id) },
+                        onDefault = { defaultingBorrower = borrower },
+                        onWriteOff = { writeOffBorrower = borrower }
+                    )
                 }
             }
         }

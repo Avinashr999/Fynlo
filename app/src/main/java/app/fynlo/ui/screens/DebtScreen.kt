@@ -51,12 +51,28 @@ val debts by viewModel.debts.collectAsState()
     val currencyCode = currentProject?.currency ?: "INR"
     val locale = Locale.getDefault()
     var searchQuery by remember { mutableStateOf("") }
-    val filteredDebts = remember(debts, searchQuery) {
+    // C12 Stage 2 (3.2.27) — Active/Overdue/Closed segmented filter for parity
+    // with LendingScreen. Active = paid < amount; Overdue = active AND due
+    // date past today; Closed = paid >= amount (fully repaid).
+    var statusFilter by remember { mutableStateOf("Active") }
+    val todayKey = remember { java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd")) }
+
+    val searched = remember(debts, searchQuery) {
         if (searchQuery.isBlank()) debts
         else debts.filter {
             it.name.contains(searchQuery, ignoreCase = true) ||
             it.notes.contains(searchQuery, ignoreCase = true)
         }
+    }
+    val activeDebts  = remember(searched) { searched.filter { it.paid < it.amount } }
+    val overdueDebts = remember(activeDebts, todayKey) {
+        activeDebts.filter { it.due.isNotBlank() && it.due < todayKey }
+    }
+    val closedDebts  = remember(searched) { searched.filter { it.paid >= it.amount } }
+    val filteredDebts = when (statusFilter) {
+        "Overdue" -> overdueDebts
+        "Closed"  -> closedDebts
+        else      -> activeDebts
     }
     var editingDebt   by remember { mutableStateOf<Debt?>(null) }
     var payingDebt    by remember { mutableStateOf<Debt?>(null) }
@@ -112,32 +128,9 @@ val debts by viewModel.debts.collectAsState()
             }
         }
 
-        // ── Total debt summary card ─────────────────────────────────────────
-        if (debts.isNotEmpty()) {
-            val today = java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd"))
-            val totalPrincipal = debts.sumOf { maxOf(0.0, it.amount - it.paid) }
-            val overdueCount   = debts.count { it.due.isNotBlank() && it.due < today && it.paid < it.amount }
-            Row(Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 16.dp), Arrangement.SpaceBetween, Alignment.CenterVertically) {
-                Column {
-                    Text("Total Outstanding", style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text(CurrencyFormatter.hero(totalPrincipal, currencyCode, locale),
-                        style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.ExtraBold),
-                        color = SemanticRed)
-                    Text("${debts.size} debt${if (debts.size != 1) "s" else ""}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                if (overdueCount > 0) {
-                    Surface(color = SemanticRed.copy(alpha = 0.15f), shape = RoundedCornerShape(10.dp)) {
-                        Text("$overdueCount OVERDUE",
-                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-                            color = SemanticRed,
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp))
-                    }
-                }
-            }
-        }
+        // C12 Stage 2 — Total Outstanding card removed; LoansHubScreen's
+        // C12 Stage 1 hero (3.2.25) now owns that read for the Owed tab,
+        // making the in-screen summary redundant.
 
         val suggestions = remember(searchQuery, debts) {
             if (searchQuery.length < 1) emptyList()
@@ -178,8 +171,46 @@ val debts by viewModel.debts.collectAsState()
         }
 
         }
+        // C12 Stage 2 — Active/Overdue/Closed segmented filter, parity with
+        // LendingScreen's filter. Counts in each segment so the user sees
+        // status distribution at a glance ("Active 3 · Overdue 1 · Closed 0").
+        if (debts.isNotEmpty()) {
+            item {
+                val filters = listOf(
+                    "Active"  to activeDebts.size,
+                    "Overdue" to overdueDebts.size,
+                    "Closed"  to closedDebts.size,
+                )
+                SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 8.dp)) {
+                    filters.forEachIndexed { idx, (label, count) ->
+                        SegmentedButton(
+                            selected = statusFilter == label,
+                            onClick = { statusFilter = label },
+                            shape = SegmentedButtonDefaults.itemShape(idx, filters.size),
+                            icon = {},
+                            label = { Text("$label  ·  $count", style = MaterialTheme.typography.labelMedium) },
+                        )
+                    }
+                }
+            }
+        }
         if (filteredDebts.isEmpty()) {
-            item { EmptyDebtState(onAdd = { showAddDialog = true }) }
+            item {
+                if (debts.isEmpty()) {
+                    EmptyDebtState(onAdd = { showAddDialog = true })
+                } else {
+                    val msg = when (statusFilter) {
+                        "Overdue" -> "No overdue debts — you're on track 🎉"
+                        "Closed"  -> "No closed debts yet"
+                        else      -> "No active debts"
+                    }
+                    Box(modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp),
+                        contentAlignment = Alignment.Center) {
+                        Text(msg, style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+            }
         } else {
             itemsIndexed(filteredDebts, key = { _, d -> d.id }) { index, debt ->
                     DebtCard(
