@@ -2,6 +2,8 @@ package app.fynlo.ui.screens
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -289,7 +291,13 @@ fun AddPersonDialog(initial: Person? = null, onDismiss: () -> Unit, onConfirm: (
         onDismissRequest = onDismiss,
         title = { Text(if (isEdit) "Edit Contact" else "Add New Contact") },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            // C22 Stage 2 cross-dialog sweep (3.2.51) — verticalScroll wrap
+            // so country-code dropdown + name + phone + (optional unique ID)
+            // + disabled-button hint never clip on shorter dialogs.
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
                 // Name
                 OutlinedTextField(
                     value = name, onValueChange = { name = it },

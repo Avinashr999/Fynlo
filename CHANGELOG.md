@@ -2,6 +2,37 @@
 
 All notable changes to Fynlo are documented here.
 
+## [3.2.51] - 2026-05-27 *(Development milestone — cross-dialog verticalScroll sweep — applying the AddRecurring lesson to every other form dialog proactively; not promoted per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`)*
+
+### Fixed
+- **Applied the 3.2.50 `verticalScroll` lesson preemptively to 5 other form-shaped AlertDialogs** so they don't re-discover the same content-clipping bug. User feedback after AddRecurring closure: "match the recurring transaction dialog like remaining dialog in different screens to make experience universal as it was our moto and i think we forgot." Right call — fixing once and sweeping is better than waiting for each dialog to fail on smoke.
+
+**Six form-shaped AlertDialogs swept** (every one with a `text = { Column(...) { OutlinedTextField + ... } }` body containing > 3 inputs):
+- `RecurringScreen.AddRecurringDialog` (fixed in 3.2.50)
+- `BudgetScreen.AddBudgetDialog` — chip picker + custom category + limit + disabled hint
+- `GoalScreen.AddGoalDialog` — 4 OutlinedTextFields (name + target + saved + deadline) + disabled hint
+- `PeopleScreen.PersonDialog` — country code dropdown + name + phone + (optional ID) + disabled hint
+- `ProjectsScreen.NewProjectDialog` — name + currency + color picker grid + disabled hint
+- `InvestmentScreen.LogValuationDialog` — name + value + date + notes
+- `LendingScreen.EmiCalculatorDialog` — principal + rate + tenure + EMI-method segmented + (optional compound due-date) + result panel — the tallest form in the app
+
+**Each fix is one line** — wrap the form Column in `Modifier.verticalScroll(rememberScrollState())` and add the two imports.
+
+**Skipped intentionally** (already-scrolling or short confirms):
+- All confirm-style AlertDialogs (Delete X, Wipe ALL, Logout, etc.) — short single-Text body, no scroll needed.
+- `InvestmentScreen.HistoryDialog` — has a `LazyColumn` inside which scrolls itself.
+- `SettingsScreen` dialogs — all confirms.
+- Form-shaped `Dialog`-based composables (TransactionDialog, LendingDialog, DebtDialog, PaymentDialog, InvestmentDialog) — they use raw `Dialog` not `AlertDialog`, with their own scroll handling. Not affected by AlertDialog's text-slot non-scroll behaviour.
+
+### Lesson promoted to a rule
+The `AlertDialog.text` slot does NOT auto-scroll in Material 3 / Compose. Any form with > 3 inputs (where input includes OutlinedTextField, SegmentedButtonRow, FlowRow of chips, OR composite blocks like color picker grids) must wrap its Column in `verticalScroll(rememberScrollState())`. Worth adding to `LINT_RULES.md` so future dialog work doesn't re-discover this.
+
+### Changed
+- **`versionName`** `3.2.50` → `3.2.51`, **`versionCode`** `173` → `174`.
+
+### Data-integrity gate
+Unchanged at **137 tests across 12 classes**, 0 failures (UI-only modifier additions across 6 files).
+
 ## [3.2.50] - 2026-05-27 *(Development milestone — AddRecurring form wrapped in verticalScroll so bottom items aren't clipped (3.2.49 was still broken); not promoted per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`)*
 
 ### Fixed

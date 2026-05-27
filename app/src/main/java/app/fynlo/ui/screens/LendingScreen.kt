@@ -3,6 +3,8 @@
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -434,7 +436,14 @@ fun EmiCalculatorDialog(onDismiss: () -> Unit) {
                 selectedContainerColor = Emerald500.copy(alpha = 0.16f),
                 selectedLabelColor = Emerald500
             )
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            // C22 Stage 2 cross-dialog sweep (3.2.51) — verticalScroll wrap
+            // so principal + rate + tenure + EMI-method chips + (compound
+            // due-date conditional) + result panel never clip on shorter
+            // dialogs. EMI Calculator dialog is the tallest form in the app.
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
                 OutlinedTextField(value = principal, onValueChange = { principal = it },
                     label = { Text("Principal Amount (₹)") }, singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),

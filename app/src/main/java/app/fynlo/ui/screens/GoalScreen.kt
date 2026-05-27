@@ -2,6 +2,8 @@ package app.fynlo.ui.screens
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -183,7 +185,14 @@ fun AddGoalDialog(currencySymbol: String, onDismiss: () -> Unit, onConfirm: (Goa
         onDismissRequest = onDismiss,
         title = { Text("Add Savings Goal") },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            // C22 Stage 2 cross-dialog sweep (3.2.51) — see RecurringScreen
+            // AddRecurringDialog comment for rationale. AlertDialog.text
+            // doesn't auto-scroll; wrap in verticalScroll so 4 OutlinedTextFields
+            // (Name + Target + Saved + Deadline) never clip.
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
                 OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Goal Name (e.g., New Car)") })
                 OutlinedTextField(value = target, onValueChange = { target = it }, label = { Text("Target Amount ($currencySymbol)") })
                 OutlinedTextField(value = saved, onValueChange = { saved = it }, label = { Text("Already Saved ($currencySymbol)") })

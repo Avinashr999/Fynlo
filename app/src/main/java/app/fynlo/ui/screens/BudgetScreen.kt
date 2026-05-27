@@ -2,6 +2,8 @@ package app.fynlo.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -391,7 +393,15 @@ fun AddBudgetDialog(
         onDismissRequest = onDismiss,
         title = { Text("Set Category Limit") },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            // C22 Stage 2 cross-dialog sweep (3.2.51) — AlertDialog.text slot
+            // doesn't auto-scroll in Material 3 / Compose. Wrap form Columns
+            // in verticalScroll proactively so chip picker + custom name +
+            // limit field + disabled-button hint never clip on shorter
+            // dialog viewports.
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
                 // C05-established chip-picker pattern (FlowRow of FilterChips)
                 // — same shape AddTransactionDialog uses, with "Custom" as
                 // the trailing affordance. Wraps onto multiple rows on

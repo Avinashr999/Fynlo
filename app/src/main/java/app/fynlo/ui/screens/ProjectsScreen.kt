@@ -2,6 +2,8 @@ package app.fynlo.ui.screens
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -193,7 +195,13 @@ private fun AddProjectDialog(
         onDismissRequest = onDismiss,
         title = { Text("New Project") },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            // C22 Stage 2 cross-dialog sweep (3.2.51) — verticalScroll wrap
+            // so name + currency + color picker grid + disabled-button hint
+            // never clip on shorter dialogs.
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
                 OutlinedTextField(
                     value         = name,
                     onValueChange = { name = it },

@@ -6,6 +6,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -609,7 +611,11 @@ fun UpdateInvestmentValueDialog(
         onDismissRequest = onDismiss,
         title = { Text("Log New Valuation") },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            // C22 Stage 2 cross-dialog sweep (3.2.51) — verticalScroll wrap.
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
                 Text(investment.name, style = MaterialTheme.typography.titleSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
                 
