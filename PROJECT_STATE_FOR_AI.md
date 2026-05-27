@@ -158,7 +158,7 @@ AI_AGENT_PROTOCOL.md to match.
 
 # Fynlo - Complete AI Portability File
 **Project Name**: Fynlo
-**Version**: 3.2.42 on `master` (`versionName = "3.2.42"`, `versionCode = 165`). All four Sprint-1 P0 clusters closed. P1 backlog closed in full. **Four P2 clusters closed: C10 (Pluralization), C11 (Date formatting), C16 (Color semantics), C17 (Disabled button hints).** P2 remaining: C19 (Empty states), C20 (Drawer cleanup). Plus C22 v4+ backlog (P3), C03b breaking schema migration, infrastructure backlog INF01-INF06, deferred follow-ups (Task #24/#26/#27/#28). Internal milestone markers only — per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens until every `UX_AUDIT` cluster (P0 through P3) is closed. All four Sprint-1 P0 clusters closed (C01 / C02 / C03a / C05). **Ten** P1 Sprint 2 clusters closed (C04, C06+C07, C08, C09, C18, C13, C14, C12, **C15**). **3.2.33 = C15 Stage 5 = C15e Money Flow category-grouped visualization — closes C15 in full**. All five C15 sub-stages landed: C15a in 3.2.29, C15b in 3.2.30, C15c in 3.2.31, C15d in 3.2.32, C15e in 3.2.33. Remaining P1: C21 (PDF/XLSX export quality polish). Plus deferred follow-ups: Task #26, #27, #28, #24. Internal milestone markers only — per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens until every `UX_AUDIT` cluster (P0 through P3) is closed.
+**Version**: 3.2.43 on `master` (`versionName = "3.2.43"`, `versionCode = 166`). All four Sprint-1 P0 clusters closed. P1 backlog closed in full. **Five P2 clusters closed: C10 (Pluralization), C11 (Date formatting), C16 (Color semantics), C17 (Disabled button hints), C19 (Empty states).** P2 remaining: **C20 (Drawer cleanup) — last P2 cluster**. Plus C22 v4+ backlog (P3), C03b breaking schema migration, infrastructure backlog INF01-INF06, deferred follow-ups (Task #24/#26/#27/#28). Internal milestone markers only — per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens until every `UX_AUDIT` cluster (P0 through P3) is closed. All four Sprint-1 P0 clusters closed (C01 / C02 / C03a / C05). **Ten** P1 Sprint 2 clusters closed (C04, C06+C07, C08, C09, C18, C13, C14, C12, **C15**). **3.2.33 = C15 Stage 5 = C15e Money Flow category-grouped visualization — closes C15 in full**. All five C15 sub-stages landed: C15a in 3.2.29, C15b in 3.2.30, C15c in 3.2.31, C15d in 3.2.32, C15e in 3.2.33. Remaining P1: C21 (PDF/XLSX export quality polish). Plus deferred follow-ups: Task #26, #27, #28, #24. Internal milestone markers only — per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens until every `UX_AUDIT` cluster (P0 through P3) is closed.
 **Platform**: Android (Kotlin, Jetpack Compose, Room — Gradle 9.4.1, AGP 9.2.1, Room 2.8.4, KSP 2.3.7, Kotlin 2.2.10)
 
 ## 1. Project Overview
@@ -345,6 +345,25 @@ in the APK).
 ## 6. Journal
 
 **Newest first.** Each entry: date · cluster(s) closed/touched · commit(s) · one-paragraph why-and-what.
+
+### 2026-05-27 — 3.2.43 (C19 closed — empty-state standardization across the 3 remaining outliers)
+
+**Type:** C19 closure. Fifth P2 cluster down. Audit fixes for the 3 remaining outliers (most surfaces already used the shared theme.EmptyState per C07's sweep).
+
+**Internal milestone:** `3.2.43` / `versionCode = 166`. No Play Console upload per release-cadence ADR. No test gate change (UI-only).
+
+**Three surfaces fixed:**
+- **PeopleScreen** — bespoke `EmptyPeopleState` migrated to the shared `theme.EmptyState` composable. Removed redundant sub-header text that duplicated the empty-state body copy (audit "Contact Book: redundant double-explanation").
+- **MoneyFlowScreen filtered-empty** — promoted "No flows found" plain text to a 48dp SwapHoriz icon + filter-aware body ("No flows yet" vs "No [tab] flows" depending on active filter).
+- **InvestmentScreen Valuation History dialog** — got a 40dp History icon + 2-line body instead of plain "No records found" text. Compact form rather than the shared composable since AlertDialog body is space-constrained.
+
+**Verified already-correct:**
+- Hand Loans empty (audit #33) — no longer applies since C12 replaced the TabRow with segmented filter; per-segment empty messages are filter-aware in context.
+- Recurring + Budgeting + Goals — all already use the shared composable from C07's sweep.
+
+**Pattern: most empty states had been standardized; this commit just cleaned the 3 outliers the audit specifically called out.** The work is more "surgical cleanup" than "broad sweep." Recurring empty surfaces are uniform across the app now.
+
+**P2 remaining: C20 (Drawer cleanup) — last P2 cluster.**
 
 ### 2026-05-27 — 3.2.42 (C17 closed — DisabledButtonHint(reason) composable + 9-site sweep)
 

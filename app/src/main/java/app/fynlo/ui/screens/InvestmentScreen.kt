@@ -665,7 +665,34 @@ fun ValuationHistoryDialog(
                 Spacer(Modifier.height(12.dp))
                 
                 if (valuations.isEmpty()) {
-                    Text("No records found", style = MaterialTheme.typography.bodySmall)
+                    // C19 (3.2.43) — was "No records found" plain text; the
+                    // audit called out Valuation History as having no
+                    // illustration. AlertDialog body is space-constrained,
+                    // so use a compact icon + 2-line body rather than the
+                    // full shared EmptyState component.
+                    Column(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.History,
+                            contentDescription = null,
+                            modifier = Modifier.size(40.dp),
+                            tint = MaterialTheme.colorScheme.outlineVariant
+                        )
+                        Text(
+                            "No valuation history yet",
+                            style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            "Tap \"Update Value\" on the investment to start tracking how its value changes over time.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.outlineVariant,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                        )
+                    }
                 } else {
                     LazyColumn(modifier = Modifier.heightIn(max = 400.dp)) {
                         items(valuations) { v ->

@@ -129,13 +129,19 @@ fun PeopleScreen(viewModel: FinanceViewModel) {
             verticalArrangement = Arrangement.spacedBy(4.dp),
             contentPadding = PaddingValues(bottom = FabBottomPadding)
         ) {
-            item {
-                                Text(
-                    "Contacts link loans to people and enable WhatsApp / SMS reminders.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(bottom = 8.dp)
-                )
+            // C19 (3.2.43) — sub-header text only shown when the list has
+            // contacts. On empty state the shared EmptyState body says the
+            // same thing — removing the redundant double-explanation
+            // (audit C19 "Contact Book: redundant double-explanation").
+            if (people.isNotEmpty()) {
+                item {
+                    Text(
+                        "Contacts link loans to people and enable WhatsApp / SMS reminders.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                }
             }
 
             if (people.isEmpty()) {
@@ -415,26 +421,21 @@ fun AddPersonDialog(initial: Person? = null, onDismiss: () -> Unit, onConfirm: (
 
 // ── Empty state ───────────────────────────────────────────────────────────────
 
+/**
+ * C19 (3.2.43) — bespoke EmptyPeopleState migrated to the shared
+ * [EmptyState] composable per audit §C19. Wraps in a centred Box so the
+ * EmptyState (which uses `fillMaxSize`) renders inside the LazyColumn item
+ * slot without expanding to swallow the rest of the screen.
+ */
 @Composable
 fun EmptyPeopleState(onAdd: () -> Unit = {}) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(top = 64.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        Icon(Icons.Default.Person, null, Modifier.size(64.dp),
-            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f))
-        Text("No contacts yet",
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text(
-            "Add contacts to link loans with people\nand send WhatsApp / SMS reminders",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+    Box(modifier = Modifier.fillMaxWidth().padding(vertical = 48.dp)) {
+        app.fynlo.ui.theme.EmptyState(
+            icon        = Icons.Default.Person,
+            title       = "No contacts yet",
+            subtitle    = "Contacts link loans to people and enable WhatsApp / SMS reminders.",
+            actionLabel = "Add First Contact",
+            onAction    = onAdd,
         )
-        Button(onClick = onAdd) { Text("Add First Contact") }
     }
 }

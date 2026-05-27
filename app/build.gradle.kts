@@ -49,8 +49,8 @@ android {
         applicationId = "app.fynlo"
         minSdk = 26
         targetSdk = 36
-        versionCode = 165
-        versionName = "3.2.42"
+        versionCode = 166
+        versionName = "3.2.43"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

@@ -339,9 +339,36 @@ fun MoneyFlowScreen(viewModel: FinanceViewModel) {
             }
 
             if (filteredFlows.isEmpty()) {
+                // C19 (3.2.43) — was plain "No flows found" text; promoted
+                // to a proper icon + body + filter-aware copy. Icon stays
+                // Swap-horizontal to match the Money Flow tile.
                 item {
-                    Box(Modifier.fillMaxWidth().padding(32.dp), Alignment.Center) {
-                        Text("No flows found", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Box(
+                        Modifier.fillMaxWidth().padding(vertical = 32.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.SwapHoriz,
+                                contentDescription = null,
+                                modifier = Modifier.size(48.dp),
+                                tint = MaterialTheme.colorScheme.outlineVariant
+                            )
+                            Text(
+                                if (selectedTab == 0) "No flows yet" else "No ${tabs[selectedTab].lowercase()} flows",
+                                style = MaterialTheme.typography.titleSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Text(
+                                if (selectedTab == 0) "Log a transaction to see it appear here."
+                                else "Switch to All to see other flow types.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.outlineVariant
+                            )
+                        }
                     }
                 }
             } else {

@@ -2,6 +2,39 @@
 
 All notable changes to Fynlo are documented here.
 
+## [3.2.43] - 2026-05-27 *(Development milestone — C19 closed: empty-state standardization across 3 remaining surfaces; not promoted per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`)*
+
+### Fixed
+- **C19 — Empty states standardization (audit #33, #38, #95, #130, #196, #212, #256).** Fifth P2 cluster closed.
+
+Most empty surfaces already used the shared `app.fynlo.ui.theme.EmptyState(icon, title, subtitle, actionLabel, onAction)` composable per C07's earlier sweep — GoalScreen, RecurringScreen, BudgetScreen all routed through it. C19 cleans up the three remaining outliers the audit explicitly called out.
+
+**`PeopleScreen` — bespoke `EmptyPeopleState` migrated:**
+- Was a hand-rolled Column with a 64dp `Icons.Default.Person` icon at `onSurfaceVariant.copy(alpha = 0.4f)`, hand-styled title + body Text, and a plain `Button` CTA. Replaced by a thin wrapper around the shared `EmptyState` composable so styling and CTA shape match every other empty surface.
+- **Redundant sub-header removed** when the list is empty. Pre-C19 the screen showed "Contacts link loans to people and enable WhatsApp / SMS reminders." above the LazyColumn AND a similar sentence in the empty-state body — the audit flagged that as "redundant double-explanation." Now the sub-header only renders when `people.isNotEmpty()`; the empty-state body carries the explanatory copy on its own.
+
+**`MoneyFlowScreen` filtered-empty — promoted from plain text:**
+- Was a bare "No flows found" Text. Promoted to a 48dp `Icons.Default.SwapHoriz` icon + filter-aware copy: "No flows yet / Log a transaction to see it appear here." when no filter is active, "No [tab] flows / Switch to All to see other flow types." when a filter is active.
+- Used the empty-state Column shape directly rather than the shared composable since the shared `EmptyState` uses `fillMaxSize` and would swallow the rest of the screen. The visual style (icon at outlineVariant, body in onSurfaceVariant + outlineVariant) matches the shared composable.
+
+**`InvestmentScreen.HistoryDialog` Valuation History — got an illustration:**
+- Pre-C19: `"No records found"` plain bodySmall text inside the AlertDialog body. Audit called out "Valuation History empty: no illustration."
+- Now: 40dp `Icons.Default.History` icon at outlineVariant + 2-line body ("No valuation history yet / Tap 'Update Value' on the investment to start tracking..."). AlertDialog body is space-constrained so we don't use the full shared `EmptyState` (which has a larger icon + button), but the visual style matches the other empty states.
+
+### Audit items verified as already-correct
+- **#33 Hand Loans empty (sparse text-only)** — no longer applies; the Interest/Hand TabRow was replaced by the Active/Overdue/Closed segmented filter in C12 Stage 2 (3.2.27). The per-segment empty-state messages all use a Box-centered Text inside the LazyColumn item; the filter context makes them informative ("No overdue loans — you're up to date 🎉" / "No closed loans yet"). Not a polish issue anymore.
+- **#212 Budgeting empty (no CTA)** + **#196 Recurring "Add First" with mint chip** — both already route through `theme.EmptyState` per C07's sweep.
+- **#256 Money Flow full placeholder with no CTA** — C15e (3.2.33) gave the screen real content; only the filtered-empty case (no flows match the active filter) remained as a plain-text empty, and that's what landed here.
+
+### Closes
+- **C19 audit fixes #38, #95, #130** (the 3 fixed here). #33, #196, #212, #256 verified as already-correct or no-longer-applies.
+
+### Changed
+- **`versionName`** `3.2.42` → `3.2.43`, **`versionCode`** `165` → `166`.
+
+### Data-integrity gate
+Unchanged at **137 tests across 12 classes**, 0 failures (UI-only).
+
 ## [3.2.42] - 2026-05-27 *(Development milestone — C17 closed: DisabledButtonHint(reason) composable + 9-site sweep; not promoted per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`)*
 
 ### Fixed
