@@ -53,6 +53,10 @@ fun SettingsScreen(
     val displayNameFlow    by UserPreferences.userDisplayName(context).collectAsState(initial = "")
     var displayName        by remember { mutableStateOf("") }
     val notifsEnabled      by UserPreferences.notificationsEnabled(context).collectAsState(initial = true)
+    // C18 — split toggles (audit fix #1). Each defaults to the master in the
+    // pref-layer Flow so existing-setup users see consistent state on first open.
+    val loanRemindersEnabled by UserPreferences.loanRemindersEnabled(context).collectAsState(initial = true)
+    val budgetAlertsEnabled  by UserPreferences.budgetAlertsEnabled(context).collectAsState(initial = true)
     val defaultCurrency    by UserPreferences.defaultCurrency(context).collectAsState(initial = "INR")
     val dateFormat         by UserPreferences.dateFormat(context).collectAsState(initial = "dd-MM-yyyy")
 
@@ -339,9 +343,19 @@ fun SettingsScreen(
         Spacer(Modifier.height(16.dp))
 
         // ── Notifications ────────────────────────────────────────────────────
+        // C18 fix #1 (3.2.20) — the single "Loan & Budget Reminders" Switch
+        // bundled two semantically different alert types. Split into:
+        //   - Loan reminders   (overdue loans, due-date reminders for borrowers)
+        //   - Budget alerts    (over-budget category warnings, daily-spend nudges)
+        // Each toggles its own pref; setting either ON keeps the master
+        // `notifications_enabled` ON so the [ReminderScheduler] keeps running.
+        // Setting both OFF disables the master too — scheduler stops.
+        // Worker-layer differentiation (which alarm class reads which sub-key
+        // before firing) is a follow-up; the UI split lands now so users have
+        // granular control even if the underlying dispatch is currently unified.
         SettingsSectionLabel("Notifications")
         SettingsCard {
-            // Notification toggle
+            // Loan reminders sub-toggle
             Row(
                 Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically
@@ -349,16 +363,44 @@ fun SettingsScreen(
                 Icon(Icons.Default.Notifications, null, tint = Amber, modifier = Modifier.size(24.dp))
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
-                    Text("Loan & Budget Reminders",
+                    Text("Loan reminders",
                         style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold))
-                    Text("Overdue loans, due payments, budget alerts",
+                    Text("Overdue loans and due-payment alerts",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 Switch(
-                    checked         = notifsEnabled,
+                    checked         = loanRemindersEnabled,
                     onCheckedChange = {
-                        scope.launch { UserPreferences.setNotificationsEnabled(context, it) }
+                        scope.launch { UserPreferences.setLoanRemindersEnabled(context, it) }
+                        // Re-schedule if either toggle goes ON; ReminderScheduler
+                        // is idempotent (uses ExistingPeriodicWorkPolicy.KEEP).
+                        if (it) app.fynlo.notifications.ReminderScheduler.schedule(context)
+                    },
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = Emerald500,
+                        checkedTrackColor = Emerald500.copy(alpha = 0.4f))
+                )
+            }
+            SettingsDivider()
+            // Budget alerts sub-toggle
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(Icons.Default.PieChart, null, tint = Amber, modifier = Modifier.size(24.dp))
+                Spacer(Modifier.width(12.dp))
+                Column(Modifier.weight(1f)) {
+                    Text("Budget alerts",
+                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold))
+                    Text("Over-budget category warnings",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Switch(
+                    checked         = budgetAlertsEnabled,
+                    onCheckedChange = {
+                        scope.launch { UserPreferences.setBudgetAlertsEnabled(context, it) }
                         if (it) app.fynlo.notifications.ReminderScheduler.schedule(context)
                     },
                     colors = SwitchDefaults.colors(
@@ -385,6 +427,15 @@ fun SettingsScreen(
             val groupedOrder = remember(recentCurrencies, fullCurrencies) {
                 buildCurrencyPickerOrder(recentCurrencies, fullCurrencies)
             }
+            // Shared label formatter — used both for the field's selected-row
+            // display and the per-row dropdown items so they stay in sync.
+            // Audit fix #10: format reads `INR  ₹  Indian Rupee` instead of
+            // the bare 3-letter code.
+            fun currencyLabel(code: String): String {
+                val info = CurrencyUtils.supported.firstOrNull { it.code == code }
+                return if (info == null) code
+                else "${info.code}   ${info.symbol}   ${info.name}"
+            }
             var currencyExpanded by remember { mutableStateOf(false) }
             ExposedDropdownMenuBox(
                 expanded = currencyExpanded,
@@ -392,7 +443,7 @@ fun SettingsScreen(
                 modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 8.dp)
             ) {
                 OutlinedTextField(
-                    value = pickerCurrency.ifBlank { defaultCurrency },
+                    value = currencyLabel(pickerCurrency.ifBlank { defaultCurrency }),
                     onValueChange = {}, readOnly = true,
                     label = { Text("Currency") },
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = currencyExpanded) },
@@ -410,7 +461,7 @@ fun SettingsScreen(
                             modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
                         )
                         recentCurrencies.forEach { code ->
-                            DropdownMenuItem(text = { Text(code) }, onClick = {
+                            DropdownMenuItem(text = { Text(currencyLabel(code)) }, onClick = {
                                 pickerCurrency = code
                                 scope.launch { UserPreferences.setDefaultCurrency(context, code) }
                                 viewModel.recordCurrency(code)
@@ -425,7 +476,7 @@ fun SettingsScreen(
                     // main list so users don't have to scroll past their
                     // recents to re-find a familiar code.
                     fullCurrencies.forEach { code ->
-                        DropdownMenuItem(text = { Text(code) }, onClick = {
+                        DropdownMenuItem(text = { Text(currencyLabel(code)) }, onClick = {
                             pickerCurrency = code
                             scope.launch { UserPreferences.setDefaultCurrency(context, code) }
                             viewModel.recordCurrency(code)
@@ -436,21 +487,54 @@ fun SettingsScreen(
             }
             HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
             // Date Format
+            // C18 (3.2.20) — was a SegmentedButtonRow (3.2.11) showing just the
+            // pattern strings (`dd-MM-yyyy` / `MM-dd-yyyy` / `yyyy-MM-dd`).
+            // The audit asked for example values alongside the pattern so the
+            // user sees what they're actually choosing. Segmented buttons
+            // don't have room for both pattern + example; switched to an
+            // ExposedDropdownMenuBox (same widget as Currency above and the
+            // EMI Calculator Frequency picker) where each menu item shows
+            // `dd-MM-yyyy (27-05-2026)`. The currently-selected option in the
+            // field shows the example only, keeping the field readable at a
+            // glance; the patterns are visible once the user opens the menu.
             Text("Date Format", style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
-            // 3.2.11 chip-sweep: 3-option mutually-exclusive date format → SegmentedButtonRow.
-            // `icon = {}` per the 3.2.8 lesson.
+            val today = remember { java.time.LocalDate.now() }
             val dateFormatOptions = listOf("dd-MM-yyyy", "MM-dd-yyyy", "yyyy-MM-dd")
-            SingleChoiceSegmentedButtonRow(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(bottom = 12.dp)
+            // Resolve the example for the currently-selected pattern; this is
+            // what's shown in the dropdown field so the user can see the format
+            // at a glance rather than having to mentally parse the pattern.
+            val dateFormatExample = remember(dateFormat, today) {
+                runCatching { today.format(java.time.format.DateTimeFormatter.ofPattern(dateFormat)) }
+                    .getOrDefault(today.toString())
+            }
+            var dateFormatExpanded by remember { mutableStateOf(false) }
+            ExposedDropdownMenuBox(
+                expanded = dateFormatExpanded,
+                onExpandedChange = { dateFormatExpanded = !dateFormatExpanded },
+                modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 12.dp),
             ) {
-                dateFormatOptions.forEachIndexed { idx, fmt ->
-                    SegmentedButton(
-                        selected = dateFormat == fmt,
-                        onClick = { scope.launch { UserPreferences.setDateFormat(context, fmt) } },
-                        shape = SegmentedButtonDefaults.itemShape(idx, dateFormatOptions.size),
-                        icon = {},
-                        label = { Text(fmt, style = MaterialTheme.typography.labelSmall) },
-                    )
+                OutlinedTextField(
+                    value = "$dateFormat   →   $dateFormatExample",
+                    onValueChange = {}, readOnly = true,
+                    label = { Text("Date Format") },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = dateFormatExpanded) },
+                    modifier = Modifier
+                        .menuAnchor(androidx.compose.material3.ExposedDropdownMenuAnchorType.PrimaryNotEditable, true)
+                        .fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                )
+                ExposedDropdownMenu(expanded = dateFormatExpanded, onDismissRequest = { dateFormatExpanded = false }) {
+                    dateFormatOptions.forEach { fmt ->
+                        val example = runCatching { today.format(java.time.format.DateTimeFormatter.ofPattern(fmt)) }
+                            .getOrDefault(today.toString())
+                        DropdownMenuItem(
+                            text = { Text("$fmt   ($example)") },
+                            onClick = {
+                                scope.launch { UserPreferences.setDateFormat(context, fmt) }
+                                dateFormatExpanded = false
+                            },
+                        )
+                    }
                 }
             }
         }
@@ -484,19 +568,31 @@ fun SettingsScreen(
                     putExtra(android.content.Intent.EXTRA_TEXT, deviceInfo)
                 })
             }
-            SettingsDivider()
-            SettingsActionRow(
-                icon  = Icons.Default.Star,
-                color = Amber,
-                title = "Rate on Play Store",
-                subtitle = "Enjoying Fynlo? Leave us a review!"
-            ) {
-                try {
-                    context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW,
-                        android.net.Uri.parse("market://details?id=${context.packageName}")))
-                } catch (e: Exception) {
-                    context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW,
-                        android.net.Uri.parse("https://play.google.com/store/apps/details?id=${context.packageName}")))
+            // C18 fix #5 (3.2.20) — Rate-on-Play-Store gated by positive
+            // engagement. The audit's complaint was the rate-prompt being
+            // shown immediately rather than after the user has actually
+            // used the app. Threshold: ≥5 transactions logged. Fresh
+            // installs / first-day users don't see the row at all, so
+            // they can't be nudged toward a premature rating they
+            // wouldn't otherwise leave. After 5 transactions the user
+            // has demonstrably engaged with the core flow, and the row
+            // appears under App Info as a normal entry.
+            val transactionCount by viewModel.transactions.collectAsState()
+            if (transactionCount.size >= 5) {
+                SettingsDivider()
+                SettingsActionRow(
+                    icon  = Icons.Default.Star,
+                    color = Amber,
+                    title = "Rate on Play Store",
+                    subtitle = "Enjoying Fynlo? Leave us a review!"
+                ) {
+                    try {
+                        context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW,
+                            android.net.Uri.parse("market://details?id=${context.packageName}")))
+                    } catch (e: Exception) {
+                        context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW,
+                            android.net.Uri.parse("https://play.google.com/store/apps/details?id=${context.packageName}")))
+                    }
                 }
             }
             SettingsDivider()
@@ -546,7 +642,13 @@ fun SettingsScreen(
                     onDismissRequest = { showCleanupConfirm = false },
                     title = { Text("Cleanup Seeder Data?") },
                     text  = { Text("Removes all QA test data from the app and Firestore.") },
-                    confirmButton = { Button(onClick = { viewModel.cleanupSeeederData(); showCleanupConfirm = false }) { Text("Cleanup") } },
+                    // C18 (3.2.20) — destructive action confirm button gets the
+                    // Red treatment for parity with Load Test Data / Wipe ALL.
+                    // Pre-3.2.20 this was a default-coloured Button, which the
+                    // audit flagged as inconsistent destructive-dialog colour.
+                    confirmButton = { Button(onClick = { viewModel.cleanupSeeederData(); showCleanupConfirm = false },
+                        colors = ButtonDefaults.buttonColors(containerColor = Red)
+                    ) { Text("Cleanup") } },
                     dismissButton = { TextButton(onClick = { showCleanupConfirm = false }) { Text("Cancel") } }
                 )
                 if (showRestoreConfirm) AlertDialog(
@@ -718,18 +820,18 @@ fun SettingsScreen(
 
 @Composable
 private fun SettingsSectionLabel(title: String) {
-    Row(
-        Modifier.padding(start = 2.dp, bottom = 8.dp, top = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp)
-    ) {
-        Box(Modifier.size(4.dp).clip(CircleShape).background(Emerald500))
-        Text(
-            title,
-            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
-            color = Emerald500
-        )
-    }
+    // C18 (3.2.20) — removed the emerald `•` bullet + emerald-coloured text.
+    // The audit called this inconsistent with the rest of the app, where
+    // section headers are plain bold on default surface colour. The Danger
+    // Zone header (further below) keeps its red bullet because it serves
+    // a distinct attention-grabbing role; ordinary "Personalization",
+    // "Notifications", "Formatting" etc. don't need it.
+    Text(
+        title,
+        style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(start = 4.dp, bottom = 8.dp, top = 4.dp),
+    )
 }
 
 @Composable

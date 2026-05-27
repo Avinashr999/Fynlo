@@ -33,6 +33,17 @@ object UserPreferences {
     private val APP_LANGUAGE = stringPreferencesKey("app_language")
     private val DARK_MODE = stringPreferencesKey("dark_mode") // "light", "dark", "system"
     private val NOTIFICATIONS_ENABLED = booleanPreferencesKey("notifications_enabled")
+    // C18 (3.2.20) — split notifications into two independently-toggleable
+    // sub-categories per UX_AUDIT §C18 fix #1. The legacy `notifications_enabled`
+    // key stays as the master switch (used by [ReminderScheduler] / setup screen
+    // / first-launch wizard); these two sub-keys add granular control inside
+    // Settings. Both default to the master's current value, so existing users
+    // who disabled notifications in setup see both sub-toggles already OFF.
+    // Worker-layer differentiation (which alarm class reads which sub-key) is
+    // a follow-up — for now both sub-toggles affect the master via UI
+    // wire-up, and the Workers continue to read the master.
+    private val LOAN_REMINDERS_ENABLED = booleanPreferencesKey("loan_reminders_enabled")
+    private val BUDGET_ALERTS_ENABLED  = booleanPreferencesKey("budget_alerts_enabled")
     private val USER_DISPLAY_NAME = stringPreferencesKey("user_display_name")
     private val DEFAULT_CURRENCY = stringPreferencesKey("default_currency")
     private val DATE_FORMAT = stringPreferencesKey("date_format")
@@ -65,6 +76,15 @@ object UserPreferences {
 
     fun notificationsEnabled(context: Context): Flow<Boolean> =
         context.dataStore.data.map { it[NOTIFICATIONS_ENABLED] ?: true }
+
+    /** C18 sub-toggle: defaults to the master `notificationsEnabled` value so
+     *  existing users who disabled notifications in setup see this OFF. */
+    fun loanRemindersEnabled(context: Context): Flow<Boolean> =
+        context.dataStore.data.map { it[LOAN_REMINDERS_ENABLED] ?: (it[NOTIFICATIONS_ENABLED] ?: true) }
+
+    /** C18 sub-toggle: defaults to the master `notificationsEnabled` value. */
+    fun budgetAlertsEnabled(context: Context): Flow<Boolean> =
+        context.dataStore.data.map { it[BUDGET_ALERTS_ENABLED] ?: (it[NOTIFICATIONS_ENABLED] ?: true) }
 
     fun userDisplayName(context: Context): Flow<String> =
         context.dataStore.data.map { it[USER_DISPLAY_NAME] ?: "" }
@@ -133,6 +153,30 @@ object UserPreferences {
 
     suspend fun setNotificationsEnabled(context: Context, enabled: Boolean) {
         context.dataStore.edit { it[NOTIFICATIONS_ENABLED] = enabled }
+    }
+
+    /**
+     * C18 sub-toggle setter. Also updates the master `notificationsEnabled`
+     * via OR-with-the-other-sub: master is ON when EITHER sub-toggle is ON
+     * (so the [ReminderScheduler] keeps scheduling work). When BOTH sub-
+     * toggles are off, the master flips to OFF and the scheduler stops.
+     */
+    suspend fun setLoanRemindersEnabled(context: Context, enabled: Boolean) {
+        context.dataStore.edit { prefs ->
+            prefs[LOAN_REMINDERS_ENABLED] = enabled
+            // Derive master: ON if either sub is ON.
+            val budget = prefs[BUDGET_ALERTS_ENABLED] ?: (prefs[NOTIFICATIONS_ENABLED] ?: true)
+            prefs[NOTIFICATIONS_ENABLED] = enabled || budget
+        }
+    }
+
+    /** C18 sub-toggle setter — symmetric with [setLoanRemindersEnabled]. */
+    suspend fun setBudgetAlertsEnabled(context: Context, enabled: Boolean) {
+        context.dataStore.edit { prefs ->
+            prefs[BUDGET_ALERTS_ENABLED] = enabled
+            val loan = prefs[LOAN_REMINDERS_ENABLED] ?: (prefs[NOTIFICATIONS_ENABLED] ?: true)
+            prefs[NOTIFICATIONS_ENABLED] = enabled || loan
+        }
     }
 
     suspend fun setUserDisplayName(context: Context, name: String) {

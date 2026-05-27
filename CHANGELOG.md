@@ -2,6 +2,40 @@
 
 All notable changes to Fynlo are documented here.
 
+## [3.2.20] - 2026-05-27 *(Development milestone — C18 Settings cleanup (6 of 11 fixes); not promoted per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`)*
+
+### Fixed
+- **C18 — Settings cleanup. 6 of 11 audit fix points landed; 4 already done; 1 deferred (#4 Report-a-Bug in-app form, own commit).** 6th P1 Sprint 2 cluster effectively closed.
+  - **Section headers redesigned** (audit #8) — `SettingsSectionLabel` dropped the emerald `•` bullet `Box` and emerald-coloured text; now plain bold `labelLarge` on default surface-variant colour. Quieter visual hierarchy. Danger Zone header keeps its red bullet (distinct attention-grabbing role).
+  - **Date Format with examples** (audit #2) — switched from `SingleChoiceSegmentedButtonRow` to `ExposedDropdownMenuBox`. Field shows `dd-MM-yyyy   →   27-05-2026` so the example is visible at a glance; menu items show `dd-MM-yyyy   (27-05-2026)`. Today's date used so examples self-update.
+  - **Loan & Budget Reminders split into 2 toggles** (audit #1) — `LOAN_REMINDERS_ENABLED` + `BUDGET_ALERTS_ENABLED` prefs added to `UserPreferences`. Both default to the master `notifications_enabled` value (existing users who disabled in setup see both OFF). UI shows two `Switch` rows with separate icons / subtitles. Master `notifications_enabled` is derived as `(loan OR budget)` so `ReminderScheduler` keeps running; when both sub-toggles OFF the master flips OFF and scheduler stops. Worker-layer differentiation (which alarm class reads which sub-key) is a follow-up; UI split lands now.
+  - **Currency picker rows show `INR   ₹   Indian Rupee`** (audit #10) — was bare 3-letter codes. Both the field display and dropdown menu items use a shared `currencyLabel(code)` helper that reads `CurrencyUtils.supported` to unpack the symbol + name. Unknown codes fall back to the bare code.
+  - **Rate-on-Play-Store gated by engagement** (audit #5) — row hidden until `transactions.size >= 5`. Fresh-install users don't see the prompt; once they've logged 5 transactions (demonstrable engagement) the row appears under App Info. No automatic prompt — Fynlo never had one; the audit's "rate immediately" concern was about the always-visible row affordance, which is now usage-gated.
+  - **Dialog button colors standardized** (audit #9) — Cleanup Seeder confirm button gets `containerColor = Red` (was default), bringing it in line with Load Test Data + Wipe ALL. Restore Real Data stays neutral (audit explicitly called it "correct").
+
+### Already done before this commit (verified, no changes needed)
+- **#3 Default currency = system locale on fresh install** — landed in C04 Stage 3 (3.2.6, `rememberLastCurrencyOrLocale`).
+- **#6 Developer section hidden in release** — already gated by `BuildConfig.DEBUG` at SettingsScreen line ~527. Audit was reporting an older state.
+- **#11 Recalculate Balances description** — already covered by C02.
+
+### Skipped as N/A
+- **#7 Move Wipe ALL Data into Danger Zone** — Wipe ALL Data is debug-only (inside the DEBUG-gated Developer section, so absent from release builds entirely). The user-facing "Reset All Data" in the Danger Zone covers end-user needs. Moving Wipe ALL would expose a destructive debug-only tool to end users — wrong direction.
+
+### Deferred (own commit)
+- **#4 Report a Bug → in-app form with auto-attached version + device + last error log** — this is a whole new screen with form fields, crash-log attachment, email composition, and back-nav plumbing. Logged as Task #26. The current behavior (mailto: intent with device-info prefilled in body) still works; the audit's improvement is "form-with-attachments" replacing the email-compose flow.
+
+### Closes
+- **UX_AUDIT §C18 — Settings cleanup** (effectively, modulo #4 Report-a-Bug form). 6th P1 Sprint 2 cluster done.
+
+### Changed
+- **`versionName`** `3.2.19` → `3.2.20`, **`versionCode`** `142` → `143`.
+
+### Data-integrity gate
+Unchanged at **114 tests across 10 classes**, 0 failures (pure UI + prefs refactor — no logic that needs new test coverage; existing `UserPreferences` and `ReminderScheduler` paths still work).
+
+### Sprint 2 P1 milestone
+After this commit, **6 P1 Sprint 2 clusters are CLOSED**: C04 (3.2.6), C06+C07 (3.2.12), C08 (3.2.18), C09 (3.2.19), **C18 (3.2.20)**. Remaining P1: C12-C15 (screen redesigns), C21 (PDF/XLSX export quality polish).
+
 ## [3.2.19] - 2026-05-27 *(Development milestone — C09 CLOSURE: UTF-8 mojibake fixes + regression guard; not promoted per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`)*
 
 ### Fixed

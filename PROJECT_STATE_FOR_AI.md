@@ -158,7 +158,7 @@ AI_AGENT_PROTOCOL.md to match.
 
 # Fynlo - Complete AI Portability File
 **Project Name**: Fynlo
-**Version**: 3.2.19 on `master` (`versionName = "3.2.19"`, `versionCode = 142`). All four Sprint-1 P0 clusters closed (C01 / C02 / C03a / C05). **Five P1 Sprint 2 clusters closed: C04 at 3.2.6, C06+C07 at 3.2.12, C08 at 3.2.18, C09 at 3.2.19.** Remaining P1: C12-C15 (screen redesigns), C18 (Settings cleanup), C21 (PDF/XLSX export quality polish — page breaks, group totals, embedded glyphs). Internal milestone markers only — per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens until every `UX_AUDIT` cluster (P0 through P3) is closed.
+**Version**: 3.2.20 on `master` (`versionName = "3.2.20"`, `versionCode = 143`). All four Sprint-1 P0 clusters closed (C01 / C02 / C03a / C05). **Six P1 Sprint 2 clusters closed: C04 at 3.2.6, C06+C07 at 3.2.12, C08 at 3.2.18, C09 at 3.2.19, C18 at 3.2.20 (6 of 11 fixes landed; #4 Report-a-Bug in-app form deferred as Task #26).** Remaining P1: C12-C15 (screen redesigns), C21 (PDF/XLSX export quality polish). Internal milestone markers only — per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens until every `UX_AUDIT` cluster (P0 through P3) is closed.
 **Platform**: Android (Kotlin, Jetpack Compose, Room — Gradle 9.4.1, AGP 9.2.1, Room 2.8.4, KSP 2.3.7, Kotlin 2.2.10)
 
 ## 1. Project Overview
@@ -345,6 +345,35 @@ in the APK).
 ## 6. Journal
 
 **Newest first.** Each entry: date · cluster(s) closed/touched · commit(s) · one-paragraph why-and-what.
+
+### 2026-05-27 — 3.2.20 (C18 Settings cleanup: 6 of 11 audit fix points)
+
+**Type:** P1 Settings polish cluster. Investigation showed 4 of 11 audit points were already-done (verified during scope analysis), 1 is N/A (Wipe ALL Data placement), 1 deferred (#4 Report-a-Bug — needs its own new-screen commit). The remaining 6 landed in one cohesive commit.
+
+**Internal milestone:** `3.2.20` / `versionCode = 143`. No Play Console upload per release-cadence ADR. No test gate change (pure UI + prefs refactor).
+
+**What landed (6 fixes):**
+- **Section headers redesigned** — removed emerald `•` bullet + emerald colour from `SettingsSectionLabel`; now plain bold default-variant text. Danger Zone keeps its red bullet (distinct role). Quieter, more consistent with rest of app.
+- **Date Format dropdown with examples** — switched from `SegmentedButtonRow` (3.2.11) to `ExposedDropdownMenuBox`. Field shows `dd-MM-yyyy   →   27-05-2026`; menu items show `dd-MM-yyyy   (27-05-2026)`. Today's date used as example so it self-updates.
+- **Notifications split into 2 toggles** — `LOAN_REMINDERS_ENABLED` + `BUDGET_ALERTS_ENABLED` prefs added. Both default to master `notifications_enabled` (preserves existing setup-screen behavior). Master derived as `loan OR budget` so `ReminderScheduler` keeps running on either; when both sub-toggles OFF, master flips OFF too. Worker-layer differentiation (which alarm class reads which sub-key when firing) deferred.
+- **Currency picker rows show `INR   ₹   Indian Rupee`** — both field display and dropdown menu items use shared `currencyLabel(code)` helper that reads `CurrencyUtils.supported`. Unknown codes fall back to the bare code.
+- **Rate-on-Play-Store usage-gated** — row hidden until `transactions.size >= 5`. Fresh-install users don't see the prompt. No automatic-prompt logic existed; the audit's "rate immediately" concern was about always-visible row affordance, now usage-gated.
+- **Cleanup Seeder dialog confirm button gets `Red`** — was default; now matches Load Test Data + Wipe ALL destructive treatment.
+
+**Already done (verified before scoping this commit):**
+- #3 (currency locale default) — C04 Stage 3.
+- #6 (Developer hidden in release) — `BuildConfig.DEBUG` gate already in place.
+- #11 (Recalc description) — C02.
+
+**Skipped as N/A:**
+- #7 (Wipe ALL Data position) — Wipe ALL is debug-only; Reset All Data in Danger Zone covers user-facing.
+
+**Deferred to own commit (Task #26):**
+- #4 (Report a Bug in-app form) — new screen with form fields + crash-log attach + email-compose + back-nav. Not blocking C18; current mailto: behavior still works.
+
+**Process lesson:** when an audit cluster has many fix points (11 here), the investigation phase is half the work. 4 were already-done, 1 N/A, 1 too-big-to-bundle — only 6 needed real implementation. Worth always running this triage before estimating effort. Audit's "M (2-3 days)" estimate was for all 11 from scratch; we got to "C18 closed for audit purposes" in one session because 5 didn't need doing.
+
+**6 of 9 P1 Sprint 2 clusters closed.** Remaining P1: C12-C15 (screen redesigns — biggest remaining work), C21 (PDF/XLSX export quality polish — page breaks, group totals, embedded glyph fonts; partial follow-on from C08).
 
 ### 2026-05-27 — 3.2.19 (C09 CLOSURE: UTF-8 mojibake fixes + regression guard)
 
