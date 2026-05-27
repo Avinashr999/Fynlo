@@ -2,6 +2,8 @@ package app.fynlo.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -287,7 +289,18 @@ private fun AddRecurringDialog(
         onDismissRequest = onDismiss,
         title = { Text("Add Recurring Transaction") },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            // C22 Stage 2 smoke fix #3 (3.2.50) — wrap the Column in
+            // verticalScroll so the form fits inside the AlertDialog text
+            // slot regardless of total content height. Pre-3.2.50 the form
+            // had ~10 fields totalling ~700dp but the dialog text slot is
+            // only ~400dp tall — bottom items (Frequency segments + Use-
+            // last-day + day input + preview) were clipped invisible.
+            // AlertDialog doesn't auto-scroll its text slot in this
+            // Material 3 + Compose version.
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
                 OutlinedTextField(value = name, onValueChange = { name = it },
                     label = { Text("Name (e.g. Monthly Rent)") }, singleLine = true,
                     modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp))

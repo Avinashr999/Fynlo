@@ -2,6 +2,21 @@
 
 All notable changes to Fynlo are documented here.
 
+## [3.2.50] - 2026-05-27 *(Development milestone — AddRecurring form wrapped in verticalScroll so bottom items aren't clipped (3.2.49 was still broken); not promoted per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`)*
+
+### Fixed
+- **AddRecurring form was clipping below "Frequency".** Third smoke surface in a row for this dialog. 3.2.49 swapped the Frequency picker from dropdown to SegmentedButtonRow but user screencap still showed only the "Frequency" label rendering — the 4 segmented chips, the "Use last day of month" checkbox, the day-of-month input, and the "Next occurrences" preview were all clipped. The AlertDialog text slot doesn't auto-scroll in this Material 3 + Compose version, so a tall form just overflows invisibly.
+- **Fix: wrap the form Column in `verticalScroll(rememberScrollState())`.** Total form height is ~700dp; AlertDialog text slot is ~400dp; everything past the visible viewport is now reachable via swipe. Confirmed working via device screencap — all 4 Frequency chips render, the checkbox + day input + preview are visible after a scroll.
+
+### Lesson logged
+- **AlertDialog's `text` slot doesn't scroll its content** in Material 3 / Compose currently. If your form has > 6 inputs, wrap the Column in `verticalScroll(rememberScrollState())` explicitly or use a `Dialog` instead. This bites doubly when you only screencap the visible viewport in dev and miss that everything below is clipped.
+
+### Changed
+- **`versionName`** `3.2.49` → `3.2.50`, **`versionCode`** `172` → `173`.
+
+### Data-integrity gate
+Unchanged at **137 tests across 12 classes**, 0 failures (1-line scroll wrap).
+
 ## [3.2.49] - 2026-05-27 *(Development milestone — AddRecurring Frequency dropdown → SegmentedButtonRow (3.2.48 was still broken); not promoted per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`)*
 
 ### Fixed
