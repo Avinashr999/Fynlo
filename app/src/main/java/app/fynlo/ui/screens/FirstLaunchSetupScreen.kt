@@ -77,7 +77,13 @@ import app.fynlo.ui.theme.Emerald700
 import app.fynlo.ui.theme.Emerald900
 import app.fynlo.ui.theme.ThemeController
 
-private const val TOTAL_STEPS = 3
+// 3.2.21 — was 3 steps (theme / notifications / profile). The theme step is
+// removed per UX feedback: forcing the user to pick light/dark mode before
+// they've even used the app is a friction point; the app defaults to
+// "Follow system" (`darkMode(): "system"` in UserPreferences) which is the
+// right choice for almost everyone. Users who want to override can do so
+// from Settings → Personalization any time. Now 2 steps: notifications + profile.
+private const val TOTAL_STEPS = 2
 
 @Composable
 fun FirstLaunchSetupScreen(onComplete: () -> Unit) {
@@ -86,13 +92,10 @@ fun FirstLaunchSetupScreen(onComplete: () -> Unit) {
 
     var currentStep by remember { mutableIntStateOf(0) }
 
-    // Step 1 state — theme (null = system)
-    var selectedTheme by remember { mutableStateOf<Boolean?>(null) }
-
-    // Step 2 state — reminders
+    // Step 1 state — reminders (was step 2 before the 3.2.21 theme-step removal)
     var notificationsEnabled by remember { mutableStateOf(true) }
 
-    // Step 3 state — name
+    // Step 2 state — name (was step 3)
     var displayName by remember { mutableStateOf("") }
 
     // Notification permission launcher
@@ -100,11 +103,24 @@ fun FirstLaunchSetupScreen(onComplete: () -> Unit) {
         ActivityResultContracts.RequestPermission()
     ) { /* result handled — user sees system dialog */ }
 
+    // 3.2.21 — was hardcoded `Brush.verticalGradient(Emerald900, Emerald700)`
+    // — a dark "premium splash" look regardless of system theme. Per user
+    // feedback, the setup pages should respect the phone's light/dark
+    // setting. Now using the same theme-aware gradient as OnboardingScreen:
+    // bg → bg → faint emerald tint. Reads light on light theme, dark on
+    // dark theme. The emerald accent at the bottom keeps brand identity
+    // in both modes (it's a 4% alpha so subtle in both).
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(
-                Brush.verticalGradient(listOf(Emerald900, Emerald700))
+                Brush.verticalGradient(
+                    listOf(
+                        MaterialTheme.colorScheme.background,
+                        MaterialTheme.colorScheme.background,
+                        Emerald700.copy(alpha = 0.04f),
+                    )
+                )
             )
     ) {
         Column(
@@ -125,7 +141,8 @@ fun FirstLaunchSetupScreen(onComplete: () -> Unit) {
                         app.fynlo.data.Analytics.setupSkipped(atStep = currentStep)
                         onComplete()
                     }) {
-                        Text("Skip", color = Color.White.copy(alpha = 0.7f))
+                        // 3.2.21 — theme-aware text colour (was Color.White)
+                        Text("Skip", color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
             } else {
@@ -149,20 +166,14 @@ fun FirstLaunchSetupScreen(onComplete: () -> Unit) {
                 modifier = Modifier.weight(1f),
                 label = "step"
             ) { step ->
+                // 3.2.21 — was 3 cases (0=theme, 1=notifications, 2=profile).
+                // Theme step dropped; remaining steps re-indexed to 0/1.
                 when (step) {
-                    0 -> ThemeStep(
-                        selected = selectedTheme,
-                        onSelect = {
-                            selectedTheme = it
-                            ThemeController.darkModeOverride = it
-                            ThemeController.save(context)
-                        }
-                    )
-                    1 -> NotificationStep(
+                    0 -> NotificationStep(
                         enabled = notificationsEnabled,
                         onSelect = { notificationsEnabled = it }
                     )
-                    2 -> ProfileStep(
+                    1 -> ProfileStep(
                         name = displayName,
                         onNameChange = { displayName = it }
                     )
@@ -181,8 +192,11 @@ fun FirstLaunchSetupScreen(onComplete: () -> Unit) {
                             .size(if (index == currentStep) 10.dp else 8.dp)
                             .clip(CircleShape)
                             .background(
-                                if (index == currentStep) Emerald400
-                                else Color.White.copy(alpha = 0.3f)
+                                // 3.2.21 — theme-aware inactive dot colour
+                                // (was Color.White.copy(alpha=0.3f), unreadable
+                                // on a light background).
+                                if (index == currentStep) Emerald500
+                                else MaterialTheme.colorScheme.outlineVariant
                             )
                     )
                 }
@@ -196,16 +210,17 @@ fun FirstLaunchSetupScreen(onComplete: () -> Unit) {
             ) {
                 // Back button
                 if (currentStep > 0) {
+                    // 3.2.21 — theme-aware background + icon tint.
                     IconButton(
                         onClick = { currentStep-- },
                         modifier = Modifier
                             .size(48.dp)
                             .clip(CircleShape)
-                            .background(Color.White.copy(alpha = 0.15f))
+                            .background(MaterialTheme.colorScheme.surfaceVariant)
                     ) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack, "Back",
-                            tint = Color.White
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 } else {
@@ -216,14 +231,13 @@ fun FirstLaunchSetupScreen(onComplete: () -> Unit) {
                 val isLast = currentStep == TOTAL_STEPS - 1
                 Button(
                     onClick = {
+                        // 3.2.21 — step indices shifted after the theme step
+                        // removal (was 0=theme/1=notifications/2=profile).
                         val stepName = when (currentStep) {
-                            0 -> "theme"; 1 -> "notifications"; 2 -> "profile"; else -> "unknown"
+                            0 -> "notifications"; 1 -> "profile"; else -> "unknown"
                         }
                         when (currentStep) {
                             0 -> {
-                                // Theme already saved on selection via ThemeController.save()
-                            }
-                            1 -> {
                                 scope.launch { UserPreferences.setNotificationsEnabled(context, notificationsEnabled) }
                                 if (notificationsEnabled &&
                                     Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
@@ -238,7 +252,7 @@ fun FirstLaunchSetupScreen(onComplete: () -> Unit) {
                                     }
                                 }
                             }
-                            2 -> {
+                            1 -> {
                                 scope.launch { UserPreferences.setUserDisplayName(context, displayName.trim()) }
                             }
                         }
@@ -250,9 +264,13 @@ fun FirstLaunchSetupScreen(onComplete: () -> Unit) {
                             currentStep++
                         }
                     },
+                    // 3.2.21 — was white-on-emerald-900 which only made sense
+                    // against the old dark gradient. Now uses the brand
+                    // emerald accent (works against both light and dark
+                    // backgrounds) with white text.
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color.White,
-                        contentColor = Emerald900
+                        containerColor = Emerald500,
+                        contentColor = Color.White,
                     ),
                     shape = RoundedCornerShape(24.dp),
                     modifier = Modifier.height(48.dp)
@@ -318,6 +336,8 @@ private fun ThemeStep(selected: Boolean?, onSelect: (Boolean?) -> Unit) {
 
 @Composable
 private fun NotificationStep(enabled: Boolean, onSelect: (Boolean) -> Unit) {
+    // 3.2.21 — all hardcoded Color.White / Color.White.copy(alpha=0.6f) →
+    // theme-aware onSurface / onSurfaceVariant. Emerald checkmark stays.
     StepLayout(
         icon = Icons.Default.Notifications,
         title = "Stay on Top of Your Money",
@@ -333,21 +353,23 @@ private fun NotificationStep(enabled: Boolean, onSelect: (Boolean) -> Unit) {
             ) {
                 Icon(
                     Icons.Default.Notifications, null,
-                    tint = Color.White, modifier = Modifier.size(24.dp)
+                    tint = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.size(24.dp)
                 )
                 Spacer(Modifier.width(14.dp))
                 Column(modifier = Modifier.weight(1f)) {
-                    Text("Enable Reminders", fontSize = 16.sp, color = Color.White)
+                    Text("Enable Reminders", fontSize = 16.sp,
+                        color = MaterialTheme.colorScheme.onSurface)
                     Text(
                         "Get alerts for overdue loans and upcoming payments",
-                        color = Color.White.copy(alpha = 0.6f),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         style = MaterialTheme.typography.bodySmall
                     )
                 }
                 if (enabled) {
                     Icon(
                         Icons.Default.Check, null,
-                        tint = Emerald400, modifier = Modifier.size(20.dp)
+                        tint = Emerald500, modifier = Modifier.size(20.dp)
                     )
                 }
             }
@@ -365,21 +387,23 @@ private fun NotificationStep(enabled: Boolean, onSelect: (Boolean) -> Unit) {
             ) {
                 Icon(
                     Icons.Default.NotificationsOff, null,
-                    tint = Color.White, modifier = Modifier.size(24.dp)
+                    tint = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.size(24.dp)
                 )
                 Spacer(Modifier.width(14.dp))
                 Column(modifier = Modifier.weight(1f)) {
-                    Text("Not Now", fontSize = 16.sp, color = Color.White)
+                    Text("Not Now", fontSize = 16.sp,
+                        color = MaterialTheme.colorScheme.onSurface)
                     Text(
                         "You can always enable this later in Settings",
-                        color = Color.White.copy(alpha = 0.6f),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         style = MaterialTheme.typography.bodySmall
                     )
                 }
                 if (!enabled) {
                     Icon(
                         Icons.Default.Check, null,
-                        tint = Emerald400, modifier = Modifier.size(20.dp)
+                        tint = Emerald500, modifier = Modifier.size(20.dp)
                     )
                 }
             }
@@ -404,14 +428,13 @@ private fun ProfileStep(name: String, onNameChange: (String) -> Unit) {
             singleLine = true,
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
             keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
+            // 3.2.21 — theme-aware colors. Emerald accents (cursor, focused
+            // border/label) stay branded; text and unfocused states migrate
+            // to MaterialTheme so they read on both light and dark bg.
             colors = OutlinedTextFieldDefaults.colors(
-                focusedTextColor = Color.White,
-                unfocusedTextColor = Color.White,
-                cursorColor = Emerald400,
-                focusedBorderColor = Emerald400,
-                unfocusedBorderColor = Color.White.copy(alpha = 0.3f),
-                focusedLabelColor = Emerald400,
-                unfocusedLabelColor = Color.White.copy(alpha = 0.5f)
+                cursorColor = Emerald500,
+                focusedBorderColor = Emerald500,
+                focusedLabelColor = Emerald500,
             ),
             shape = RoundedCornerShape(12.dp),
             modifier = Modifier.fillMaxWidth()
@@ -421,7 +444,7 @@ private fun ProfileStep(name: String, onNameChange: (String) -> Unit) {
 
         Text(
             "Optional",
-            color = Color.White.copy(alpha = 0.5f),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             style = MaterialTheme.typography.bodySmall,
             textAlign = TextAlign.Center,
             modifier = Modifier.fillMaxWidth()
@@ -444,15 +467,15 @@ private fun StepLayout(
     ) {
         Spacer(Modifier.height(16.dp))
 
-        // Large icon
+        // 3.2.21 — large-icon container theme-aware; brand emerald accent stays.
         Box(
             modifier = Modifier
                 .size(72.dp)
                 .clip(CircleShape)
-                .background(Color.White.copy(alpha = 0.12f)),
+                .background(Emerald500.copy(alpha = 0.12f)),
             contentAlignment = Alignment.Center
         ) {
-            Icon(icon, null, modifier = Modifier.size(36.dp), tint = Emerald400)
+            Icon(icon, null, modifier = Modifier.size(36.dp), tint = Emerald500)
         }
 
         Spacer(Modifier.height(24.dp))
@@ -461,7 +484,7 @@ private fun StepLayout(
             title,
             fontSize = 24.sp,
             fontWeight = FontWeight.Bold,
-            color = Color.White,
+            color = MaterialTheme.colorScheme.onBackground,
             textAlign = TextAlign.Center
         )
 
@@ -469,7 +492,7 @@ private fun StepLayout(
 
         Text(
             subtitle,
-            color = Color.White.copy(alpha = 0.7f),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             style = MaterialTheme.typography.bodyMedium,
             textAlign = TextAlign.Center
         )
@@ -490,20 +513,24 @@ private fun SelectionCard(
     onClick: () -> Unit,
     content: @Composable () -> Unit
 ) {
+    // 3.2.21 — theme-aware border + background. Selected state keeps emerald
+    // accent (brand). Unselected falls back to surfaceVariant so the card is
+    // visible on light backgrounds (the prior `Color.White.copy(alpha=0.06f)`
+    // disappeared into a light bg).
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(14.dp))
             .then(
                 if (selected) Modifier.border(
-                    2.dp, Emerald400, RoundedCornerShape(14.dp)
+                    2.dp, Emerald500, RoundedCornerShape(14.dp)
                 ) else Modifier.border(
-                    1.dp, Color.White.copy(alpha = 0.12f), RoundedCornerShape(14.dp)
+                    1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(14.dp)
                 )
             )
             .background(
                 if (selected) Emerald500.copy(alpha = 0.15f)
-                else Color.White.copy(alpha = 0.06f)
+                else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
             )
             .clickable(onClick = onClick)
     ) {

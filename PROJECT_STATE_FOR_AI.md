@@ -158,7 +158,7 @@ AI_AGENT_PROTOCOL.md to match.
 
 # Fynlo - Complete AI Portability File
 **Project Name**: Fynlo
-**Version**: 3.2.20 on `master` (`versionName = "3.2.20"`, `versionCode = 143`). All four Sprint-1 P0 clusters closed (C01 / C02 / C03a / C05). **Six P1 Sprint 2 clusters closed: C04 at 3.2.6, C06+C07 at 3.2.12, C08 at 3.2.18, C09 at 3.2.19, C18 at 3.2.20 (6 of 11 fixes landed; #4 Report-a-Bug in-app form deferred as Task #26).** Remaining P1: C12-C15 (screen redesigns), C21 (PDF/XLSX export quality polish). Internal milestone markers only — per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens until every `UX_AUDIT` cluster (P0 through P3) is closed.
+**Version**: 3.2.21 on `master` (`versionName = "3.2.21"`, `versionCode = 144`). All four Sprint-1 P0 clusters closed (C01 / C02 / C03a / C05). Six P1 Sprint 2 clusters closed (C04, C06+C07, C08, C09, C18). **3.2.21 = out-of-band theme picker UX redesign + first-launch setup screen theme-step removal + setup-screen theme-aware background migration** (user-driven, not from an audit cluster). Remaining P1: C12-C15 (screen redesigns), C21 (PDF/XLSX export quality polish), Task #26 (Report-a-Bug in-app form). Internal milestone markers only — per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens until every `UX_AUDIT` cluster (P0 through P3) is closed.
 **Platform**: Android (Kotlin, Jetpack Compose, Room — Gradle 9.4.1, AGP 9.2.1, Room 2.8.4, KSP 2.3.7, Kotlin 2.2.10)
 
 ## 1. Project Overview
@@ -345,6 +345,22 @@ in the APK).
 ## 6. Journal
 
 **Newest first.** Each entry: date · cluster(s) closed/touched · commit(s) · one-paragraph why-and-what.
+
+### 2026-05-27 — 3.2.21 (theme picker UX redesign + setup-screen theme removal + theme-aware setup bg)
+
+**Type:** user-driven out-of-band UX improvement, three related changes in one cohesive commit. Not from an audit cluster. The user observed the inconsistency between the Notifications section's Switch-row pattern (post-C18) and the Personalization theme picker's SegmentedButtonRow pattern, asked for a redesign, and also called out two related issues with the first-launch setup screen (theme step is friction, dark gradient ignores phone theme).
+
+**Internal milestone:** `3.2.21` / `versionCode = 144`. No Play Console upload per release-cadence ADR. No test gate change.
+
+**Three changes:**
+
+1. **Settings → Personalization theme picker** redesigned to the two-tier Switch pattern Android's stock display-settings use. "Follow system theme" toggle on top; when OFF, a "Dark mode" sub-toggle appears. State mapping preserves `ThemeController.darkModeOverride` (null=system, false=light, true=dark). When the user toggles "Follow system" OFF, the override is seeded with the current visual state via `isSystemInDarkTheme()` so the screen doesn't flip — stays at whatever the user is currently seeing, just frozen under their control. Visually consistent with the Notifications card now.
+
+2. **First-launch setup wizard: theme step removed.** Was 3 steps (theme / notifications / profile). Forcing the user to pick light/dark before they've used the app is friction; the app already defaults to "Follow system" which is the right choice for 95% of users. Now 2 steps. The old `ThemeStep` composable is kept as dead code (not called from anywhere) for now — delete in a follow-up if it stays unreferenced.
+
+3. **First-launch setup pages background now respects system theme.** Was hardcoded `Brush.verticalGradient(Emerald900, Emerald700)` (dark splash regardless of system); now the same theme-aware gradient as OnboardingScreen (`background → background → Emerald700 alpha 4%`). Cascading migrations: every `Color.White` / `Color.White.copy(alpha=…)` in `NotificationStep` / `ProfileStep` / `StepLayout` / `SelectionCard` replaced with `MaterialTheme.colorScheme.onSurface` / `onBackground` / `onSurfaceVariant` / `surfaceVariant` / `outlineVariant` per role. Next button switched from white-on-Emerald900 (only readable on the old dark gradient) to Emerald500 + white text — brand accent that works against both light and dark backgrounds. Large-icon container in `StepLayout` switched to brand-tinted Emerald (12%-alpha) instead of 12%-alpha white.
+
+**Pattern documented:** "user observes inconsistency between two UX patterns in adjacent sections, asks for the older one to migrate to the new one" — this is a common follow-on to bigger refactors like C18. Worth budgeting time for these mini-fixes within a few commits of the big change.
 
 ### 2026-05-27 — 3.2.20 (C18 Settings cleanup: 6 of 11 audit fix points)
 

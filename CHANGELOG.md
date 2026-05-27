@@ -2,6 +2,34 @@
 
 All notable changes to Fynlo are documented here.
 
+## [3.2.21] - 2026-05-27 *(Development milestone — theme picker UX redesign + setup-screen theme-step removal + setup-screen theme-aware backgrounds; not promoted per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`)*
+
+### Fixed (3 related UX improvements per user feedback)
+
+- **Settings → Personalization theme picker redesigned to match Notifications toggle pattern.** Was a 3-option `SingleChoiceSegmentedButtonRow` (System / Light / Dark) from the 3.2.11 chip-sweep — technically correct (3-state mutex) but visually inconsistent with the rest of Settings, which uses single-Switch rows for binary toggles. Now uses the **two-tier pattern Android's stock display-settings uses**:
+  - **Row 1:** "Follow system theme" Switch — ON when override is null (i.e., app follows OS). Subtitle: "Match your phone's light / dark setting."
+  - **Row 2** (only visible when Row 1 is OFF): "Dark mode" Switch — ON when override is `true` (dark), OFF when override is `false` (light). Subtitle: "Use dark theme regardless of system."
+  - State mapping (preserves `ThemeController.darkModeOverride`): `null` → Row 1 ON + Row 2 hidden; `false` → Row 1 OFF + Row 2 OFF; `true` → Row 1 OFF + Row 2 ON.
+  - When the user toggles "Follow system" OFF, the override is **seeded with the current visual state** (via `isSystemInDarkTheme()`) so the screen doesn't visually flip — it stays whatever the user is already seeing, just frozen under their control.
+
+- **First-launch setup wizard: theme step removed.** Was `TOTAL_STEPS = 3` (theme → notifications → profile). Forcing the user to pick light/dark before they've even used the app is friction; the app defaults to "Follow system" (`darkMode(): "system"` in UserPreferences, the canonical safe default for 95% of users) and users who want to override can do so any time from Settings → Personalization. Now `TOTAL_STEPS = 2` (notifications → profile). Step indices in the `AnimatedContent` `when` and the save-on-Next `when` shifted accordingly; analytics step names updated to `notifications` / `profile`. The old `ThemeStep` composable is kept as dead code (not called from anywhere) for now — will be deleted in a follow-up cleanup commit if it stays unreferenced.
+
+- **First-launch setup pages background now respects system theme.** Was a hardcoded `Brush.verticalGradient(Emerald900, Emerald700)` (dark "premium splash" look regardless of OS theme). Now uses the same theme-aware gradient as `OnboardingScreen`: `MaterialTheme.colorScheme.background → ... → Emerald700.copy(alpha = 0.04f)`. Reads light on light theme, dark on dark theme. Cascading migrations:
+  - All `Color.White` references in `NotificationStep`, `ProfileStep`, `StepLayout`, `SelectionCard` → `MaterialTheme.colorScheme.onSurface` / `onBackground` / `onSurfaceVariant` per role.
+  - Skip button text color → `onSurfaceVariant`.
+  - Progress dot inactive color → `outlineVariant` (was 30%-alpha white; unreadable on light bg).
+  - Back button: surface bg `surfaceVariant`, icon tint `onSurfaceVariant`.
+  - Next button: was white-on-`Emerald900` (only readable on the old dark gradient). Now `Emerald500` container + white text — brand emerald accent works against both light and dark backgrounds.
+  - `OutlinedTextField` in `ProfileStep` dropped the explicit white text-color overrides; relies on Material theming defaults so it reads correctly in both modes.
+  - Large-icon container in `StepLayout`: `Emerald500.copy(alpha=0.12f)` (brand-tinted) replaces the 12%-alpha white circle.
+  - `SelectionCard` borders + backgrounds theme-aware (was 6%-alpha-white background that disappeared into a light bg).
+
+### Changed
+- **`versionName`** `3.2.20` → `3.2.21`, **`versionCode`** `143` → `144`.
+
+### Data-integrity gate
+Unchanged at **114 tests across 10 classes**, 0 failures (pure UI refactor — no logic / state-shape changes; existing `ThemeController` / `UserPreferences.darkMode()` paths untouched).
+
 ## [3.2.20] - 2026-05-27 *(Development milestone — C18 Settings cleanup (6 of 11 fixes); not promoted per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`)*
 
 ### Fixed

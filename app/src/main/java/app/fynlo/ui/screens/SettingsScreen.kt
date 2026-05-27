@@ -181,31 +181,85 @@ fun SettingsScreen(
         // ── Appearance ────────────────────────────────────────────────────────
         SettingsSectionLabel("Personalization")
         SettingsCard {
-            // Theme
-            Text("Theme", style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(start = 4.dp, bottom = 6.dp))
-            // 3.2.11 chip-sweep: 3-option mutually-exclusive theme toggle → SegmentedButtonRow.
-            // `icon = {}` per the 3.2.8 lesson.
-            val themeOptions = listOf(
-                null  to "System",
-                false to "Light",
-                true  to "Dark",
-            )
-            SingleChoiceSegmentedButtonRow(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp)
+            // 3.2.21 — Theme picker redesigned to match the Notifications
+            // section's Switch pattern. Was a 3-option `SegmentedButtonRow`
+            // (System / Light / Dark) from the 3.2.11 chip-sweep; that was
+            // technically correct (3-state mutex) but visually inconsistent
+            // with the rest of Settings, which uses single-Switch rows for
+            // binary toggles. Native Android display-settings UX maps this
+            // to: top-level "Follow system" Switch; when OFF, a sub-row
+            // "Dark mode" Switch appears. That's now this pattern.
+            //
+            // State mapping (preserves `ThemeController.darkModeOverride`):
+            //   - `null`  → "Follow system" ON,  "Dark mode" row hidden
+            //   - `false` → "Follow system" OFF, "Dark mode" Switch OFF
+            //   - `true`  → "Follow system" OFF, "Dark mode" Switch ON
+            //
+            // When the user toggles "Follow system" OFF, the override is
+            // seeded with the CURRENT visual state (via `isSystemInDarkTheme()`)
+            // so the screen doesn't visually flip — it stays whatever the
+            // user is already seeing, just frozen under their control.
+            val isCurrentlyDark = androidx.compose.foundation.isSystemInDarkTheme()
+            val themeOverride = ThemeController.darkModeOverride
+            val followSystem = themeOverride == null
+
+            // Row 1: Follow system theme
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                themeOptions.forEachIndexed { idx, (value, label) ->
-                    SegmentedButton(
-                        selected = ThemeController.darkModeOverride == value,
-                        onClick = { ThemeController.darkModeOverride = value; ThemeController.save(context) },
-                        shape = SegmentedButtonDefaults.itemShape(idx, themeOptions.size),
-                        icon = {},
-                        label = { Text(label) },
+                Icon(Icons.Default.PhoneAndroid, null, tint = Amber, modifier = Modifier.size(24.dp))
+                Spacer(Modifier.width(12.dp))
+                Column(Modifier.weight(1f)) {
+                    Text("Follow system theme",
+                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold))
+                    Text("Match your phone's light / dark setting",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Switch(
+                    checked = followSystem,
+                    onCheckedChange = { useSystem ->
+                        // Seed override with current visual state on first opt-out
+                        // so the screen doesn't flip; user keeps what they see.
+                        ThemeController.darkModeOverride = if (useSystem) null else isCurrentlyDark
+                        ThemeController.save(context)
+                    },
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = Emerald500,
+                        checkedTrackColor = Emerald500.copy(alpha = 0.4f))
+                )
+            }
+            // Row 2: Dark mode (only shown when "Follow system" is OFF)
+            if (!followSystem) {
+                SettingsDivider()
+                Row(
+                    Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Default.DarkMode, null, tint = Amber, modifier = Modifier.size(24.dp))
+                    Spacer(Modifier.width(12.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text("Dark mode",
+                            style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold))
+                        Text("Use dark theme regardless of system",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    Switch(
+                        checked = themeOverride == true,
+                        onCheckedChange = {
+                            ThemeController.darkModeOverride = it
+                            ThemeController.save(context)
+                        },
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = Emerald500,
+                            checkedTrackColor = Emerald500.copy(alpha = 0.4f))
                     )
                 }
             }
-            Spacer(Modifier.height(14.dp))
+            SettingsDivider()
+            Spacer(Modifier.height(8.dp))
             OutlinedTextField(
                 value         = displayName,
                 onValueChange = { displayName = it },
