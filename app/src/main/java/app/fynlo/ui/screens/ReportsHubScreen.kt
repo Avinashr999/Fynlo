@@ -60,6 +60,13 @@ fun ReportsHubScreen(
     LaunchedEffect(Unit) { app.fynlo.data.Analytics.screenView("Reports") }
     val transactions   by viewModel.transactions.collectAsState()
     val summary        by viewModel.financialSummary.collectAsState()
+    // C21 Stage 2 — collect borrowers + debts + investments so the Export
+    // PDF button at the top of this hub produces a comprehensive report
+    // (was passing emptyList() for each pre-Stage 2; only summary +
+    // transactions made it through).
+    val borrowers      by viewModel.borrowers.collectAsState()
+    val debts          by viewModel.debts.collectAsState()
+    val investments    by viewModel.investments.collectAsState()
     val currentProject by viewModel.currentProject.collectAsState()
     val currencyCode   = currentProject?.currency ?: "INR"
     val locale         = remember { Locale.getDefault() }
@@ -157,11 +164,12 @@ fun ReportsHubScreen(
                         )
                         file.outputStream().use {
                             app.fynlo.logic.ExportUtility.generatePDF(
-                                it, summary, transactions, emptyList(), emptyList(),
+                                it, summary, transactions, borrowers, investments,
                                 currencyCode = currencyCode,
                                 projectName  = projectName,
                                 userEmail    = app.fynlo.data.AuthManager().userEmail,
                                 periodLabel  = periodLabel,
+                                debts        = debts,
                             )
                         }
                         val uri = androidx.core.content.FileProvider.getUriForFile(

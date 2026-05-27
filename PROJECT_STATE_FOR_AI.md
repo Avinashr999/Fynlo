@@ -158,7 +158,7 @@ AI_AGENT_PROTOCOL.md to match.
 
 # Fynlo - Complete AI Portability File
 **Project Name**: Fynlo
-**Version**: 3.2.35 on `master` (`versionName = "3.2.35"`, `versionCode = 158`). All four Sprint-1 P0 clusters closed. **Ten** P1 Sprint 2 clusters closed (C04, C06+C07, C08, C09, C18, C13, C14, C12, C15). **C21 Stage 1 of 4 landed in 3.2.35 — PDF identity + cover header + standardized filename pattern**. C21 Stages 2-4 pending. Remaining P1: C21 Stages 2-4. Plus deferred follow-ups: Task #26, #27, #28, #24. Internal milestone markers only — per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens until every `UX_AUDIT` cluster (P0 through P3) is closed. All four Sprint-1 P0 clusters closed (C01 / C02 / C03a / C05). **Ten** P1 Sprint 2 clusters closed (C04, C06+C07, C08, C09, C18, C13, C14, C12, **C15**). **3.2.33 = C15 Stage 5 = C15e Money Flow category-grouped visualization — closes C15 in full**. All five C15 sub-stages landed: C15a in 3.2.29, C15b in 3.2.30, C15c in 3.2.31, C15d in 3.2.32, C15e in 3.2.33. Remaining P1: C21 (PDF/XLSX export quality polish). Plus deferred follow-ups: Task #26, #27, #28, #24. Internal milestone markers only — per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens until every `UX_AUDIT` cluster (P0 through P3) is closed.
+**Version**: 3.2.36 on `master` (`versionName = "3.2.36"`, `versionCode = 159`). All four Sprint-1 P0 clusters closed. Ten P1 Sprint 2 clusters closed (C04, C06+C07, C08, C09, C18, C13, C14, C12, C15). **C21 Stages 1-2 of 4 landed: 3.2.35 = Stage 1 (identity + cover header + filename), 3.2.36 = Stage 2 (Debts section + word-wrap + dynamic Status + Type column + interest-type default)**. C21 Stages 3-4 pending (charts + KPIs, XLSX overhaul). Remaining P1: C21 Stages 3-4. Plus deferred follow-ups: Task #26, #27, #28, #24. Internal milestone markers only — per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens until every `UX_AUDIT` cluster (P0 through P3) is closed. All four Sprint-1 P0 clusters closed (C01 / C02 / C03a / C05). **Ten** P1 Sprint 2 clusters closed (C04, C06+C07, C08, C09, C18, C13, C14, C12, **C15**). **3.2.33 = C15 Stage 5 = C15e Money Flow category-grouped visualization — closes C15 in full**. All five C15 sub-stages landed: C15a in 3.2.29, C15b in 3.2.30, C15c in 3.2.31, C15d in 3.2.32, C15e in 3.2.33. Remaining P1: C21 (PDF/XLSX export quality polish). Plus deferred follow-ups: Task #26, #27, #28, #24. Internal milestone markers only — per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens until every `UX_AUDIT` cluster (P0 through P3) is closed.
 **Platform**: Android (Kotlin, Jetpack Compose, Room — Gradle 9.4.1, AGP 9.2.1, Room 2.8.4, KSP 2.3.7, Kotlin 2.2.10)
 
 ## 1. Project Overview
@@ -345,6 +345,44 @@ in the APK).
 ## 6. Journal
 
 **Newest first.** Each entry: date · cluster(s) closed/touched · commit(s) · one-paragraph why-and-what.
+
+### 2026-05-27 — 3.2.36 (C21 Stage 2 of 4: PDF data correctness — Debts section + word-wrap + dynamic Status + Type column + interest-type default)
+
+**Type:** Stage 2 of 4 for C21. Audit §C21 fixes #3, #4, #5, #6, #7, #17 all in this commit.
+
+**Internal milestone:** `3.2.36` / `versionCode = 159`. No Play Console upload per release-cadence ADR. No test gate change (114 tests / 10 classes / 0 failures — new helpers are pure / deterministic).
+
+**ExportUtility.generatePDF added:**
+- `debts: List<Debt> = emptyList()` param threaded from FinanceViewModel.exportToPDF, ProfitLossScreen, ReportsHubScreen.
+- New "Liabilities & Debts" section between Lending and Investments. Same column shape as Lending for visual parity.
+
+**ExportUtility.drawTableRow rewritten:**
+- Replaced character-count truncation with `wrapText(text, paint, maxWidth)` — measures via `Paint.measureText`, word-wraps, per-character fallback for words too long for the column. Row height grows to fit the cell with the most wrap lines.
+- Eliminates "Salary Transf…" / "Mohan Ra…" data loss.
+
+**ExportUtility added:**
+- `computeBorrowerStatus(b, today)`: WrittenOff → "Written Off"; paid >= amount → "Closed"; due < today → "Overdue"; else "Active".
+- `computeDebtStatus(d, today)`: same logic minus WrittenOff (debts don't have that state in current schema).
+
+**ExportUtility recent-transactions title:**
+- Pre-Stage 2 always "Recent Transactions (last 50)" even when user had 9 transactions. Now: `transactions.size <= 50` → "All Transactions (N)"; else "Most Recent 50 of N Transactions".
+
+**ExportUtility Type column:**
+- Recent Transactions widths shuffled — Type 10%→12%; Description 27%→26%; Category 18%→17%. Total still 100%. "Transfer" no longer wraps.
+
+**ExportUtility loan statement:**
+- Pre-Stage 2 rendered `"${rate}% p.a. (${borrower.type})"` producing `"${rate}% p.a. ()"` when type was blank — falsely implies Simple Interest. Now renders "Not specified" for blank type.
+
+**Three caller sites updated:**
+- FinanceViewModel.exportToPDF threads `debts.value`.
+- ProfitLossScreen added `viewModel.debts.collectAsState()` (wasn't collected before — P&L screen never used debts in-screen) and threads it.
+- ReportsHubScreen added `borrowers / debts / investments` collectAsState (was passing `emptyList()` for all three; the Reports landing PDF was missing all of them pre-Stage 2). Reports → Export PDF now produces a comprehensive report.
+
+**Pattern: word-wrap as default, truncation as bug.** Truncation hides data the user needs ("Salary Transf…"). Word-wrap costs vertical space but preserves information — strictly better default for a finance report.
+
+**Stages 3-4 pending:**
+- Stage 3 — PDF charts + KPIs: asset allocation donut + monthly income/expense bar + net worth trend line; 5 new KPIs (Total Liabilities / Total Lent Out / Monthly Income / Monthly Expense / Net Cash Flow).
+- Stage 4 — XLSX overhaul: currency-format numeric cells, conditional formatting (overdue red, negative red), frozen first row + auto-filter, totals rows, Summary sheet first.
 
 ### 2026-05-27 — 3.2.35 (C21 Stage 1 of 4: PDF identity + cover header + standardized filename pattern)
 

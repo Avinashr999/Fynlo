@@ -51,6 +51,9 @@ fun ProfitLossScreen(viewModel: FinanceViewModel) {
     val transactions   by viewModel.transactions.collectAsState()
     val borrowers      by viewModel.borrowers.collectAsState()
     val investments    by viewModel.investments.collectAsState()
+    // C21 Stage 2 — debts for the Liabilities & Debts section in the
+    // exported PDF (audit #3). Not used in-screen by P&L computations.
+    val debts          by viewModel.debts.collectAsState()
     val currentProject by viewModel.currentProject.collectAsState()
     val currencyCode    = currentProject?.currency ?: "INR"
     val summary        by viewModel.financialSummary.collectAsState()
@@ -160,6 +163,7 @@ fun ProfitLossScreen(viewModel: FinanceViewModel) {
                                 projectName  = projectName,
                                 userEmail    = app.fynlo.data.AuthManager().userEmail,
                                 periodLabel  = "All time",
+                                debts        = debts,
                             )
                         }
                         val uri = androidx.core.content.FileProvider.getUriForFile(

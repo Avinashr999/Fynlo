@@ -969,6 +969,7 @@ class FinanceViewModel @Inject constructor(
             projectName = currentProject.value?.name ?: "Personal",
             userEmail   = app.fynlo.data.AuthManager().userEmail,
             periodLabel = "All time",
+            debts       = debts.value,
         )
         app.fynlo.data.Analytics.dataExported("pdf")
     }

@@ -171,6 +171,19 @@ object ExportUtility {
     }
 
     // ── Row drawing helper ────────────────────────────────────────────────────
+    //
+    // C21 Stage 2 (3.2.36) — replaced character-count truncation with proper
+    // word-wrap per audit §C21 #4 ("auto-size or wrap columns; never truncate").
+    // Pre-Stage 2 this counted `widths[i] / 5.5f` characters and slapped an
+    // ellipsis on overflow — that hid useful data ("Salary Transf…" instead
+    // of "Salary Transfer") and the per-character estimate was wildly wrong
+    // for narrow letters ("ill") or wide ones ("WWW"). Now: split into words,
+    // measure each candidate line via `Paint.measureText`, wrap to a new line
+    // when the next word wouldn't fit. Single words too long for their column
+    // are broken at the character level (filenames / very long category names
+    // are the practical case).
+    //
+    // Row height grows to fit the cell with the most wrap lines.
     private fun PdfBuilder.drawTableRow(
         cols: List<String>,
         widths: List<Float>,
@@ -178,7 +191,17 @@ object ExportUtility {
         altBg: Boolean = false,
         colors: List<Int>? = null
     ) {
-        val rowH = LINE_H + 8f
+        // Per-cell line wrapping. Header paint is bold white; body paint
+        // takes the optional per-column override colour.
+        val perCell = cols.mapIndexed { i, text ->
+            val paint = if (isHeader) bodyPaint(COLOR_WHITE, 9f, true)
+                        else bodyPaint(colors?.getOrNull(i) ?: COLOR_BLACK, 9f)
+            val avail = widths[i] - 8f   // 4-dp padding on each side
+            wrapText(text, paint, avail) to paint
+        }
+        val maxLines = (perCell.maxOfOrNull { it.first.size } ?: 1).coerceAtLeast(1)
+        val rowH = LINE_H * maxLines + 8f
+
         val bgColor = when {
             isHeader -> COLOR_DARK
             altBg    -> Color.rgb(243, 244, 246)
@@ -187,16 +210,82 @@ object ExportUtility {
         rect(MARGIN, y - LINE_H + 2f, PAGE_W - MARGIN.toFloat(), y - LINE_H + 2f + rowH, bgColor)
 
         var xPos = MARGIN + 4f
-        cols.forEachIndexed { i, text ->
-            val paint = if (isHeader) bodyPaint(COLOR_WHITE, 9f, true)
-                        else bodyPaint(colors?.getOrNull(i) ?: COLOR_BLACK, 9f)
-            val maxChars = ((widths[i] - 8f) / 5.5f).toInt().coerceAtLeast(4)
-            val truncated = if (text.length > maxChars) text.take(maxChars - 1) + "…" else text
-            canvas().drawText(truncated, xPos, y + 2f, paint)
+        perCell.forEachIndexed { i, (lines, paint) ->
+            lines.forEachIndexed { lineIdx, line ->
+                canvas().drawText(line, xPos, y + 2f + lineIdx * LINE_H, paint)
+            }
             xPos += widths[i]
         }
         y += rowH
         checkBreak()
+    }
+
+    /**
+     * Word-wrap [text] so each returned line fits within [maxWidth] when
+     * measured with [paint]. Splits on whitespace; when a single word doesn't
+     * fit (long filenames, hash-style notes), falls back to per-character
+     * breaks so no line ever exceeds the column.
+     *
+     * Empty input → single empty line so the caller still gets a valid row.
+     */
+    private fun wrapText(text: String, paint: Paint, maxWidth: Float): List<String> {
+        if (text.isEmpty()) return listOf("")
+        if (paint.measureText(text) <= maxWidth) return listOf(text)
+        val out = mutableListOf<String>()
+        val words = text.split(' ')
+        var current = StringBuilder()
+        for (word in words) {
+            val candidate = if (current.isEmpty()) word else "$current $word"
+            if (paint.measureText(candidate) <= maxWidth) {
+                current.clear(); current.append(candidate)
+            } else {
+                if (current.isNotEmpty()) {
+                    out.add(current.toString())
+                    current.clear()
+                }
+                // Word longer than column — break by character.
+                if (paint.measureText(word) > maxWidth) {
+                    var remaining = word
+                    while (paint.measureText(remaining) > maxWidth) {
+                        var idx = remaining.length
+                        while (idx > 0 && paint.measureText(remaining.substring(0, idx)) > maxWidth) idx--
+                        if (idx == 0) idx = 1
+                        out.add(remaining.substring(0, idx))
+                        remaining = remaining.substring(idx)
+                    }
+                    current.append(remaining)
+                } else {
+                    current.append(word)
+                }
+            }
+        }
+        if (current.isNotEmpty()) out.add(current.toString())
+        return out.ifEmpty { listOf("") }
+    }
+
+    /**
+     * Dynamic borrower-status helper per UX_AUDIT §C21 #5. Pre-Stage 2 the
+     * PDF rendered `borrower.status` raw — that field is a stored value that
+     * can lag reality (a borrower with `due < today` and `paid < amount`
+     * could be stored as "Active" even though they're overdue). Now derived
+     * from due-date + paid:
+     *  - WrittenOff → "Written Off" (terminal state, status field wins)
+     *  - paid >= amount → "Closed"
+     *  - due past today and not closed → "Overdue"
+     *  - otherwise → "Active"
+     */
+    private fun computeBorrowerStatus(b: Borrower, today: String): String = when {
+        b.status == "WrittenOff" -> "Written Off"
+        b.paid >= b.amount        -> "Closed"
+        b.due.isNotBlank() && b.due < today -> "Overdue"
+        else -> "Active"
+    }
+
+    /** Same logic for debts (audit #5 extension for the new Debts section). */
+    private fun computeDebtStatus(d: Debt, today: String): String = when {
+        d.paid >= d.amount        -> "Closed"
+        d.due.isNotBlank() && d.due < today -> "Overdue"
+        else -> "Active"
     }
 
     // ── Section header ─────────────────────────────────────────────────────────
@@ -233,6 +322,9 @@ object ExportUtility {
         projectName: String = "Personal",
         userEmail: String = "",
         periodLabel: String = "All time",
+        // C21 Stage 2 (audit #3): Debts list for the new Liabilities &
+        // Debts section. Default empty for callers that haven't migrated.
+        debts: List<Debt> = emptyList(),
     ) {
         val pdf = PdfDocument()
         val b = PdfBuilder(pdf, outputStream)
@@ -292,14 +384,12 @@ object ExportUtility {
             }
         }
 
-        // 2. Lending
+        // 2. Lending  — audit #5: dynamic Status computed from due+paid, not
+        //   read raw from the stored field which can lag reality.
+        val today = LocalDate.now().toString()
         if (borrowers.isNotEmpty()) {
             b.sectionHeader("2. Lending & Receivables")
             val usable = PAGE_W - MARGIN * 2
-            // C21: include `Paid` column so the consolidated PDF reflects
-            // the same repayment state users see in-app and in the XLSX
-            // export. (Surfaced by the 3.2.2 §3.5 smoke test — a borrower
-            // with paid > 0 looked indistinguishable from a fresh loan.)
             val lw = listOf(
                 usable*.20f, usable*.13f, usable*.13f, usable*.08f,
                 usable*.12f, usable*.10f, usable*.10f, usable*.14f,
@@ -309,11 +399,16 @@ object ExportUtility {
                 lw, isHeader = true,
             )
             borrowers.forEachIndexed { i, bo ->
-                val statusColor = if (bo.status == "Overdue") COLOR_RED else COLOR_BLACK
+                val status = computeBorrowerStatus(bo, today)
+                val statusColor = when (status) {
+                    "Overdue", "Written Off" -> COLOR_RED
+                    "Closed"                 -> COLOR_GREEN
+                    else                     -> COLOR_BLACK
+                }
                 b.drawTableRow(
                     listOf(
                         bo.name, fmt(bo.amount, currencyCode), fmt(bo.paid, currencyCode), "${bo.rate}%",
-                        bo.date, bo.due.ifBlank{"-"}, bo.status, bo.notes,
+                        bo.date, bo.due.ifBlank{"-"}, status, bo.notes,
                     ),
                     lw, altBg = i % 2 == 0,
                     colors = listOf(
@@ -324,9 +419,45 @@ object ExportUtility {
             }
         }
 
-        // 3. Investments
+        // 3. Liabilities & Debts — audit #3 (new section, was missing entirely
+        // pre-Stage 2 so financial advisors got a misleading "you have no
+        // liabilities" view). Same shape as the Lending table for visual
+        // parity; Status computed dynamically per audit #5.
+        if (debts.isNotEmpty()) {
+            b.sectionHeader("3. Liabilities & Debts")
+            val usable = PAGE_W - MARGIN * 2
+            val dw = listOf(
+                usable*.22f, usable*.14f, usable*.14f, usable*.08f,
+                usable*.12f, usable*.10f, usable*.10f, usable*.10f,
+            )
+            b.drawTableRow(
+                listOf("Creditor","Principal","Paid","Rate","Borrowed","Due","Status","Type"),
+                dw, isHeader = true,
+            )
+            debts.forEachIndexed { i, d ->
+                val status = computeDebtStatus(d, today)
+                val statusColor = when (status) {
+                    "Overdue" -> COLOR_RED
+                    "Closed"  -> COLOR_GREEN
+                    else      -> COLOR_BLACK
+                }
+                b.drawTableRow(
+                    listOf(
+                        d.name, fmt(d.amount, currencyCode), fmt(d.paid, currencyCode), "${d.rate}%",
+                        d.date, d.due.ifBlank{"-"}, status, d.intType.ifBlank{"-"},
+                    ),
+                    dw, altBg = i % 2 == 0,
+                    colors = listOf(
+                        COLOR_BLACK, COLOR_BLACK, COLOR_BLACK, COLOR_BLACK,
+                        COLOR_BLACK, COLOR_BLACK, statusColor, COLOR_GRAY,
+                    ),
+                )
+            }
+        }
+
+        // 4. Investments
         if (investments.isNotEmpty()) {
-            b.sectionHeader("3. Investment Portfolio")
+            b.sectionHeader("4. Investment Portfolio")
             val usable = PAGE_W - MARGIN * 2
             val iw = listOf(usable*.28f, usable*.15f, usable*.17f, usable*.17f, usable*.13f, usable*.10f)
             b.drawTableRow(listOf("Asset","Type","Invested","Current","Growth","Date"), iw, isHeader = true)
@@ -340,12 +471,20 @@ object ExportUtility {
             }
         }
 
-        // 4. Transactions (last 50)
+        // 5. Transactions — audit #6: title now reflects what's actually
+        //   shown. If the user has ≤50 transactions the section is "All
+        //   Transactions (N)"; otherwise "Most Recent 50 of N".
+        //   Audit #7: Type column widened from 10% → 12% so "Transfer" no
+        //   longer wraps in narrow runs.
         val recent = transactions.sortedByDescending { it.date }.take(50)
         if (recent.isNotEmpty()) {
-            b.sectionHeader("4. Recent Transactions (last 50)")
+            val title = if (transactions.size <= 50)
+                "5. All Transactions (${transactions.size})"
+            else
+                "5. Most Recent 50 of ${transactions.size} Transactions"
+            b.sectionHeader(title)
             val usable = PAGE_W - MARGIN * 2
-            val tw = listOf(usable*.13f, usable*.10f, usable*.18f, usable*.27f, usable*.15f, usable*.17f)
+            val tw = listOf(usable*.13f, usable*.12f, usable*.17f, usable*.26f, usable*.15f, usable*.17f)
             b.drawTableRow(listOf("Date","Type","Category","Description","Amount","Account"), tw, isHeader = true)
             recent.forEachIndexed { i, t ->
                 val amtColor = if (t.type.equals("income", ignoreCase = true)) COLOR_GREEN else COLOR_RED
@@ -478,13 +617,17 @@ object ExportUtility {
         // Borrower detail table
         b.sectionHeader("Borrower Details")
         val mid = PAGE_W / 2f
+        // Audit C21 #17 — no silent Interest Type default. If borrower.type
+        // is blank, render "Not specified" rather than silently producing
+        // "${rate}% p.a. ()" which falsely suggests Simple Interest.
+        val typeLabel = borrower.type.ifBlank { "Not specified" }
         val details = listOf(
             "Borrower Name"   to borrower.name,
             "Phone"           to borrower.phone.ifBlank { "-" },
             "Loan Date"       to borrower.date,
             "Due Date"        to borrower.due.ifBlank { "Not specified" },
             "Principal"       to fmt(borrower.amount, currencyCode),
-            "Interest Rate"   to "${borrower.rate}% p.a. (${borrower.type})",
+            "Interest Rate"   to "${borrower.rate}% p.a. ($typeLabel)",
             "Interest Accrued" to fmt(interest, currencyCode),
             "Total Paid"      to fmt(borrower.paid, currencyCode),
             "Outstanding"     to fmt(outstanding, currencyCode)

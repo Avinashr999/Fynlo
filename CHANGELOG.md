@@ -2,6 +2,55 @@
 
 All notable changes to Fynlo are documented here.
 
+## [3.2.36] - 2026-05-27 *(Development milestone — C21 Stage 2: PDF data correctness — Debts section, word-wrap, dynamic Status, Type column, interest-type default; not promoted per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`)*
+
+### Fixed
+- **C21 Stage 2 of 4 — PDF data correctness (audit fixes C21 #3, #4, #5, #6, #7, #17).** Second of 4 stages closing C21.
+
+**ExportUtility — added new section (audit #3):**
+- **Liabilities & Debts** — between Lending and Investments in `generatePDF`. Same column shape as Lending (Creditor / Principal / Paid / Rate / Borrowed / Due / Status / Type) for visual parity. Hidden when caller passes an empty `debts` list, so the section only appears for users with active liabilities.
+- New `debts: List<Debt> = emptyList()` param on `generatePDF`. Three caller sites updated:
+  - **`FinanceViewModel.exportToPDF`** — threads `debts.value`.
+  - **`ProfitLossScreen`** — added `viewModel.debts.collectAsState()` (wasn't collected pre-Stage 2; the P&L screen never used debts in-screen) and threads it.
+  - **`ReportsHubScreen`** — added `borrowers`, `debts`, `investments` collectAsState (was passing `emptyList()` for all three pre-Stage 2; the Reports landing PDF only ever included summary + transactions, which was a documented gap). Now produces a comprehensive report matching what `exportToPDF` from the ViewModel does.
+
+**ExportUtility — replaced cell truncation with word-wrap (audit #4):**
+- `drawTableRow` previously truncated overflowing cells via `text.take(maxChars - 1) + "…"`. Now uses a new `wrapText(text, paint, maxWidth)` helper that splits the text into lines via `Paint.measureText`:
+  - Word-by-word fit. Each candidate line tested before adding the next word.
+  - Single words longer than the column fall back to per-character breaks (long filenames / hash-style notes).
+  - Row height grows to fit the cell with the most wrap lines.
+- Eliminates "Salary Transf…" / "Mohan Ra…" / "Investment Re…" data loss in narrow columns.
+
+**ExportUtility — dynamic Status (audit #5):**
+- New `computeBorrowerStatus(b, today)` helper: `WrittenOff → "Written Off"`; `paid >= amount → "Closed"`; `due < today → "Overdue"`; else `"Active"`. Replaces the prior `borrower.status` raw read which could lag reality (borrower with `due < today` and `paid < amount` might still show "Active" if no recompute had run).
+- New `computeDebtStatus(d, today)` with the same logic minus the WrittenOff state (debts can't be written off in the current schema).
+- Both used by the Lending and Debts tables; status colour green for Closed, red for Overdue / Written Off, black for Active.
+
+**ExportUtility — Recent Transactions title (audit #6):**
+- Pre-Stage 2 always said `"Recent Transactions (last 50)"` even when the user only had 9 transactions. Now:
+  - `transactions.size <= 50` → `"5. All Transactions (N)"`
+  - `transactions.size > 50`  → `"5. Most Recent 50 of N Transactions"`
+
+**ExportUtility — Type column widened (audit #7):**
+- Recent Transactions table column widths: Type `10% → 12%`; Description `27% → 26%`; Category `18% → 17%`. Net: "Transfer" no longer wraps. Total still adds to 100%.
+
+**ExportUtility — no silent Interest Type default (audit #17):**
+- `generateLoanStatementPDF` Interest Rate line previously rendered `"${rate}% p.a. (${borrower.type})"` — when `borrower.type` was blank, that produced `"${rate}% p.a. ()"` which a reader could mis-interpret as Simple Interest. Now renders `"Not specified"` for blank type. Loan-rendering on-screen has the same fix tracked separately.
+
+**Stages 3-4 of C21 still pending:**
+- Stage 3 — PDF charts + KPIs: asset allocation donut + monthly income/expense bar + net worth trend line; 5 new KPIs (Total Liabilities / Total Lent Out / Monthly Income / Monthly Expense / Net Cash Flow).
+- Stage 4 — XLSX overhaul: currency-format numeric cells, conditional formatting, frozen panes + auto-filter, totals rows, Summary sheet first.
+
+### Closes
+- **C21 audit fixes #3, #4, #5, #6, #7, #17** (this stage).
+- C21 #1, #2, #8, #9 closed in 3.2.35. #18 accepted as Android framework limit.
+
+### Changed
+- **`versionName`** `3.2.35` → `3.2.36`, **`versionCode`** `158` → `159`.
+
+### Data-integrity gate
+Unchanged at **114 tests across 10 classes**, 0 failures. The new helpers are deterministic — `wrapText` uses `Paint.measureText` which is OS-provided and stable; `computeBorrowerStatus` / `computeDebtStatus` are pure functions over already-validated data. No new data path.
+
 ## [3.2.35] - 2026-05-27 *(Development milestone — C21 Stage 1: PDF identity, cover header, standardized filename pattern; not promoted per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`)*
 
 ### Fixed
