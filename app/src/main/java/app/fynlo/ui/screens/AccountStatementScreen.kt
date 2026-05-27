@@ -123,44 +123,52 @@ private fun QuickBalanceEditDialog(
     var input by remember { mutableStateOf(currentBalance.toBigDecimal().stripTrailingZeros().toPlainString()) }
     val newBalance = input.toDoubleOrNull()
 
-    AlertDialog(
-        modifier = Modifier.fillMaxWidth(0.95f),
-        properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false),
-        onDismissRequest = onDismiss,
-        title = { Text("Edit Balance") },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("Set the correct balance for $accountName.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant)
-                OutlinedTextField(
-                    value         = input,
-                    onValueChange = { input = it },
-                    label         = { Text("New Balance ($currencySymbol)") },
-                    singleLine    = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    modifier      = Modifier.fillMaxWidth(),
-                    shape         = RoundedCornerShape(12.dp)
-                )
-                if (newBalance != null) {
-                    val diff = newBalance - currentBalance
-                    Text(
-                        if (diff >= 0) "+ $currencySymbol${"%.2f".format(diff)} will be added"
-                        else "- $currencySymbol${"%.2f".format(-diff)} will be deducted",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = if (diff >= 0) Emerald500 else SemanticRed
-                    )
-                }
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick  = { newBalance?.let { onConfirm(it) } },
-                enabled  = newBalance != null
-            ) { Text("Update") }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+    // C22 dialog universalization (3.2.53) — migrated from AlertDialog to
+    // the canonical FormDialog pattern.
+    app.fynlo.ui.components.FormDialog(
+        title = "Edit Balance",
+        onDismiss = onDismiss,
+    ) {
+        Text(
+            "Set the correct balance for $accountName.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.height(14.dp))
+        app.fynlo.ui.components.FormSectionLabel("New balance ($currencySymbol)")
+        Spacer(Modifier.height(6.dp))
+        OutlinedTextField(
+            value         = input,
+            onValueChange = { input = it },
+            placeholder   = { Text("0") },
+            singleLine    = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+            modifier      = Modifier.fillMaxWidth(),
+            shape         = RoundedCornerShape(12.dp),
+        )
+        if (newBalance != null) {
+            Spacer(Modifier.height(8.dp))
+            val diff = newBalance - currentBalance
+            Text(
+                if (diff >= 0) "+ $currencySymbol${"%.2f".format(diff)} will be added"
+                else "− $currencySymbol${"%.2f".format(-diff)} will be deducted",
+                style = MaterialTheme.typography.bodySmall,
+                color = if (diff >= 0) Emerald500 else SemanticRed,
+            )
         }
-    )
+
+        Spacer(Modifier.height(20.dp))
+        Button(
+            onClick = { newBalance?.let { onConfirm(it) } },
+            enabled = newBalance != null,
+            modifier = Modifier.fillMaxWidth().height(52.dp),
+            shape = RoundedCornerShape(16.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = Emerald500),
+        ) {
+            Text("Update Balance", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
+        }
+        app.fynlo.ui.components.DisabledButtonHint(
+            if (newBalance == null) "Enter a valid amount to continue" else null
+        )
+    }
 }

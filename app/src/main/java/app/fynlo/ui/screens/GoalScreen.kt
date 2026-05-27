@@ -175,52 +175,91 @@ fun AddGoalDialog(currencySymbol: String, onDismiss: () -> Unit, onConfirm: (Goa
     var name by remember { mutableStateOf("") }
     var target by remember { mutableStateOf("") }
     var saved by remember { mutableStateOf("") }
-    // C22 Stage 2 (3.2.47) — target-date field per audit §C22 #207. Goal
-    // model already had a `deadline: String = ""` field (yyyy-MM-dd or
-    // blank) — just wasn't exposed by the dialog before. Empty stays
-    // valid for goals without a deadline.
+    // C22 Stage 2 (3.2.47) — target-date field per audit §C22 #207.
     var deadline by remember { mutableStateOf("") }
 
-    AlertDialog(
-        modifier = Modifier.fillMaxWidth(0.95f),
-        properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false),
-        onDismissRequest = onDismiss,
-        title = { Text("Add Savings Goal") },
-        text = {
-            // C22 Stage 2 cross-dialog sweep (3.2.51) — see RecurringScreen
-            // AddRecurringDialog comment for rationale. AlertDialog.text
-            // doesn't auto-scroll; wrap in verticalScroll so 4 OutlinedTextFields
-            // (Name + Target + Saved + Deadline) never clip.
-            Column(
-                modifier = Modifier.verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Goal Name (e.g., New Car)") })
-                OutlinedTextField(value = target, onValueChange = { target = it }, label = { Text("Target Amount ($currencySymbol)") })
-                OutlinedTextField(value = saved, onValueChange = { saved = it }, label = { Text("Already Saved ($currencySymbol)") })
-                OutlinedTextField(
-                    value = deadline,
-                    onValueChange = { deadline = it },
-                    label = { Text("Target Date (yyyy-MM-dd, optional)") },
-                    placeholder = { Text("e.g. 2026-12-31") },
-                    singleLine = true
-                )
-            }
-        },
-        confirmButton = {
-            Button(onClick = {
+    // C22 dialog universalization (3.2.53) — migrated from AlertDialog to
+    // the canonical FormDialog pattern (Lending-style). Bold section labels,
+    // bottom full-width primary button, top-right X close. Matches every
+    // other migrated form dialog visually.
+    app.fynlo.ui.components.FormDialog(
+        title = "Add Savings Goal",
+        onDismiss = onDismiss,
+    ) {
+        val targetNum  = target.toDoubleOrNull() ?: 0.0
+        val disabledReason: String? = when {
+            name.isBlank()  -> "Enter a goal name to continue"
+            targetNum <= 0.0 -> "Enter a positive target amount to continue"
+            else            -> null
+        }
+
+        app.fynlo.ui.components.FormSectionLabel("Goal name")
+        Spacer(Modifier.height(6.dp))
+        OutlinedTextField(
+            value = name, onValueChange = { name = it },
+            placeholder = { Text("e.g. New Car") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+        )
+
+        Spacer(Modifier.height(14.dp))
+        app.fynlo.ui.components.FormSectionLabel("Target amount ($currencySymbol)")
+        Spacer(Modifier.height(6.dp))
+        OutlinedTextField(
+            value = target, onValueChange = { target = it },
+            placeholder = { Text("0") },
+            singleLine = true,
+            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                keyboardType = androidx.compose.ui.text.input.KeyboardType.Decimal
+            ),
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+        )
+
+        Spacer(Modifier.height(14.dp))
+        app.fynlo.ui.components.FormSectionLabel("Already saved ($currencySymbol, optional)")
+        Spacer(Modifier.height(6.dp))
+        OutlinedTextField(
+            value = saved, onValueChange = { saved = it },
+            placeholder = { Text("0") },
+            singleLine = true,
+            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                keyboardType = androidx.compose.ui.text.input.KeyboardType.Decimal
+            ),
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+        )
+
+        Spacer(Modifier.height(14.dp))
+        app.fynlo.ui.components.FormSectionLabel("Target date (optional)")
+        Spacer(Modifier.height(6.dp))
+        OutlinedTextField(
+            value = deadline, onValueChange = { deadline = it },
+            placeholder = { Text("e.g. 2026-12-31") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+        )
+
+        Spacer(Modifier.height(20.dp))
+        Button(
+            onClick = {
                 onConfirm(Goal(
                     id = UUID.randomUUID().toString(),
-                    name = name,
-                    targetAmount = target.toDoubleOrNull() ?: 0.0,
+                    name = name.trim(),
+                    targetAmount = targetNum,
                     savedAmount = saved.toDoubleOrNull() ?: 0.0,
-                    // Pass through deadline as user-typed; if blank or
-                    // malformed it stays as-is. Goal.deadline default = ""
-                    // so empty input is preserved.
-                    deadline = deadline.trim()
+                    deadline = deadline.trim(),
                 ))
-            }) { Text("Save") }
-        },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
-    )
+            },
+            enabled = disabledReason == null,
+            modifier = Modifier.fillMaxWidth().height(52.dp),
+            shape = RoundedCornerShape(16.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = Emerald500),
+        ) {
+            Text("Save Goal", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
+        }
+        app.fynlo.ui.components.DisabledButtonHint(disabledReason)
+    }
 }
