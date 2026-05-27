@@ -2,6 +2,18 @@
 
 All notable changes to Fynlo are documented here.
 
+## [3.2.34] - 2026-05-27 *(Development milestone — MoneyFlowScreen layout fix (3.2.33 smoke surface); not promoted per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`)*
+
+### Fixed
+- **MoneyFlowScreen LazyColumn was rendering with zero height (latent bug exposed by 3.2.33 smoke).** The wrapper Column around the Export button row used `Modifier.fillMaxSize()` which greedily consumed all remaining vertical space in the outer Column, leaving the `LazyColumn` below it with no space to render. This pre-dated the C15e work but was invisible until the user opened the screen looking for the new visualization. Fix: `fillMaxSize()` → `fillMaxWidth()` on the export-button wrapper Column so it takes only its intrinsic content height.
+  - Restores visibility of the C15e Money Flow Visualization + Account Flows + Flow Summary + Transaction Flows filter-chip list — all of which were inside the zero-height LazyColumn.
+
+### Changed
+- **`versionName`** `3.2.33` → `3.2.34`, **`versionCode`** `156` → `157`.
+
+### Data-integrity gate
+Unchanged at **114 tests across 10 classes**, 0 failures (1-line layout modifier change).
+
 ## [3.2.33] - 2026-05-27 *(Development milestone — C15 Stage 5: Money Flow category-grouped visualization (C15e) — **closes C15**; not promoted per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`)*
 
 ### Fixed

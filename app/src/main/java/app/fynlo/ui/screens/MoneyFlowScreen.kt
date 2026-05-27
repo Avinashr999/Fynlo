@@ -172,7 +172,11 @@ fun MoneyFlowScreen(viewModel: FinanceViewModel) {
     Column(modifier = Modifier.fillMaxSize()) {
         PremiumScreenHeader("Money Flow", "Income & expense patterns")
 
-        Column(Modifier.fillMaxSize().padding(horizontal = 16.dp).padding(bottom = 8.dp)) {
+        // C15e (3.2.34) fix — was `Column(Modifier.fillMaxSize()...)` which
+        // gobbled all remaining vertical space in the outer Column and left
+        // the LazyColumn below it with zero height (rendered nothing). The
+        // export-button row only needs `fillMaxWidth` and its intrinsic height.
+        Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(bottom = 8.dp)) {
             Row(Modifier.fillMaxWidth(), Arrangement.End, Alignment.CenterVertically) {
                 Box {
                     FilledTonalButton(onClick = { showExportMenu = true }, shape = RoundedCornerShape(12.dp)) {
