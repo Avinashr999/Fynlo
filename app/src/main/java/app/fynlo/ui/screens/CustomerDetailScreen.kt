@@ -391,12 +391,18 @@ val borrowers by viewModel.borrowers.collectAsState()
                 Column(modifier = Modifier.fillMaxWidth().padding(top = 4.dp)) {
                     Text("Current Balance", style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    // C16 (3.2.41) — Lent-side outstanding is a receivable
+                    // (asset), so positive outstanding renders green
+                    // (semantic_income), not red. When fully repaid
+                    // (zero) the number is neutral onSurface rather than
+                    // green — green would imply "extra income"; the
+                    // borrower simply finished paying.
                     Text(
                         CurrencyFormatter.hero(totalOutstanding, currencyCode, locale),
                         style = MaterialTheme.typography.displaySmall.copy(
                             fontWeight = FontWeight.ExtraBold,
-                            color = if (totalOutstanding > 0) MaterialTheme.colorScheme.error
-                                    else Emerald500
+                            color = if (totalOutstanding > 0) Emerald500
+                                    else MaterialTheme.colorScheme.onSurface
                         )
                     )
                     Spacer(Modifier.height(16.dp))

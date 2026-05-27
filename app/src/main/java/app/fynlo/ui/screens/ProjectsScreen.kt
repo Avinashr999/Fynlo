@@ -150,9 +150,14 @@ private fun ProjectCard(
             }
 
             if (isActive) {
+                // C16 (3.2.41) — was Icons.Default.CheckCircle in primary
+                // green; the audit flagged the green-check as reading like
+                // "income confirmation" instead of a selection indicator.
+                // RadioButtonChecked reads unambiguously as a selection
+                // state regardless of colour.
                 Icon(
-                    Icons.Default.CheckCircle,
-                    contentDescription = "Active",
+                    Icons.Filled.RadioButtonChecked,
+                    contentDescription = "Active project",
                     tint               = MaterialTheme.colorScheme.primary
                 )
                 Spacer(Modifier.width(8.dp))

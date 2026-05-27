@@ -2,6 +2,38 @@
 
 All notable changes to Fynlo are documented here.
 
+## [3.2.41] - 2026-05-27 *(Development milestone — C16 closed: color semantics fixes — Outstanding emerald on Lent / project active-indicator radio; not promoted per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`)*
+
+### Fixed
+- **C16 — Color semantics violations.** Third P2 cluster closed.
+
+**`LendingScreen.LendingCard` — Outstanding column colour (audit #1):**
+- Pre-C16: `if (isOverdue) SemanticRed else MaterialTheme.colorScheme.onSurface` — neutral on normal state didn't signal that Outstanding is a receivable (an asset).
+- Now: `if (isOverdue) SemanticRed else Emerald500`. Asset-semantic colouring matches the LoansHubScreen Lent-tab hero (which already uses Emerald) so the colour story is consistent from list row → tab hero.
+
+**`CustomerDetailScreen` hero Current Balance — flipped (audit #1):**
+- Pre-C16: `if (totalOutstanding > 0) MaterialTheme.colorScheme.error else Emerald500` — positive outstanding rendered red as if it was a debt. But the user lent the money; outstanding is an asset they expect back.
+- Now: `if (totalOutstanding > 0) Emerald500 else MaterialTheme.colorScheme.onSurface`. Positive renders green (asset still on the books), zero renders neutral (loan fully repaid — no celebration colour, just done).
+
+**`ProjectsScreen` active indicator (audit #5):**
+- Pre-C16: `Icons.Default.CheckCircle` tinted in `MaterialTheme.colorScheme.primary` (Emerald) — the green check read as an "income confirmation" rather than a selection state, especially next to currency rows that use green for positive values.
+- Now: `Icons.Filled.RadioButtonChecked` — same emerald tint but the shape signals selection unambiguously.
+
+### Audit items verified as already-correct or skipped with rationale
+- **#2 Negative investment growth** — `InvestmentScreen` already renders growth with sign-aware coloring (`if (growth >= 0) Emerald500 else SemanticRed`) in both list rows (line 638) and the Gain/Loss card (line 520). No change needed.
+- **#3 Restore button** — `CustomerDetailScreen` Mark NPA / Restore Active toggle already uses `Emerald500` on the Restore path and `SemanticAmber` on the Mark-NPA path (line 466). `SettingsScreen` Restore Real Data confirm button uses theme primary (not red). No change needed.
+- **#4 Load Test Data** — the row icon is `Amber` (neutral-warning, not red). The confirm-dialog button is red because the action is destructive — same pattern as Cleanup Seeder + Wipe ALL. Kept consistent with destructive-confirm convention.
+- **#6 Wallet / budget icons mixed yellow/red** — the only Wallet icon usages are account-type identifiers in account-picker rows (cash account icon). Not a semantic state indicator. Skipped without a more specific signal from the audit.
+
+### Closes
+- **C16 audit fixes #1 and #5** (this commit). Audits #2, #3, #4 verified as already-correct. #6 skipped with rationale.
+
+### Changed
+- **`versionName`** `3.2.40` → `3.2.41`, **`versionCode`** `163` → `164`.
+
+### Data-integrity gate
+Unchanged at **137 tests across 12 classes**, 0 failures (pure colour-token change; no logic or data path touched).
+
 ## [3.2.40] - 2026-05-27 *(Development milestone — C11 closed: DateUtils.format(date, Style) API + dateFormat pref threaded into exports + XLSX "Loan Date" → "Lent On"; not promoted per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`)*
 
 ### Fixed

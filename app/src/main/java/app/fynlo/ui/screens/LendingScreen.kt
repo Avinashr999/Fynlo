@@ -328,11 +328,15 @@ fun LendingCard(
             )
         }
         Column(horizontalAlignment = Alignment.End) {
+            // C16 (3.2.41) — Outstanding on the Lent side is a receivable
+            // (asset), not a debt to the user. Colour: green for normal
+            // (asset), red for overdue (urgency). Pre-C16 normal state was
+            // neutral onSurface — audit said it should signal asset-ness.
             Text(
                 CurrencyFormatter.detail(outstanding, currencyCode, locale),
                 style = MaterialTheme.typography.titleMedium.copy(
                     fontWeight = FontWeight.Bold,
-                    color = if (isOverdue) SemanticRed else MaterialTheme.colorScheme.onSurface
+                    color = if (isOverdue) SemanticRed else Emerald500
                 )
             )
             Text(
