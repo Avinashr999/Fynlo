@@ -158,7 +158,7 @@ AI_AGENT_PROTOCOL.md to match.
 
 # Fynlo - Complete AI Portability File
 **Project Name**: Fynlo
-**Version**: 3.2.23 on `master` (`versionName = "3.2.23"`, `versionCode = 146`). All four Sprint-1 P0 clusters closed (C01 / C02 / C03a / C05). **Seven P1 Sprint 2 clusters closed: C04, C06+C07, C08, C09, C18, C13.** Remaining P1: C12 (Loans), C14 (Invest), C15 (Reports, 4 sub-screens), C21 (PDF/XLSX export quality polish). Plus deferred follow-ups: Task #26 (Report-a-Bug form), Task #27 (C13 features), Task #24 (EMI Calculator features). Internal milestone markers only — per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens until every `UX_AUDIT` cluster (P0 through P3) is closed.
+**Version**: 3.2.24 on `master` (`versionName = "3.2.24"`, `versionCode = 147`). All four Sprint-1 P0 clusters closed (C01 / C02 / C03a / C05). **Eight P1 Sprint 2 clusters closed: C04, C06+C07, C08, C09, C18, C13, C14.** Remaining P1: C12 (Loans, XL — biggest user-pain), C15 (Reports, 4 sub-screens), C21 (PDF/XLSX export quality polish). Plus deferred follow-ups: Task #26 (Report-a-Bug form), #27 (C13 features), #28 (C14 features), #24 (EMI Calculator features). Internal milestone markers only — per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens until every `UX_AUDIT` cluster (P0 through P3) is closed.
 **Platform**: Android (Kotlin, Jetpack Compose, Room — Gradle 9.4.1, AGP 9.2.1, Room 2.8.4, KSP 2.3.7, Kotlin 2.2.10)
 
 ## 1. Project Overview
@@ -345,6 +345,34 @@ in the APK).
 ## 6. Journal
 
 **Newest first.** Each entry: date · cluster(s) closed/touched · commit(s) · one-paragraph why-and-what.
+
+### 2026-05-27 — 3.2.24 (C14 Invest tab Home-archetype migration)
+
+**Type:** second of the C12-C15 P1 screen-redesign series. Same pattern as C13: investigation showed InvestmentScreen had no portfolio-level hero or allocation visual (audit's "Home archetype" wasn't met at all), but the per-card content was already strong. Three structural changes close the cluster's spirit; 5 feature-adds defer.
+
+**Internal milestone:** `3.2.24` / `versionCode = 147`. No Play Console upload per release-cadence ADR. No test gate change.
+
+**What landed (3 fixes):**
+1. **Portfolio Value hero** above the holdings list. Big number + coloured-arrow growth line (`↑ +₹50,000 (+15.2%)` Emerald, `↓ −₹X (−Y%)` red) + subtitle `₹X invested · N holdings`. Computed once via `investments.sumOf { ... }` so no extra fetch / no schema impact.
+2. **Allocation horizontal stacked bar** by investment type, with legend rows below showing colour + type + amount + percentage. Uses shared `ChartColors` palette. Hidden when only one holding type exists (single-block bar conveys no information).
+3. **InvestmentCard button hierarchy fixed** — was INVERTED: `Update Value` was OutlinedButton (secondary), `Withdraw` was filled Emerald Button (primary). Update Value is the more-frequent action (markets update daily; withdrawals are rare), so swapped: Update is now primary filled, Withdraw is outlined secondary.
+
+**Bonus:** `Holdings` section header between portfolio-level info and per-card list — marks the transition cleanly.
+
+**Already done:**
+- Audit #3 (list rows: icon + name + current value + growth %) — existing rich card meets this. Per audit acceptance, card content was already strong; only the portfolio-level surrounding context was missing.
+- Audit #10 (negative growth in red) — already used SemanticRed throughout.
+
+**Deferred (Task #28):**
+- #5 CAGR / XIRR (Newton's-method finance math, own commit)
+- #6 Mutual Fund SIP taxonomy fix (AddInvestmentDialog dropdown refactor)
+- #7 Celebration toast on growth increase
+- #8 FD type rendering verification (folds into #6 taxonomy investigation)
+- #9 Valuation History chart (chart work, own commit per `DESIGN_SYSTEM §9.14`)
+
+**Pattern reconfirmed:** Home-archetype migrations for screens that already have strong per-row content are tightly scoped — just add the portfolio-level hero + visual summary on top of the list. C13 (Expenses) and C14 (Invest) both fit this pattern. C12 (Loans) will likely need MORE per-row rework because the audit explicitly calls out the row design as the problem ("3 filter UIs stacked", "asymmetric Lent vs Owed layouts", "4 action icons per row") — different scope shape.
+
+**8 of 9 P1 Sprint 2 clusters closed.** Remaining: C12 (Loans, XL — biggest), C15 (Reports, XL across 4 sub-screens), C21 (PDF/XLSX polish).
 
 ### 2026-05-27 — 3.2.23 (C13 Expenses tab Home-archetype migration)
 

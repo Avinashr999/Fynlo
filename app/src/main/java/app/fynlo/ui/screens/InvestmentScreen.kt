@@ -6,6 +6,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -262,6 +263,24 @@ val currentProject by viewModel.currentProject.collectAsState()
         )
     }
 
+    // C14 (3.2.24) — Home archetype migration: portfolio-level metrics
+    // computed once so the hero block + allocation bar can render them
+    // without re-walking the list. `netInvested` is invested minus
+    // withdrawn (the user's money still in the market) — that's the
+    // right denominator for "growth %" since pulled-out money doesn't
+    // need to grow to break even.
+    val portfolioValue   = investments.sumOf { it.currentVal }
+    val netInvested      = investments.sumOf { it.invested - it.withdrawn }
+    val portfolioGrowth  = portfolioValue - netInvested
+    val growthPct        = if (netInvested > 0) (portfolioGrowth / netInvested) * 100 else 0.0
+    val isPortfolioUp    = portfolioGrowth >= 0
+    // Allocation by type (Stocks / Gold / FD / etc.) for the stacked bar.
+    val allocation = investments
+        .groupBy { it.type.ifBlank { "Other" } }
+        .mapValues { e -> e.value.sumOf { it.currentVal } }
+        .entries.sortedByDescending { it.value }
+    val locale = remember { Locale.getDefault() }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -277,6 +296,127 @@ val currentProject by viewModel.currentProject.collectAsState()
                 modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
                 contentPadding = PaddingValues(bottom = FabBottomPadding)
             ) {
+                // C14 hero (audit #1): Portfolio Value + growth ₹ + growth %.
+                // The growth amount + percent share the colour semantic
+                // (Emerald = profit, Red = loss). Currently-Invested subtitle
+                // gives context for the growth denominator so the percentage
+                // isn't ambiguous about "of what."
+                item {
+                    Column(Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 16.dp)) {
+                        Text("Portfolio Value",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(CurrencyFormatter.detail(portfolioValue, currencyCode, locale),
+                            style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.ExtraBold),
+                            color = if (isPortfolioUp) Emerald500 else SemanticRed)
+                        if (netInvested > 0) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                modifier = Modifier.padding(top = 4.dp),
+                            ) {
+                                Text(
+                                    if (isPortfolioUp) "↑" else "↓",
+                                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                                    color = if (isPortfolioUp) Emerald500 else SemanticRed,
+                                )
+                                Text(
+                                    if (isPortfolioUp) "+${CurrencyFormatter.detail(portfolioGrowth, currencyCode, locale)}"
+                                    else               CurrencyFormatter.negative(portfolioGrowth, currencyCode, locale),
+                                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                                    color = if (isPortfolioUp) Emerald500 else SemanticRed,
+                                )
+                                Text(
+                                    "(${if (isPortfolioUp) "+" else ""}${String.format(locale, "%.1f", growthPct)}%)",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = if (isPortfolioUp) Emerald500 else SemanticRed,
+                                )
+                            }
+                            Text(
+                                "${CurrencyFormatter.detail(netInvested, currencyCode, locale)} invested · ${investments.size} holdings",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(top = 2.dp),
+                            )
+                        } else {
+                            Text("${investments.size} holdings",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                }
+
+                // C14 allocation visual (audit #2): stacked horizontal bar
+                // by investment type with a legend below. Each segment's
+                // width is proportional to its currentVal share of the
+                // portfolio. Hidden when only one holding type exists
+                // (the bar would just be a single block — no information).
+                if (allocation.size >= 2 && portfolioValue > 0) {
+                    item {
+                        Column(Modifier.fillMaxWidth().padding(bottom = 16.dp)) {
+                            Text("Allocation",
+                                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                                color = MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.padding(bottom = 8.dp))
+                            // Stacked bar
+                            Row(
+                                Modifier.fillMaxWidth()
+                                    .height(12.dp)
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                            ) {
+                                allocation.forEachIndexed { i, (_, value) ->
+                                    val frac = (value / portfolioValue).toFloat().coerceIn(0f, 1f)
+                                    if (frac > 0f) {
+                                        Box(
+                                            Modifier
+                                                .fillMaxHeight()
+                                                .weight(frac)
+                                                .background(ChartColors[i % ChartColors.size])
+                                        )
+                                    }
+                                }
+                            }
+                            // Legend
+                            Spacer(Modifier.height(8.dp))
+                            allocation.forEachIndexed { i, (type, value) ->
+                                val pct = (value / portfolioValue * 100).toInt()
+                                Row(
+                                    Modifier.fillMaxWidth().padding(vertical = 2.dp),
+                                    Arrangement.SpaceBetween,
+                                    Alignment.CenterVertically,
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    ) {
+                                        Box(
+                                            Modifier.size(10.dp).clip(CircleShape)
+                                                .background(ChartColors[i % ChartColors.size])
+                                        )
+                                        Text(type,
+                                            style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold))
+                                    }
+                                    Text(
+                                        "${CurrencyFormatter.detail(value, currencyCode, locale)} · $pct%",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Holdings list — section header to mark the transition
+                // from portfolio-level to per-holding info.
+                item {
+                    Text("Holdings",
+                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.padding(top = 4.dp, bottom = 8.dp))
+                }
+
                 itemsIndexed(investments, key = { _, i -> i.id }) { index, invest ->
                     InvestmentCard(
                         invest   = invest,
@@ -405,12 +545,19 @@ fun InvestmentCard(invest: Investment, currencyCode: String = "INR", onDelete: (
             }
 
             // ── Action buttons row ───────────────────────────────────────────
+            // C14 (3.2.24) — audit fix #4: button hierarchy was INVERTED.
+            // Was: Update Value as OutlinedButton (secondary), Withdraw as
+            // filled Emerald Button (primary). Update Value is the more
+            // frequent action (markets update daily; withdrawals are rare),
+            // so it gets the primary filled treatment now. Withdraw drops to
+            // OutlinedButton — still discoverable, but visually steps aside.
             Spacer(Modifier.height(12.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(
+                Button(
                     onClick = onUpdate,
                     modifier = Modifier.weight(1f).height(36.dp),
                     shape = RoundedCornerShape(10.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Emerald500),
                     contentPadding = PaddingValues(horizontal = 8.dp)
                 ) {
                     Icon(Icons.Default.Update, null, Modifier.size(14.dp))
@@ -418,11 +565,10 @@ fun InvestmentCard(invest: Investment, currencyCode: String = "INR", onDelete: (
                     Text("Update Value", style = MaterialTheme.typography.labelSmall)
                 }
                 if (invest.currentVal > 0) {
-                    Button(
+                    OutlinedButton(
                         onClick = onWithdraw,
                         modifier = Modifier.weight(1f).height(36.dp),
                         shape = RoundedCornerShape(10.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Emerald500),
                         contentPadding = PaddingValues(horizontal = 8.dp)
                     ) {
                         Icon(Icons.Default.CallMade, null, Modifier.size(14.dp))

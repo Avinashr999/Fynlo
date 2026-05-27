@@ -2,6 +2,35 @@
 
 All notable changes to Fynlo are documented here.
 
+## [3.2.24] - 2026-05-27 *(Development milestone — C14 Invest tab Home-archetype migration; not promoted per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`)*
+
+### Fixed
+- **C14 — Invest tab Home-archetype migration (3 of 10 audit fix points landed; #5-9 feature-adds deferred).** Second of the C12-C15 P1 screen-redesign series. Three structural changes close the cluster's "Home archetype" spirit:
+  - **Portfolio Value hero** (audit #1) — added at the top of the LazyColumn before the holdings list. Shows: big `Portfolio Value ₹X` number (Emerald if up, Red if down), coloured arrow + growth ₹ + growth % line (`↑ +₹50,000 (+15.2%)`), subtitle `₹X invested · N holdings`. 1-second portfolio readability per the audit's archetype spec. Hidden growth line when `netInvested == 0` (defensive — investment fully withdrawn).
+  - **Allocation visual** (audit #2) — horizontal stacked bar by investment type (Stocks / Gold / FD / Insurance / etc.), with legend rows showing colour dot + type + amount + percentage. Uses the shared `ChartColors` palette already used by SpendScreen's category breakdown. Hidden when the user has only one holding type (the bar would be a single block — no information).
+  - **Action button hierarchy fixed** (audit #4) — was INVERTED: `Update Value` rendered as `OutlinedButton` (secondary), `Withdraw` as filled Emerald `Button` (primary). Update Value is the more-frequent action (markets update daily; withdrawals are rare), so it now gets the primary filled treatment. Withdraw drops to OutlinedButton — still discoverable, but visually steps aside.
+  - **Holdings section header** added between portfolio-level info and per-holding cards — `Holdings` titleSmall label marks the transition.
+  - **Audit #10 (negative growth in red)** — already done. Card's gain/loss column has always used `SemanticRed` when growth < 0; portfolio hero now uses the same semantic.
+
+### Deferred (Task #28 — C14 features deferred from 3.2.24 closure)
+- **#5 CAGR / XIRR** per holding and portfolio. XIRR needs Newton's-method-style numerical solver — non-trivial finance math, own commit.
+- **#6 Mutual Fund SIP taxonomy** — needs `AddInvestmentDialog` dropdown options refactor (add "Mutual Fund" as a distinct type from "Stocks"). Migration question for users who already tagged SIPs as Stocks.
+- **#7 Celebration toast on growth increase** — small UX delight after `Update Value` saves a higher number.
+- **#8 Verify FD type renders correctly** — investigation, may be a taxonomy / icon-mapping check. Folds into #6.
+- **#9 Valuation History chart** — line chart of investment value over time per `DESIGN_SYSTEM.md §9.14`. Chart work is sizable; own commit.
+
+### Closes
+- **UX_AUDIT §C14 — Invest tab Home-archetype migration** (effectively, modulo deferred features). 2nd of 4 P1 screen-redesign clusters (C12-C15) closed.
+
+### Changed
+- **`versionName`** `3.2.23` → `3.2.24`, **`versionCode`** `146` → `147`.
+
+### Data-integrity gate
+Unchanged at **114 tests across 10 classes**, 0 failures (pure UI restructure — no logic changes).
+
+### Sprint 2 P1 milestone
+After this commit, **8 P1 Sprint 2 clusters are CLOSED**: C04 (3.2.6), C06+C07 (3.2.12), C08 (3.2.18), C09 (3.2.19), C18 (3.2.20), C13 (3.2.23), **C14 (3.2.24)**. Remaining P1: C12 (Loans, XL — biggest user-pain), C15 (Reports, XL across 4 sub-screens), C21 (PDF/XLSX export quality polish).
+
 ## [3.2.23] - 2026-05-27 *(Development milestone — C13 Expenses tab Home-archetype migration; not promoted per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`)*
 
 ### Fixed
