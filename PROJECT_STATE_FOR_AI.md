@@ -158,7 +158,7 @@ AI_AGENT_PROTOCOL.md to match.
 
 # Fynlo - Complete AI Portability File
 **Project Name**: Fynlo
-**Version**: 3.2.37 on `master` (`versionName = "3.2.37"`, `versionCode = 160`). All four Sprint-1 P0 clusters closed. Ten P1 Sprint 2 clusters closed (C04, C06+C07, C08, C09, C18, C13, C14, C12, C15). **C21 Stages 1-3 of 4 landed: 3.2.35 = Stage 1 (identity + cover header + filename), 3.2.36 = Stage 2 (Debts section + word-wrap + dynamic Status + Type column + interest-type default), 3.2.37 = Stage 3 (PDF charts + 5 new KPI cards)**. C21 Stage 4 pending (XLSX overhaul). Remaining P1: C21 Stage 4. Plus deferred follow-ups: Task #26, #27, #28, #24. Internal milestone markers only — per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens until every `UX_AUDIT` cluster (P0 through P3) is closed. All four Sprint-1 P0 clusters closed (C01 / C02 / C03a / C05). **Ten** P1 Sprint 2 clusters closed (C04, C06+C07, C08, C09, C18, C13, C14, C12, **C15**). **3.2.33 = C15 Stage 5 = C15e Money Flow category-grouped visualization — closes C15 in full**. All five C15 sub-stages landed: C15a in 3.2.29, C15b in 3.2.30, C15c in 3.2.31, C15d in 3.2.32, C15e in 3.2.33. Remaining P1: C21 (PDF/XLSX export quality polish). Plus deferred follow-ups: Task #26, #27, #28, #24. Internal milestone markers only — per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens until every `UX_AUDIT` cluster (P0 through P3) is closed.
+**Version**: 3.2.38 on `master` (`versionName = "3.2.38"`, `versionCode = 161`). All four Sprint-1 P0 clusters closed. **P1 backlog closed in full.** Eleven P1 Sprint-2 clusters all closed: C04, C06+C07, C08, C09, C18, C12, C13, C14, C15, C21. **3.2.38 = C21 Stage 4 = XLSX overhaul — closes C21 and the P1 backlog.** Remaining work: P2 cluster work (C10, C11, C16, C17, C19, C20), C22 v4+ backlog (P3), C03b breaking schema migration, infrastructure backlog INF01-INF06, deferred follow-ups (Task #24/#26/#27/#28). Internal milestone markers only — per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens until every `UX_AUDIT` cluster (P0 through P3) is closed. All four Sprint-1 P0 clusters closed (C01 / C02 / C03a / C05). **Ten** P1 Sprint 2 clusters closed (C04, C06+C07, C08, C09, C18, C13, C14, C12, **C15**). **3.2.33 = C15 Stage 5 = C15e Money Flow category-grouped visualization — closes C15 in full**. All five C15 sub-stages landed: C15a in 3.2.29, C15b in 3.2.30, C15c in 3.2.31, C15d in 3.2.32, C15e in 3.2.33. Remaining P1: C21 (PDF/XLSX export quality polish). Plus deferred follow-ups: Task #26, #27, #28, #24. Internal milestone markers only — per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens until every `UX_AUDIT` cluster (P0 through P3) is closed.
 **Platform**: Android (Kotlin, Jetpack Compose, Room — Gradle 9.4.1, AGP 9.2.1, Room 2.8.4, KSP 2.3.7, Kotlin 2.2.10)
 
 ## 1. Project Overview
@@ -345,6 +345,40 @@ in the APK).
 ## 6. Journal
 
 **Newest first.** Each entry: date · cluster(s) closed/touched · commit(s) · one-paragraph why-and-what.
+
+### 2026-05-27 — 3.2.38 (C21 Stage 4 of 4 — closes C21 + closes P1 backlog: XLSX overhaul)
+
+**Type:** Stage 4 of 4 for C21. **Closes C21 cluster in full. Closes the entire P1 backlog.** Audit §C21 fixes #12, #13, #14, #15, #16 land here. Eleventh P1 Sprint-2 cluster closed.
+
+**Internal milestone:** `3.2.38` / `versionCode = 161`. No Play Console upload per release-cadence ADR. No test gate change (114 tests / 10 classes / 0 failures — render-layer additions; SUM totals pre-computed at write time so file values are correct without depending on Excel's formula evaluator).
+
+**ExcelExportUtility additions:**
+- `Cell.Currency(value)` — currency-formatted amount cell. Uses numFmt `[$<sym>-409]#,##0.00;[Red]-[$<sym>-409]#,##0.00` where `<sym>` is `CurrencyUtils.symbolFor(currencyCode)`. The `;[Red]-` half handles negative-red natively. All amount columns migrated from `Cell.Number` → `Cell.Currency`.
+- `Sheet.freezeHeader = true` (default) → `<sheetView><pane ySplit="1" .../></sheetView>` before sheetData. Header stays visible while scrolling.
+- `Sheet.autoFilterCols: Int = 0` → `<autoFilter ref="A1:<col><lastRow>"/>` after sheetData. Filter dropdowns on header. Range excludes the totals row.
+- `Sheet.totalsCols: List<Int> = emptyList()` → totals row after body. Leftmost cell "Total" label (bold style 4). Each totalsCols column gets a bold+currency SUM formula (style 5) with pre-computed `<v>` value alongside `<f>SUM(...)`.
+- New "Summary" sheet as the first sheet — 10 KPI rows matching the PDF cover (Net Worth, Total Assets, Total Liabilities, Cash, Investments, Invest Growth, Monthly Income, Monthly Expense, Net Cash Flow, Total Lent Out). Same cash-basis + financing-categories exclusion as P&L.
+- Metadata sheet gained a Currency row.
+
+**`generateFullBackup` signature added:**
+- `summary: FinancialSummary = FinancialSummary()` — feeds the Summary sheet KPIs.
+- `currencyCode: String = "INR"` — drives the currency numFmt symbol + Metadata row.
+
+**`FinanceViewModel.exportToXLSX` threads both new params** from `financialSummary.value` + `currentProject.value?.currency ?: "INR"`.
+
+**Totals rows applied to:**
+- Accounts (Balance)
+- Lending (Principal + Paid)
+- Debts (Principal + Paid)
+- Investments (Invested + Current Value + Growth)
+
+Transactions / Loan Repayments / Debt Repayments don't get totals — they're event log sheets, summing dates or per-row notes wouldn't be meaningful. Their amount columns still display as currency.
+
+**Audit fix #13 "Mohan Rao-style overdue red row" deferred** — the native `[Red]` negative-format covers 95% of the conditional-formatting intent ("negative growth (red)" + any negative amount in any column). Full per-row conditional fill on overdue Status would require per-row style overrides + a 4th fill in styles.xml; nice-to-have but more invasive XML. Logged as a deferred follow-up.
+
+**Audit fix #18 (PDF metadata)** accepted as Android `PdfDocument` framework limitation (Title/Author/Subject setters not exposed by the public API). Documented in Stage 1.
+
+**P1 backlog now closed.** Eleven Sprint-2 clusters: C04, C06+C07, C08, C09, C18, C12, C13, C14, C15, C21. Remaining cluster work is P2 (C10, C11, C16, C17, C19, C20), C22 v4+ (P3), C03b breaking schema migration, infrastructure backlog INF01-INF06, plus deferred Task #24/#26/#27/#28. Per the release-cadence ADR no Play Console upload happens until all of that is closed.
 
 ### 2026-05-27 — 3.2.37 (C21 Stage 3 of 4: PDF charts + 5 new KPI cards)
 

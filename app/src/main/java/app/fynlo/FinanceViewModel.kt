@@ -987,6 +987,9 @@ class FinanceViewModel @Inject constructor(
      */
     suspend fun exportToXLSX(outputStream: java.io.OutputStream) {
         val recalcAt = recalcCoordinator.runAndStamp()
+        // C21 Stage 4 — thread the Summary-sheet KPIs (FinancialSummary)
+        // and currency code so amounts render with the active currency
+        // symbol and the Summary sheet's KPIs match the PDF cover.
         app.fynlo.logic.ExcelExportUtility.generateFullBackup(
             outputStream,
             accounts.value,
@@ -997,6 +1000,8 @@ class FinanceViewModel @Inject constructor(
             payments.value,
             debtPayments.value,
             lastRecalcAt = recalcAt,
+            summary      = financialSummary.value,
+            currencyCode = currentProject.value?.currency ?: "INR",
         )
         app.fynlo.data.Analytics.dataExported("xlsx")
     }

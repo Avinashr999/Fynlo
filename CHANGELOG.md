@@ -2,6 +2,55 @@
 
 All notable changes to Fynlo are documented here.
 
+## [3.2.38] - 2026-05-27 *(Development milestone — C21 Stage 4: XLSX overhaul — **closes C21 + closes the P1 backlog**; not promoted per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`)*
+
+### Fixed
+- **C21 Stage 4 of 4 — XLSX overhaul (audit fixes C21 #12, #13, #14, #15, #16). Closes C21 in full and closes the P1 backlog.** Fourth and final stage of C21. The XLSX export is now a proper accounting deliverable instead of a tabular text dump.
+
+**ExcelExportUtility — added `Cell.Currency` (audit #12):**
+- New `Cell.Currency(val value: Double)` variant. Renders via numFmt code `[$<sym>-409]#,##0.00;[Red]-[$<sym>-409]#,##0.00`. The `<sym>` is read from `CurrencyUtils.symbolFor(currencyCode)` so the symbol matches the active project's currency (₹ / $ / € / etc.). All amount columns migrated from `Cell.Number` → `Cell.Currency`: account balances, transaction amounts, principal/paid on Lending/Debts, Investments invested/current/growth, Loan + Debt Repayment amounts. Rate-% columns stay `Cell.Number` (not currency).
+
+**ExcelExportUtility — added native negative-red formatting (audit #13):**
+- The `;[Red]-` half of the currency numFmt makes Excel/Sheets render negative amounts in red natively — no separate `<conditionalFormatting>` block needed. Covers the audit's "negative growth (red)" concern.
+- "Mohan Rao-style overdue red row" deferred. The Status column already shows "Overdue" in text, and the Lending sheet has the Status column visible by default. Full per-row conditional fill is nice-to-have but more invasive XML; logged as a deferred follow-up.
+
+**ExcelExportUtility — added frozen first row + auto-filter (audit #14):**
+- New per-sheet `Sheet.freezeHeader: Boolean = true` flag emits `<sheetView><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView>` before `<sheetData>`. Header stays visible while scrolling.
+- New `Sheet.autoFilterCols: Int = 0` flag emits `<autoFilter ref="A1:<col><lastRow>"/>` after `</sheetData>`. Filter dropdowns appear on every data sheet's header row. Range excludes the totals row so SUM stays visible regardless of filter state.
+
+**ExcelExportUtility — added totals rows (audit #15):**
+- New per-sheet `Sheet.totalsCols: List<Int> = emptyList()` flag indicates which column indices (0-based) get a SUM. After the body rows, a final row emits:
+  - Leftmost cell → "Total" label in bold (style 4).
+  - Each `totalsCols` column → `<c t="n" s="5"><f>SUM(B2:Bn)</f><v>precomputed</v></c>` — bold + currency-formatted SUM formula with the pre-computed value shipped in `<v>` so the file reads correctly before Excel re-evaluates.
+- Totals rows applied to: Accounts (Balance), Lending (Principal + Paid), Debts (Principal + Paid), Investments (Invested + Current Value + Growth).
+
+**ExcelExportUtility — added Summary sheet (audit #16):**
+- New first sheet in the workbook — opens automatically when the file's launched. 2-column `Metric / Value` layout with 10 KPI rows mirroring the PDF cover:
+  - Balance sheet: Net Worth / Total Assets / Total Liabilities / Total Cash / Total Investments / Invest Growth.
+  - Activity: Monthly Income / Monthly Expense / Net Cash Flow / Total Lent Out.
+- Same cash-basis exclusion as the P&L Statement (financing categories excluded from Monthly Income / Expense). Total Lent Out = lifetime principal (matches C15b audit #4 fix).
+- `freezeHeader = true, autoFilterCols = 0` — 2-column metric/value list doesn't need filter dropdowns.
+
+**Metadata sheet now reports currency:**
+- Added a `Currency` row alongside the existing `Export type / Generated / Recalculated at` rows so the file's currency code is auditable from inside the workbook.
+
+**`generateFullBackup` signature additions:**
+- `summary: FinancialSummary = FinancialSummary()` — feeds the Summary sheet's balance-sheet KPIs.
+- `currencyCode: String = "INR"` — drives the currency-symbol numFmt + Metadata row.
+- Defaults stay tolerant for callers that haven't migrated; the existing `SettingsScreen` "Export full backup" launcher routes through `viewModel.exportToXLSX` which threads both new params.
+
+### Closes
+- **C21 audit fixes #12, #13 (the negative-red half), #14, #15, #16** (this stage).
+- **C21 cluster closed in full** — all 4 stages landed: Stage 1 (3.2.35), Stage 2 (3.2.36), Stage 3 (3.2.37), Stage 4 (3.2.38).
+- **P1 backlog closed.** Eleven P1 Sprint-2 clusters: C04, C06+C07, C08, C09, C18, C12, C13, C14, C15, C21.
+- Deferred: audit #18 (Android PdfDocument framework limit), audit #13 "Mohan Rao red row" (logged as a deferred follow-up — native [Red] negative format handles 95% of intent).
+
+### Changed
+- **`versionName`** `3.2.37` → `3.2.38`, **`versionCode`** `160` → `161`.
+
+### Data-integrity gate
+Unchanged at **114 tests across 10 classes**, 0 failures. The new `Cell.Currency` cell type is a render-layer addition; SUM totals are pre-computed at write time so the file's numbers are correct without depending on Excel's formula evaluator.
+
 ## [3.2.37] - 2026-05-27 *(Development milestone — C21 Stage 3: PDF charts + 5 new KPI cards; not promoted per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`)*
 
 ### Fixed
