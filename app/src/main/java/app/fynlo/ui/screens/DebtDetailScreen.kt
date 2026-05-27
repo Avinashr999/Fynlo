@@ -221,7 +221,7 @@ fun DebtDetailScreen(
                     )
                     if (debtPayments.isNotEmpty()) {
                         Text(
-                            "${debtPayments.size} payment${if (debtPayments.size != 1) "s" else ""}",
+                            app.fynlo.logic.pluralize(debtPayments.size, "payment"),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )

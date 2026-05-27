@@ -160,7 +160,7 @@ val borrowers by viewModel.borrowers.collectAsState()
             appendLine("Hi ${borrower.name},")
             appendLine()
             if (daysOverdue > 0) {
-                appendLine("This is a reminder that your loan repayment is *${daysOverdue} day${if (daysOverdue != 1L) "s" else ""} overdue*.")
+                appendLine("This is a reminder that your loan repayment is *${app.fynlo.logic.pluralize(daysOverdue, "day")} overdue*.")
                 appendLine()
                 appendLine("*Loan Summary:*")
                 appendLine("• Principal: ${CurrencyFormatter.detail(borrower.amount, currencyCode, locale)}")
@@ -176,7 +176,7 @@ val borrowers by viewModel.borrowers.collectAsState()
             } else {
                 val dueInfo = if (borrower.due.isNotBlank()) {
                     val daysLeft = InterestEngine.daysBetween(today, borrower.due)
-                    " (due in $daysLeft day${if (daysLeft != 1L) "s" else ""})"
+                    " (due in ${app.fynlo.logic.pluralize(daysLeft, "day")})"
                 } else ""
                 appendLine("This is a friendly reminder about your outstanding loan$dueInfo.")
                 appendLine()
@@ -498,7 +498,7 @@ val borrowers by viewModel.borrowers.collectAsState()
                     )
                     if (loanPayments.isNotEmpty()) {
                         Text(
-                            "${loanPayments.size} payment${if (loanPayments.size != 1) "s" else ""}",
+                            app.fynlo.logic.pluralize(loanPayments.size, "payment"),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )

@@ -844,7 +844,7 @@ object ExportUtility {
         }
         b.nl(50f)
 
-        b.sectionHeader("All Flows (${flows.size} entries)")
+        b.sectionHeader("All Flows (${pluralize(flows.size, "entry", "entries")})")
         val usable = PAGE_W - MARGIN * 2
         val fw = listOf(usable*.14f, usable*.14f, usable*.22f, usable*.22f, usable*.18f, usable*.10f)
         b.drawTableRow(listOf("Date","Type","From","To","Label","Amount"), fw, isHeader = true)

@@ -9,6 +9,7 @@ import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import app.fynlo.FynloApplication
 import app.fynlo.R
+import app.fynlo.logic.pluralize
 import kotlinx.coroutines.flow.first
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -40,9 +41,9 @@ class ReminderWorker(
                 val daysLeft = ChronoUnit.DAYS.between(today, due)
                 when {
                     daysLeft < 0 -> notify(notifId++, "Loan Overdue",
-                        "${b.name}'s loan of Rs${b.amount.toLong()} is overdue by ${-daysLeft} days")
+                        "${b.name}'s loan of Rs${b.amount.toLong()} is overdue by ${pluralize(-daysLeft, "day")}")
                     daysLeft <= 3 -> notify(notifId++, "Loan Due Soon",
-                        "${b.name}'s loan of Rs${b.amount.toLong()} is due in $daysLeft days")
+                        "${b.name}'s loan of Rs${b.amount.toLong()} is due in ${pluralize(daysLeft, "day")}")
                     daysLeft == 7L -> notify(notifId++, "Loan Due in 1 Week",
                         "Reminder: ${b.name} owes Rs${b.amount.toLong()}, due on ${b.due}")
                 }
@@ -57,9 +58,9 @@ class ReminderWorker(
                 val daysLeft = ChronoUnit.DAYS.between(today, due)
                 when {
                     daysLeft < 0 -> notify(notifId++, "Debt Payment Overdue",
-                        "Your debt to ${d.name} of Rs${d.amount.toLong()} is overdue by ${-daysLeft} days")
+                        "Your debt to ${d.name} of Rs${d.amount.toLong()} is overdue by ${pluralize(-daysLeft, "day")}")
                     daysLeft <= 3 -> notify(notifId++, "Debt Payment Due",
-                        "Pay Rs${d.amount.toLong()} to ${d.name} in $daysLeft days")
+                        "Pay Rs${d.amount.toLong()} to ${d.name} in ${pluralize(daysLeft, "day")}")
                 }
             }
         }

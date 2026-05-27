@@ -93,8 +93,10 @@ fun NetWorthHistoryScreen(viewModel: FinanceViewModel) {
                     color = if (summary.netWorth >= 0) Emerald500 else SemanticRed
                 )
                 Text(
-                    // Audit #4 — singular/plural handled locally.
-                    pluralCount(sorted.size, "snapshot", "snapshots") + " recorded",
+                    // C15c audit #4 + C10 — uses the shared Pluralize helper
+                    // (was a screen-local pluralCount in 3.2.31; migrated to
+                    // app.fynlo.logic.pluralize for consistency).
+                    app.fynlo.logic.pluralize(sorted.size, "snapshot") + " recorded",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -351,6 +353,5 @@ private fun NetWorthCallout(
     }
 }
 
-/** Local pluralization helper — C15c audit #4. */
-private fun pluralCount(n: Int, singular: String, plural: String): String =
-    if (n == 1) "1 $singular" else "$n $plural"
+// C10 (3.2.39) — removed screen-local pluralCount helper. Replaced by
+// the shared app.fynlo.logic.pluralize used at every call site in the app.

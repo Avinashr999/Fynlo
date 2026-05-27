@@ -50,7 +50,7 @@ fun DebtPayoffScreen(viewModel: FinanceViewModel) {
                 Text(CurrencyFormatter.detail(totalOwed, currencyCode, locale),
                     style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.ExtraBold),
                     color = SemanticRed)
-                Text("Across ${activeDebts.size} active debt(s)", style = MaterialTheme.typography.bodySmall,
+                Text("Across ${app.fynlo.logic.pluralize(activeDebts.size, "active debt")}", style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
 

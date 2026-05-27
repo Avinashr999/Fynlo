@@ -158,7 +158,7 @@ AI_AGENT_PROTOCOL.md to match.
 
 # Fynlo - Complete AI Portability File
 **Project Name**: Fynlo
-**Version**: 3.2.38 on `master` (`versionName = "3.2.38"`, `versionCode = 161`). All four Sprint-1 P0 clusters closed. **P1 backlog closed in full.** Eleven P1 Sprint-2 clusters all closed: C04, C06+C07, C08, C09, C18, C12, C13, C14, C15, C21. **3.2.38 = C21 Stage 4 = XLSX overhaul — closes C21 and the P1 backlog.** Remaining work: P2 cluster work (C10, C11, C16, C17, C19, C20), C22 v4+ backlog (P3), C03b breaking schema migration, infrastructure backlog INF01-INF06, deferred follow-ups (Task #24/#26/#27/#28). Internal milestone markers only — per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens until every `UX_AUDIT` cluster (P0 through P3) is closed. All four Sprint-1 P0 clusters closed (C01 / C02 / C03a / C05). **Ten** P1 Sprint 2 clusters closed (C04, C06+C07, C08, C09, C18, C13, C14, C12, **C15**). **3.2.33 = C15 Stage 5 = C15e Money Flow category-grouped visualization — closes C15 in full**. All five C15 sub-stages landed: C15a in 3.2.29, C15b in 3.2.30, C15c in 3.2.31, C15d in 3.2.32, C15e in 3.2.33. Remaining P1: C21 (PDF/XLSX export quality polish). Plus deferred follow-ups: Task #26, #27, #28, #24. Internal milestone markers only — per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens until every `UX_AUDIT` cluster (P0 through P3) is closed.
+**Version**: 3.2.39 on `master` (`versionName = "3.2.39"`, `versionCode = 162`). All four Sprint-1 P0 clusters closed. P1 backlog closed in full. **First P2 cluster closed in 3.2.39: C10 (Pluralization).** P2 remaining: C11 (Date formatting), C16 (Color semantics), C17 (Disabled button hints), C19 (Empty states), C20 (Drawer cleanup). Plus C22 v4+ backlog (P3), C03b breaking schema migration, infrastructure backlog INF01-INF06, deferred follow-ups (Task #24/#26/#27/#28). Internal milestone markers only — per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens until every `UX_AUDIT` cluster (P0 through P3) is closed. All four Sprint-1 P0 clusters closed (C01 / C02 / C03a / C05). **Ten** P1 Sprint 2 clusters closed (C04, C06+C07, C08, C09, C18, C13, C14, C12, **C15**). **3.2.33 = C15 Stage 5 = C15e Money Flow category-grouped visualization — closes C15 in full**. All five C15 sub-stages landed: C15a in 3.2.29, C15b in 3.2.30, C15c in 3.2.31, C15d in 3.2.32, C15e in 3.2.33. Remaining P1: C21 (PDF/XLSX export quality polish). Plus deferred follow-ups: Task #26, #27, #28, #24. Internal milestone markers only — per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens until every `UX_AUDIT` cluster (P0 through P3) is closed.
 **Platform**: Android (Kotlin, Jetpack Compose, Room — Gradle 9.4.1, AGP 9.2.1, Room 2.8.4, KSP 2.3.7, Kotlin 2.2.10)
 
 ## 1. Project Overview
@@ -345,6 +345,30 @@ in the APK).
 ## 6. Journal
 
 **Newest first.** Each entry: date · cluster(s) closed/touched · commit(s) · one-paragraph why-and-what.
+
+### 2026-05-27 — 3.2.39 (C10 closed — shared Pluralize helper + 13-site sweep, first P2 cluster down)
+
+**Type:** C10 closure. First P2 cluster down. Audit §C10 fixes #117, #138, #152 land here.
+
+**Internal milestone:** `3.2.39` / `versionCode = 162`. No Play Console upload per release-cadence ADR. **Data-integrity gate +8 tests** (`PluralizeDataIntegrityTest`) → 122 tests / 11 classes / 0 failures.
+
+**`app.fynlo.logic.Pluralize` added:**
+- `object Pluralize` with `pluralize(count, singular, plural?)` + `pluralNoun(count, singular, plural?)`. Default plural is `singular + "s"`; irregular plurals via explicit second arg.
+- Top-level shorthand functions for ergonomic call sites.
+- Int AND Long overloads. Long is the common case for `ChronoUnit.DAYS.between(...)` day-counts.
+
+**13 call sites swept:**
+- DebtPayoffScreen (the literal `(s)` bug), AccountStatementScreen, GlobalSearchScreen, InvestmentScreen (×2), SpendScreen, TransactionHistoryScreen (×2), ExportUtility PDF section header, CollectionCalendarScreen (×2 Long), CustomerDetailScreen (×3 — WhatsApp templates + payment count), DebtDetailScreen, PinScreen, ReminderWorker (×4 background notifications).
+- Plus NetWorthHistoryScreen's screen-local pluralCount helper (from C15c 3.2.31) deleted; migrated to the shared helper.
+
+**`PluralizeDataIntegrityTest` — 8 cases:**
+- Singular at count == 1; plural at 0, 2+, negative; default plural; explicit irregular; pluralNoun variant; zero-is-plural English convention.
+
+**Localization follow-up deferred.** Audit recommended Android `<plurals>` resources but the app's strings live in Compose `Text(...)` not `string.xml`, so a `pluralStringResource(...)` migration would be the same call-site churn anyway. Revisit when localization becomes a real concern. The shared Kotlin helper is structured so that future migration is mechanical.
+
+**Pattern: one helper, many call sites.** Same shape as C08 (CurrencyFormatter) and C09 (UTF-8 mojibake guard) — define the helper once, sweep every site, add a data-integrity test class to pin the contract.
+
+**P2 remaining:** C11 (Date formatting), C16 (Color semantics), C17 (Disabled button hints), C19 (Empty states), C20 (Drawer cleanup).
 
 ### 2026-05-27 — 3.2.38 (C21 Stage 4 of 4 — closes C21 + closes P1 backlog: XLSX overhaul)
 

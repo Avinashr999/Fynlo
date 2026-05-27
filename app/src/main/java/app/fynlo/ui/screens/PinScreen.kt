@@ -141,7 +141,7 @@ fun PinScreen(
                     } else {
                         attempts++
                         error = if (attempts >= 5) "Too many attempts. Try again later."
-                                else "Wrong PIN. ${5 - attempts} attempt${if (5 - attempts != 1) "s" else ""} left."
+                                else "Wrong PIN. ${app.fynlo.logic.pluralize(5 - attempts, "attempt")} left."
                         pin = ""
                     }
                 }

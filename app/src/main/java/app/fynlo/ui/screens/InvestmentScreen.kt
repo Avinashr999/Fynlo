@@ -333,13 +333,13 @@ val currentProject by viewModel.currentProject.collectAsState()
                                 )
                             }
                             Text(
-                                "${CurrencyFormatter.detail(netInvested, currencyCode, locale)} invested · ${investments.size} holdings",
+                                "${CurrencyFormatter.detail(netInvested, currencyCode, locale)} invested · ${app.fynlo.logic.pluralize(investments.size, "holding")}",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.padding(top = 2.dp),
                             )
                         } else {
-                            Text("${investments.size} holdings",
+                            Text(app.fynlo.logic.pluralize(investments.size, "holding"),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }

@@ -400,12 +400,12 @@ private fun DueEntryCard(
     val statusLabel = when (entry.status) {
         DueStatus.OVERDUE       -> {
             val days = java.time.temporal.ChronoUnit.DAYS.between(entry.dueDate, today)
-            "$days day${if (days != 1L) "s" else ""} overdue"
+            "${app.fynlo.logic.pluralize(days, "day")} overdue"
         }
         DueStatus.TODAY         -> "Due today"
         DueStatus.UPCOMING_SOON -> {
             val days = java.time.temporal.ChronoUnit.DAYS.between(today, entry.dueDate)
-            "Due in $days day${if (days != 1L) "s" else ""}"
+            "Due in ${app.fynlo.logic.pluralize(days, "day")}"
         }
         DueStatus.UPCOMING      -> "Due ${DateUtils.formatToDisplay(entry.dueDate.format(dbFmt))}"
         DueStatus.SETTLED       -> "Settled"

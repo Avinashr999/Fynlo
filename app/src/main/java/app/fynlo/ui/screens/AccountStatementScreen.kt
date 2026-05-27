@@ -86,7 +86,7 @@ fun AccountStatementScreen(
                         style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.ExtraBold),
                         color = if (account.balance >= 0) Emerald500 else SemanticRed
                     )
-                    Text("${accountTransactions.size} transactions",
+                    Text(app.fynlo.logic.pluralize(accountTransactions.size, "transaction"),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }

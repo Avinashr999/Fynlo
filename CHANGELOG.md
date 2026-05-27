@@ -2,6 +2,48 @@
 
 All notable changes to Fynlo are documented here.
 
+## [3.2.39] - 2026-05-27 *(Development milestone — C10 closed: shared Pluralize helper + 13-site sweep; not promoted per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`)*
+
+### Fixed
+- **C10 — Pluralization bugs (audit #117, #138, #152).** First P2 cluster closed. Replaces ad-hoc inline `${if (n != 1) "s" else ""}` patterns + literal `(s)` strings with a single shared helper used at every count-render site in the app.
+
+**`app.fynlo.logic.Pluralize` — new helper:**
+- `object Pluralize` with `pluralize(count, singular, plural?)` + `pluralNoun(count, singular, plural?)`. Default plural is `singular + "s"`; irregular plurals via explicit second arg (`pluralize(1, "child", "children")` / `pluralize(2, "entry", "entries")`).
+- Top-level `pluralize(...)` + `pluralNoun(...)` shorthand functions for ergonomic call sites — most usages need only the top-level.
+- `Int` AND `Long` overloads. Long is the common case for day-counts from `ChronoUnit.DAYS.between(...)`.
+
+**Migration: 13 call sites swept** to the shared helper:
+- `DebtPayoffScreen` "Across N active debt(s)" — the literal "(s)" bug. → `pluralize(N, "active debt")`.
+- `AccountStatementScreen` "N transactions" → `pluralize(N, "transaction")`.
+- `GlobalSearchScreen` "N results for ..." → `pluralize(N, "result")`.
+- `InvestmentScreen` "N holdings" (two sites) → `pluralize(N, "holding")`.
+- `SpendScreen` "N transactions" → `pluralize(N, "transaction")`.
+- `TransactionHistoryScreen` "Delete N transactions?" + "N entries" → `pluralize(N, "transaction")` + `pluralize(N, "entry", "entries")`.
+- `ExportUtility` PDF section header "All Flows (N entries)" → `pluralize(N, "entry", "entries")`.
+- `CollectionCalendarScreen` "N day(s) overdue" + "Due in N day(s)" (Long counts) → `pluralize(days, "day")`.
+- `CustomerDetailScreen` WhatsApp message templates "N day(s) overdue" + "(due in N day(s))" + "N payment(s)" → all via shared helper.
+- `DebtDetailScreen` "N payment(s)" → `pluralize(N, "payment")`.
+- `PinScreen` "Wrong PIN. N attempt(s) left." → `pluralize(N, "attempt")`.
+- `ReminderWorker` (background notifications) "overdue by N day(s)" + "due in N day(s)" (4 sites; 2 borrower, 2 debt) → `pluralize(days, "day")`.
+
+**Migrated `NetWorthHistoryScreen` screen-local helper to the shared one:**
+- C15c's `pluralCount(n, "snapshot", "snapshots")` (3.2.31) replaced with `pluralize(n, "snapshot")`. The screen-local helper deleted. Now only one pluralization implementation app-wide.
+
+**`PluralizeDataIntegrityTest` — new test class, 8 cases:**
+- Singular at count == 1; plural at 0, 2+, negative; default plural = `singular + "s"`; explicit irregular plurals; `pluralNoun` variant; zero is plural. All bounded; no Hilt / Room / coroutine setup required.
+
+### Localization follow-up
+- Audit's "use Android `<plurals>` resources" is **deferred**. The app's strings live in Compose `Text(...)` calls rather than `string.xml`, so a `pluralStringResource(...)` migration would touch every call site anyway. Once localization (currently English-only) becomes a real concern, revisit and promote call sites to `<plurals>` for proper CLDR pluralization rules in other languages. The shared Kotlin helper is structured to make that future migration mechanical (every call site is the same shape).
+
+### Closes
+- **C10 audit fixes #117, #138, #152** (this commit). First P2 cluster closed.
+
+### Changed
+- **`versionName`** `3.2.38` → `3.2.39`, **`versionCode`** `161` → `162`.
+
+### Data-integrity gate
+**+8 tests from `PluralizeDataIntegrityTest`.** Total now **122 tests across 11 classes**, 0 failures (was 114/10 before C10).
+
 ## [3.2.38] - 2026-05-27 *(Development milestone — C21 Stage 4: XLSX overhaul — **closes C21 + closes the P1 backlog**; not promoted per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`)*
 
 ### Fixed

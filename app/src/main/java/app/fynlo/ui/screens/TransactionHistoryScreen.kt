@@ -77,7 +77,7 @@ fun TransactionHistoryScreen(viewModel: FinanceViewModel) {
     if (showBulkDeleteConfirm) {
         AlertDialog(
             onDismissRequest = { showBulkDeleteConfirm = false },
-            title = { Text("Delete ${selectedIds.size} transactions?") },
+            title = { Text("Delete ${app.fynlo.logic.pluralize(selectedIds.size, "transaction")}?") },
             text  = { Text("This will permanently delete the selected transactions and reverse their account balances.") },
             confirmButton = {
                 Button(
@@ -128,7 +128,7 @@ fun TransactionHistoryScreen(viewModel: FinanceViewModel) {
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.padding(top = 2.dp, bottom = 4.dp)
             ) {
-                Text("${filteredHistory.size} entries",
+                Text(app.fynlo.logic.pluralize(filteredHistory.size, "entry", "entries"),
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text("▲ ${CurrencyFormatter.detail(totalIncome, currencyCode, locale)}",

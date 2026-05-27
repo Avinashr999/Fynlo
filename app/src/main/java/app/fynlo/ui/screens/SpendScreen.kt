@@ -178,7 +178,7 @@ val transactions by viewModel.transactions.collectAsState()
                             modifier = Modifier.padding(top = 2.dp),
                         )
                     }
-                    Text("${expenses.size} transactions", style = MaterialTheme.typography.bodySmall,
+                    Text(app.fynlo.logic.pluralize(expenses.size, "transaction"), style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(top = 2.dp))
                 }

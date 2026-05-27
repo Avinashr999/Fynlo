@@ -190,7 +190,7 @@ fun GlobalSearchScreen(
                 }
             } else {
                 item {
-                    Text("${results.size} results for \"$query\"",
+                    Text("${app.fynlo.logic.pluralize(results.size, "result")} for \"$query\"",
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
