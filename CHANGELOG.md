@@ -2,6 +2,22 @@
 
 All notable changes to Fynlo are documented here.
 
+## [3.2.49] - 2026-05-27 *(Development milestone — AddRecurring Frequency dropdown → SegmentedButtonRow (3.2.48 was still broken); not promoted per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`)*
+
+### Fixed
+- **AddRecurring Frequency dropdown was rendering as a collapsed line.** 3.2.48 added a `supportingText` + bigger trailing arrow to the `ExposedDropdownMenuBox` but a user screencap showed the field still rendered with **only the chevron visible** — label "Frequency", value "Monthly", and the new "Tap to choose" supportingText were all clipped. The dropdown's OutlinedTextField was collapsing to ~0 height inside the AlertDialog text slot for reasons we don't fully understand (maybe Material 3 + AlertDialog + readOnly + supportingText layout interaction).
+- **Replaced the dropdown with a `SingleChoiceSegmentedButtonRow`** of 4 segments (Daily / Weekly / Monthly / Yearly) above the day-of-month field. Same pattern as the Income/Expense segmented control at the top of the same dialog. Pre-3.2.49 the 3.2.10 history said 4 labels wouldn't fit; smoke proved the dropdown failure mode is worse, and modern Compose `SingleChoiceSegmentedButtonRow` with `maxLines = 1` + small `labelSmall` font handles the 4 labels fine. Worst case "Yearly" truncates to "Yearl…" on narrow devices — still legible.
+- Added a small "Frequency" label above the row so the affordance is clear.
+
+### Lesson logged
+- `ExposedDropdownMenuBox` doesn't always render reliably inside an AlertDialog text slot — when smoke shows it collapsed, fall back to a SegmentedButtonRow rather than adding more `supportingText` patches. Visible-by-default chips beat a clipped picker.
+
+### Changed
+- **`versionName`** `3.2.48` → `3.2.49`, **`versionCode`** `171` → `172`.
+
+### Data-integrity gate
+Unchanged at **137 tests across 12 classes**, 0 failures (UI swap only).
+
 ## [3.2.48] - 2026-05-27 *(Development milestone — RecurringScreen FAB + AddRecurring dropdown discoverability (3.2.47 smoke surfaces); not promoted per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`)*
 
 ### Fixed

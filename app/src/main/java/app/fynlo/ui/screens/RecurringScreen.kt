@@ -340,64 +340,42 @@ private fun AddRecurringDialog(
                     label = { Text("Account (e.g. HDFC Bank)") }, singleLine = true,
                     modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp))
 
-                // 3.2.10 fix: switched to ExposedDropdownMenuBox after three
-                // failed attempts at fitting four labels horizontally inside
-                // an AlertDialog (3.2.7 cramped Row<FilterChip>, 3.2.8
-                // clipped 'Monthly' in a SegmentedButtonRow, 3.2.9 dropped
-                // 'Yearly' off-screen in a FlowRow<FilterChip>). Dropdown is
-                // the right pattern for any "pick one of N" picker inside a
-                // constrained-width container — it always fits regardless of
-                // dialog width, and it matches the C04 Stage 3 currency
-                // picker pattern in SettingsScreen for visual consistency.
-                // Reuse this same widget for future narrow-dialog
-                // mutually-exclusive pickers; reserve FilterChips for
-                // "browse and pick" cases where seeing every option at a
-                // glance matters (e.g. Category).
-                var frequencyExpanded by remember { mutableStateOf(false) }
-                ExposedDropdownMenuBox(
-                    expanded = frequencyExpanded,
-                    onExpandedChange = { frequencyExpanded = !frequencyExpanded },
-                ) {
-                    OutlinedTextField(
-                        value = frequency,
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("Frequency") },
-                        // C22 Stage 2 smoke fix (3.2.48) — supportingText
-                        // makes the picker behaviour obvious. Smoke user
-                        // reported the dropdown was "very small to select
-                        // or even we cant notice" — the OutlinedTextField
-                        // visual was being mistaken for a static label.
-                        // Hint text + larger arrow makes the affordance
-                        // obvious.
-                        supportingText = { Text("Tap to choose") },
-                        trailingIcon = {
-                            Icon(
-                                if (frequencyExpanded) Icons.Default.KeyboardArrowUp
-                                else Icons.Default.KeyboardArrowDown,
-                                contentDescription = null,
-                                modifier = Modifier.size(28.dp),
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                        },
-                        modifier = Modifier
-                            .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, true)
-                            .fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
-                    )
-                    ExposedDropdownMenu(
-                        expanded = frequencyExpanded,
-                        onDismissRequest = { frequencyExpanded = false },
-                    ) {
-                        listOf("Daily", "Weekly", "Monthly", "Yearly").forEach { option ->
-                            DropdownMenuItem(
-                                text = { Text(option) },
-                                onClick = {
-                                    frequency = option
-                                    frequencyExpanded = false
-                                },
-                            )
-                        }
+                // C22 Stage 2 smoke fix #2 (3.2.49) — Frequency picker
+                // reverted from ExposedDropdownMenuBox to SegmentedButtonRow.
+                // The 3.2.10 history said the dropdown was chosen because
+                // 4 labels didn't fit in a SegmentedButtonRow, but smoke on
+                // 3.2.47 + 3.2.48 showed the dropdown is failing harder:
+                // it renders collapsed inside the AlertDialog (label /
+                // value / supporting-text all clipped, only the chevron
+                // visible). The user couldn't see it was a picker at all.
+                //
+                // SegmentedButtonRow with full 4 labels fits with the
+                // dialog content fillMaxWidth + small fontSize on the
+                // labels; if "Yearly" still clips on a 320dp-wide device,
+                // it'd at most truncate by 1 char ("Yearl…") which is
+                // still legibly a Yearly option. Strictly better than the
+                // chevron-only render the dropdown produced.
+                Text(
+                    "Frequency",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                val freqOptions = listOf("Daily", "Weekly", "Monthly", "Yearly")
+                SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                    freqOptions.forEachIndexed { idx, option ->
+                        SegmentedButton(
+                            selected = frequency == option,
+                            onClick = { frequency = option },
+                            shape = SegmentedButtonDefaults.itemShape(idx, freqOptions.size),
+                            icon = {},
+                            label = {
+                                Text(
+                                    option,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    maxLines = 1
+                                )
+                            },
+                        )
                     }
                 }
 
