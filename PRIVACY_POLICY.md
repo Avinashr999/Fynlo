@@ -1,7 +1,7 @@
 # Fynlo — Privacy Policy
 
 **Document version:** 1.0
-**Effective date:** [TO BE SET on first publication]
+**Effective date:** June 13, 2026
 **Last updated:** 2026-05-25
 **URL:** https://avinashr999.github.io/Fynlo/privacy/
 
@@ -295,7 +295,7 @@ If you don't agree to material changes, you can delete your account before the c
 
 Material change history:
 
-- v1.0 — Initial Privacy Policy (effective [DATE])
+- v1.0 — Initial Privacy Policy (effective June 13, 2026)
 
 ---
 
@@ -327,7 +327,7 @@ If you want your data deleted immediately rather than waiting through this sched
 
 ### 13.4 Refunds for paid users
 
-If you have an active subscription or recent lifetime purchase when Fynlo is discontinued, refunds are provided per the schedule in our Terms & Conditions §14.4. Refunds are processed through Google Play Billing within 14 days.
+If you have an active subscription when Fynlo is discontinued, refunds are provided per the schedule in our Terms & Conditions §14.4. Refunds are processed through Google Play Billing within 14 days.
 
 ### 13.5 Acquisition or transfer
 
@@ -375,5 +375,5 @@ For users outside India, additional local laws may apply where mandated.
 ---
 
 **Document version 1.0**
-**Effective date:** [TO BE SET]
+**Effective date:** June 13, 2026
 **URL:** https://avinashr999.github.io/Fynlo/privacy/

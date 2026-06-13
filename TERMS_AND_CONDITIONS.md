@@ -1,7 +1,7 @@
 # Fynlo — Terms & Conditions
 
 **Document version:** 1.0
-**Effective date:** [TO BE SET on first publication]
+**Effective date:** June 13, 2026
 **Last updated:** 2026-05-25
 **URL:** https://avinashr999.github.io/Fynlo/terms/
 
@@ -17,7 +17,7 @@
 > 2. Verify all factual claims match actual app behavior
 > 3. Set the effective date
 > 4. Once OPC is registered, replace "Avinash Reddy Karri" with the OPC name throughout
-> 5. Confirm pricing in §10 is final (currently ₹1,299 lifetime, ₹999/year)
+> 5. Confirm pricing in §10 is final (currently ₹999/year)
 > 6. Confirm the ₹999 liability cap with lawyer — verify defensibility for your jurisdiction
 > 7. Delete this notice block before publishing
 >
@@ -234,17 +234,16 @@ We are not liable for losses arising from temporary unavailability. For prolonge
 
 ### 10.1 Pricing
 
-Fynlo offers the following purchase options:
+Fynlo operates exclusively on a recurring subscription model:
 
 | Plan | Price (INR) | What you get |
 |---|---|---|
 | Free | ₹0 | Core features as defined in the App at the time of use |
-| Annual subscription | ₹999 per year | All current features; auto-renews unless cancelled |
-| Lifetime | ₹1,299 one-time | All current and future features; access for the lifetime of the Service per §14 |
+| Annual subscription | ₹999 per year | All current and future features; auto-renews unless cancelled |
 
 All prices include applicable GST.
 
-We may modify pricing for new purchases at any time. Existing subscribers and lifetime purchasers retain their current pricing until renewal or per §10.5.
+We may modify pricing for new purchases at any time. Existing subscribers retain their current pricing until renewal or per §10.5.
 
 ### 10.2 Billing
 
@@ -257,21 +256,13 @@ We may modify pricing for new purchases at any time. Existing subscribers and li
 
 The free tier provides access to core features as defined in the App. We may change the scope of free vs. paid features over time, with at least 30 days notice for existing users before any reduction in free-tier features.
 
-### 10.4 Lifetime purchase definition
-
-"Lifetime" means the lifetime of the Fynlo Service while operated by Avinash Reddy Karri or any successor entity. Lifetime access ends per the discontinuation procedure in §14, in which case refunds apply per §14.4.
-
-Lifetime purchases include all features available at the time of purchase AND all future features added during the Service's lifetime. We will not retroactively remove features for lifetime purchasers.
-
-### 10.5 Price changes
+### 10.4 Price changes
 
 If we change subscription pricing:
 
 - Existing subscribers will be notified at least 30 days before the change
 - New pricing applies to the next renewal after the notice period
 - You can cancel before the new pricing takes effect
-
-Lifetime pricing can change for new buyers; existing lifetime purchasers are unaffected.
 
 ### 10.6 Refunds (general)
 
@@ -362,7 +353,7 @@ If you don't agree to material changes, you can stop using Fynlo and delete your
 
 Version history:
 
-- v1.0 — Initial Terms & Conditions (effective [DATE])
+- v1.0 — Initial Terms & Conditions (effective June 13, 2026)
 
 ---
 
@@ -386,7 +377,6 @@ If we decide to discontinue Fynlo, we will provide:
 
 - **For free users:** At least 60 days notice before service ceases
 - **For active annual subscribers:** At least 90 days notice OR through the end of the current billing period (whichever is longer)
-- **For lifetime purchasers:** At least 90 days notice, plus refund per §14.4
 
 Notice will be provided via:
 
@@ -419,15 +409,6 @@ If we discontinue Fynlo:
 | Currently in paid period | Pro-rata refund for unused days remaining in the period |
 | Cancelled before paid period ends | No additional refund (you keep access through end of paid period) |
 | Trial period | Per Google Play default policy |
-
-**Lifetime purchases (₹1,299):**
-
-| Time since purchase | Refund |
-|---|---|
-| Within 30 days | ₹1,299 (full, per Google Play policy) |
-| 30 days - 1 year | ₹1,299 (full) |
-| 1-2 years | ₹650 (approximately 50%) |
-| 2+ years | Discretionary, case-by-case (typical goodwill refund: ₹300-500) |
 
 Refunds processed via Google Play Billing within 14 days of the discontinuation announcement (or earlier if you cancel during the notice period).
 
@@ -550,5 +531,5 @@ In-app, you will be asked to explicitly accept these Terms before first use and 
 ---
 
 **Document version 1.0**
-**Effective date:** [TO BE SET]
+**Effective date:** June 13, 2026
 **URL:** https://avinashr999.github.io/Fynlo/terms/
