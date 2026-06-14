@@ -27,6 +27,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.fynlo.FinanceViewModel
 import app.fynlo.data.UserPreferences
@@ -596,19 +597,23 @@ fun SettingsScreen(
                 // need encryption; flipping on routes the next export
                 // through a password dialog → AES-GCM under PBKDF2.
                 Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     SettingsIconBubble(Icons.Default.Lock, Blue)
-                    Spacer(Modifier.width(12.dp))
                     Column(Modifier.weight(1f)) {
                         Text("Encrypt backup with password",
-                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold))
+                            style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis)
                         Text(
                             if (encryptOnExport) "Next export will be AES-encrypted. Keep the password safe — there's no recovery."
                             else "Export will be plain JSON (readable by anyone with the file).",
-                            style = MaterialTheme.typography.labelSmall,
+                            style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
                         )
                     }
                     // 3.2.63 lesson — explicit unchecked colors so the Switch
@@ -1136,20 +1141,27 @@ fun SettingsScreen(
             SettingsDivider()
             Row(
                 Modifier.fillMaxWidth().clickable { onNavigateToAbout() }.padding(vertical = 6.dp),
-                Arrangement.SpaceBetween, Alignment.CenterVertically
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically,
+                Row(
+                    modifier = Modifier.weight(1f),
+                    verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                     Box(Modifier.size(40.dp).clip(CircleShape)
                         .background(Blue.copy(0.12f)), Alignment.Center) {
                         Icon(Icons.Default.Info, null, Modifier.size(20.dp), tint = Blue)
                     }
-                    Column {
+                    Column(Modifier.weight(1f)) {
                         Text("About & Disclaimer",
-                            style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium))
+                            style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis)
                         Text("Legal info, privacy policy, app details",
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis)
                     }
                 }
                 Icon(Icons.AutoMirrored.Filled.ArrowForwardIos, null,
@@ -1502,7 +1514,9 @@ private fun SettingsStatusPill(
                 label,
                 style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
                 color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.weight(1f),
                 maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
         }
     }
@@ -1610,12 +1624,19 @@ private fun DataExportDialog(
                                 selected = selectedScope == scope,
                                 onClick = { onScopeChange(scope) },
                             )
-                            Column {
-                                Text(scope.label, style = MaterialTheme.typography.bodyMedium)
+                            Column(Modifier.weight(1f)) {
+                                Text(
+                                    scope.label,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
                                 Text(
                                     scope.subtitle,
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
                                 )
                             }
                         }
