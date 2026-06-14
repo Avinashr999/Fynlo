@@ -195,7 +195,7 @@ fun ReportsHubScreen(
                 ) {
                     Icon(Icons.Default.PictureAsPdf, null, Modifier.size(16.dp))
                     Spacer(Modifier.width(4.dp))
-                    Text("Export")
+                    Text("Report PDF")
                 }
             }
 
@@ -361,7 +361,7 @@ fun ReportTileCard(
             style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
             color = tint,
             textAlign = TextAlign.Center,
-            maxLines = 1,
+            maxLines = 2,
         )
         Text(
             preview,
