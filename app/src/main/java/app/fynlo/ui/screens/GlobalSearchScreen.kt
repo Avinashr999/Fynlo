@@ -20,6 +20,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.fynlo.FinanceViewModel
@@ -27,7 +28,6 @@ import app.fynlo.data.UserPreferences
 import app.fynlo.logic.CurrencyFormatter
 import app.fynlo.logic.FuzzyMatch
 import kotlinx.coroutines.launch
-import java.util.Locale
 import app.fynlo.ui.theme.*
 
 /**
@@ -72,7 +72,7 @@ fun GlobalSearchScreen(
     var typeFilter by remember { mutableStateOf("All") }
     val typeOptions = listOf("All", "Loans", "Debts", "Transactions", "Investments")
 
-    val locale = remember { Locale.getDefault() }
+    val locale = LocalLocale.current.platformLocale
     val focusRequester = remember { FocusRequester() }
     LaunchedEffect(Unit) { runCatching { focusRequester.requestFocus() } }
 
@@ -94,7 +94,7 @@ fun GlobalSearchScreen(
                     val s = FuzzyMatch.scoreAny(listOf(b.name, b.notes, b.phone), query)
                     if (s >= 0) add(SearchResult(
                         id = b.id, title = b.name,
-                        subtitle = "Loan • ${b.date} • ${if (b.paid >= b.amount) "Settled" else "Active"}",
+                        subtitle = "Loan - ${b.date} - ${if (b.paid >= b.amount) "Settled" else "Active"}",
                         amount = b.amount, type = "Loan",
                         icon = Icons.Default.Person, color = SemanticBlue, score = s,
                     ))
@@ -105,7 +105,7 @@ fun GlobalSearchScreen(
                     val s = FuzzyMatch.scoreAny(listOf(d.name, d.notes), query)
                     if (s >= 0) add(SearchResult(
                         id = d.id, title = d.name,
-                        subtitle = "Debt • ${d.date} • ${if (d.paid >= d.amount) "Settled" else "Active"}",
+                        subtitle = "Debt - ${d.date} - ${if (d.paid >= d.amount) "Settled" else "Active"}",
                         amount = d.amount, type = "Debt",
                         icon = Icons.Default.CreditCard, color = SemanticRed, score = s,
                     ))
@@ -116,7 +116,7 @@ fun GlobalSearchScreen(
                     val s = FuzzyMatch.scoreAny(listOf(t.desc, t.category, t.fromAcct, t.toAcct, t.notes), query)
                     if (s >= 0) add(SearchResult(
                         id = t.id, title = t.desc.ifBlank { t.category },
-                        subtitle = "${t.type} • ${t.date} • ${t.category}",
+                        subtitle = "${t.type} - ${t.date} - ${t.category}",
                         amount = t.amount, type = "Transaction",
                         icon = if (t.type.lowercase() == "income") Icons.Default.ArrowDownward
                                else Icons.Default.ArrowUpward,
@@ -130,7 +130,7 @@ fun GlobalSearchScreen(
                     val s = FuzzyMatch.scoreAny(listOf(i.name, i.type), query)
                     if (s >= 0) add(SearchResult(
                         id = i.id, title = i.name,
-                        subtitle = "Investment • ${i.type} • ${i.date}",
+                        subtitle = "Investment - ${i.type} - ${i.date}",
                         amount = i.currentVal, type = "Investment",
                         icon = Icons.Default.TrendingUp, color = SemanticAmber, score = s,
                     ))
@@ -151,7 +151,7 @@ fun GlobalSearchScreen(
                     OutlinedTextField(
                         value         = query,
                         onValueChange = { query = it },
-                        placeholder   = { Text("Search loans, debts, transactions…") },
+                        placeholder   = { Text("Search loans, debts, transactions") },
                         singleLine    = true,
                         modifier      = Modifier.fillMaxWidth().focusRequester(focusRequester),
                         shape         = RoundedCornerShape(16.dp),
@@ -254,7 +254,11 @@ fun GlobalSearchScreen(
                                 Icon(Icons.Default.Search, null, Modifier.size(64.dp),
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(0.4f))
                                 Spacer(Modifier.height(16.dp))
-                                Text("Type at least 2 characters to search",
+                                Text("Search across Fynlo",
+                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                                    color = MaterialTheme.colorScheme.onSurface)
+                                Spacer(Modifier.height(6.dp))
+                                Text("Type at least 2 characters to find loans, debts, transactions, and investments.",
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
@@ -270,11 +274,20 @@ fun GlobalSearchScreen(
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(0.4f))
                             Spacer(Modifier.height(16.dp))
                             Text("No results for \"$query\"",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                                color = MaterialTheme.colorScheme.onSurface)
                             if (typeFilter != "All") {
                                 Spacer(Modifier.height(8.dp))
                                 Text("Try widening the type filter above.",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.outlineVariant)
+                                Spacer(Modifier.height(10.dp))
+                                OutlinedButton(onClick = { typeFilter = "All" }) {
+                                    Text("Search all")
+                                }
+                            } else {
+                                Spacer(Modifier.height(8.dp))
+                                Text("Check spelling or try a shorter word.",
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.outlineVariant)
                             }

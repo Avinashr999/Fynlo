@@ -68,6 +68,20 @@ val COUNTRY_CODES = listOf(
     CountryCode("+86",  "🇨🇳", "China")
 )
 
+private fun displayContactId(name: String, id: String): String {
+    val namePart = name
+        .filter { it.isLetterOrDigit() }
+        .take(8)
+        .uppercase()
+        .ifBlank { "CONTACT" }
+    val idPart = id
+        .filter { it.isLetterOrDigit() }
+        .takeLast(4)
+        .uppercase()
+        .ifBlank { "0000" }
+    return "$namePart-$idPart"
+}
+
 /** Parse a saved phone string into (CountryCode, localNumber).
  *  e.g. "+919876543210" → ("+91 🇮🇳 India", "9876543210")
  *  Falls back to +91 India if no match. */
@@ -321,7 +335,7 @@ fun PersonCard(person: Person, onEdit: () -> Unit, onDelete: () -> Unit) {
                     )
                     if (person.id.isNotBlank()) {
                         Text(
-                            "ID: ${person.id}",
+                            displayContactId(person.name, person.id),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -370,7 +384,8 @@ fun PersonCard(person: Person, onEdit: () -> Unit, onDelete: () -> Unit) {
 fun AddPersonDialog(initial: Person? = null, onDismiss: () -> Unit, onConfirm: (Person) -> Unit) {
     val isEdit = initial != null
     var name  by remember { mutableStateOf(initial?.name ?: "") }
-    var id    by remember { mutableStateOf(initial?.id ?: app.fynlo.logic.Ids.newId()) }
+    val id = remember(initial?.id) { initial?.id ?: app.fynlo.logic.Ids.newId() }
+    val displayId = remember(name, id) { displayContactId(name, id) }
 
     // Parse existing phone
     val (initCode, initNumber) = remember { parsePhone(initial?.phone ?: "") }
@@ -477,25 +492,25 @@ fun AddPersonDialog(initial: Person? = null, onDismiss: () -> Unit, onConfirm: (
             }
         }
 
-        if (!isEdit) {
-            Spacer(Modifier.height(14.dp))
-            app.fynlo.ui.components.FormSectionLabel("Unique ID")
-            Spacer(Modifier.height(6.dp))
-            OutlinedTextField(
-                value = id, onValueChange = { id = it },
-                placeholder = { Text("auto-generated") },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
-            )
-        }
+        Spacer(Modifier.height(14.dp))
+        app.fynlo.ui.components.FormSectionLabel("Contact ID")
+        Spacer(Modifier.height(6.dp))
+        OutlinedTextField(
+            value = displayId,
+            onValueChange = {},
+            readOnly = true,
+            supportingText = { Text("Generated automatically") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+        )
 
         Spacer(Modifier.height(20.dp))
         Button(
             onClick = {
                 if (name.isNotBlank()) onConfirm(
                     Person(
-                        id    = id.ifBlank { app.fynlo.logic.Ids.newId() },
+                        id    = id,
                         name  = name.trim(),
                         phone = fullPhone.trim()
                     )
