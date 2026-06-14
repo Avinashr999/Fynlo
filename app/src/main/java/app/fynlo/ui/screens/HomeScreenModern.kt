@@ -25,6 +25,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -52,12 +53,13 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
     val currentProject    by viewModel.currentProject.collectAsState()
     val isSyncReady       by viewModel.isSyncReady.collectAsState()
     val isPrivacy         by viewModel.isPrivacyMode.collectAsState()
-    val locale            = Locale.getDefault()
+    val locale            = LocalLocale.current.platformLocale
     val currencyCode      = currentProject?.currency ?: "INR"
     val cs                = app.fynlo.logic.CurrencyUtils.symbolFor(currencyCode)
     var showAddTxn        by remember { mutableStateOf(false) }
     var addTxnIncome      by remember { mutableStateOf(false) }
     var accountDialogInitial by remember { mutableStateOf<Account?>(null) }
+    var accountDialogDefaultType by remember { mutableStateOf("Bank") }
     var showAccountDialog by remember { mutableStateOf(false) }
     var transferFromAccount by remember { mutableStateOf<Account?>(null) }
     var showTransferDialog by remember { mutableStateOf(false) }
@@ -90,6 +92,7 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
     // and the orphan-repair banner.
     val allInvestmentsHome by viewModel.investments.collectAsState()
     val allDebtsHome by viewModel.debts.collectAsState()
+    val allBorrowersHome by viewModel.borrowers.collectAsState()
     val allTransactionsHome by viewModel.transactions.collectAsState()
     val activeAccounts = remember(accounts) { accounts.filterNot { it.isClosedAccount() } }
     val activeAccountNames = remember(activeAccounts) { activeAccounts.map { it.name } }
@@ -113,6 +116,27 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
     val orphans = remember(allTransactionsHome, accountNames) {
         app.fynlo.logic.OrphanTransactionsScanner.scan(allTransactionsHome, accountNames)
     }
+    val today = remember { java.time.LocalDate.now() }
+    val recentActivityCount = remember(allTransactionsHome, today) {
+        allTransactionsHome.count { txn ->
+            runCatching { java.time.LocalDate.parse(txn.date) }
+                .getOrNull()
+                ?.let { !it.isBefore(today.minusDays(7)) && !it.isAfter(today) } == true
+        }
+    }
+    val dueSoonCount = remember(allBorrowersHome, allDebtsHome, today) {
+        fun isDueSoon(due: String): Boolean {
+            val date = runCatching { java.time.LocalDate.parse(due) }.getOrNull() ?: return false
+            return !date.isBefore(today) && !date.isAfter(today.plusDays(7))
+        }
+        allBorrowersHome.count { it.status != "Cleared" && isDueSoon(it.due) } +
+            allDebtsHome.count { it.status != "Cleared" && isDueSoon(it.due) }
+    }
+    val isFreshBook = activeAccounts.isEmpty() &&
+        allTransactionsHome.isEmpty() &&
+        allInvestmentsHome.isEmpty() &&
+        allDebtsHome.isEmpty() &&
+        allBorrowersHome.isEmpty()
     var showOrphanDialog by remember { mutableStateOf(false) }
 
     if (showAddTxn) {
@@ -141,6 +165,7 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
         val canDelete = initial != null && linkedCount == 0
         AccountManageDialog(
             initial = initial,
+            defaultType = accountDialogDefaultType,
             currencyCode = currencyCode,
             linkedTransactionCount = linkedCount,
             canTransfer = initial != null && activeAccounts.any { it.id != initial.id },
@@ -343,6 +368,23 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
         Spacer(Modifier.height(20.dp))
 
         // ── Hero: big net worth number — tap to open Net Worth History ────────
+        if (isFreshBook) {
+            FreshStartCard(
+                projectName = currentProject?.name ?: "Personal",
+                onAddAccount = {
+                    accountDialogInitial = null
+                    accountDialogDefaultType = "Bank"
+                    showAccountDialog = true
+                },
+                onAddTransaction = {
+                    addTxnIncome = false
+                    showAddTxn = true
+                },
+                onCreateProject = { onNavigateToScreen("projects") },
+            )
+            Spacer(Modifier.height(20.dp))
+        }
+
         Column(
             modifier = Modifier
                 .clip(RoundedCornerShape(12.dp))
@@ -451,6 +493,24 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
             NeoAction("History", Icons.Default.History, Carbon500, Modifier.weight(1f)) { onNavigateToScreen("history") }
         }
 
+        Spacer(Modifier.height(18.dp))
+
+        if (!isFreshBook) {
+            DashboardNudges(
+                dueSoonCount = dueSoonCount,
+                recentActivityCount = recentActivityCount,
+                onOpenDues = { onNavigateToScreen("loans_hub") },
+                onAddTransaction = {
+                    addTxnIncome = false
+                    showAddTxn = true
+                },
+                onOpenSettings = { onNavigateToScreen("settings") },
+            )
+            Spacer(Modifier.height(22.dp))
+        } else {
+            Spacer(Modifier.height(10.dp))
+        }
+
         Spacer(Modifier.height(28.dp))
 
         // ── Accounts ──────────────────────────────────────────────────────────
@@ -458,6 +518,7 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
             SectionHeader("Accounts")
             IconButton(onClick = {
                 accountDialogInitial = null
+                accountDialogDefaultType = "Bank"
                 showAccountDialog = true
             }) {
                 Icon(Icons.Default.Add, contentDescription = "Add Account", tint = Emerald500)
@@ -467,8 +528,18 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
         val activeAccountByName = activeAccounts.associateBy { it.name }
         val visibleAccountEntries = summary.accountBreakdown.entries.filter { activeAccountByName[it.key] != null }
         if (visibleAccountEntries.isEmpty()) {
-            Text("No accounts yet. Tap + to add one.", Modifier.padding(vertical = 16.dp),
-                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            EmptyAccountsCard(
+                onAddAccount = {
+                    accountDialogInitial = null
+                    accountDialogDefaultType = "Bank"
+                    showAccountDialog = true
+                },
+                onAddCash = {
+                    accountDialogInitial = null
+                    accountDialogDefaultType = "Cash"
+                    showAccountDialog = true
+                },
+            )
         } else {
             visibleAccountEntries.forEachIndexed { idx, entry ->
                 if (idx > 0) HorizontalDivider(thickness = 0.5.dp,
@@ -529,6 +600,186 @@ private fun app.fynlo.data.model.Transaction.linksAccount(account: Account): Boo
         (toAcctId.isBlank() && toAcct == account.name)
 
 @Composable
+private fun FreshStartCard(
+    projectName: String,
+    onAddAccount: () -> Unit,
+    onAddTransaction: () -> Unit,
+    onCreateProject: () -> Unit,
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(22.dp),
+        color = Emerald500.copy(alpha = 0.10f),
+        border = BorderStroke(0.5.dp, Emerald500.copy(alpha = 0.24f)),
+    ) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                app.fynlo.ui.components.FynloBrandMark(size = 44.dp)
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        "$projectName is ready",
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                    )
+                    Text(
+                        "Start with one account, then log the first money move.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                GuidedActionChip("Account", Icons.Default.AccountBalance, Emerald500, Modifier.weight(1f), onAddAccount)
+                GuidedActionChip("Transaction", Icons.Default.ReceiptLong, SemanticBlue, Modifier.weight(1f), onAddTransaction)
+                GuidedActionChip("Project", Icons.Default.Folder, SemanticAmber, Modifier.weight(1f), onCreateProject)
+            }
+        }
+    }
+}
+
+@Composable
+private fun DashboardNudges(
+    dueSoonCount: Int,
+    recentActivityCount: Int,
+    onOpenDues: () -> Unit,
+    onAddTransaction: () -> Unit,
+    onOpenSettings: () -> Unit,
+) {
+    val items = buildList {
+        if (dueSoonCount > 0) {
+            add(
+                NudgeItem(
+                    title = "$dueSoonCount due soon",
+                    subtitle = "Review loans and debts due in 7 days",
+                    icon = Icons.Default.Event,
+                    color = SemanticAmber,
+                    onClick = onOpenDues,
+                )
+            )
+        }
+        if (recentActivityCount == 0) {
+            add(
+                NudgeItem(
+                    title = "No activity this week",
+                    subtitle = "Log one entry to keep this book fresh",
+                    icon = Icons.Default.Edit,
+                    color = SemanticBlue,
+                    onClick = onAddTransaction,
+                )
+            )
+        }
+        add(
+            NudgeItem(
+                title = "Keep a backup",
+                subtitle = "Export from Settings after important changes",
+                icon = Icons.Default.Cloud,
+                color = Emerald500,
+                onClick = onOpenSettings,
+            )
+        )
+    }.take(2)
+
+    if (items.isEmpty()) return
+
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        items.forEach { item ->
+            SmartNudgeCard(item)
+        }
+    }
+}
+
+private data class NudgeItem(
+    val title: String,
+    val subtitle: String,
+    val icon: ImageVector,
+    val color: Color,
+    val onClick: () -> Unit,
+)
+
+@Composable
+@OptIn(ExperimentalMaterial3Api::class)
+private fun SmartNudgeCard(item: NudgeItem) {
+    Surface(
+        onClick = item.onClick,
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 1.dp,
+        border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f)),
+    ) {
+        Row(
+            Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Box(Modifier.size(38.dp).clip(RoundedCornerShape(12.dp)).background(item.color.copy(alpha = 0.12f)), Alignment.Center) {
+                Icon(item.icon, null, Modifier.size(20.dp), tint = item.color)
+            }
+            Column(Modifier.weight(1f)) {
+                Text(item.title, style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold))
+                Text(item.subtitle, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            Icon(Icons.AutoMirrored.Default.ArrowForward, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+@Composable
+private fun EmptyAccountsCard(
+    onAddAccount: () -> Unit,
+    onAddCash: () -> Unit,
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+        shape = RoundedCornerShape(18.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
+        border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)),
+    ) {
+        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Box(Modifier.size(42.dp).clip(RoundedCornerShape(14.dp)).background(Emerald500.copy(alpha = 0.12f)), Alignment.Center) {
+                    Icon(Icons.Default.AccountBalanceWallet, null, Modifier.size(22.dp), tint = Emerald500)
+                }
+                Column(Modifier.weight(1f)) {
+                    Text("No accounts yet", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold))
+                    Text("Add cash or a bank account to start tracking balances.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                GuidedActionChip("Cash", Icons.Default.Payments, Emerald500, Modifier.weight(1f), onAddCash)
+                GuidedActionChip("Bank", Icons.Default.AccountBalance, SemanticBlue, Modifier.weight(1f), onAddAccount)
+            }
+        }
+    }
+}
+
+@Composable
+@OptIn(ExperimentalMaterial3Api::class)
+private fun GuidedActionChip(
+    label: String,
+    icon: ImageVector,
+    color: Color,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+) {
+    Surface(
+        onClick = onClick,
+        modifier = modifier.heightIn(min = 42.dp),
+        shape = RoundedCornerShape(14.dp),
+        color = color.copy(alpha = 0.12f),
+    ) {
+        Row(
+            Modifier.padding(horizontal = 10.dp, vertical = 9.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center,
+        ) {
+            Icon(icon, null, Modifier.size(17.dp), tint = color)
+            Spacer(Modifier.width(6.dp))
+            Text(label, style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold), color = color, maxLines = 1)
+        }
+    }
+}
+
+@Composable
 private fun SectionHeader(title: String) {
     Text(title, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
 }
@@ -582,6 +833,7 @@ private fun NeoAccountRow(
 @Composable
 private fun AccountManageDialog(
     initial: Account?,
+    defaultType: String,
     currencyCode: String,
     linkedTransactionCount: Int,
     canTransfer: Boolean,
@@ -594,7 +846,7 @@ private fun AccountManageDialog(
     onDelete: (() -> Unit)?,
 ) {
     var name by remember(initial) { mutableStateOf(initial?.name ?: "") }
-    var type by remember(initial) { mutableStateOf(initial?.type ?: "Bank") }
+    var type by remember(initial, defaultType) { mutableStateOf(initial?.type ?: defaultType) }
     var balance by remember(initial) {
         mutableStateOf(initial?.balance?.toBigDecimal()?.stripTrailingZeros()?.toPlainString() ?: "")
     }
