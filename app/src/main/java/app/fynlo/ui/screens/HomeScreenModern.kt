@@ -93,6 +93,22 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
     val allTransactionsHome by viewModel.transactions.collectAsState()
     val activeAccounts = remember(accounts) { accounts.filterNot { it.isClosedAccount() } }
     val activeAccountNames = remember(activeAccounts) { activeAccounts.map { it.name } }
+    val cashInHandBreakdown = remember(activeAccounts) {
+        activeAccounts
+            .filter { it.isCashInHandAccount() }
+            .associate { it.name to it.balance }
+    }
+    val bankCashBreakdown = remember(activeAccounts, cashInHandBreakdown) {
+        val cashAccountIds = activeAccounts
+            .filter { it.isCashInHandAccount() }
+            .map { it.id }
+            .toSet()
+        activeAccounts
+            .filterNot { it.id in cashAccountIds }
+            .associate { it.name to it.balance }
+    }
+    val cashInHandTotal = remember(cashInHandBreakdown) { cashInHandBreakdown.values.sum() }
+    val bankCashTotal = remember(bankCashBreakdown) { bankCashBreakdown.values.sum() }
     val accountNames = activeAccountNames
     val orphans = remember(allTransactionsHome, accountNames) {
         app.fynlo.logic.OrphanTransactionsScanner.scan(allTransactionsHome, accountNames)
@@ -190,12 +206,16 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
     if (activeBreakdownType != null) {
         val title = when (activeBreakdownType) {
             BreakdownType.IDLE_CASH -> "Office & Petty Cash Breakdown"
+            BreakdownType.BANK_CASH -> "Bank Cash Breakdown"
+            BreakdownType.CASH_IN_HAND -> "Cash in Hand Breakdown"
             BreakdownType.GROWING_ASSETS -> "Growing Assets Breakdown"
             BreakdownType.HAND_LOANS -> "Hand Loans Breakdown"
             else -> ""
         }
         val icon = when (activeBreakdownType) {
             BreakdownType.IDLE_CASH -> Icons.Default.AccountBalance
+            BreakdownType.BANK_CASH -> Icons.Default.AccountBalance
+            BreakdownType.CASH_IN_HAND -> Icons.Default.Payments
             BreakdownType.GROWING_ASSETS -> Icons.Default.TrendingUp
             BreakdownType.HAND_LOANS -> Icons.Default.Handshake
             else -> Icons.Default.Info
@@ -204,12 +224,16 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
         val unknownTypeTint = MaterialTheme.colorScheme.onSurfaceVariant
         val color = when (activeBreakdownType) {
             BreakdownType.IDLE_CASH -> SemanticBlue
+            BreakdownType.BANK_CASH -> SemanticBlue
+            BreakdownType.CASH_IN_HAND -> Emerald500
             BreakdownType.GROWING_ASSETS -> SemanticAmber
             BreakdownType.HAND_LOANS -> Carbon500
             else -> unknownTypeTint
         }
         val data = when (activeBreakdownType) {
             BreakdownType.IDLE_CASH -> summary.accountBreakdown
+            BreakdownType.BANK_CASH -> bankCashBreakdown
+            BreakdownType.CASH_IN_HAND -> cashInHandBreakdown
             BreakdownType.GROWING_ASSETS -> {
                 val combined = mutableMapOf<String, Double>()
                 summary.investmentTypeBreakdown.forEach { (k, v) -> combined["$k (Invest)"] = v }
@@ -470,7 +494,9 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
         // ── Insights ──────────────────────────────────────────────────────────
         SectionHeader("Insights")
         Spacer(Modifier.height(4.dp))
-        NeoInsightRow("Office & Petty Cash", fmt(summary.totalCash), SemanticBlue) { activeBreakdownType = BreakdownType.IDLE_CASH }
+        NeoInsightRow("Bank Cash", fmt(bankCashTotal), SemanticBlue) { activeBreakdownType = BreakdownType.BANK_CASH }
+        HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f))
+        NeoInsightRow("Cash in Hand", fmt(cashInHandTotal), Emerald500) { activeBreakdownType = BreakdownType.CASH_IN_HAND }
         HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f))
         NeoInsightRow("Growing Assets", fmt(summary.totalInvestments + summary.totalInterestLoans), SemanticAmber) { activeBreakdownType = BreakdownType.GROWING_ASSETS }
         HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f))
@@ -486,6 +512,15 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
 private const val CLOSED_ACCOUNT_MARKER = "[fynlo:closed-account]"
 
 private fun Account.isClosedAccount(): Boolean = notes.contains(CLOSED_ACCOUNT_MARKER)
+
+private fun Account.isCashInHandAccount(): Boolean {
+    val normalizedType = type.trim().lowercase()
+    val normalizedName = name.trim().lowercase()
+    return normalizedType == "cash" ||
+        "cash in hand" in normalizedName ||
+        "personal cash" in normalizedName ||
+        "petty cash" in normalizedName
+}
 
 private fun app.fynlo.data.model.Transaction.linksAccount(account: Account): Boolean =
     fromAcctId == account.id ||

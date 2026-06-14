@@ -25,6 +25,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.fynlo.FinanceViewModel
+import app.fynlo.data.model.Account
 import app.fynlo.logic.CurrencyFormatter
 import app.fynlo.ui.components.AccountGrowthIndicator
 import app.fynlo.ui.components.WealthDistributionBar
@@ -44,6 +45,7 @@ fun HomeScreen(viewModel: FinanceViewModel, onNavigateToScreen: (String) -> Unit
     val currentProject   by viewModel.currentProject.collectAsState()
     val isSyncReady      by viewModel.isSyncReady.collectAsState()
     val isPrivacy        by viewModel.isPrivacyMode.collectAsState()
+    val accounts         by viewModel.accounts.collectAsState()
     val locale           = java.util.Locale.getDefault()
     val currencyCode     = currentProject?.currency ?: "INR"
     val currencySymbol   = app.fynlo.logic.CurrencyUtils.symbolFor(currencyCode)
@@ -56,7 +58,6 @@ fun HomeScreen(viewModel: FinanceViewModel, onNavigateToScreen: (String) -> Unit
     if (showAddTxn) {
         // 3.2.59 — wire real account / investment / debt names so the
         // source picker is a dropdown of existing entities.
-        val allAccounts by viewModel.accounts.collectAsState()
         val allInvestments by viewModel.investments.collectAsState()
         val allDebts by viewModel.debts.collectAsState()
         AddTransactionDialog(
@@ -66,21 +67,35 @@ fun HomeScreen(viewModel: FinanceViewModel, onNavigateToScreen: (String) -> Unit
             onRecordCategory = { isIncome, cat -> viewModel.recordTransactionCategory(isIncome, cat) },
             // 3.2.81 (C13 #5) — "Repeat monthly?" → also create a recurring template.
             onRepeatMonthly = { txn -> viewModel.addRecurringTransaction(app.fynlo.logic.toRecurringTemplate(txn)) },
-            bankAccounts    = allAccounts.map { it.name },
+            bankAccounts    = accounts.map { it.name },
             investmentNames = allInvestments.map { it.name },
             debtNames       = allDebts.map { it.name },
         )
     }
 
     if (activeBreakdownType != null) {
+        val cashInHandBreakdown = accounts
+            .filter { it.isCashInHandAccountLegacy() }
+            .associate { it.name to it.balance }
+        val cashAccountIds = accounts
+            .filter { it.isCashInHandAccountLegacy() }
+            .map { it.id }
+            .toSet()
+        val bankCashBreakdown = accounts
+            .filterNot { it.id in cashAccountIds }
+            .associate { it.name to it.balance }
         val sheetTitle = when(activeBreakdownType) {
             BreakdownType.IDLE_CASH -> "Office & Petty Cash Breakdown"
+            BreakdownType.BANK_CASH -> "Bank Cash Breakdown"
+            BreakdownType.CASH_IN_HAND -> "Cash in Hand Breakdown"
             BreakdownType.GROWING_ASSETS -> "Growing Assets Breakdown"
             BreakdownType.HAND_LOANS -> "Hand Loans Breakdown"
             else -> ""
         }
         val sheetIcon = when(activeBreakdownType) {
             BreakdownType.IDLE_CASH -> Icons.Default.AccountBalance
+            BreakdownType.BANK_CASH -> Icons.Default.AccountBalance
+            BreakdownType.CASH_IN_HAND -> Icons.Default.Payments
             BreakdownType.GROWING_ASSETS -> Icons.Default.TrendingUp
             BreakdownType.HAND_LOANS -> Icons.Default.Handshake
             else -> Icons.Default.Info
@@ -89,12 +104,16 @@ fun HomeScreen(viewModel: FinanceViewModel, onNavigateToScreen: (String) -> Unit
         val unknownSheetTint = MaterialTheme.colorScheme.onSurfaceVariant
         val sheetColor = when(activeBreakdownType) {
             BreakdownType.IDLE_CASH -> SemanticBlue
+            BreakdownType.BANK_CASH -> SemanticBlue
+            BreakdownType.CASH_IN_HAND -> Emerald500
             BreakdownType.GROWING_ASSETS -> SemanticAmber
             BreakdownType.HAND_LOANS -> Carbon500
             else -> unknownSheetTint
         }
         val sheetData = when(activeBreakdownType) {
             BreakdownType.IDLE_CASH -> summary.accountBreakdown
+            BreakdownType.BANK_CASH -> bankCashBreakdown
+            BreakdownType.CASH_IN_HAND -> cashInHandBreakdown
             BreakdownType.GROWING_ASSETS -> {
                 // Merge investments and interest-bearing loans
                 val combined = mutableMapOf<String, Double>()
@@ -330,14 +349,24 @@ fun HomeScreen(viewModel: FinanceViewModel, onNavigateToScreen: (String) -> Unit
         // 5. Portfolio Status
         Text("Portfolio Efficiency", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
         Spacer(Modifier.height(12.dp))
+        val cashInHandTotal = accounts.filter { it.isCashInHandAccountLegacy() }.sumOf { it.balance }
+        val bankCashTotal = accounts.filterNot { it.isCashInHandAccountLegacy() }.sumOf { it.balance }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             MetricCard(
-                label = "Office & Petty Cash",
-                value = CurrencyFormatter.hero(summary.totalCash, currencyCode, locale),
+                label = "Bank Cash",
+                value = CurrencyFormatter.hero(bankCashTotal, currencyCode, locale),
                 color = SemanticBlue,
                 modifier = Modifier.weight(1f)
-            ) { activeBreakdownType = BreakdownType.IDLE_CASH }
-
+            ) { activeBreakdownType = BreakdownType.BANK_CASH }
+            MetricCard(
+                label = "Cash in Hand",
+                value = CurrencyFormatter.hero(cashInHandTotal, currencyCode, locale),
+                color = Emerald500,
+                modifier = Modifier.weight(1f)
+            ) { activeBreakdownType = BreakdownType.CASH_IN_HAND }
+        }
+        Spacer(Modifier.height(10.dp))
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             val growingXirr = summary.portfolioXirr
             MetricCard(
                 label = "Growing Assets",
@@ -346,19 +375,26 @@ fun HomeScreen(viewModel: FinanceViewModel, onNavigateToScreen: (String) -> Unit
                 color = SemanticAmber,
                 modifier = Modifier.weight(1f)
             ) { activeBreakdownType = BreakdownType.GROWING_ASSETS }
+            MetricCard("Hand Loans", CurrencyFormatter.hero(summary.totalHandLoans, currencyCode, locale), Carbon500, Modifier.weight(1f)) { activeBreakdownType = BreakdownType.HAND_LOANS }
         }
         Spacer(Modifier.height(10.dp))
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            MetricCard("Hand Loans", CurrencyFormatter.hero(summary.totalHandLoans, currencyCode, locale), Carbon500, Modifier.weight(1f)) { activeBreakdownType = BreakdownType.HAND_LOANS }
-            MetricCard("Total Owed", CurrencyFormatter.hero(summary.totalDebtPrincipal + summary.totalDebtInterest, currencyCode, locale), SemanticRed, Modifier.weight(1f)) { onNavigateToScreen("debts") }
-        }
+        MetricCard("Total Owed", CurrencyFormatter.hero(summary.totalDebtPrincipal + summary.totalDebtInterest, currencyCode, locale), SemanticRed, Modifier.fillMaxWidth()) { onNavigateToScreen("debts") }
 
         Spacer(Modifier.height(FabBottomPadding))
     }
 }
 
 enum class BreakdownType {
-    IDLE_CASH, GROWING_ASSETS, HAND_LOANS
+    IDLE_CASH, BANK_CASH, CASH_IN_HAND, GROWING_ASSETS, HAND_LOANS
+}
+
+private fun Account.isCashInHandAccountLegacy(): Boolean {
+    val normalizedType = type.trim().lowercase()
+    val normalizedName = name.trim().lowercase()
+    return normalizedType == "cash" ||
+        "cash in hand" in normalizedName ||
+        "personal cash" in normalizedName ||
+        "petty cash" in normalizedName
 }
 
 @Composable
