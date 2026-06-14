@@ -113,6 +113,12 @@ fun SettingsScreen(
     var showDataExportDialog by remember { mutableStateOf(false) }
     var selectedDataExportScope by remember { mutableStateOf(DataExportScope.WHOLE) }
     var selectedDataExportFormat by remember { mutableStateOf(DataExportFormat.PDF) }
+    var showPersonalization by remember { mutableStateOf(false) }
+    var showBackupExport by remember { mutableStateOf(false) }
+    var showNotifications by remember { mutableStateOf(false) }
+    var showFormatting by remember { mutableStateOf(false) }
+    var showAppInfo by remember { mutableStateOf(false) }
+    var showDeveloperTools by remember { mutableStateOf(false) }
 
     // ── Export launchers ────────────────────────────────────────────────────
     val jsonLauncher = rememberLauncherForActivityResult(
@@ -456,8 +462,14 @@ fun SettingsScreen(
         }
 
         // ── Appearance ────────────────────────────────────────────────────────
-        SettingsSectionLabel("Personalization")
-        SettingsCard {
+        SettingsExpandableCard(
+            title = "Personalization",
+            subtitle = "Theme and display name",
+            icon = Icons.Default.Palette,
+            color = Amber,
+            expanded = showPersonalization,
+            onToggle = { showPersonalization = !showPersonalization },
+        ) {
             // 3.2.21 — Theme picker redesigned to match the Notifications
             // section's Switch pattern. Was a 3-option `SegmentedButtonRow`
             // (System / Light / Dark) from the 3.2.11 chip-sweep; that was
@@ -571,8 +583,14 @@ fun SettingsScreen(
 
         // ── Cloud Backup ─────────────────────────────────────────────────────
         // ── Backup & Export ──────────────────────────────────────────────────
-        SettingsSectionLabel("Backup & Export")
-        SettingsCard {
+        SettingsExpandableCard(
+            title = "Backup & Export",
+            subtitle = "Backups, reports, imports, and repair tools",
+            icon = Icons.Default.Backup,
+            color = Blue,
+            expanded = showBackupExport,
+            onToggle = { showBackupExport = !showBackupExport },
+        ) {
             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 if (app.fynlo.BuildConfig.DEBUG) {
                 // Compact auto-backup status
@@ -883,8 +901,14 @@ fun SettingsScreen(
         // Worker-layer differentiation (which alarm class reads which sub-key
         // before firing) is a follow-up; the UI split lands now so users have
         // granular control even if the underlying dispatch is currently unified.
-        SettingsSectionLabel("Notifications")
-        SettingsCard {
+        SettingsExpandableCard(
+            title = "Notifications",
+            subtitle = "Loan reminders and budget alerts",
+            icon = Icons.Default.Notifications,
+            color = Amber,
+            expanded = showNotifications,
+            onToggle = { showNotifications = !showNotifications },
+        ) {
             // Loan reminders sub-toggle
             Row(
                 Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp),
@@ -965,8 +989,14 @@ fun SettingsScreen(
         Spacer(Modifier.height(16.dp))
 
         // ── Formatting ──────────────────────────────────────────────────────────
-        SettingsSectionLabel("Formatting")
-        SettingsCard {
+        SettingsExpandableCard(
+            title = "Formatting",
+            subtitle = "Currency and date display",
+            icon = Icons.Default.FormatListBulleted,
+            color = Green,
+            expanded = showFormatting,
+            onToggle = { showFormatting = !showFormatting },
+        ) {
             // Currency — C04 Stage 3 grouped picker (recently used at top,
             // then full alphabetical list). The displayed/selected row comes
             // from `pickerCurrency` (recency-then-locale resolver); selecting
@@ -1100,8 +1130,14 @@ fun SettingsScreen(
         // biometric controls now live in Profile & Security (ProfileScreen).
         val pinManager = remember { app.fynlo.data.PinManager(context) }
 
-        SettingsSectionLabel("App Info")
-        SettingsCard {
+        SettingsExpandableCard(
+            title = "App Info",
+            subtitle = "Support, rating, and legal details",
+            icon = Icons.Default.Info,
+            color = Blue,
+            expanded = showAppInfo,
+            onToggle = { showAppInfo = !showAppInfo },
+        ) {
             // C18 #4 (3.2.78) — was an email-shortcut; the audit deferred
             // an in-app form. ReportBugDialog captures the report in a
             // structured Crashlytics non-fatal (so support gets it without
@@ -1178,8 +1214,14 @@ fun SettingsScreen(
         // ── Developer (debug only) ───────────────────────────────────────────
         if (app.fynlo.BuildConfig.DEBUG) {
             Spacer(Modifier.height(16.dp))
-            SettingsSectionLabel("Developer")
-            SettingsCard {
+            SettingsExpandableCard(
+                title = "Developer",
+                subtitle = "QA and diagnostic tools",
+                icon = Icons.Default.Build,
+                color = Amber,
+                expanded = showDeveloperTools,
+                onToggle = { showDeveloperTools = !showDeveloperTools },
+            ) {
                 var showSeedConfirm    by remember { mutableStateOf(false) }
                 var showCleanupConfirm by remember { mutableStateOf(false) }
                 var showRestoreConfirm by remember { mutableStateOf(false) }
@@ -1404,6 +1446,70 @@ private fun SettingsCard(content: @Composable ColumnScope.() -> Unit) {
             modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
             content = content
         )
+    }
+}
+
+@Composable
+private fun SettingsExpandableCard(
+    title: String,
+    subtitle: String,
+    icon: ImageVector,
+    color: Color,
+    expanded: Boolean,
+    onToggle: () -> Unit,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp),
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 1.dp,
+        shadowElevation = 0.dp,
+        border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f)),
+    ) {
+        Column(Modifier.fillMaxWidth()) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onToggle() }
+                    .padding(horizontal = 14.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                SettingsIconBubble(icon, color)
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        title,
+                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Text(
+                        subtitle,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                Icon(
+                    if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+
+            if (expanded) {
+                HorizontalDivider(
+                    thickness = 0.5.dp,
+                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f),
+                )
+                Column(
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                    content = content,
+                )
+            }
+        }
     }
 }
 
