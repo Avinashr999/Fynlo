@@ -16,6 +16,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -45,7 +46,7 @@ fun CollectPaymentDialog(
     currencyCode: String = "INR",
 ) {
     val today = java.time.LocalDate.now()
-    val locale = Locale.getDefault()
+    val locale = LocalLocale.current.platformLocale
 
     // Calculate accrued interest and outstanding using new split fields
     val accruedInterest = remember(borrower) {
@@ -319,7 +320,7 @@ fun PayDebtDialog(
     onConfirm: (DebtPayment, String) -> Unit,
     currencyCode: String = "INR",
 ) {
-    val locale = Locale.getDefault()
+    val locale = LocalLocale.current.platformLocale
     val accruedInterest = remember(debt) {
         InterestEngine.calcIntAccrued(
             debt.amount, debt.rate, debt.date, debt.intType, debt.due,

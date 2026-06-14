@@ -25,6 +25,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.fynlo.FinanceViewModel
@@ -676,7 +677,7 @@ fun SettingsScreen(
                 var recalcInFlight by remember { mutableStateOf(false) }
                 val currentProject by viewModel.currentProject.collectAsState()
                 val currencyCode = currentProject?.currency ?: "INR"
-                val locale = java.util.Locale.getDefault()
+                val locale = LocalLocale.current.platformLocale
                 fun fmtMoney(v: Double): String = CurrencyFormatter.detail(v, currencyCode, locale)
                 fun fmtDelta(v: Double): String = when {
                     kotlin.math.abs(v) < 0.5 -> "no change"

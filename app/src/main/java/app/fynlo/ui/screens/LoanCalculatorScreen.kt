@@ -14,6 +14,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -64,7 +65,7 @@ import app.fynlo.ui.theme.*
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LoanCalculatorScreen(viewModel: FinanceViewModel? = null) {
-    val locale = remember { Locale.getDefault() }
+    val locale = LocalLocale.current.platformLocale
     val currentProjectState = viewModel?.currentProject?.collectAsState()
     val currentProject = currentProjectState?.value
     val currencyCode = currentProject?.currency ?: "INR"
@@ -852,6 +853,7 @@ private fun AffordabilitySection(
     monthlyEmi: Double,
     currencySymbol: String,
 ) {
+    val locale = LocalLocale.current.platformLocale
     var expanded by remember { mutableStateOf(false) }
     var incomeText by remember { mutableStateOf("") }
 
@@ -915,7 +917,7 @@ private fun AffordabilitySection(
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant)
                             Text(
-                                "${String.format(Locale.getDefault(), "%.1f", assessment.burdenPct)}% of income",
+                                "${String.format(locale, "%.1f", assessment.burdenPct)}% of income",
                                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                                 color = tintColor,
                             )

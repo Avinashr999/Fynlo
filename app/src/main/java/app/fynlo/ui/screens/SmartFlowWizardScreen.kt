@@ -20,6 +20,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -376,7 +377,7 @@ fun StepVerification(
     sourceName: String,
     currencyCode: String = "INR"
 ) {
-    val locale = Locale.getDefault()
+    val locale = LocalLocale.current.platformLocale
     Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
         Text("Double-Entry Verification", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
 

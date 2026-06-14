@@ -12,6 +12,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -40,7 +41,7 @@ fun AddLendingDialog(
 ) {
     val people by viewModel.people.collectAsState()
     val accounts by viewModel.accounts.collectAsState()
-    val locale = Locale.getDefault()
+    val locale = LocalLocale.current.platformLocale
 
     var selectedPerson by remember { mutableStateOf<Person?>(null) }
     var amount by remember { mutableStateOf(initialBorrower?.amount?.takeIf { it > 0 }?.let { String.format("%.0f", it) } ?: "") }

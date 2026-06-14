@@ -24,6 +24,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -62,7 +63,7 @@ fun DebtDetailScreen(
     val accounts      by viewModel.accounts.collectAsState()
     val currentProject by viewModel.currentProject.collectAsState()
     val currencyCode  = currentProject?.currency ?: "INR"
-    val locale        = Locale.getDefault()
+    val locale        = LocalLocale.current.platformLocale
 
     val debt = debts.find { it.id == debtId }
     if (debt == null) {
