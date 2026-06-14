@@ -69,10 +69,10 @@ private fun buildMonthData(
             val loanStart = if (b.date < startOf) startOf else b.date
 
             // Interest accrued from loan start to end of this month
-            val intAtEnd  = InterestEngine.calcIntAccrued(b.amount, b.rate, b.date, b.type, b.due, b.paid, asOf = endOf)
+            val intAtEnd  = InterestEngine.calcIntAccrued(b.amount, b.rate, b.date, b.intType, b.due, b.paid, asOf = endOf)
             // Interest accrued from loan start to start of this month
             val intAtStart = if (b.date >= startOf) 0.0
-            else InterestEngine.calcIntAccrued(b.amount, b.rate, b.date, b.type, b.due, b.paid, asOf = startOf)
+            else InterestEngine.calcIntAccrued(b.amount, b.rate, b.date, b.intType, b.due, b.paid, asOf = startOf)
 
             // Interest earned during this specific month = difference
             val monthlyInterest = (intAtEnd - intAtStart).coerceAtLeast(0.0)

@@ -1,5 +1,7 @@
 package app.fynlo.ui.screens
 
+import app.fynlo.logic.displayFromAcct
+import app.fynlo.logic.displayToAcct
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -37,6 +39,9 @@ fun TransactionHistoryScreen(viewModel: FinanceViewModel) {
     val transactions by viewModel.filteredTransactions.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
     val currentProject by viewModel.currentProject.collectAsState()
+    val isPrivacy by viewModel.isPrivacyMode.collectAsState()
+    // 3.2.81 — account names for the edit dialog's new Account picker (C13 #9).
+    val allAccounts by viewModel.allAccountsUnfiltered.collectAsState()
     val currencyCode = currentProject?.currency ?: "INR"
     val locale = Locale.getDefault()
 
@@ -118,7 +123,8 @@ fun TransactionHistoryScreen(viewModel: FinanceViewModel) {
                 modifier = Modifier.padding(top = 8.dp)
             )
             Text(
-                text = if (net < 0) CurrencyFormatter.negative(net, currencyCode, locale)
+                text = if (isPrivacy) "••••"
+                       else if (net < 0) CurrencyFormatter.negative(net, currencyCode, locale)
                        else "+${CurrencyFormatter.detail(net, currencyCode, locale)}",
                 style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.ExtraBold),
                 color = if (net < 0) SemanticRed else Emerald500
@@ -131,10 +137,14 @@ fun TransactionHistoryScreen(viewModel: FinanceViewModel) {
                 Text(app.fynlo.logic.pluralize(filteredHistory.size, "entry", "entries"),
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text("▲ ${CurrencyFormatter.detail(totalIncome, currencyCode, locale)}",
+
+                val incText = if (isPrivacy) "••••" else CurrencyFormatter.detail(totalIncome, currencyCode, locale)
+                Text("▲ $incText",
                     style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
                     color = Emerald500)
-                Text("▼ ${CurrencyFormatter.detail(totalExpense, currencyCode, locale)}",
+
+                val expText = if (isPrivacy) "••••" else CurrencyFormatter.detail(totalExpense, currencyCode, locale)
+                Text("▼ $expText",
                     style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
                     color = SemanticRed)
             }
@@ -325,10 +335,13 @@ fun TransactionHistoryScreen(viewModel: FinanceViewModel) {
                                     fontWeight = FontWeight.Bold, letterSpacing = 0.8.sp),
                                 color = MaterialTheme.colorScheme.onSurfaceVariant)
                             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                                Text("+${CurrencyFormatter.detail(monthIncome, currencyCode, locale)}",
+                                val mIncText = if (isPrivacy) "••••" else CurrencyFormatter.detail(monthIncome, currencyCode, locale)
+                                Text("+$mIncText",
                                     style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
                                     color = Emerald500)
-                                Text(CurrencyFormatter.negative(monthExpense, currencyCode, locale),
+
+                                val mExpText = if (isPrivacy) "••••" else CurrencyFormatter.negative(monthExpense, currencyCode, locale)
+                                Text(mExpText,
                                     style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
                                     color = SemanticRed)
                             }
@@ -351,6 +364,7 @@ fun TransactionHistoryScreen(viewModel: FinanceViewModel) {
                                 isSelected  = transaction.id in selectedIds,
                                 selectionMode = selectionMode,
                                 currencyCode = currencyCode,
+                                isPrivacy    = isPrivacy,
                                 onLongPress = {
                                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                     selectionMode = true; selectedIds = selectedIds + transaction.id
@@ -361,7 +375,12 @@ fun TransactionHistoryScreen(viewModel: FinanceViewModel) {
                                     else selectedIds + transaction.id
                                 },
                                 onEdit   = { viewModel.editTransaction(transaction, it) },
-                                onDelete = { viewModel.deleteTransaction(transaction) }
+                                onDelete = { viewModel.deleteTransaction(transaction) },
+                                // 3.2.81 — accounts for the edit dialog's new Account picker.
+                                bankAccounts = allAccounts.map { it.name },
+                                // C03b Stage #1b-2 (3.2.88) — id → current name
+                                // for rename-reflective sub-label.
+                                accountIdToName = allAccounts.associate { it.id to it.name },
                             )
                             if (idx < dayTxns.lastIndex) {
                                 HorizontalDivider(thickness = 0.5.dp, color = hairline,
@@ -425,8 +444,20 @@ fun TransactionItem(
     isSelected: Boolean = false,
     selectionMode: Boolean = false,
     currencyCode: String = "INR",
+    isPrivacy: Boolean = false,
     onLongPress: () -> Unit = {},
-    onSelect: () -> Unit = {}
+    onSelect: () -> Unit = {},
+    // C13 #9 (3.2.81) — propagate the user's actual account names so the
+    // edit dialog's new Account picker shows real options (not free-text
+    // that could orphan the transaction per the 3.2.59 bug pattern).
+    // Default emptyList for back-compat call sites that haven't wired it.
+    bankAccounts: List<String> = emptyList(),
+    // C03b Stage #1b-2 (3.2.88) — id → current Account.name lookup so
+    // the row's sub-label reflects renames immediately (the stored
+    // fromAcct/toAcct can be stale; the id is the immutable handle).
+    // Empty map means "fall through to stored name" — back-compat for
+    // call sites that haven't wired it yet.
+    accountIdToName: Map<String, String> = emptyMap(),
 ) {
     val isExpense  = txn.type.lowercase() == "expense"
     val isIncome   = txn.type.lowercase() == "income"
@@ -441,9 +472,10 @@ fun TransactionItem(
 
     if (showEditDialog) {
         app.fynlo.ui.components.EditTransactionDialog(
-            transaction = txn,
-            onDismiss   = { showEditDialog = false },
-            onConfirm   = { updated -> onEdit(updated); showEditDialog = false }
+            transaction  = txn,
+            bankAccounts = bankAccounts,
+            onDismiss    = { showEditDialog = false },
+            onConfirm    = { updated -> onEdit(updated); showEditDialog = false }
         )
     }
     if (showDeleteConfirm) {
@@ -532,7 +564,12 @@ fun TransactionItem(
         Column(Modifier.weight(1f)) {
             Text(txn.category,
                 style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold))
-            val sub = txn.desc.ifBlank { if (isExpense) txn.fromAcct else txn.toAcct }
+            // C03b Stage #1b-2: resolve via id (renames take immediate effect);
+            // falls back to stored name for legacy orphan rows.
+            val sub = txn.desc.ifBlank {
+                if (isExpense) txn.displayFromAcct(accountIdToName)
+                else           txn.displayToAcct(accountIdToName)
+            }
             if (sub.isNotBlank()) {
                 Text(sub,
                     style = MaterialTheme.typography.bodySmall,
@@ -554,12 +591,14 @@ fun TransactionItem(
 
         Spacer(Modifier.width(8.dp))
 
+        val amountText = if (isPrivacy) "••••"
+                         else when {
+                             isIncome  -> "+${CurrencyFormatter.detail(txn.amount, currencyCode, locale)}"
+                             isExpense -> CurrencyFormatter.negative(txn.amount, currencyCode, locale)
+                             else      -> "↔${CurrencyFormatter.detail(txn.amount, currencyCode, locale)}"
+                         }
         Text(
-            text  = when {
-                isIncome  -> "+${CurrencyFormatter.detail(txn.amount, currencyCode, locale)}"
-                isExpense -> CurrencyFormatter.negative(txn.amount, currencyCode, locale)
-                else      -> "↔${CurrencyFormatter.detail(txn.amount, currencyCode, locale)}"
-            },
+            text  = amountText,
             style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.ExtraBold),
             color = rowColor
         )

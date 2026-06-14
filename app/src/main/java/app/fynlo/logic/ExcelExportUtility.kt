@@ -214,7 +214,7 @@ object ExcelExportUtility {
                         t("Lent On"), t("Due Date"), t("Paid"), t("Status"), t("Notes")))
                     borrowers.forEach { b ->
                         add(listOf(
-                            t(b.name), t(b.phone), c(b.amount), n(b.rate), t(b.type),
+                            t(b.name), t(b.phone), c(b.amount), n(b.rate), t(b.intType),
                             dt(b.date), dt(b.due), c(b.paid), t(b.status), t(b.notes),
                         ))
                     }

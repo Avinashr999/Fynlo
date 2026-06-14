@@ -1,9 +1,10 @@
 package app.fynlo.ui.screens
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -11,6 +12,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Contacts
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.MoreVert
@@ -18,6 +20,9 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
+import androidx.compose.ui.draw.clip
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.DropdownMenuItem
@@ -84,8 +89,47 @@ fun parsePhone(saved: String): Pair<CountryCode, String> {
 @Composable
 fun PeopleScreen(viewModel: FinanceViewModel) {
     val haptic = LocalHapticFeedback.current
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val scope = rememberCoroutineScope()
     val people by viewModel.people.collectAsState()
     var searchQuery by remember { mutableStateOf("") }
+
+    // C22 (3.2.71) — contacts import state. `loadedContacts` non-null
+    // triggers the multi-select dialog. The permission launcher is wired
+    // below; on grant it reads contacts off the IO dispatcher and pops
+    // the dialog with the result.
+    var loadedContacts by remember { mutableStateOf<List<app.fynlo.logic.ContactsReader.Entry>?>(null) }
+    val permLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            scope.launch(Dispatchers.IO) {
+                val list = app.fynlo.logic.ContactsReader.read(context)
+                kotlinx.coroutines.withContext(Dispatchers.Main) {
+                    loadedContacts = list
+                    if (list.isEmpty()) {
+                        android.widget.Toast.makeText(
+                            context,
+                            "No contacts with phone numbers found on this device.",
+                            android.widget.Toast.LENGTH_LONG,
+                        ).show()
+                    }
+                }
+            }
+        } else {
+            android.widget.Toast.makeText(
+                context,
+                "Can't import without Contacts permission. Add contacts manually instead.",
+                android.widget.Toast.LENGTH_LONG,
+            ).show()
+        }
+    }
+
+    // Existing people indexed by normalised phone digits so the import
+    // dialog can hide rows that are already in the contact book.
+    val existingPhones = remember(people) {
+        people.map { it.phone.filter(Char::isDigit) }.filter { it.isNotEmpty() }.toSet()
+    }
     val filteredPeople = remember(people, searchQuery) {
         if (searchQuery.isBlank()) people
         else people.filter {
@@ -108,6 +152,39 @@ fun PeopleScreen(viewModel: FinanceViewModel) {
         )
     }
 
+    // C22 (3.2.71) — contacts import multi-select dialog.
+    loadedContacts?.let { contacts ->
+        ImportContactsDialog(
+            contacts = contacts,
+            existingPhoneDigits = existingPhones,
+            onDismiss = { loadedContacts = null },
+            onImport = { picks ->
+                scope.launch(Dispatchers.IO) {
+                    picks.forEach { entry ->
+                        viewModel.addPerson(Person(
+                            // C03b Stage #4 (3.2.91) — switched from
+                            // "P-${timestamp}-${hashSuffix}" (collision-prone
+                            // under fast inserts; format-inconsistent with
+                            // the rest of the codebase) to the canonical
+                            // UUID v4 emitted by `Ids.newId()`.
+                            id    = app.fynlo.logic.Ids.newId(),
+                            name  = entry.name.trim(),
+                            phone = entry.phone.trim(),
+                        ))
+                    }
+                    kotlinx.coroutines.withContext(Dispatchers.Main) {
+                        android.widget.Toast.makeText(
+                            context,
+                            "Imported ${picks.size} contact${if (picks.size == 1) "" else "s"}.",
+                            android.widget.Toast.LENGTH_SHORT,
+                        ).show()
+                        loadedContacts = null
+                    }
+                }
+            },
+        )
+    }
+
     Column(modifier = Modifier.fillMaxSize()) {
         PremiumScreenHeader("Contact Book", "Linked to loans & reminders")
         Box(modifier = Modifier.weight(1f)) {
@@ -122,6 +199,21 @@ fun PeopleScreen(viewModel: FinanceViewModel) {
             shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp),
             singleLine = true
         )
+
+        // C22 (3.2.71) — import from system Contacts. Permission requested
+        // on tap; the contract auto-skips the prompt and proceeds straight
+        // to read if it's already granted.
+        FilledTonalButton(
+            onClick = {
+                permLauncher.launch(android.Manifest.permission.READ_CONTACTS)
+            },
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+        ) {
+            Icon(Icons.Default.Contacts, null, Modifier.size(18.dp))
+            Spacer(Modifier.width(8.dp))
+            Text("Import from Contacts", style = MaterialTheme.typography.labelMedium)
+        }
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
@@ -276,7 +368,7 @@ fun PersonCard(person: Person, onEdit: () -> Unit, onDelete: () -> Unit) {
 fun AddPersonDialog(initial: Person? = null, onDismiss: () -> Unit, onConfirm: (Person) -> Unit) {
     val isEdit = initial != null
     var name  by remember { mutableStateOf(initial?.name ?: "") }
-    var id    by remember { mutableStateOf(initial?.id ?: "P-${(100..999).random()}") }
+    var id    by remember { mutableStateOf(initial?.id ?: app.fynlo.logic.Ids.newId()) }
 
     // Parse existing phone
     val (initCode, initNumber) = remember { parsePhone(initial?.phone ?: "") }
@@ -287,146 +379,140 @@ fun AddPersonDialog(initial: Person? = null, onDismiss: () -> Unit, onConfirm: (
     // Live preview of the full number
     val fullPhone = if (phoneNumber.isNotBlank()) "${selectedCode.code}$phoneNumber" else ""
 
-    AlertDialog(
-        modifier = Modifier.fillMaxWidth(0.95f),
-        properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false),
-        onDismissRequest = onDismiss,
-        title = { Text(if (isEdit) "Edit Contact" else "Add New Contact") },
-        text = {
-            // C22 Stage 2 cross-dialog sweep (3.2.51) — verticalScroll wrap
-            // so country-code dropdown + name + phone + (optional unique ID)
-            // + disabled-button hint never clip on shorter dialogs.
-            Column(
-                modifier = Modifier.verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+    // C22 dialog universalization (3.2.54) — migrated to canonical FormDialog.
+    app.fynlo.ui.components.FormDialog(
+        title = if (isEdit) "Edit Contact" else "Add New Contact",
+        onDismiss = onDismiss,
+    ) {
+        app.fynlo.ui.components.FormSectionLabel("Full name")
+        Spacer(Modifier.height(6.dp))
+        OutlinedTextField(
+            value = name, onValueChange = { name = it },
+            placeholder = { Text("e.g. Priya Sharma") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+        )
+
+        Spacer(Modifier.height(14.dp))
+        app.fynlo.ui.components.FormSectionLabel("Phone number (for WhatsApp / SMS)")
+        Spacer(Modifier.height(6.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            ExposedDropdownMenuBox(
+                expanded = codeExpanded,
+                onExpandedChange = { codeExpanded = !codeExpanded },
+                modifier = Modifier.width(120.dp)
             ) {
-                // Name
                 OutlinedTextField(
-                    value = name, onValueChange = { name = it },
-                    label = { Text("Full Name *") },
+                    value = selectedCode.display,
+                    onValueChange = {},
+                    readOnly = true,
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = codeExpanded) },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier
+                        .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, true)
+                        .width(120.dp)
                 )
-
-                // Phone label
-                Text(
-                    "Phone Number (for WhatsApp / SMS)",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-
-                // Country code + number row
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                ExposedDropdownMenu(
+                    expanded = codeExpanded,
+                    onDismissRequest = { codeExpanded = false }
                 ) {
-                    // Country code dropdown — shows flag + code only
-                    ExposedDropdownMenuBox(
-                        expanded = codeExpanded,
-                        onExpandedChange = { codeExpanded = !codeExpanded },
-                        modifier = Modifier.width(120.dp)
-                    ) {
-                        OutlinedTextField(
-                            value = selectedCode.display,  // "🇮🇳 +91"
-                            onValueChange = {},
-                            readOnly = true,
-                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = codeExpanded) },
-                            singleLine = true,
-                            modifier = Modifier
-                                .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, true)
-                                .width(120.dp)
-                        )
-                        ExposedDropdownMenu(
-                            expanded = codeExpanded,
-                            onDismissRequest = { codeExpanded = false }
-                        ) {
-                            COUNTRY_CODES.forEach { cc ->
-                                DropdownMenuItem(
-                                    text = {
-                                        Text(
-                                            cc.full,  // "🇮🇳 +91 India"
-                                            style = MaterialTheme.typography.bodySmall
-                                        )
-                                    },
-                                    onClick = { selectedCode = cc; codeExpanded = false }
+                    COUNTRY_CODES.forEach { cc ->
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    cc.full,
+                                    style = MaterialTheme.typography.bodySmall
                                 )
-                            }
-                        }
-                    }
-
-                    // Local number (digits only)
-                    OutlinedTextField(
-                        value = phoneNumber,
-                        onValueChange = { phoneNumber = it.filter { c -> c.isDigit() } },
-                        placeholder = { Text("9876543210") },
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-
-                // Full number preview — clean, unambiguous
-                if (phoneNumber.isNotBlank()) {
-                    Surface(
-                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f),
-                        shape = RoundedCornerShape(8.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 12.dp, vertical = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            Icon(
-                                Icons.Default.Phone,
-                                contentDescription = null,
-                                modifier = Modifier.size(14.dp),
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                            Text(
-                                "WhatsApp will use: $fullPhone",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                        }
-                    }
-                }
-
-                // ID (new contacts only)
-                if (!isEdit) {
-                    OutlinedTextField(
-                        value = id, onValueChange = { id = it },
-                        label = { Text("Unique ID") },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-                // C17 (3.2.42) — inline reason for the disabled Save button.
-                app.fynlo.ui.components.DisabledButtonHint(
-                    if (name.isBlank()) "Enter a name to continue" else null
-                )
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = {
-                    if (name.isNotBlank()) onConfirm(
-                        Person(
-                            id    = id.ifBlank { initial?.id ?: "P-${System.currentTimeMillis()}" },
-                            name  = name.trim(),
-                            phone = fullPhone.trim()
+                            },
+                            onClick = { selectedCode = cc; codeExpanded = false }
                         )
-                    )
-                },
-                enabled = name.isNotBlank()
-            ) { Text(if (isEdit) "Update" else "Save") }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+                    }
+                }
+            }
+
+            OutlinedTextField(
+                value = phoneNumber,
+                onValueChange = { phoneNumber = it.filter { c -> c.isDigit() } },
+                placeholder = { Text("9876543210") },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier.weight(1f)
+            )
         }
-    )
+
+        if (phoneNumber.isNotBlank()) {
+            Spacer(Modifier.height(8.dp))
+            Surface(
+                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f),
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Icon(
+                        Icons.Default.Phone,
+                        contentDescription = null,
+                        modifier = Modifier.size(14.dp),
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                    Text(
+                        "WhatsApp will use: $fullPhone",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+        }
+
+        if (!isEdit) {
+            Spacer(Modifier.height(14.dp))
+            app.fynlo.ui.components.FormSectionLabel("Unique ID")
+            Spacer(Modifier.height(6.dp))
+            OutlinedTextField(
+                value = id, onValueChange = { id = it },
+                placeholder = { Text("auto-generated") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+            )
+        }
+
+        Spacer(Modifier.height(20.dp))
+        Button(
+            onClick = {
+                if (name.isNotBlank()) onConfirm(
+                    Person(
+                        id    = id.ifBlank { app.fynlo.logic.Ids.newId() },
+                        name  = name.trim(),
+                        phone = fullPhone.trim()
+                    )
+                )
+            },
+            enabled = name.isNotBlank(),
+            modifier = Modifier.fillMaxWidth().height(52.dp),
+            shape = RoundedCornerShape(16.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = app.fynlo.ui.theme.Emerald500),
+        ) {
+            Text(
+                if (isEdit) "Update Contact" else "Save Contact",
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+            )
+        }
+        app.fynlo.ui.components.DisabledButtonHint(
+            if (name.isBlank()) "Enter a name to continue" else null
+        )
+    }
 }
 
 // ── Empty state ───────────────────────────────────────────────────────────────
@@ -447,5 +533,132 @@ fun EmptyPeopleState(onAdd: () -> Unit = {}) {
             actionLabel = "Add First Contact",
             onAction    = onAdd,
         )
+    }
+}
+
+/**
+ * C22 (3.2.71) — multi-select dialog for system-Contacts import.
+ *
+ * Surfaces every readable contact with an in-line checkbox; pre-checks
+ * nothing (user opts in deliberately). Contacts whose number already
+ * exists in the Fynlo contact book (matched on normalised digits) are
+ * hidden — re-importing them would create duplicates, and we want the
+ * dialog to focus on "what's new".
+ *
+ * Quick-search filter at the top so a phone with hundreds of contacts
+ * stays browseable. "Select all" / "Clear" buttons act on the filtered
+ * subset so the user can bulk-import a search-narrowed group.
+ */
+@Composable
+private fun ImportContactsDialog(
+    contacts: List<app.fynlo.logic.ContactsReader.Entry>,
+    existingPhoneDigits: Set<String>,
+    onDismiss: () -> Unit,
+    onImport: (List<app.fynlo.logic.ContactsReader.Entry>) -> Unit,
+) {
+    // Hide already-imported contacts to keep the list focused on new ones.
+    val newContacts = remember(contacts, existingPhoneDigits) {
+        contacts.filter { entry ->
+            val digits = entry.phone.filter(Char::isDigit)
+            digits.isEmpty() || digits !in existingPhoneDigits
+        }
+    }
+    var query by remember { mutableStateOf("") }
+    val filtered = remember(newContacts, query) {
+        if (query.isBlank()) newContacts
+        else newContacts.filter {
+            it.name.contains(query, ignoreCase = true) ||
+            it.phone.contains(query)
+        }
+    }
+    // Selection keyed by index into the unchanged `newContacts` list.
+    val selected = remember(contacts) { mutableStateMapOf<Int, Boolean>() }
+    val newIndexByEntry = remember(newContacts) { newContacts.withIndex().associate { (i, e) -> e to i } }
+    val pickedCount = selected.count { it.value }
+
+    app.fynlo.ui.components.FormDialog(
+        title = "Import contacts",
+        onDismiss = onDismiss,
+    ) {
+        Text(
+            if (newContacts.isEmpty()) "No new contacts to import — your contact book already covers everyone with a phone number."
+            else "${newContacts.size} contacts available. Tick the ones you want to add.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+
+        if (newContacts.isNotEmpty()) {
+            Spacer(Modifier.height(12.dp))
+            OutlinedTextField(
+                value = query,
+                onValueChange = { query = it },
+                placeholder = { Text("Search name or number…") },
+                leadingIcon = { Icon(Icons.Default.Search, null) },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+            )
+
+            Spacer(Modifier.height(8.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                TextButton(onClick = {
+                    filtered.forEach { selected[newIndexByEntry[it] ?: -1] = true }
+                }) { Text("Select all (${filtered.size})", style = MaterialTheme.typography.labelSmall) }
+                Spacer(Modifier.width(8.dp))
+                TextButton(onClick = {
+                    filtered.forEach { selected[newIndexByEntry[it] ?: -1] = false }
+                }) { Text("Clear", style = MaterialTheme.typography.labelSmall) }
+                Spacer(Modifier.weight(1f))
+                Text("$pickedCount picked",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+
+            Spacer(Modifier.height(8.dp))
+            LazyColumn(
+                modifier = Modifier.fillMaxWidth().heightIn(max = 360.dp),
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                items(filtered, key = { it.name + it.phone }) { entry ->
+                    val idx = newIndexByEntry[entry] ?: return@items
+                    val isPicked = selected[idx] == true
+                    Row(
+                        Modifier.fillMaxWidth()
+                            .clip(androidx.compose.foundation.shape.RoundedCornerShape(8.dp))
+                            .clickable { selected[idx] = !isPicked }
+                            .padding(vertical = 4.dp, horizontal = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Checkbox(checked = isPicked, onCheckedChange = { selected[idx] = it })
+                        Spacer(Modifier.width(8.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text(entry.name,
+                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold))
+                            Text(entry.phone,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                }
+            }
+        }
+
+        Spacer(Modifier.height(16.dp))
+        Button(
+            onClick = {
+                val picks = selected.filter { it.value }.keys.mapNotNull { newContacts.getOrNull(it) }
+                onImport(picks)
+            },
+            enabled = pickedCount > 0,
+            modifier = Modifier.fillMaxWidth().height(48.dp),
+            shape = RoundedCornerShape(14.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = Emerald500),
+        ) {
+            Text(
+                if (pickedCount == 0) "Pick at least one contact"
+                else "Import $pickedCount contact${if (pickedCount == 1) "" else "s"}",
+                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+            )
+        }
     }
 }

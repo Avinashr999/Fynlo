@@ -3,8 +3,6 @@
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -66,6 +64,8 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
     LaunchedEffect(Unit) { app.fynlo.data.Analytics.screenView("Lending") }
     val haptic        = LocalHapticFeedback.current
     val borrowers     by viewModel.borrowers.collectAsState()
+    val summary       by viewModel.financialSummary.collectAsState()
+    val isPrivacy     by viewModel.isPrivacyMode.collectAsState()
     val currentProject by viewModel.currentProject.collectAsState()
     val currencyCode = currentProject?.currency ?: "INR"
     var showEmiCalc by remember { mutableStateOf(false) }
@@ -155,17 +155,33 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
             item {
                 Row(
                     Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 4.dp),
-                    horizontalArrangement = Arrangement.End,
+                    horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    FilledTonalButton(onClick = { showEmiCalc = true }, shape = RoundedCornerShape(14.dp),
-                        contentPadding = PaddingValues(horizontal = 18.dp, vertical = 10.dp)) {
-                        Text("EMI", style = MaterialTheme.typography.labelMedium)
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        PremiumStatCard(
+                            label = "Yield",
+                            value = if (isPrivacy) "••••" else "${String.format("%.1f", summary.lendingYield)}%",
+                            iconTint = Emerald500
+                        )
+                        if (!summary.lendingXirr.isNaN()) {
+                            PremiumStatCard(
+                                label = "XIRR",
+                                value = if (isPrivacy) "••••" else app.fynlo.logic.XirrCalculator.format(summary.lendingXirr),
+                                iconTint = Emerald500
+                            )
+                        }
                     }
-                    Spacer(Modifier.width(8.dp))
-                    FilledTonalButton(onClick = onNavigateToCalendar, shape = RoundedCornerShape(14.dp),
-                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 10.dp)) {
-                        Icon(Icons.Default.CalendarMonth, contentDescription = "Collection Calendar", Modifier.size(18.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        FilledTonalButton(onClick = { showEmiCalc = true }, shape = RoundedCornerShape(14.dp),
+                            contentPadding = PaddingValues(horizontal = 18.dp, vertical = 10.dp)) {
+                            Text("EMI", style = MaterialTheme.typography.labelMedium)
+                        }
+                        Spacer(Modifier.width(8.dp))
+                        FilledTonalButton(onClick = onNavigateToCalendar, shape = RoundedCornerShape(14.dp),
+                            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 10.dp)) {
+                            Icon(Icons.Default.CalendarMonth, contentDescription = "Collection Calendar", Modifier.size(18.dp))
+                        }
                     }
                 }
             }
@@ -242,6 +258,7 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
                         borrower     = borrower,
                         currencyCode = currencyCode,
                         isOverdue    = borrower.due.isNotBlank() && borrower.due < today && borrower.paid < borrower.amount,
+                        isPrivacy    = isPrivacy,
                         onClick      = { onNavigateToDetail(borrower.id) }
                     )
                 }
@@ -262,6 +279,7 @@ fun LendingCard(
     borrower: app.fynlo.data.model.Borrower,
     currencyCode: String = "INR",
     isOverdue: Boolean = false,
+    isPrivacy: Boolean = false,
     onClick: () -> Unit,
 ) {
     // C12 Stage 3 (3.2.28) — rebuilt to the audit §C12 #6 spec: icon + name +
@@ -274,7 +292,7 @@ fun LendingCard(
     val locale = java.util.Locale.getDefault()
     val interest = app.fynlo.logic.InterestEngine.calcIntAccrued(
         amount = borrower.amount, rate = borrower.rate,
-        loanDate = borrower.date, intType = borrower.type,
+        loanDate = borrower.date, intType = borrower.intType,
         dueDate = borrower.due, totalPaid = borrower.paid
     )
     val outstanding = app.fynlo.logic.InterestEngine.calcOutstanding(borrower.amount, interest, borrower.paid)
@@ -334,8 +352,9 @@ fun LendingCard(
             // (asset), not a debt to the user. Colour: green for normal
             // (asset), red for overdue (urgency). Pre-C16 normal state was
             // neutral onSurface — audit said it should signal asset-ness.
+            val outstandingText = if (isPrivacy) "••••" else CurrencyFormatter.detail(outstanding, currencyCode, locale)
             Text(
-                CurrencyFormatter.detail(outstanding, currencyCode, locale),
+                text = outstandingText,
                 style = MaterialTheme.typography.titleMedium.copy(
                     fontWeight = FontWeight.Bold,
                     color = if (isOverdue) SemanticRed else Emerald500
@@ -420,129 +439,143 @@ fun EmiCalculatorDialog(onDismiss: () -> Unit) {
     val total    = emi?.let { it * (tenure.toIntOrNull() ?: 0) }
     val interest = total?.let { it - (principal.toDoubleOrNull() ?: 0.0) }
 
-    AlertDialog(
-        modifier = Modifier.fillMaxWidth(0.95f),
-        properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false),
-        onDismissRequest = onDismiss,
-        title = { Text("EMI Calculator") },
-        text = {
-            val emiFieldColors = OutlinedTextFieldDefaults.colors(
-                focusedContainerColor   = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
-                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
-                focusedBorderColor      = Emerald500,
-                unfocusedBorderColor    = Color.Transparent,
-                focusedLabelColor       = Emerald500,
-                cursorColor             = Emerald500
+    // C22 dialog universalization (3.2.55) — migrated to canonical FormDialog.
+    app.fynlo.ui.components.FormDialog(
+        title = "EMI Calculator",
+        onDismiss = onDismiss,
+    ) {
+        val emiFieldColors = OutlinedTextFieldDefaults.colors(
+            focusedContainerColor   = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+            focusedBorderColor      = Emerald500,
+            unfocusedBorderColor    = Color.Transparent,
+            focusedLabelColor       = Emerald500,
+            cursorColor             = Emerald500
+        )
+
+        app.fynlo.ui.components.FormSectionLabel("Principal amount (₹)")
+        Spacer(Modifier.height(6.dp))
+        OutlinedTextField(
+            value = principal, onValueChange = { principal = it },
+            placeholder = { Text("0") }, singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+            modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp), colors = emiFieldColors
+        )
+
+        Spacer(Modifier.height(14.dp))
+        app.fynlo.ui.components.FormSectionLabel("Annual interest rate (%)")
+        Spacer(Modifier.height(6.dp))
+        OutlinedTextField(
+            value = rate, onValueChange = { rate = it },
+            placeholder = { Text("0.0") }, singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+            modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp), colors = emiFieldColors
+        )
+
+        Spacer(Modifier.height(14.dp))
+        app.fynlo.ui.components.FormSectionLabel("Tenure (months)")
+        Spacer(Modifier.height(6.dp))
+        OutlinedTextField(
+            value = tenure, onValueChange = { tenure = it },
+            placeholder = { Text("12") }, singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp), colors = emiFieldColors
+        )
+
+        Spacer(Modifier.height(14.dp))
+        app.fynlo.ui.components.FormSectionLabel("Interest method")
+        Spacer(Modifier.height(6.dp))
+        val emiMethodOptions = listOf("Reducing", "Simple", "Compound")
+        val emiSelected = when {
+            useReducing -> "Reducing"
+            useSimple -> "Simple"
+            else -> "Compound"
+        }
+        SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+            emiMethodOptions.forEachIndexed { idx, method ->
+                SegmentedButton(
+                    selected = emiSelected == method,
+                    onClick = {
+                        useReducing = (method == "Reducing")
+                        useSimple = (method == "Simple")
+                    },
+                    shape = SegmentedButtonDefaults.itemShape(idx, emiMethodOptions.size),
+                    icon = {},
+                    label = { Text(method, style = MaterialTheme.typography.labelSmall) },
+                )
+            }
+        }
+
+        if (!useReducing && !useSimple) {
+            Spacer(Modifier.height(14.dp))
+            app.fynlo.ui.components.FormSectionLabel("Due date")
+            Spacer(Modifier.height(6.dp))
+            OutlinedTextField(
+                value         = dueDate,
+                onValueChange = { dueDate = it },
+                placeholder   = { Text("yyyy-MM-dd") },
+                singleLine    = true,
+                modifier      = Modifier.fillMaxWidth(),
+                shape         = RoundedCornerShape(16.dp),
+                colors        = emiFieldColors
             )
-            val emiChipColors = FilterChipDefaults.filterChipColors(
-                selectedContainerColor = Emerald500.copy(alpha = 0.16f),
-                selectedLabelColor = Emerald500
-            )
-            // C22 Stage 2 cross-dialog sweep (3.2.51) — verticalScroll wrap
-            // so principal + rate + tenure + EMI-method chips + (compound
-            // due-date conditional) + result panel never clip on shorter
-            // dialogs. EMI Calculator dialog is the tallest form in the app.
+            if (dueDate.isNotBlank() && !isOverdue) {
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    "Compound interest applies only after due date is exceeded.",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            if (isOverdue) {
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    "Loan is overdue — compound interest applies.",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = SemanticRed
+                )
+            }
+        }
+
+        if (emi != null) {
+            Spacer(Modifier.height(16.dp))
+            HorizontalDivider()
+            Spacer(Modifier.height(12.dp))
             Column(
-                modifier = Modifier.verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                Modifier.fillMaxWidth()
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+                    .padding(12.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                OutlinedTextField(value = principal, onValueChange = { principal = it },
-                    label = { Text("Principal Amount (₹)") }, singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp), colors = emiFieldColors)
-                OutlinedTextField(value = rate, onValueChange = { rate = it },
-                    label = { Text("Annual Interest Rate (%)") }, singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp), colors = emiFieldColors)
-                OutlinedTextField(value = tenure, onValueChange = { tenure = it },
-                    label = { Text("Tenure (months)") }, singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp), colors = emiFieldColors)
-
-                // 3.2.11 chip-sweep: 3-option mutually-exclusive EMI method toggle → SegmentedButtonRow.
-                // State remains as two Booleans (useReducing / useSimple) to preserve the
-                // downstream branching logic that uses them; the SegmentedButton onClicks
-                // map cleanly to the same 2-bit encoding (Reducing/Simple/Compound).
-                // `icon = {}` per the 3.2.8 lesson.
-                val emiMethodOptions = listOf("Reducing", "Simple", "Compound")
-                val emiSelected = when {
-                    useReducing -> "Reducing"
-                    useSimple -> "Simple"
-                    else -> "Compound"
+                Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
+                    Text("Monthly EMI", style = MaterialTheme.typography.bodyMedium)
+                    Text("₹ ${String.format(locale, "%,.2f", emi)}",
+                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                        color = MaterialTheme.colorScheme.primary)
                 }
-                SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-                    emiMethodOptions.forEachIndexed { idx, method ->
-                        SegmentedButton(
-                            selected = emiSelected == method,
-                            onClick = {
-                                useReducing = (method == "Reducing")
-                                useSimple = (method == "Simple")
-                            },
-                            shape = SegmentedButtonDefaults.itemShape(idx, emiMethodOptions.size),
-                            icon = {},
-                            label = { Text(method, style = MaterialTheme.typography.labelSmall) },
-                        )
-                    }
+                Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
+                    Text("Total Amount", style = MaterialTheme.typography.bodyMedium)
+                    Text("₹ ${String.format(locale, "%,.2f", total!!)}", style = MaterialTheme.typography.bodyMedium)
                 }
-
-                // Show due date field only for Compound mode
-                if (!useReducing && !useSimple) {
-                    OutlinedTextField(
-                        value         = dueDate,
-                        onValueChange = { dueDate = it },
-                        label         = { Text("Due Date (yyyy-MM-dd)") },
-                        placeholder   = { Text("e.g. 2024-12-31") },
-                        singleLine    = true,
-                        modifier      = Modifier.fillMaxWidth(),
-                        shape         = RoundedCornerShape(16.dp),
-                        colors        = emiFieldColors
-                    )
-                    if (dueDate.isNotBlank() && !isOverdue) {
-                        Text(
-                            "Compound interest applies only after due date is exceeded.",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    if (isOverdue) {
-                        Text(
-                            "Loan is overdue — compound interest applies.",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = SemanticRed
-                        )
-                    }
-                }
-
-                if (emi != null) {
-                    HorizontalDivider()
-                    Column(
-                        Modifier.fillMaxWidth()
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
-                            .padding(12.dp),
-                        verticalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
-                            Text("Monthly EMI", style = MaterialTheme.typography.bodyMedium)
-                            Text("₹ ${String.format(locale, "%,.2f", emi)}",
-                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
-                                color = MaterialTheme.colorScheme.primary)
-                        }
-                        Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
-                            Text("Total Amount", style = MaterialTheme.typography.bodyMedium)
-                            Text("₹ ${String.format(locale, "%,.2f", total!!)}", style = MaterialTheme.typography.bodyMedium)
-                        }
-                        Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
-                            Text("Total Interest", style = MaterialTheme.typography.bodyMedium)
-                            Text("₹ ${String.format(locale, "%,.2f", interest!!)}",
-                                style = MaterialTheme.typography.bodyMedium, color = SemanticRed)
-                        }
-                    }
+                Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
+                    Text("Total Interest", style = MaterialTheme.typography.bodyMedium)
+                    Text("₹ ${String.format(locale, "%,.2f", interest!!)}",
+                        style = MaterialTheme.typography.bodyMedium, color = SemanticRed)
                 }
             }
-        },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("Close") } }
-    )
+        }
+
+        Spacer(Modifier.height(20.dp))
+        Button(
+            onClick = onDismiss,
+            modifier = Modifier.fillMaxWidth().height(52.dp),
+            shape = RoundedCornerShape(16.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = Emerald500),
+        ) {
+            Text("Close", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
+        }
+    }
     }
 
 

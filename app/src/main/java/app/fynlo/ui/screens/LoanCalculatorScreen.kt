@@ -637,6 +637,31 @@ fun LoanCalculatorScreen(viewModel: FinanceViewModel? = null) {
                         }
                     }
                 }
+
+                // 3.2.80 — Prepayment what-if + Affordability sections.
+                // Both opt-in via Switch (default OFF) so the base
+                // calculator flow stays focused. Reducing-Balance only for
+                // prepayment — Simple/Compound don't have a meaningful
+                // "shortens the term" semantic.
+                if (intType == "Reducing Balance") {
+                    Spacer(Modifier.height(20.dp))
+                    PrepaymentWhatIfSection(
+                        principal = principal.toDoubleOrNull() ?: 0.0,
+                        annualRatePct = rate.toDoubleOrNull() ?: 0.0,
+                        tenureMonths = tenureMonths,
+                        baselineEmi = result.emi,
+                        baselineTotalInterest = result.totalInterest,
+                        currencyCode = currencyCode,
+                        currencySymbol = currencySymbol,
+                        locale = locale,
+                    )
+                }
+
+                Spacer(Modifier.height(20.dp))
+                AffordabilitySection(
+                    monthlyEmi = result.emi,
+                    currencySymbol = currencySymbol,
+                )
             } else {
                 // Empty state — clear guidance about what to enter.
                 Column(
@@ -664,6 +689,263 @@ fun LoanCalculatorScreen(viewModel: FinanceViewModel? = null) {
             }
 
             Spacer(Modifier.height(FabBottomPadding))
+        }
+    }
+}
+
+/**
+ * 3.2.80 — Prepayment what-if section for the EMI Calculator.
+ *
+ * Lets users simulate two prepayment shapes against the current baseline:
+ *   - **Monthly extra**: pay ₹X on top of the baseline EMI every month
+ *   - **Lump sum**: pay ₹X extra in month N once
+ *
+ * Surfaces months saved + interest saved + new payoff month. Toggleable
+ * (default OFF) so the base calculator flow stays focused. Mirrors the
+ * "What if I pay extra?" pattern from Debt detail (3.2.64) for visual
+ * consistency.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun PrepaymentWhatIfSection(
+    principal: Double,
+    annualRatePct: Double,
+    tenureMonths: Int,
+    baselineEmi: Double,
+    baselineTotalInterest: Double,
+    currencyCode: String,
+    currencySymbol: String,
+    locale: Locale,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    var mode by remember { mutableStateOf("Monthly extra") }
+    var extraAmount by remember { mutableStateOf("") }
+    var lumpMonth by remember { mutableStateOf("12") }
+
+    Surface(
+        onClick = { expanded = !expanded },
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(14.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+    ) {
+        Column(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("What if I prepay?",
+                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold))
+                    Text("Months saved + interest saved at a faster pace",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Switch(
+                    checked = expanded,
+                    onCheckedChange = { expanded = it },
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor    = Color.White,
+                        checkedTrackColor    = Emerald500,
+                        uncheckedThumbColor  = MaterialTheme.colorScheme.onSurfaceVariant,
+                        uncheckedTrackColor  = MaterialTheme.colorScheme.surface,
+                        uncheckedBorderColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                )
+            }
+
+            if (expanded) {
+                Spacer(Modifier.height(12.dp))
+
+                // Mode toggle.
+                val modeOptions = listOf("Monthly extra", "Lump sum")
+                SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+                    modeOptions.forEachIndexed { idx, m ->
+                        SegmentedButton(
+                            selected = mode == m,
+                            onClick = { mode = m },
+                            shape = SegmentedButtonDefaults.itemShape(idx, modeOptions.size),
+                            icon = {},
+                            label = { Text(m, style = MaterialTheme.typography.labelSmall) },
+                        )
+                    }
+                }
+
+                Spacer(Modifier.height(10.dp))
+                OutlinedTextField(
+                    value = extraAmount,
+                    onValueChange = { extraAmount = it.filter { c -> c.isDigit() || c == '.' } },
+                    label = { Text(if (mode == "Monthly extra") "Extra / month ($currencySymbol)" else "Lump sum ($currencySymbol)") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                )
+
+                if (mode == "Lump sum") {
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = lumpMonth,
+                        onValueChange = { lumpMonth = it.filter(Char::isDigit) },
+                        label = { Text("Pay at month (1..${tenureMonths})") },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                    )
+                }
+
+                val extra = extraAmount.toDoubleOrNull() ?: 0.0
+                val month = lumpMonth.toIntOrNull() ?: 1
+                val simMode = if (mode == "Monthly extra")
+                    app.fynlo.logic.EmiPrepaymentSimulator.Mode.MonthlyExtra(extra)
+                else
+                    app.fynlo.logic.EmiPrepaymentSimulator.Mode.LumpSum(extra, month.coerceAtLeast(1))
+                val r = remember(principal, annualRatePct, tenureMonths, simMode) {
+                    app.fynlo.logic.EmiPrepaymentSimulator.simulate(principal, annualRatePct, tenureMonths, simMode)
+                }
+
+                Spacer(Modifier.height(12.dp))
+                if (extra > 0.0 && r.feasible) {
+                    Row(Modifier.fillMaxWidth(), Arrangement.spacedBy(8.dp)) {
+                        ResultCard(
+                            "New tenure",
+                            "${r.totalMonths} mo",
+                            Emerald500,
+                            Modifier.weight(1f),
+                        )
+                        ResultCard(
+                            "Months saved",
+                            "${r.monthsSaved}",
+                            if (r.monthsSaved > 0) Emerald500 else MaterialTheme.colorScheme.outlineVariant,
+                            Modifier.weight(1f),
+                        )
+                        ResultCard(
+                            "Interest saved",
+                            CurrencyFormatter.detail(r.interestSaved, currencyCode, locale),
+                            if (r.interestSaved > 1.0) Emerald500 else MaterialTheme.colorScheme.outlineVariant,
+                            Modifier.weight(1f),
+                        )
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    val newPayoff = java.time.LocalDate.now().plusMonths(r.totalMonths.toLong())
+                        .format(java.time.format.DateTimeFormatter.ofPattern("MMM yyyy", locale))
+                    Text(
+                        "Loan clears by $newPayoff — ${r.monthsSaved} months sooner.",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                } else if (extra <= 0.0) {
+                    Text(
+                        "Enter a positive amount to see how prepayments shorten your loan.",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.outlineVariant,
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * 3.2.80 — affordability check. Input net monthly income, see what % of
+ * income the EMI consumes and whether that's safe.
+ */
+@Composable
+private fun AffordabilitySection(
+    monthlyEmi: Double,
+    currencySymbol: String,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    var incomeText by remember { mutableStateOf("") }
+
+    Surface(
+        onClick = { expanded = !expanded },
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(14.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+    ) {
+        Column(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("Can I afford this EMI?",
+                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold))
+                    Text("Compare against your monthly income",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Switch(
+                    checked = expanded,
+                    onCheckedChange = { expanded = it },
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor    = Color.White,
+                        checkedTrackColor    = Emerald500,
+                        uncheckedThumbColor  = MaterialTheme.colorScheme.onSurfaceVariant,
+                        uncheckedTrackColor  = MaterialTheme.colorScheme.surface,
+                        uncheckedBorderColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                )
+            }
+
+            if (expanded) {
+                Spacer(Modifier.height(12.dp))
+                OutlinedTextField(
+                    value = incomeText,
+                    onValueChange = { incomeText = it.filter { c -> c.isDigit() || c == '.' } },
+                    label = { Text("Net monthly income ($currencySymbol)") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                )
+
+                val income = incomeText.toDoubleOrNull() ?: 0.0
+                val assessment = remember(monthlyEmi, income) {
+                    app.fynlo.logic.EmiAffordability.assess(monthlyEmi, income)
+                }
+                val tintColor = when (assessment.verdict) {
+                    app.fynlo.logic.EmiAffordability.Verdict.COMFORTABLE -> Emerald500
+                    app.fynlo.logic.EmiAffordability.Verdict.MANAGEABLE  -> SemanticBlue
+                    app.fynlo.logic.EmiAffordability.Verdict.STRETCHED   -> SemanticAmber
+                    app.fynlo.logic.EmiAffordability.Verdict.RISKY       -> SemanticRed
+                    else                                                 -> MaterialTheme.colorScheme.outlineVariant
+                }
+
+                Spacer(Modifier.height(12.dp))
+                if (assessment.verdict != app.fynlo.logic.EmiAffordability.Verdict.INVALID_INPUT) {
+                    Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text("EMI burden",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(
+                                "${String.format(Locale.getDefault(), "%.1f", assessment.burdenPct)}% of income",
+                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                color = tintColor,
+                            )
+                        }
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = tintColor.copy(alpha = 0.15f),
+                        ) {
+                            Text(
+                                assessment.label,
+                                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                                color = tintColor,
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                            )
+                        }
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        assessment.explanation,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                } else {
+                    Text(
+                        assessment.explanation,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.outlineVariant,
+                    )
+                }
+            }
         }
     }
 }

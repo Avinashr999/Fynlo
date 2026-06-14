@@ -43,6 +43,7 @@ fun HomeScreen(viewModel: FinanceViewModel, onNavigateToScreen: (String) -> Unit
     val currentProjectId by viewModel.currentProjectId.collectAsState()
     val currentProject   by viewModel.currentProject.collectAsState()
     val isSyncReady      by viewModel.isSyncReady.collectAsState()
+    val isPrivacy        by viewModel.isPrivacyMode.collectAsState()
     val locale           = java.util.Locale.getDefault()
     val currencyCode     = currentProject?.currency ?: "INR"
     val currencySymbol   = app.fynlo.logic.CurrencyUtils.symbolFor(currencyCode)
@@ -53,17 +54,27 @@ fun HomeScreen(viewModel: FinanceViewModel, onNavigateToScreen: (String) -> Unit
     var activeBreakdownType by remember { mutableStateOf<BreakdownType?>(null) }
 
     if (showAddTxn) {
+        // 3.2.59 — wire real account / investment / debt names so the
+        // source picker is a dropdown of existing entities.
+        val allAccounts by viewModel.allAccountsUnfiltered.collectAsState()
+        val allInvestments by viewModel.investments.collectAsState()
+        val allDebts by viewModel.debts.collectAsState()
         AddTransactionDialog(
             onDismiss = { showAddTxn = false },
             onConfirm = { txn -> haptic.performHapticFeedback(HapticFeedbackType.LongPress); viewModel.addTransaction(txn); showAddTxn = false },
             rememberLastCategory = { isIncome -> viewModel.rememberLastTransactionCategory(isIncome) },
             onRecordCategory = { isIncome, cat -> viewModel.recordTransactionCategory(isIncome, cat) },
+            // 3.2.81 (C13 #5) — "Repeat monthly?" → also create a recurring template.
+            onRepeatMonthly = { txn -> viewModel.addRecurringTransaction(app.fynlo.logic.toRecurringTemplate(txn)) },
+            bankAccounts    = allAccounts.map { it.name },
+            investmentNames = allInvestments.map { it.name },
+            debtNames       = allDebts.map { it.name },
         )
     }
 
     if (activeBreakdownType != null) {
         val sheetTitle = when(activeBreakdownType) {
-            BreakdownType.IDLE_CASH -> "Idle Cash Breakdown"
+            BreakdownType.IDLE_CASH -> "Office & Petty Cash Breakdown"
             BreakdownType.GROWING_ASSETS -> "Growing Assets Breakdown"
             BreakdownType.HAND_LOANS -> "Hand Loans Breakdown"
             else -> ""
@@ -74,11 +85,13 @@ fun HomeScreen(viewModel: FinanceViewModel, onNavigateToScreen: (String) -> Unit
             BreakdownType.HAND_LOANS -> Icons.Default.Handshake
             else -> Icons.Default.Info
         }
+        // 3.2.65 — fallback was Color.Gray; theme-aware now.
+        val unknownSheetTint = MaterialTheme.colorScheme.onSurfaceVariant
         val sheetColor = when(activeBreakdownType) {
             BreakdownType.IDLE_CASH -> SemanticBlue
             BreakdownType.GROWING_ASSETS -> SemanticAmber
             BreakdownType.HAND_LOANS -> Carbon500
-            else -> Color.Gray
+            else -> unknownSheetTint
         }
         val sheetData = when(activeBreakdownType) {
             BreakdownType.IDLE_CASH -> summary.accountBreakdown
@@ -183,8 +196,9 @@ fun HomeScreen(viewModel: FinanceViewModel, onNavigateToScreen: (String) -> Unit
                             Text("Total Net Worth", style = MaterialTheme.typography.labelMedium,
                                 color = Emerald200.copy(alpha = 0.8f))
                             Spacer(Modifier.height(4.dp))
+                            val nwDisplay = if (isPrivacy) "••••" else CurrencyFormatter.hero(summary.netWorth, currencyCode, locale)
                             Text(
-                                text  = CurrencyFormatter.hero(summary.netWorth, currencyCode, locale),
+                                text  = nwDisplay,
                                 style = MaterialTheme.typography.headlineLarge.copy(
                                     fontWeight = FontWeight.ExtraBold, color = Color.White)
                             )
@@ -195,7 +209,8 @@ fun HomeScreen(viewModel: FinanceViewModel, onNavigateToScreen: (String) -> Unit
                         Column {
                             Text("Assets", style = MaterialTheme.typography.labelSmall,
                                 color = Emerald200.copy(alpha = 0.6f))
-                            Text(CurrencyFormatter.hero(summary.totalAssets, currencyCode, locale),
+                            val assetsDisplay = if (isPrivacy) "••••" else CurrencyFormatter.hero(summary.totalAssets, currencyCode, locale)
+                            Text(assetsDisplay,
                                 style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
                                 color = Color.White.copy(alpha = 0.9f))
                         }
@@ -204,7 +219,8 @@ fun HomeScreen(viewModel: FinanceViewModel, onNavigateToScreen: (String) -> Unit
                         Column {
                             Text("Liabilities", style = MaterialTheme.typography.labelSmall,
                                 color = Emerald200.copy(alpha = 0.6f))
-                            Text(CurrencyFormatter.hero(summary.totalDebtPrincipal + summary.totalDebtInterest, currencyCode, locale),
+                            val debtsDisplay = if (isPrivacy) "••••" else CurrencyFormatter.hero(summary.totalDebtPrincipal + summary.totalDebtInterest, currencyCode, locale)
+                            Text(debtsDisplay,
                                 style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
                                 color = Color.White.copy(alpha = 0.9f))
                         }
@@ -291,7 +307,8 @@ fun HomeScreen(viewModel: FinanceViewModel, onNavigateToScreen: (String) -> Unit
                                 AccountGrowthIndicator(growth, currencyCode, locale)
                             }
                         }
-                        Text(CurrencyFormatter.hero(balance, currencyCode, locale),
+                        val balanceDisplay = if (isPrivacy) "••••" else CurrencyFormatter.hero(balance, currencyCode, locale)
+                        Text(balanceDisplay,
                             style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.ExtraBold))
                     }
                 }
@@ -314,8 +331,21 @@ fun HomeScreen(viewModel: FinanceViewModel, onNavigateToScreen: (String) -> Unit
         Text("Portfolio Efficiency", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
         Spacer(Modifier.height(12.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            MetricCard("Idle Cash", CurrencyFormatter.hero(summary.totalCash, currencyCode, locale), SemanticBlue, Modifier.weight(1f)) { activeBreakdownType = BreakdownType.IDLE_CASH }
-            MetricCard("Growing Assets", CurrencyFormatter.hero(summary.totalInvestments + summary.totalInterestLoans, currencyCode, locale), SemanticAmber, Modifier.weight(1f)) { activeBreakdownType = BreakdownType.GROWING_ASSETS }
+            MetricCard(
+                label = "Office & Petty Cash",
+                value = CurrencyFormatter.hero(summary.totalCash, currencyCode, locale),
+                color = SemanticBlue,
+                modifier = Modifier.weight(1f)
+            ) { activeBreakdownType = BreakdownType.IDLE_CASH }
+
+            val growingXirr = summary.portfolioXirr
+            MetricCard(
+                label = "Growing Assets",
+                value = CurrencyFormatter.hero(summary.totalInvestments + summary.totalInterestLoans, currencyCode, locale),
+                subValue = if (growingXirr.isNaN()) null else "XIRR: ${app.fynlo.logic.XirrCalculator.format(growingXirr)}",
+                color = SemanticAmber,
+                modifier = Modifier.weight(1f)
+            ) { activeBreakdownType = BreakdownType.GROWING_ASSETS }
         }
         Spacer(Modifier.height(10.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -357,7 +387,7 @@ private fun QuickAction(label: String, icon: ImageVector, color: Color, modifier
 }
 
 @Composable
-private fun MetricCard(label: String, value: String, color: Color, modifier: Modifier, onClick: () -> Unit) {
+private fun MetricCard(label: String, value: String, color: Color, modifier: Modifier, subValue: String? = null, onClick: () -> Unit) {
     Card(modifier.clickable(onClick = onClick), RoundedCornerShape(16.dp),
         CardDefaults.cardColors(containerColor = color.copy(alpha = 0.07f)),
         border = androidx.compose.foundation.BorderStroke(1.dp, color.copy(alpha = 0.15f))
@@ -370,6 +400,9 @@ private fun MetricCard(label: String, value: String, color: Color, modifier: Mod
             Spacer(Modifier.height(8.dp))
             Text(value, style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
                 color = MaterialTheme.colorScheme.onSurface)
+            if (subValue != null) {
+                Text(subValue, style = MaterialTheme.typography.labelSmall, color = color, modifier = Modifier.padding(top = 2.dp))
+            }
         }
     }
 }

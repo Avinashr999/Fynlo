@@ -58,6 +58,9 @@ class SyncManager(
                             id        = doc.id,
                             name      = doc.str("name"),
                             phone     = doc.str("phone"),
+                            // C03b Stage #3 (3.2.90) — additive Person FK.
+                            // Legacy docs lack this key; doc.str returns "".
+                            peopleId  = doc.str("peopleId"),
                             address   = doc.str("address"),
                             guarantor = doc.str("guarantor"),
                             amount    = doc.dbl("amount"),
@@ -65,7 +68,10 @@ class SyncManager(
                             date      = doc.str("date"),
                             due       = doc.str("due"),
                             tenure    = doc.int("tenure"),
-                            type      = doc.str("type"),
+                            // C03b Stage #2 (3.2.85) — Kotlin property renamed
+                            // to `intType`; Firestore document field stays "type"
+                            // (matches the @SerialName + @ColumnInfo pinning).
+                            intType   = doc.str("type"),
                             paid      = doc.dbl("paid"),
                             paidPrincipal  = doc.dbl("paidPrincipal"),
                             paidInterest   = doc.dbl("paidInterest"),
@@ -81,6 +87,23 @@ class SyncManager(
                         // Only overwrite local if remote is newer (last-write-wins)
                         val local = dao.getBorrowerById(doc.id)
                         if (local == null || remote.updatedAt >= local.updatedAt) {
+                            // 3.2.73 — audit any `paid` delta caused by sync.
+                            // Borrower.paid feeds into net worth via
+                            // "outstanding = amount - paid" so a sync rewrite
+                            // here shifts the hero number with no visible
+                            // transaction. Threshold filters out exact-equal
+                            // overwrites that are net no-ops.
+                            val oldPaid = local?.paid ?: 0.0
+                            val paidDelta = remote.paid - oldPaid
+                            if (kotlin.math.abs(paidDelta) > 0.005) {
+                                app.fynlo.logic.BalanceAuditLog.record(
+                                    source  = app.fynlo.logic.BalanceAuditLog.Source.SYNC_PULL_BORROWER,
+                                    account = "Loan: ${remote.name}",
+                                    delta   = paidDelta,
+                                    note    = if (local == null) "First sync of new borrower"
+                                              else "Firestore overwrote local borrower.paid (${oldPaid} → ${remote.paid})",
+                                )
+                            }
                             dao.insertBorrower(remote)
                         }
                     }
@@ -106,6 +129,13 @@ class SyncManager(
                             amount    = doc.dbl("amount"),
                             fromAcct  = doc.str("fromAcct"),
                             toAcct    = doc.str("toAcct"),
+                            // C03b Stage #1a (3.2.86) — additive id mirror.
+                            // Older Firestore docs lack these keys; doc.str
+                            // returns "" in that case so legacy docs hydrate
+                            // with empty ids (re-resolved on next local
+                            // edit via withResolvedAccountIds).
+                            fromAcctId = doc.str("fromAcctId"),
+                            toAcctId   = doc.str("toAcctId"),
                             category  = doc.str("category"),
                             subcat    = doc.str("subcat"),
                             person    = doc.str("person"),
@@ -148,6 +178,26 @@ class SyncManager(
                         )
                         val localAcct = dao.getAccountById(doc.id)
                         if (localAcct == null || remoteAcct.updatedAt >= localAcct.updatedAt) {
+                            // 3.2.72 — audit the balance delta caused by a
+                            // Firestore listener overwrite. This is THE
+                            // suspected root-cause of "net worth changes on
+                            // every install": if Firestore's balance lags
+                            // local, the listener replaces the local row and
+                            // your net worth jumps back to the cloud value.
+                            // The delta surfaces in the diagnostic screen so
+                            // the user can see exactly which account is
+                            // bouncing and by how much.
+                            val oldBal = localAcct?.balance ?: 0.0
+                            val delta = remoteAcct.balance - oldBal
+                            if (kotlin.math.abs(delta) > 0.005) {
+                                app.fynlo.logic.BalanceAuditLog.record(
+                                    source  = app.fynlo.logic.BalanceAuditLog.Source.SYNC_PULL,
+                                    account = remoteAcct.name,
+                                    delta   = delta,
+                                    note    = if (localAcct == null) "First sync of new account"
+                                              else "Firestore listener overwrote local balance ($oldBal → ${remoteAcct.balance})",
+                                )
+                            }
                             dao.insertAccount(remoteAcct)
                         }
                     }
@@ -219,10 +269,12 @@ class SyncManager(
                 snap.documentChanges.forEach { change ->
                     runCatching {
                         val doc = change.document
-                        dao.insertDebt(Debt(
+                        val remote = Debt(
                             id        = doc.id,
                             name      = doc.str("name"),
                             phone     = doc.str("phone"),
+                            // C03b Stage #3 (3.2.90) — additive Person FK.
+                            peopleId  = doc.str("peopleId"),
                             type      = doc.str("type"),
                             amount    = doc.dbl("amount"),
                             rate      = doc.dbl("rate"),
@@ -239,7 +291,29 @@ class SyncManager(
                             projectId = doc.str("projectId"),
                             updatedAt = doc.lng("updatedAt"),
                             createdAt = doc.lng("createdAt")
-                        ))
+                        )
+                        // 3.2.73 — was an unconditional `dao.insertDebt(remote)`
+                        // (missing the `updatedAt >= local` guard that borrowers
+                        // and accounts use). That meant every Firestore snapshot
+                        // overwrote local debts — including the `paid` total —
+                        // so local payments would silently revert to the cloud
+                        // value on the next sync. Added the guard + audit log
+                        // for any paid delta caused by the overwrite.
+                        val local = dao.getDebtById(doc.id)
+                        if (local == null || remote.updatedAt >= local.updatedAt) {
+                            val oldPaid = local?.paid ?: 0.0
+                            val paidDelta = remote.paid - oldPaid
+                            if (kotlin.math.abs(paidDelta) > 0.005) {
+                                app.fynlo.logic.BalanceAuditLog.record(
+                                    source  = app.fynlo.logic.BalanceAuditLog.Source.SYNC_PULL_DEBT,
+                                    account = "Debt: ${remote.name}",
+                                    delta   = paidDelta,
+                                    note    = if (local == null) "First sync of new debt"
+                                              else "Firestore overwrote local debt.paid (${oldPaid} → ${remote.paid})",
+                                )
+                            }
+                            dao.insertDebt(remote)
+                        }
                     }
                 }
                 _status.value = SyncStatus.Synced
@@ -385,6 +459,10 @@ class SyncManager(
                             category   = doc.str("category"),
                             fromAcct   = doc.str("fromAcct"),
                             toAcct     = doc.str("toAcct"),
+                            // C03b Stage #1c (3.2.89) — additive id mirror.
+                            // Legacy docs lack these keys; doc.str returns "".
+                            fromAcctId = doc.str("fromAcctId"),
+                            toAcctId   = doc.str("toAcctId"),
                             frequency  = doc.str("frequency"),
                             dayOfMonth = doc.int("dayOfMonth"),
                             notes      = doc.str("notes"),

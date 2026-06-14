@@ -7,6 +7,12 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.USE_BIOMETRIC" />
     <uses-permission android:name="android.permission.USE_FINGERPRINT" />
+    <!-- C22 (3.2.71) — contacts import: People → "Import from Contacts"
+         reads ContactsContract for name + phone. Runtime-prompted via
+         ActivityResultContracts.RequestPermission; the import action
+         degrades gracefully if denied (user can still add contacts
+         manually). No transmission off-device. -->
+    <uses-permission android:name="android.permission.READ_CONTACTS" />
 
     <application
         android:name=".FynloApplication"
@@ -37,11 +43,7 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <!-- Net Worth Widget -->
-        <receiver android:name=".widget.NetWorthWidget" android:exported="true" android:label="Net Worth Widget">
-            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE"/></intent-filter>
-            <meta-data android:name="android.appwidget.provider" android:resource="@xml/net_worth_widget_info"/>
-        </receiver>
+        <!-- Net Worth Widget removed in 3.2.79 — feature retired per user request. -->
         <receiver android:name=".notifications.BootReceiver" android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED"/>

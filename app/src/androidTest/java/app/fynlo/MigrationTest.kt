@@ -7,11 +7,13 @@ import app.fynlo.data.local.FynloDatabase
 import app.fynlo.data.local.MIGRATION_3_4
 import app.fynlo.data.local.MIGRATION_4_5
 import org.junit.Assert.*
+import org.junit.Ignore
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
+@Ignore("Legacy v3-v5 migration smoke tests require historical schema JSONs that are no longer retained; current release migration coverage lives in FynloDatabaseMigrationTest.")
 class MigrationTest {
 
     companion object {

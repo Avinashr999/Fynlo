@@ -43,7 +43,7 @@ class BackupDataIntegrityTest {
         deviceName    = "TestDevice-$seed",
         contentHash   = "",
         accounts = listOf(
-            Account(id = "a1", name = "Cash in Hand", type = "Cash", balance = 10_000.0),
+            Account(id = "a1", name = "Personal Cash", type = "Cash", balance = 10_000.0),
             Account(id = "a2", name = "HDFC Bank",    type = "Bank", balance = 85_000.0),
         ),
         transactions = listOf(
@@ -52,7 +52,7 @@ class BackupDataIntegrityTest {
                 date      = "2026-05-26",
                 type      = "Income",
                 amount    = 5_000.0,
-                toAcct    = "Cash in Hand",
+                toAcct    = "Personal Cash",
                 category  = "Salary",
                 desc      = "Part time",
             ),

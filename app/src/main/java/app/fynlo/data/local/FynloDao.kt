@@ -156,6 +156,17 @@ interface FynloDao {
     @Query("UPDATE accounts SET balance = balance + :amount WHERE name = :name")
     suspend fun updateAccountBalance(name: String, amount: Double)
 
+    /**
+     * C03b Stage #1b-1 (3.2.87) — id-keyed balance mutation. The
+     * authoritative path for new code: an account rename can't orphan
+     * the update because the id never changes. Callers fall back to the
+     * name-based variant only for legacy rows whose `fromAcctId` /
+     * `toAcctId` is still empty (orphan from before Stage #1a's resolver
+     * could populate it).
+     */
+    @Query("UPDATE accounts SET balance = balance + :amount WHERE id = :id")
+    suspend fun updateAccountBalanceById(id: String, amount: Double)
+
     // ─── Transactions ─────────────────────────────────────────────────────────
 
     @Query("SELECT * FROM transactions ORDER BY date DESC")
@@ -211,6 +222,16 @@ interface FynloDao {
 
     @Query("SELECT * FROM people ORDER BY name ASC")
     fun getAllPeople(): Flow<List<Person>>
+
+    /**
+     * C03b Stage #3 (3.2.90) — lookup-by-phone for the
+     * `findOrCreatePersonId` resolver in FinanceRepository. Returns
+     * the first match (phone is the dedup key); empty phone always
+     * returns null so empty-phone borrowers don't accidentally link
+     * to each other.
+     */
+    @Query("SELECT * FROM people WHERE phone = :phone AND phone != '' LIMIT 1")
+    suspend fun getPersonByPhone(phone: String): Person?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertPerson(person: Person)
@@ -361,6 +382,9 @@ interface FynloDao {
 
     @Query("SELECT * FROM investment_valuations WHERE investmentId = :invId ORDER BY date DESC")
     fun getValuationsForInvestment(invId: String): kotlinx.coroutines.flow.Flow<List<app.fynlo.data.model.InvestmentValuation>>
+
+    @Query("SELECT * FROM investment_valuations")
+    fun getAllValuations(): kotlinx.coroutines.flow.Flow<List<app.fynlo.data.model.InvestmentValuation>>
 
     @Query("SELECT * FROM investment_valuations")
     suspend fun getAllValuationsOnce(): List<app.fynlo.data.model.InvestmentValuation>

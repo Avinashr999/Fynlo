@@ -51,6 +51,11 @@ class FynloApplication : Application() {
         // warm cache instead of cold-opening the prefs file on the main thread.
         appScope.launch { app.fynlo.data.UserPreferences.warmUp(this@FynloApplication) }
 
+        // 3.2.72 — diagnostic audit-log for account-balance mutations.
+        // Initialised here BEFORE any DAO writes (recalc, sync listener,
+        // recurring worker) so every mutation gets captured on launch zero.
+        app.fynlo.logic.BalanceAuditLog.init(this)
+
         val startupTrace = FirebasePerformance.getInstance().newTrace("app_startup")
         startupTrace.start()
 

@@ -47,11 +47,17 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 fun DebtScreen(
     viewModel: FinanceViewModel,
     onNavigateToDetail: (String) -> Unit = {},
+    // 3.2.61 — DebtPayoffScreen (which hosts the Snowball/Avalanche planner)
+    // was only reachable from Reports → Debt Payoff. Users opening the
+    // bottom-nav "Debts" tab couldn't see the planner; adding an explicit
+    // tile here surfaces it where users actually look for debt features.
+    onNavigateToPayoffPlan: () -> Unit = {},
     showHeader: Boolean = true
 ) {
     LaunchedEffect(Unit) { app.fynlo.data.Analytics.screenView("Debts") }
         val haptic = LocalHapticFeedback.current
 val debts by viewModel.debts.collectAsState()
+    val isPrivacy by viewModel.isPrivacyMode.collectAsState()
     val currentProject by viewModel.currentProject.collectAsState()
     val currencyCode = currentProject?.currency ?: "INR"
     val locale = Locale.getDefault()
@@ -116,6 +122,48 @@ val debts by viewModel.debts.collectAsState()
                 Icon(Icons.Default.Add, null, Modifier.size(16.dp))
                 Spacer(Modifier.width(4.dp))
                 Text("Add Debt", style = MaterialTheme.typography.labelMedium)
+            }
+        }
+
+        // 3.2.61 — discoverable entry point for the DebtPayoffScreen's
+        // Snowball/Avalanche planner. Only shown when the user has at
+        // least one debt — no point pointing at a planner for an empty
+        // debt list. Tappable Surface; full-width so the tap target
+        // matches its visual prominence.
+        if (debts.any { it.paid < it.amount }) {
+            Surface(
+                onClick = onNavigateToPayoffPlan,
+                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                shape = RoundedCornerShape(14.dp),
+                color = Emerald500.copy(alpha = 0.08f),
+                border = androidx.compose.foundation.BorderStroke(0.5.dp, Emerald500.copy(alpha = 0.35f)),
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    Box(
+                        Modifier.size(40.dp).clip(RoundedCornerShape(10.dp))
+                            .background(Emerald500.copy(alpha = 0.15f)),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(Icons.Default.CreditCard, null, tint = Emerald500, modifier = Modifier.size(20.dp))
+                    }
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            "Payoff plan — Snowball vs Avalanche",
+                            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                            color = Emerald500,
+                        )
+                        Text(
+                            "Compare strategies and see when you'll be debt-free.",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = Emerald500)
+                }
             }
         }
 
@@ -207,6 +255,7 @@ val debts by viewModel.debts.collectAsState()
                     DebtCard(
                         debt = debt,
                         currencyCode = currencyCode,
+                        isPrivacy = isPrivacy,
                         onClick = { onNavigateToDetail(debt.id) }
                     )
                     if (index < filteredDebts.lastIndex) {
@@ -232,6 +281,7 @@ val debts by viewModel.debts.collectAsState()
 fun DebtCard(
     debt: Debt,
     currencyCode: String = "INR",
+    isPrivacy: Boolean = false,
     onClick: () -> Unit,
 ) {
     val locale = Locale.getDefault()
@@ -288,8 +338,9 @@ fun DebtCard(
             )
         }
         Column(horizontalAlignment = Alignment.End) {
+            val outstandingText = if (isPrivacy) "••••" else CurrencyFormatter.detail(outstanding, currencyCode, locale)
             Text(
-                CurrencyFormatter.detail(outstanding, currencyCode, locale),
+                text = outstandingText,
                 style = MaterialTheme.typography.titleMedium.copy(
                     fontWeight = FontWeight.Bold,
                     color = if (isOverdue) SemanticRed else MaterialTheme.colorScheme.onSurface

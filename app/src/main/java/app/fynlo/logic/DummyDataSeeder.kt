@@ -2,7 +2,7 @@
 
 import app.fynlo.data.model.*
 import java.time.LocalDate
-import java.util.UUID
+import java.util.UUID  // kept for potential future use; C03b Stage #4 generator is `Ids.newId()`
 
 /**
  * Inserts comprehensive dummy data for testing all calculations.
@@ -10,12 +10,12 @@ import java.util.UUID
  */
 object DummyDataSeeder {
 
-    private fun id() = UUID.randomUUID().toString()
+    private fun id() = Ids.newId()
     private val today = LocalDate.now()
     private fun daysAgo(n: Long) = today.minusDays(n).toString()
 
     fun accounts() = listOf(
-        Account(id = "acc-cash",    name = "Cash in Hand", balance = 15000.0,  type = "Cash"),
+        Account(id = "acc-cash",    name = "Personal Cash", balance = 15000.0,  type = "Cash"),
         Account(id = "acc-hdfc",    name = "HDFC Bank",    balance = 85000.0,  type = "Bank"),
         Account(id = "acc-sbi",     name = "SBI Savings",  balance = 35000.0,  type = "Bank"),
         Account(id = "acc-petty",   name = "Petty Cash",   balance = 5000.0,   type = "Cash"),
@@ -24,22 +24,22 @@ object DummyDataSeeder {
     fun borrowers() = listOf(
         Borrower(id = id(), name = "Ravi Kumar",   phone = "9876543210",
             amount = 50000.0, rate = 12.0, paid = 10000.0,
-            date = daysAgo(400), due = "", type = "Simple Interest",
+            date = daysAgo(400), due = "", intType = "Simple Interest",
             notes = "For business expansion", status = "Active",
             projectId = "personal", updatedAt = System.currentTimeMillis()),
         Borrower(id = id(), name = "Suresh Babu",  phone = "9123456789",
             amount = 25000.0, rate = 18.0, paid = 0.0,
-            date = daysAgo(180), due = "", type = "Compound Interest",
+            date = daysAgo(180), due = "", intType = "Compound Interest",
             notes = "Medical emergency", status = "Active",
             projectId = "personal", updatedAt = System.currentTimeMillis()),
         Borrower(id = id(), name = "Lakshmi Devi", phone = "9988776655",
             amount = 15000.0, rate = 10.0, paid = 2000.0,
-            date = daysAgo(60), due = "", type = "Reducing Balance",
+            date = daysAgo(60), due = "", intType = "Reducing Balance",
             notes = "House repairs", status = "Active",
             projectId = "personal", updatedAt = System.currentTimeMillis()),
         Borrower(id = id(), name = "Mohan Rao",    phone = "9112233445",
             amount = 30000.0, rate = 15.0, paid = 5000.0,
-            date = daysAgo(730), due = daysAgo(365), type = "Both",
+            date = daysAgo(730), due = daysAgo(365), intType = "Both",
             notes = "Old loan — overdue", status = "Active",
             projectId = "personal", updatedAt = System.currentTimeMillis()),
     )
@@ -94,11 +94,11 @@ object DummyDataSeeder {
             category = "Food", desc = "Grocery & Dining", notes = "",
             projectId = "personal", updatedAt = System.currentTimeMillis()),
         Transaction(id = id(), date = daysAgo(25), type = "Expense",
-            amount = 3000.0, fromAcct = "Cash in Hand", toAcct = "",
+            amount = 3000.0, fromAcct = "Personal Cash", toAcct = "",
             category = "Fuel", desc = "Petrol & Diesel", notes = "",
             projectId = "personal", updatedAt = System.currentTimeMillis()),
         Transaction(id = id(), date = daysAgo(20), type = "Transfer",
-            amount = 10000.0, fromAcct = "HDFC Bank", toAcct = "Cash in Hand",
+            amount = 10000.0, fromAcct = "HDFC Bank", toAcct = "Personal Cash",
             category = "Transfer", desc = "ATM Withdrawal", notes = "",
             projectId = "personal", updatedAt = System.currentTimeMillis()),
         Transaction(id = id(), date = daysAgo(15), type = "Expense",
@@ -114,11 +114,11 @@ object DummyDataSeeder {
             category = "Expense", desc = "Miscellaneous", notes = "",
             projectId = "personal", updatedAt = System.currentTimeMillis()),
         Transaction(id = id(), date = daysAgo(3), type = "Expense",
-            amount = 1500.0, fromAcct = "Cash in Hand", toAcct = "",
+            amount = 1500.0, fromAcct = "Personal Cash", toAcct = "",
             category = "Fuel", desc = "Auto fuel", notes = "",
             projectId = "personal", updatedAt = System.currentTimeMillis()),
         Transaction(id = id(), date = daysAgo(1), type = "Income",
-            amount = 5000.0, toAcct = "Cash in Hand", fromAcct = "",
+            amount = 5000.0, toAcct = "Personal Cash", fromAcct = "",
             category = "Salary", desc = "Part time work", notes = "",
             projectId = "personal", updatedAt = System.currentTimeMillis()),
     )

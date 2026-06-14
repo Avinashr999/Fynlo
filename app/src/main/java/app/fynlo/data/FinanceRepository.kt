@@ -7,6 +7,7 @@ import app.fynlo.data.remote.FirestoreRepository
 import app.fynlo.data.remote.SyncManager
 import app.fynlo.data.remote.deleteFirestoreUserTree
 import app.fynlo.logic.CurrencyFormatter
+import app.fynlo.logic.resolveAccountIdsWith
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -42,6 +43,7 @@ class FinanceRepository(
     val allBudgets: Flow<List<Budget>>           = dao.getAllBudgets()
     val allGoals: Flow<List<Goal>>               = dao.getAllGoals()
     val allProjects: Flow<List<Project>>         = dao.getAllProjects()
+    val allValuations: Flow<List<InvestmentValuation>> = dao.getAllValuations()
     private val ioScope = CoroutineScope(Dispatchers.IO)
     fun sync(block: suspend FirestoreRepository.() -> Unit) {
         // Don't attempt Firestore writes without a real authenticated user
@@ -85,19 +87,97 @@ class FinanceRepository(
     suspend fun deleteProject(project: Project) {
         dao.deleteProject(project); sync { deleteProject(project.id) }
     }
+    /**
+     * C03b Stage #1a (3.2.86) — adapter around the pure
+     * `Transaction.withResolvedAccountIds` helper in `logic/`. Wires the
+     * DAO's `getAccountByName` into the resolver's name→id callback so
+     * every insert/edit path populates the immutable id mirror.
+     *
+     * If a name has no matching account (typo, deleted account, etc.), the
+     * id stays `""` — Stage #1b will read this back and surface those rows
+     * to the existing 3.2.59 orphan-repair tool.
+     */
+    /**
+     * C03b Stage #1b-1 (3.2.87) — apply a balance delta using the immutable
+     * account id when available, falling back to name-based lookup for
+     * legacy rows whose id mirror is still empty.
+     *
+     * Why the fallback exists: Stage #1a's resolver populates ids on every
+     * NEW write, and the v22→v23 migration backfilled most existing rows
+     * by joining on name. But a row whose `fromAcct` doesn't match any
+     * current account (typo, deleted account) keeps id = "" — those rows
+     * still need the legacy name-keyed UPDATE to behave the same way it
+     * did pre-Stage #1a, so the orphan-repair tool from 3.2.59 keeps
+     * working.
+     *
+     * For rows with id set, this is **rename-safe**: an account rename
+     * mutates `Account.name` only; `Account.id` is immutable, so the
+     * balance update lands on the right row regardless of any name
+     * changes since the transaction was recorded.
+     */
+    private suspend fun applyAccountDelta(idOrEmpty: String, nameFallback: String, delta: Double) {
+        if (idOrEmpty.isNotEmpty()) {
+            dao.updateAccountBalanceById(idOrEmpty, delta)
+        } else if (nameFallback.isNotBlank()) {
+            dao.updateAccountBalance(nameFallback, delta)
+        }
+    }
+
+    private suspend fun Transaction.withResolvedAccountIds(): Transaction {
+        // Resolve up front so the lookup closure passed to the pure helper
+        // is synchronous (DAO calls are suspend; the helper is not).
+        val fromId = if (fromAcct.isEmpty()) null else dao.getAccountByName(fromAcct)?.id
+        val toId   = if (toAcct.isEmpty())   null else dao.getAccountByName(toAcct)?.id
+        return resolveAccountIdsWith { name ->
+            when (name) {
+                fromAcct -> fromId
+                toAcct   -> toId
+                else     -> null
+            }
+        }
+    }
+
     suspend fun insertTransaction(transaction: Transaction) {
         // C03a Stage 2: scrub forbidden literal categories ("Expense" / "Income"
         // / "Transfer" — those are types, not categories) before persisting.
-        val sanitized = TransactionValidator.sanitize(transaction)
+        // C03b Stage #1a: resolve account-name strings into immutable
+        // account ids so a rename can't orphan the row.
+        val sanitized = TransactionValidator.sanitize(transaction).withResolvedAccountIds()
         val affectedAccounts = mutableListOf<String>()
         db.withTransaction {
             val now = System.currentTimeMillis()
             val t = sanitized.copy(updatedAt = now, createdAt = if (sanitized.createdAt == 0L) now else sanitized.createdAt)
             dao.insertTransaction(t)
+            // 3.2.72 — audit-log every balance write so the diagnostic
+            // screen can show which subsystem moved the number. Note: a
+            // typed-account-name mismatch will still update 0 rows
+            // silently (orphan-account bug from 3.2.59) but the audit
+            // entry records what was *attempted* — useful for spotting
+            // a typo retroactively.
+            val srcTag = app.fynlo.logic.BalanceAuditLog.Source.MANUAL_TXN
+            val note   = "Add ${transaction.type.lowercase()} \"${transaction.desc.take(28)}\""
+            // C03b Stage #1b-1: use `t` (post-resolver) here — its
+            // fromAcctId / toAcctId are populated for rows with a matching
+            // account, so the balance update is rename-safe.
             when (transaction.type.lowercase()) {
-                "expense"  -> { dao.updateAccountBalance(transaction.fromAcct, -transaction.amount); affectedAccounts += transaction.fromAcct }
-                "income"   -> { dao.updateAccountBalance(transaction.toAcct, transaction.amount); affectedAccounts += transaction.toAcct }
-                "transfer" -> { dao.updateAccountBalance(transaction.fromAcct, -transaction.amount); dao.updateAccountBalance(transaction.toAcct, transaction.amount); affectedAccounts += transaction.fromAcct; affectedAccounts += transaction.toAcct }
+                "expense"  -> {
+                    applyAccountDelta(t.fromAcctId, t.fromAcct, -t.amount)
+                    affectedAccounts += t.fromAcct
+                    app.fynlo.logic.BalanceAuditLog.record(srcTag, t.fromAcct, -t.amount, note)
+                }
+                "income"   -> {
+                    applyAccountDelta(t.toAcctId, t.toAcct, t.amount)
+                    affectedAccounts += t.toAcct
+                    app.fynlo.logic.BalanceAuditLog.record(srcTag, t.toAcct, t.amount, note)
+                }
+                "transfer" -> {
+                    applyAccountDelta(t.fromAcctId, t.fromAcct, -t.amount)
+                    applyAccountDelta(t.toAcctId,   t.toAcct,    t.amount)
+                    affectedAccounts += t.fromAcct
+                    affectedAccounts += t.toAcct
+                    app.fynlo.logic.BalanceAuditLog.record(srcTag, t.fromAcct, -t.amount, "$note (out)")
+                    app.fynlo.logic.BalanceAuditLog.record(srcTag, t.toAcct,    t.amount, "$note (in)")
+                }
             }
             sync { setTransaction(t) }
         }
@@ -110,25 +190,49 @@ class FinanceRepository(
         // value before applying the edit. `old` is read-only — its
         // category is just used for the old-side Payment-row lookup and
         // doesn't get re-written, so no sanitization needed there.
-        val new = TransactionValidator.sanitize(newRaw)
+        // C03b Stage #1a: resolve account-name strings into ids on the
+        // new value so the edit refreshes the immutable mirror.
+        val new = TransactionValidator.sanitize(newRaw).withResolvedAccountIds()
         db.withTransaction {
-            // 1. Reverse old transaction effect
+            // 3.2.72 — audit log for both halves of the edit (reverse + apply).
+            val revTag = app.fynlo.logic.BalanceAuditLog.Source.EDIT_TXN_REVERSE
+            val appTag = app.fynlo.logic.BalanceAuditLog.Source.EDIT_TXN_APPLY
+            val oldDesc = old.desc.take(28)
+            val newDesc = new.desc.take(28)
+
+            // 1. Reverse old transaction effect (id-keyed via Stage #1b-1).
             when (old.type.lowercase()) {
-                "expense"  -> dao.updateAccountBalance(old.fromAcct,  old.amount)
-                "income"   -> dao.updateAccountBalance(old.toAcct,   -old.amount)
+                "expense"  -> {
+                    applyAccountDelta(old.fromAcctId, old.fromAcct,  old.amount)
+                    app.fynlo.logic.BalanceAuditLog.record(revTag, old.fromAcct,  old.amount, "Reverse old expense \"$oldDesc\"")
+                }
+                "income"   -> {
+                    applyAccountDelta(old.toAcctId, old.toAcct,   -old.amount)
+                    app.fynlo.logic.BalanceAuditLog.record(revTag, old.toAcct,   -old.amount, "Reverse old income \"$oldDesc\"")
+                }
                 "transfer" -> {
-                    dao.updateAccountBalance(old.fromAcct,  old.amount)
-                    dao.updateAccountBalance(old.toAcct,   -old.amount)
+                    applyAccountDelta(old.fromAcctId, old.fromAcct,  old.amount)
+                    applyAccountDelta(old.toAcctId,   old.toAcct,   -old.amount)
+                    app.fynlo.logic.BalanceAuditLog.record(revTag, old.fromAcct,  old.amount, "Reverse old transfer out \"$oldDesc\"")
+                    app.fynlo.logic.BalanceAuditLog.record(revTag, old.toAcct,   -old.amount, "Reverse old transfer in \"$oldDesc\"")
                 }
             }
 
-            // 2. Apply new transaction effect
+            // 2. Apply new transaction effect (id-keyed via Stage #1b-1).
             when (new.type.lowercase()) {
-                "expense"  -> dao.updateAccountBalance(new.fromAcct, -new.amount)
-                "income"   -> dao.updateAccountBalance(new.toAcct,    new.amount)
+                "expense"  -> {
+                    applyAccountDelta(new.fromAcctId, new.fromAcct, -new.amount)
+                    app.fynlo.logic.BalanceAuditLog.record(appTag, new.fromAcct, -new.amount, "Apply new expense \"$newDesc\"")
+                }
+                "income"   -> {
+                    applyAccountDelta(new.toAcctId, new.toAcct,    new.amount)
+                    app.fynlo.logic.BalanceAuditLog.record(appTag, new.toAcct,    new.amount, "Apply new income \"$newDesc\"")
+                }
                 "transfer" -> {
-                    dao.updateAccountBalance(new.fromAcct, -new.amount)
-                    dao.updateAccountBalance(new.toAcct,    new.amount)
+                    applyAccountDelta(new.fromAcctId, new.fromAcct, -new.amount)
+                    applyAccountDelta(new.toAcctId,   new.toAcct,    new.amount)
+                    app.fynlo.logic.BalanceAuditLog.record(appTag, new.fromAcct, -new.amount, "Apply new transfer out \"$newDesc\"")
+                    app.fynlo.logic.BalanceAuditLog.record(appTag, new.toAcct,    new.amount, "Apply new transfer in \"$newDesc\"")
                 }
             }
 
@@ -157,7 +261,7 @@ class FinanceRepository(
                 if (borrower != null) {
                     val now = System.currentTimeMillis()
                     val p = Payment(
-                        id        = java.util.UUID.randomUUID().toString(),
+                        id        = app.fynlo.logic.Ids.newId(),
                         loanId    = new.ref,
                         name      = borrower.name,
                         date      = new.date,
@@ -191,7 +295,7 @@ class FinanceRepository(
                 if (debt != null) {
                     val now = System.currentTimeMillis()
                     val p = DebtPayment(
-                        id        = java.util.UUID.randomUUID().toString(),
+                        id        = app.fynlo.logic.Ids.newId(),
                         debtId    = new.ref,
                         name      = debt.name,
                         date      = new.date,
@@ -237,15 +341,31 @@ class FinanceRepository(
 
     suspend fun deleteTransaction(transaction: Transaction) {
         db.withTransaction {
-            // Guard: only reverse balance if account name is non-blank
+            // 3.2.72 — audit-log every reversal so a delete shows up in the
+            // diagnostic timeline.
+            val delTag = app.fynlo.logic.BalanceAuditLog.Source.DELETE_TXN
+            val delNote = "Delete ${transaction.type.lowercase()} \"${transaction.desc.take(28)}\""
+
+            // Guard: only reverse balance if account name is non-blank.
+            // C03b Stage #1b-1: id-keyed (with name fallback for orphans).
             when (transaction.type.lowercase()) {
-                "expense"  -> if (transaction.fromAcct.isNotBlank())
-                                  dao.updateAccountBalance(transaction.fromAcct,  transaction.amount)
-                "income"   -> if (transaction.toAcct.isNotBlank())
-                                  dao.updateAccountBalance(transaction.toAcct,   -transaction.amount)
+                "expense"  -> if (transaction.fromAcct.isNotBlank()) {
+                    applyAccountDelta(transaction.fromAcctId, transaction.fromAcct,  transaction.amount)
+                    app.fynlo.logic.BalanceAuditLog.record(delTag, transaction.fromAcct,  transaction.amount, delNote)
+                }
+                "income"   -> if (transaction.toAcct.isNotBlank()) {
+                    applyAccountDelta(transaction.toAcctId, transaction.toAcct,   -transaction.amount)
+                    app.fynlo.logic.BalanceAuditLog.record(delTag, transaction.toAcct,   -transaction.amount, delNote)
+                }
                 "transfer" -> {
-                    if (transaction.fromAcct.isNotBlank()) dao.updateAccountBalance(transaction.fromAcct,  transaction.amount)
-                    if (transaction.toAcct.isNotBlank())   dao.updateAccountBalance(transaction.toAcct,   -transaction.amount)
+                    if (transaction.fromAcct.isNotBlank()) {
+                        applyAccountDelta(transaction.fromAcctId, transaction.fromAcct,  transaction.amount)
+                        app.fynlo.logic.BalanceAuditLog.record(delTag, transaction.fromAcct,  transaction.amount, "$delNote (out)")
+                    }
+                    if (transaction.toAcct.isNotBlank()) {
+                        applyAccountDelta(transaction.toAcctId, transaction.toAcct,   -transaction.amount)
+                        app.fynlo.logic.BalanceAuditLog.record(delTag, transaction.toAcct,   -transaction.amount, "$delNote (in)")
+                    }
                 }
             }
             android.util.Log.d("FynloDelete", "deleteTransaction: type=${transaction.type} " +
@@ -298,7 +418,7 @@ class FinanceRepository(
         }
         sync { deleteTransaction(transaction.id) }
     }
-    suspend fun insertBorrower(borrower: Borrower) = insertBorrowerWithSource(borrower, "Cash in Hand")
+    suspend fun insertBorrower(borrower: Borrower) = insertBorrowerWithSource(borrower, "Personal Cash")
 
     suspend fun updateBorrower(borrower: Borrower) {
         val b = borrower.copy(updatedAt = System.currentTimeMillis())
@@ -311,13 +431,52 @@ class FinanceRepository(
         dao.insertDebt(d)
         sync { setDebt(d) }
     }
+    /**
+     * C03b Stage #3 (3.2.90) — find a Person by phone, or create one and
+     * return its id. The dedup spine for borrowers/debts: every loan to
+     * the same phone number links to ONE Person. Empty-phone callers
+     * get `""` back (can't dedup safely on name alone — the user has to
+     * link manually via the People screen).
+     *
+     * Side effect: when creating, the new Person row is also pushed to
+     * Firestore via the same sync path borrowers/debts use.
+     */
+    private suspend fun findOrCreatePersonId(name: String, phone: String, projectId: String): String {
+        if (phone.isBlank()) return ""
+        dao.getPersonByPhone(phone)?.let { return it.id }
+        val now = System.currentTimeMillis()
+        val newPerson = Person(
+            id        = app.fynlo.logic.Ids.newId(),
+            name      = name,
+            phone     = phone,
+            type      = "Individual",
+            notes     = "",
+            projectId = projectId,
+            updatedAt = now,
+            createdAt = now,
+        )
+        dao.insertPerson(newPerson)
+        sync { setPerson(newPerson) }
+        return newPerson.id
+    }
+
     suspend fun insertBorrowerWithSource(borrower: Borrower, sourceAccount: String, projectId: String = borrower.projectId) {
         db.withTransaction {
             val now = System.currentTimeMillis()
-            val b = borrower.copy(projectId = projectId, updatedAt = now, createdAt = if (borrower.createdAt == 0L) now else borrower.createdAt)
+            // C03b Stage #3: resolve peopleId at write time so subsequent
+            // loans to the same phone aggregate under one Person record.
+            val resolvedPeopleId =
+                if (borrower.peopleId.isNotEmpty()) borrower.peopleId
+                else findOrCreatePersonId(borrower.name, borrower.phone, projectId)
+            val b = borrower.copy(
+                projectId = projectId,
+                peopleId  = resolvedPeopleId,
+                updatedAt = now,
+                createdAt = if (borrower.createdAt == 0L) now else borrower.createdAt,
+            )
             dao.insertBorrower(b)
             dao.updateAccountBalance(sourceAccount, -borrower.amount)
-            val t = Transaction(java.util.UUID.randomUUID().toString(), borrower.date, "Expense", borrower.amount, fromAcct = sourceAccount, category = "Lending", desc = "Lent to ${borrower.name}", ref = borrower.id, notes = borrower.notes, projectId = projectId, updatedAt = now, createdAt = now)
+            val t = Transaction(app.fynlo.logic.Ids.newId(), borrower.date, "Expense", borrower.amount, fromAcct = sourceAccount, category = "Lending", desc = "Lent to ${borrower.name}", ref = borrower.id, notes = borrower.notes, projectId = projectId, updatedAt = now, createdAt = now)
             dao.insertTransaction(t)
             sync { setBorrower(b); setTransaction(t) }
         }
@@ -333,10 +492,14 @@ class FinanceRepository(
 
         db.withTransaction {
             linkedTxns.forEach { txn ->
+                // C03b Stage #1b-1: id-keyed reversal (orphan rows fall back to name).
                 when (txn.type.lowercase()) {
-                    "expense"  -> dao.updateAccountBalance(txn.fromAcct,  txn.amount)
-                    "income"   -> dao.updateAccountBalance(txn.toAcct,   -txn.amount)
-                    "transfer" -> { dao.updateAccountBalance(txn.fromAcct, txn.amount); dao.updateAccountBalance(txn.toAcct, -txn.amount) }
+                    "expense"  -> applyAccountDelta(txn.fromAcctId, txn.fromAcct,  txn.amount)
+                    "income"   -> applyAccountDelta(txn.toAcctId,   txn.toAcct,   -txn.amount)
+                    "transfer" -> {
+                        applyAccountDelta(txn.fromAcctId, txn.fromAcct,  txn.amount)
+                        applyAccountDelta(txn.toAcctId,   txn.toAcct,   -txn.amount)
+                    }
                 }
                 dao.deleteTransaction(txn)
             }
@@ -367,22 +530,45 @@ class FinanceRepository(
         // C01 fix — Sprint 1 (decisions/2026-05-26-c01-fix-strategy.md).
         // Derives `paid` / `paidPrincipal` / `paidInterest` from the
         // `payments` and `debt_payments` tables (the single source of truth).
-        // The previously-called dao.recalculateBorrowerPaid() /
-        // recalculateDebtPaid() queries (UPDATE ... SET paid =
-        // paidPrincipal + paidInterest) silently zeroed legacy rows whose
-        // principal/interest split was never populated and whose only
-        // repayment record lived on the cumulative `paid` field. They are
-        // intentionally NOT called here. The v15→v16 backfill migration
-        // (FynloDatabase.kt) ensures every legacy row has at least one
-        // Payment row before this code can run on an upgraded install.
+        // … (unchanged comment block)
         //
-        // Account balances are NOT recomputed from transactions because:
-        // 1. Opening balances have no corresponding transaction record
-        // 2. Starting from current balance + replaying transactions = double-counting
-        // Account balances are kept correct in real-time by individual operations.
+        // 3.2.73 — wrap rebuilds with snapshot diff so the audit log captures
+        // any borrower / debt rows whose `paid` total moved. A "no-op recalc"
+        // (everything already in sync) records nothing; a recalc that fixes
+        // real drift surfaces it per-row with the delta and old→new pair.
         dao.backfillBorrowerSourceAccount()
+        val borrowersBefore = dao.getAllBorrowers().first().associate { it.id to (it.name to it.paid) }
+        val debtsBefore     = dao.getAllDebts().first().associate     { it.id to (it.name to it.paid) }
         dao.rebuildBorrowerPaidFromPayments()
         dao.rebuildDebtPaidFromDebtPayments()
+        val borrowersAfter = dao.getAllBorrowers().first().associate { it.id to it.paid }
+        val debtsAfter     = dao.getAllDebts().first().associate     { it.id to it.paid }
+        for ((id, namePaid) in borrowersBefore) {
+            val (name, oldPaid) = namePaid
+            val newPaid = borrowersAfter[id] ?: continue
+            val delta = newPaid - oldPaid
+            if (kotlin.math.abs(delta) > 0.005) {
+                app.fynlo.logic.BalanceAuditLog.record(
+                    source  = app.fynlo.logic.BalanceAuditLog.Source.RECALC_BORROWER_PAID,
+                    account = "Loan: $name",
+                    delta   = delta,
+                    note    = "Recalc rebuilt borrower.paid from payments ($oldPaid → $newPaid)",
+                )
+            }
+        }
+        for ((id, namePaid) in debtsBefore) {
+            val (name, oldPaid) = namePaid
+            val newPaid = debtsAfter[id] ?: continue
+            val delta = newPaid - oldPaid
+            if (kotlin.math.abs(delta) > 0.005) {
+                app.fynlo.logic.BalanceAuditLog.record(
+                    source  = app.fynlo.logic.BalanceAuditLog.Source.RECALC_DEBT_PAID,
+                    account = "Debt: $name",
+                    delta   = delta,
+                    note    = "Recalc rebuilt debt.paid from debt_payments ($oldPaid → $newPaid)",
+                )
+            }
+        }
     }
 
         /** Directly set account balance (for corrections). Creates a balancing transaction. */
@@ -390,8 +576,15 @@ class FinanceRepository(
         db.withTransaction {
             val diff = newBalance - oldBalance
             dao.updateAccountBalance(accountName, diff)
+            // 3.2.72 — manual balance edit audit entry.
+            app.fynlo.logic.BalanceAuditLog.record(
+                source  = app.fynlo.logic.BalanceAuditLog.Source.QUICK_EDIT_BALANCE,
+                account = accountName,
+                delta   = diff,
+                note    = "Manual balance edit: $oldBalance → $newBalance",
+            )
             val t = Transaction(
-                id       = java.util.UUID.randomUUID().toString(),
+                id       = app.fynlo.logic.Ids.newId(),
                 date     = java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd")),
                 type     = if (diff >= 0) "Income" else "Expense",
                 amount   = Math.abs(diff),
@@ -420,7 +613,7 @@ class FinanceRepository(
             val i = investment.copy(sourceType = "account", fundingSource = accountName, projectId = projectId, updatedAt = System.currentTimeMillis(), createdAt = if (investment.createdAt == 0L) System.currentTimeMillis() else investment.createdAt)
             dao.insertInvestment(i)
             dao.updateAccountBalance(accountName, -investment.invested)
-            val t = Transaction(java.util.UUID.randomUUID().toString(), investment.date, "Expense", investment.invested,
+            val t = Transaction(app.fynlo.logic.Ids.newId(), investment.date, "Expense", investment.invested,
                 fromAcct = accountName, category = "Investment",
                 desc = "Invested in ${investment.name}", ref = i.id,
                 notes = investment.notes, projectId = projectId, updatedAt = System.currentTimeMillis())
@@ -436,7 +629,7 @@ class FinanceRepository(
         db.withTransaction {
             val i = investment.copy(sourceType = "existing_debt", fundingSource = debt.name, linkedDebtId = debt.id, projectId = projectId, updatedAt = System.currentTimeMillis(), createdAt = if (investment.createdAt == 0L) System.currentTimeMillis() else investment.createdAt)
             dao.insertInvestment(i)
-            val t = Transaction(java.util.UUID.randomUUID().toString(), investment.date, "Transfer", investment.invested,
+            val t = Transaction(app.fynlo.logic.Ids.newId(), investment.date, "Transfer", investment.invested,
                 fromAcct = debt.name, toAcct = investment.name, category = "Investment",
                 desc = "Invested in ${investment.name} using ${debt.name} loan funds",
                 notes = investment.notes, projectId = projectId, updatedAt = System.currentTimeMillis())
@@ -453,7 +646,7 @@ class FinanceRepository(
             dao.insertDebt(d)
             val i = investment.copy(sourceType = "new_loan", fundingSource = d.name, linkedDebtId = d.id, projectId = projectId, updatedAt = System.currentTimeMillis(), createdAt = if (investment.createdAt == 0L) System.currentTimeMillis() else investment.createdAt)
             dao.insertInvestment(i)
-            val t = Transaction(java.util.UUID.randomUUID().toString(), investment.date, "Transfer", investment.invested,
+            val t = Transaction(app.fynlo.logic.Ids.newId(), investment.date, "Transfer", investment.invested,
                 fromAcct = d.name, toAcct = investment.name, category = "Investment",
                 desc = "Invested ₹${investment.invested.toInt()} in ${investment.name} via ${d.name} loan",
                 notes = investment.notes, projectId = projectId, updatedAt = System.currentTimeMillis())
@@ -520,7 +713,9 @@ class FinanceRepository(
                     val debtTxn = dao.getTransactionsByRef(investment.linkedDebtId)
                         .firstOrNull { it.type.equals("Income", ignoreCase = true) }
                     if (debtTxn != null) {
-                        dao.updateAccountBalance(debtTxn.toAcct, -linkedDebt.amount)
+                        // C03b Stage #1b-1: id-keyed reversal of the income txn
+                        // that originally credited the destination account.
+                        applyAccountDelta(debtTxn.toAcctId, debtTxn.toAcct, -linkedDebt.amount)
                         dao.deleteTransaction(debtTxn)
                         sync { deleteTransaction(debtTxn.id) }
                     }
@@ -570,7 +765,7 @@ class FinanceRepository(
                     // Deduct from existing bank/cash
                     dao.updateAccountBalance(sourceName, -investment.invested)
                     val t = Transaction(
-                        id = java.util.UUID.randomUUID().toString(),
+                        id = app.fynlo.logic.Ids.newId(),
                         date = investment.date,
                         type = "Expense",
                         amount = investment.invested,
@@ -591,7 +786,7 @@ class FinanceRepository(
                         val d = it.copy(updatedAt = System.currentTimeMillis())
                         dao.insertDebt(d)
                         val t = Transaction(
-                            id = java.util.UUID.randomUUID().toString(),
+                            id = app.fynlo.logic.Ids.newId(),
                             date = investment.date,
                             type = "Transfer", // Debt -> Investment is a balance sheet move
                             amount = investment.invested,
@@ -613,7 +808,7 @@ class FinanceRepository(
                 "Already Settled" -> {
                     // Historical entry - just a journal record for traceability
                     val t = Transaction(
-                        id = java.util.UUID.randomUUID().toString(),
+                        id = app.fynlo.logic.Ids.newId(),
                         date = investment.date,
                         type = "Info", 
                         amount = investment.invested,
@@ -630,7 +825,7 @@ class FinanceRepository(
             
             // 3. Initial Valuation
             val v = InvestmentValuation(
-                id = java.util.UUID.randomUUID().toString(),
+                id = app.fynlo.logic.Ids.newId(),
                 investmentId = investment.id,
                 date = investment.date,
                 value = investment.invested,
@@ -669,10 +864,22 @@ class FinanceRepository(
     suspend fun insertDebtWithDestination(debt: Debt, destinationAccount: String, projectId: String = debt.projectId) {
         db.withTransaction {
             val now = System.currentTimeMillis()
-            val d = debt.copy(projectId = projectId, updatedAt = now, createdAt = if (debt.createdAt == 0L) now else debt.createdAt)
+            // C03b Stage #3: resolve peopleId for the lender, same dedup
+            // spine borrowers use. Empty-phone debts (e.g. credit cards
+            // with no human counterparty) stay unlinked — peopleId is
+            // optional, not required.
+            val resolvedPeopleId =
+                if (debt.peopleId.isNotEmpty()) debt.peopleId
+                else findOrCreatePersonId(debt.name, debt.phone, projectId)
+            val d = debt.copy(
+                projectId = projectId,
+                peopleId  = resolvedPeopleId,
+                updatedAt = now,
+                createdAt = if (debt.createdAt == 0L) now else debt.createdAt,
+            )
             dao.insertDebt(d)
             dao.updateAccountBalance(destinationAccount, debt.amount)
-            val t = Transaction(java.util.UUID.randomUUID().toString(), debt.date, "Income", debt.amount, toAcct = destinationAccount, category = "Debt Received", desc = "Loan received from ${debt.name}", ref = d.id, notes = debt.notes, projectId = projectId, updatedAt = now, createdAt = now)
+            val t = Transaction(app.fynlo.logic.Ids.newId(), debt.date, "Income", debt.amount, toAcct = destinationAccount, category = "Debt Received", desc = "Loan received from ${debt.name}", ref = d.id, notes = debt.notes, projectId = projectId, updatedAt = now, createdAt = now)
             dao.insertTransaction(t)
             sync { setDebt(d); setTransaction(t) }
         }
@@ -682,10 +889,14 @@ class FinanceRepository(
         val linkedTxns = dao.getTransactionsByRef(debt.id)
         db.withTransaction {
             linkedTxns.forEach { txn ->
+                // C03b Stage #1b-1: id-keyed reversal (orphans fall back to name).
                 when (txn.type.lowercase()) {
-                    "expense"  -> dao.updateAccountBalance(txn.fromAcct,  txn.amount)
-                    "income"   -> dao.updateAccountBalance(txn.toAcct,   -txn.amount)
-                    "transfer" -> { dao.updateAccountBalance(txn.fromAcct, txn.amount); dao.updateAccountBalance(txn.toAcct, -txn.amount) }
+                    "expense"  -> applyAccountDelta(txn.fromAcctId, txn.fromAcct,  txn.amount)
+                    "income"   -> applyAccountDelta(txn.toAcctId,   txn.toAcct,   -txn.amount)
+                    "transfer" -> {
+                        applyAccountDelta(txn.fromAcctId, txn.fromAcct,  txn.amount)
+                        applyAccountDelta(txn.toAcctId,   txn.toAcct,   -txn.amount)
+                    }
                 }
                 dao.deleteTransaction(txn)
             }
@@ -715,7 +926,7 @@ class FinanceRepository(
 
             // Main repayment transaction (full amount received)
             val t = Transaction(
-                id = java.util.UUID.randomUUID().toString(),
+                id = app.fynlo.logic.Ids.newId(),
                 date = payment.date,
                 type = "Income",
                 amount = payment.amount,
@@ -763,7 +974,7 @@ class FinanceRepository(
 
             // Main repayment transaction (full amount paid)
             val t = Transaction(
-                id = java.util.UUID.randomUUID().toString(),
+                id = app.fynlo.logic.Ids.newId(),
                 date = payment.date,
                 type = "Expense",
                 amount = payment.amount,
@@ -782,7 +993,7 @@ class FinanceRepository(
             // so it shows in P&L as cost of borrowing
             if (interestPaid > 0.01) {
                 val intTxn = Transaction(
-                    id = java.util.UUID.randomUUID().toString(),
+                    id = app.fynlo.logic.Ids.newId(),
                     date = payment.date,
                     type = "Expense",
                     amount = interestPaid,
@@ -853,7 +1064,7 @@ class FinanceRepository(
 
             // Create Income transaction for the full withdrawal
             val t = Transaction(
-                id        = java.util.UUID.randomUUID().toString(),
+                id        = app.fynlo.logic.Ids.newId(),
                 date      = java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd")),
                 type      = "Income",
                 amount    = withdrawAmount,
@@ -891,7 +1102,7 @@ class FinanceRepository(
     suspend fun markBorrowerDefaulted(borrower: Borrower) {
         val today = java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd"))
         val frozenInterest = app.fynlo.logic.InterestEngine.calcIntAccrued(
-            borrower.amount, borrower.rate, borrower.date, borrower.type,
+            borrower.amount, borrower.rate, borrower.date, borrower.intType,
             borrower.due, totalPaid = borrower.paidPrincipal, asOf = today
         )
         val updated = borrower.copy(
@@ -906,13 +1117,13 @@ class FinanceRepository(
 
     // ─── Write Off Bad Debt ─────────────────────────────────────────────────────
     // Creates a Bad Debt Expense transaction so it hits your P&L
-    suspend fun writeOffBorrower(borrower: Borrower, fromAccount: String = "Cash in Hand") {
+    suspend fun writeOffBorrower(borrower: Borrower, fromAccount: String = "Personal Cash") {
         val outstanding = if (borrower.status == "Defaulted" && borrower.frozenInterest > 0) {
             // Use frozen interest for defaulted borrowers
             (borrower.amount - borrower.paidPrincipal) + maxOf(0.0, borrower.frozenInterest - borrower.paidInterest)
         } else {
             val interest = app.fynlo.logic.InterestEngine.calcIntAccrued(
-                borrower.amount, borrower.rate, borrower.date, borrower.type, borrower.due, borrower.paidPrincipal
+                borrower.amount, borrower.rate, borrower.date, borrower.intType, borrower.due, borrower.paidPrincipal
             )
             (borrower.amount - borrower.paidPrincipal) + maxOf(0.0, interest - borrower.paidInterest)
         }
@@ -927,7 +1138,7 @@ class FinanceRepository(
 
             // Bad Debt Expense — shows in P&L (journal entry, no cash movement)
             val t = Transaction(
-                id        = java.util.UUID.randomUUID().toString(),
+                id        = app.fynlo.logic.Ids.newId(),
                 date      = java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd")),
                 type      = "Expense",
                 amount    = outstanding,
@@ -951,6 +1162,38 @@ class FinanceRepository(
      * Called on sign-in to ensure data written offline reaches the cloud.
      * Safe to call multiple times — Firestore SET is idempotent.
      */
+    /**
+     * 3.2.74 — wipe Firestore for this user and push local state as the
+     * new canonical version. Use when stale cloud data is "restoring"
+     * itself into local on every sync (e.g. previous testing session left
+     * non-matching values in the cloud). After this completes, cloud and
+     * local are identical and the listener-overwrite churn stops.
+     *
+     * Local data is NOT touched. The push uses the current local rows as
+     * the source of truth — anything that exists locally goes up; anything
+     * that doesn't is implicitly absent from cloud after the wipe.
+     *
+     * Caller is responsible for showing a confirm dialog — this is
+     * destructive on the cloud side.
+     */
+    suspend fun resetCloudSyncToLocal() {
+        // Stop the listener BEFORE wiping so we don't race the delete with
+        // a re-attach that pulls the docs we're about to delete back into
+        // local. Same pattern as `resetAllData`'s wipe sequence.
+        runCatching { syncManager.stopListening() }
+        val uid = syncManager.userId
+        if (uid.isNotBlank()) {
+            deleteFirestoreUserTree(
+                com.google.firebase.firestore.FirebaseFirestore.getInstance(), uid
+            )
+        }
+        // Push current local as the new canonical cloud state.
+        pushAllLocalToFirestore()
+        // Resume listening — cloud is now in sync with local so the next
+        // initial snapshot is a no-op.
+        runCatching { syncManager.startListening() }
+    }
+
     suspend fun pushAllLocalToFirestore() {
         val uid = syncManager.userId
         if (uid.isEmpty()) return
@@ -1025,7 +1268,20 @@ class FinanceRepository(
 
     fun getAllRecurringTransactions() = dao.getAllRecurringTransactions()
     suspend fun insertRecurringTransaction(r: app.fynlo.data.model.RecurringTransaction) {
-        val rec = r.copy(updatedAt = System.currentTimeMillis())
+        // C03b Stage #1c (3.2.89) — resolve account names to ids at write
+        // time, mirroring the Transaction insertTransaction path. Future
+        // RecurringWorker auto-fires will use the stored ids for
+        // rename-safe balance updates.
+        val fromId = if (r.fromAcct.isEmpty()) null else dao.getAccountByName(r.fromAcct)?.id
+        val toId   = if (r.toAcct.isEmpty())   null else dao.getAccountByName(r.toAcct)?.id
+        val resolved = r.resolveAccountIdsWith { name ->
+            when (name) {
+                r.fromAcct -> fromId
+                r.toAcct   -> toId
+                else       -> null
+            }
+        }
+        val rec = resolved.copy(updatedAt = System.currentTimeMillis())
         dao.insertRecurringTransaction(rec); sync { setRecurring(rec) }
     }
     suspend fun deleteRecurringTransaction(r: app.fynlo.data.model.RecurringTransaction) {
@@ -1256,8 +1512,8 @@ class FinanceRepository(
      * backup is loaded atomically inside `db.withTransaction`.
      */
     suspend fun restoreDataFromJson(json: String) {
-        val data = Json.decodeFromString<BackupData>(json)
-        when (val verdict = BackupIntegrity.check(data)) {
+        val raw = Json.decodeFromString<BackupData>(json)
+        when (val verdict = BackupIntegrity.check(raw)) {
             is BackupIntegrity.Check.Ok -> { /* fall through to restore */ }
             is BackupIntegrity.Check.UnsupportedVersion ->
                 throw IllegalStateException(
@@ -1271,6 +1527,12 @@ class FinanceRepository(
                     "The file may be corrupted or modified — not restoring."
                 )
         }
+        // 3.2.77 — same sweep the v20→v21 / v21→v22 migrations apply to the
+        // live DB, but at the restore boundary. A user importing a backup
+        // exported before 3.2.75 would otherwise re-introduce "Cash in Hand"
+        // and un-do the rename — the migration only fires on schema version
+        // bump, not on restore-replace.
+        val data = sanitizeLegacyCashName(raw)
         db.withTransaction {
             // Clear everything first so a restore is a true replace, not a merge.
             dao.deleteAllAccounts(); dao.deleteAllTransactions(); dao.deleteAllBorrowers()
@@ -1284,5 +1546,41 @@ class FinanceRepository(
             data.budgets.forEach { dao.insertBudget(it) }; data.goals.forEach { dao.insertGoal(it) }
             data.recurringTransactions.forEach { dao.insertRecurringTransaction(it) }
         }
+    }
+
+    /**
+     * 3.2.77 — rewrite the legacy "Cash in Hand" string to "Personal Cash"
+     * everywhere it appears as an account-name key inside a [BackupData].
+     * Mirrors [app.fynlo.data.local.MIGRATION_21_22]'s field set so backup
+     * restore stays consistent with the live-DB rename.
+     *
+     * Pure function on a value type — no DAO calls — easy to unit-test
+     * if we want. Idempotent.
+     */
+    private fun sanitizeLegacyCashName(input: BackupData): BackupData {
+        val OLD = "Cash in Hand"
+        val NEW = "Personal Cash"
+        if (!input.accounts.any { it.name == OLD } &&
+            !input.transactions.any { it.fromAcct == OLD || it.toAcct == OLD } &&
+            !input.borrowers.any { it.sourceAccount == OLD } &&
+            !input.recurringTransactions.any { it.fromAcct == OLD || it.toAcct == OLD }) {
+            return input  // fast-path no-op for post-3.2.75 backups
+        }
+        return input.copy(
+            accounts              = input.accounts.map { if (it.name == OLD) it.copy(name = NEW) else it },
+            transactions          = input.transactions.map { t ->
+                t.copy(
+                    fromAcct = if (t.fromAcct == OLD) NEW else t.fromAcct,
+                    toAcct   = if (t.toAcct   == OLD) NEW else t.toAcct,
+                )
+            },
+            borrowers             = input.borrowers.map { if (it.sourceAccount == OLD) it.copy(sourceAccount = NEW) else it },
+            recurringTransactions = input.recurringTransactions.map { r ->
+                r.copy(
+                    fromAcct = if (r.fromAcct == OLD) NEW else r.fromAcct,
+                    toAcct   = if (r.toAcct   == OLD) NEW else r.toAcct,
+                )
+            },
+        )
     }
 }

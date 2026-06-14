@@ -6,6 +6,8 @@ import androidx.work.WorkerParameters
 import app.fynlo.FynloApplication
 import app.fynlo.data.model.RecurringTransaction
 import app.fynlo.data.model.Transaction
+import app.fynlo.logic.BalanceAuditLog  // 3.2.72 — local `app` var in doWork shadows the package; importing the symbol avoids fully-qualifying
+import app.fynlo.logic.Ids               // C03b Stage #4 — centralized UUID generator
 import kotlinx.coroutines.flow.first
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -26,25 +28,66 @@ class RecurringWorker(
         val recurring = dao.getAllRecurringTransactions().first()
         recurring.filter { it.isActive }.forEach { r ->
             if (shouldRunToday(r, today)) {
-                // Auto-log the transaction
+                // Auto-log the transaction.
+                //
+                // C03b Stage #1c (3.2.89): use the RecurringTransaction's
+                // stored `fromAcctId` / `toAcctId` directly. Resolved at
+                // template create time (Stage #1a-style resolver in
+                // `FinanceRepository.insertRecurringTransaction`) and
+                // backfilled by `MIGRATION_23_24` for pre-existing
+                // templates. Fallback to a name lookup only when the
+                // stored id is empty (legacy orphan template). Using the
+                // stored id is also defence-in-depth against a "user
+                // renamed their account AND created a new account with
+                // the old name" pathology: the name lookup would resolve
+                // to the wrong account; the stored id always lands on
+                // the originally-linked one.
+                val fromAcctId = if (r.fromAcctId.isNotEmpty()) r.fromAcctId
+                    else if (r.fromAcct.isNotBlank()) dao.getAccountByName(r.fromAcct)?.id.orEmpty()
+                    else ""
+                val toAcctId   = if (r.toAcctId.isNotEmpty()) r.toAcctId
+                    else if (r.toAcct.isNotBlank()) dao.getAccountByName(r.toAcct)?.id.orEmpty()
+                    else ""
                 val txn = Transaction(
-                    id        = UUID.randomUUID().toString(),
-                    date      = todayStr,
-                    type      = r.type,
-                    amount    = r.amount,
-                    fromAcct  = r.fromAcct,
-                    toAcct    = r.toAcct,
-                    category  = r.category.ifBlank { r.type },
-                    desc      = r.name,
-                    notes     = "Auto-logged by recurring schedule",
-                    projectId = r.projectId,
-                    updatedAt = System.currentTimeMillis()
+                    id         = Ids.newId(),
+                    date       = todayStr,
+                    type       = r.type,
+                    amount     = r.amount,
+                    fromAcct   = r.fromAcct,
+                    toAcct     = r.toAcct,
+                    fromAcctId = fromAcctId,
+                    toAcctId   = toAcctId,
+                    category   = r.category.ifBlank { r.type },
+                    desc       = r.name,
+                    notes      = "Auto-logged by recurring schedule",
+                    projectId  = r.projectId,
+                    updatedAt  = System.currentTimeMillis()
                 )
                 dao.insertTransaction(txn)
-                // Update account balance
+                // Update account balance.
+                //
+                // C03b Stage #1c: id-keyed first (the rename-safe path
+                // from Stage #1b-1) with name-keyed fallback for legacy
+                // orphan templates. RecurringWorker is now the last
+                // balance-mutating path covered by the orphan-bug fix
+                // for Transaction-shaped writes.
+                //
+                // 3.2.72 audit logging is unchanged — entries record the
+                // account NAME (display text) even when the underlying
+                // UPDATE is id-keyed.
+                val tag = BalanceAuditLog.Source.RECURRING_WORKER
+                val note = "Recurring \"${r.name}\" auto-fired"
                 when (r.type.lowercase()) {
-                    "expense" -> if (r.fromAcct.isNotBlank()) dao.updateAccountBalance(r.fromAcct, -r.amount)
-                    "income"  -> if (r.toAcct.isNotBlank())   dao.updateAccountBalance(r.toAcct,    r.amount)
+                    "expense" -> if (r.fromAcct.isNotBlank()) {
+                        if (fromAcctId.isNotEmpty()) dao.updateAccountBalanceById(fromAcctId, -r.amount)
+                        else                          dao.updateAccountBalance(r.fromAcct, -r.amount)
+                        BalanceAuditLog.record(tag, r.fromAcct, -r.amount, note)
+                    }
+                    "income"  -> if (r.toAcct.isNotBlank()) {
+                        if (toAcctId.isNotEmpty()) dao.updateAccountBalanceById(toAcctId,    r.amount)
+                        else                        dao.updateAccountBalance(r.toAcct,        r.amount)
+                        BalanceAuditLog.record(tag, r.toAcct,    r.amount, note)
+                    }
                 }
                 // Mark as run today
                 dao.updateRecurringLastRun(r.id, todayStr)

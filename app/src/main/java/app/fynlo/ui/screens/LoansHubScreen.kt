@@ -51,10 +51,15 @@ fun LoansHubScreen(
     onNavigateToDetail: (String) -> Unit = {},
     onNavigateToDebtDetail: (String) -> Unit = {},
     onNavigateToCalendar: () -> Unit = {},
+    // 3.2.63 — was missing, so the "Payoff plan" tile inside the embedded
+    // DebtScreen (Owed tab) silently fell back to the no-op default and
+    // ignored taps. Surfaces here, plumbed at the call site in Navigation.kt.
+    onNavigateToPayoffPlan: () -> Unit = {},
     initialTab: Int = 0
 ) {
     var tab by remember { mutableIntStateOf(initialTab) }
     val summary by viewModel.financialSummary.collectAsState()
+    val isPrivacy by viewModel.isPrivacyMode.collectAsState()
     val borrowers by viewModel.borrowers.collectAsState()
     val debts by viewModel.debts.collectAsState()
     val currentProject by viewModel.currentProject.collectAsState()
@@ -106,7 +111,7 @@ fun LoansHubScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Text(
-                    CurrencyFormatter.detail(heroAmount, currencyCode, locale),
+                    if (isPrivacy) "••••" else CurrencyFormatter.detail(heroAmount, currencyCode, locale),
                     style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.ExtraBold),
                     color = heroColour,
                 )
@@ -152,8 +157,9 @@ fun LoansHubScreen(
             } else {
                 DebtScreen(
                     viewModel = viewModel,
-                    onNavigateToDetail = onNavigateToDebtDetail,
-                    showHeader = false
+                    onNavigateToDetail     = onNavigateToDebtDetail,
+                    onNavigateToPayoffPlan = onNavigateToPayoffPlan,
+                    showHeader             = false,
                 )
             }
         }

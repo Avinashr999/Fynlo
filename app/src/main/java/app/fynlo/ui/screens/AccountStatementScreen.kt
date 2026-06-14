@@ -18,6 +18,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import app.fynlo.FinanceViewModel
 import app.fynlo.logic.CurrencyFormatter
+import app.fynlo.logic.matchesAccount
 import java.util.Locale
 import app.fynlo.ui.theme.*
 
@@ -36,8 +37,10 @@ fun AccountStatementScreen(
     val account      = accounts.find { it.name == accountName }
     val locale       = remember { Locale.getDefault() }
 
+    // C03b Stage #1b-2 (3.2.88) — match by immutable account id first
+    // (rename-safe), fall back to stored name for legacy orphan rows.
     val accountTransactions = transactions
-        .filter { it.fromAcct == accountName || it.toAcct == accountName }
+        .filter { it.matchesAccount(accountId = account?.id ?: "", accountName = accountName) }
         .sortedByDescending { it.date }
 
     var showEditDialog by remember { mutableStateOf(false) }
@@ -103,7 +106,13 @@ fun AccountStatementScreen(
                             txn            = txn,
                             currencyCode   = currencyCode,
                             onEdit         = { viewModel.editTransaction(txn, it) },
-                            onDelete       = { viewModel.deleteTransaction(txn) }
+                            onDelete       = { viewModel.deleteTransaction(txn) },
+                            // 3.2.81 — propagate account names so the edit
+                            // dialog's new Account picker shows real options.
+                            bankAccounts   = accounts.map { it.name },
+                            // C03b Stage #1b-2 (3.2.88) — id → current name
+                            // for rename-reflective sub-label.
+                            accountIdToName = accounts.associate { it.id to it.name },
                         )
                     }
                 }

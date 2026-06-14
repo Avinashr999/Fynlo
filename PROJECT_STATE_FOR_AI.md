@@ -71,11 +71,11 @@ If any line can't be filled, **stop and ask**. If the user pushes back, follow `
 - Add any `@Query("UPDATE borrowers SET paid = ...")` (or debts twin) outside the existing `rebuildBorrowerPaidFromPayments` / `rebuildDebtPaidFromDebtPayments` queries. The entire C01 ADR exists because of one such query.
 - Remove or weaken `RecalculateBalancesDataIntegrityTest` or the explicit `--tests '*DataIntegrity*' --tests '*Recalculate*'` gate in `.github/workflows/checks.yml` (those are the CI tripwire that catches a regression).
 
-**Remaining P0 work** for the 3.2.2 release that ships C01's fix:
+**Current release-gate state (updated 2026-05-28):**
 
-- **C02** — stale exports & auto-recalc (now safe to enable thanks to C01 closure)
-- **C03a** — schema integrity additive fields (`schemaVersion`, `createdAt`, `projectId`, `userId`)
-- **C05** — category bleed Income / Expense
+- **All P0/P1/P2/P3 UX audit clusters are closed** in the current development line.
+- **C03b is closed** in `3.2.91` after the staged account-id, recurring-id, peopleId, and UUID standardisation work.
+- **Next step:** release prep, not more cluster work. Follow `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md` and `RELEASE_PROTOCOL.md` before any Play Console upload.
 
 **Release strategy (changed 2026-05-26):** no Play Console upload of *any* version until **every** cluster in `UX_AUDIT_2026-05-25.md` (C01–C22 + C03b, including the v4+ C22 backlog) is closed. See `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md` for the full reasoning. The C01-closure work below remains valid as a development milestone — code is on `master`, tests are green, release notes drafted — but the `RELEASE_PROTOCOL.md §4` pipeline is **dormant** and will execute *once*, at the final all-clusters launch, with a freshly-drafted Play Store copy.
 
@@ -84,18 +84,18 @@ What this means in practice for AI agents reading this file:
 - DO continue per-cluster work; the structural-fix discipline from `decisions/2026-05-26-c01-fix-strategy.md` (test-first, structural enforcement, ADR for compound decisions) remains in force for every subsequent cluster.
 - The 3.2.2 release notes and `CHANGELOG [3.2.2]` are kept as development-milestone records, not shipping artifacts. Future cluster closures append to the journal (§6) and may bump internal `versionName` markers without triggering an upload.
 
-C01-closure milestone is complete (✅ migration test, ✅ release-notes draft, ✅ smoke test with PDF fixes, ✅ startup macrobench within ±5%, ✅ versionName/versionCode bumped). Next cluster to pick up is C02 (now a 5-line wrapper per the C01 ADR's Consequences section).
+C01-closure milestone is complete (✅ migration test, ✅ release-notes draft, ✅ smoke test with PDF fixes, ✅ startup macrobench within ±5%, ✅ versionName/versionCode bumped). As of `3.2.91`, the cluster backlog is closed; the next work is release prep and final verification.
 
 ## 0.5 Priority discipline (summary)
 
 The audit ranks 22 clusters by priority. Do not work out of order:
 
 - **P0** (4 clusters) — ~~C01 · C02 · C03a · C05~~ ✅ **ALL CLOSED 2026-05-26** — ship-blockers cleared
-- **P1** (12 clusters) — major UX wins
-- **P2** (6 clusters) — polish
-- **P3** (1 cluster) — v4+ backlog
+- **P1** (12 clusters) — ✅ closed
+- **P2** (6 clusters) — ✅ closed
+- **P3** (1 cluster) — ✅ C22 closed for release-gate purposes; deferred items tracked separately
 
-If the user asks for P3 work while P0 is open, push back per `AI_AGENT_PROTOCOL.md §5`.
+If future work reopens a higher-priority data-integrity issue, handle it before lower-priority polish or post-launch enhancements.
 
 ## 0.6 Data-integrity escalation
 
@@ -158,7 +158,7 @@ AI_AGENT_PROTOCOL.md to match.
 
 # Fynlo - Complete AI Portability File
 **Project Name**: Fynlo
-**Version**: 3.2.47 on `master` (`versionName = "3.2.47"`, `versionCode = 170`). All four Sprint-1 P0 clusters closed. P1 + P2 backlogs closed in full. **C22 P3 backlog in progress. Stage 1 (3.2.45) — About Resources section + LICENSES.md. Stage 2 (3.2.47) — Recurring last-day-of-month + preview + Goals deadline.** C22 remaining items: Recurring end-date (#219, needs schema migration), Goals icon picker / account linkage, Projects clone / description / icon, Budgeting auto-suggest / alert thresholds, Search recent / filter chips / fuzzy / voice, Encrypted backups, Receipt OCR, Snowball/avalanche debt payoff, Extra-payment scenarios, Dark mode, AI categorization, Bank statement import, NAV/stock auto-import, Multi-project scoping (needs C03b), proper logo, contacts import. Plus C03b, INF01-INF06, deferred Task #22/#24/#26/#27/#28. Internal milestone markers only — per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens until every `UX_AUDIT` cluster (P0 through P3) is closed. All four Sprint-1 P0 clusters closed (C01 / C02 / C03a / C05). **Ten** P1 Sprint 2 clusters closed (C04, C06+C07, C08, C09, C18, C13, C14, C12, **C15**). **3.2.33 = C15 Stage 5 = C15e Money Flow category-grouped visualization — closes C15 in full**. All five C15 sub-stages landed: C15a in 3.2.29, C15b in 3.2.30, C15c in 3.2.31, C15d in 3.2.32, C15e in 3.2.33. Remaining P1: C21 (PDF/XLSX export quality polish). Plus deferred follow-ups: Task #26, #27, #28, #24. Internal milestone markers only — per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens until every `UX_AUDIT` cluster (P0 through P3) is closed.
+**Version**: 3.2.91 on `master` (`versionName = "3.2.91"`, `versionCode = 214`, Room schema version 25). All UX audit clusters are closed for the current development line: P0, P1, P2, C22 P3, and C03b. The latest milestone is **3.2.91 = C03b Stage #4 = Ids helper + UUID standardisation**, which closes C03b structurally after the staged account-id, recurring-id, peopleId, and UUID work. Internal milestone markers only; per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`, no Play Console upload happens until the release-prep checklist is completed. Deferred/non-blocking follow-ups remain tracked separately: Stage #1b-3 search/edit/export cosmetics, Stage #3b Person-level UI aggregation, MF SIP taxonomy cleanup, voice search, daily/weekly budget limits, proper logo design, AI categorization, receipt OCR, NAV/stock auto-import, and multi-project scoping polish.
 **Platform**: Android (Kotlin, Jetpack Compose, Room — Gradle 9.4.1, AGP 9.2.1, Room 2.8.4, KSP 2.3.7, Kotlin 2.2.10)
 
 ## 1. Project Overview
@@ -345,6 +345,18 @@ in the APK).
 ## 6. Journal
 
 **Newest first.** Each entry: date · cluster(s) closed/touched · commit(s) · one-paragraph why-and-what.
+
+### 2026-05-28 - 3.2.91 (C03b Stage #4 - Ids helper + UUID standardisation; closes C03b)
+
+**Type:** C03b structural closure. Latest source of truth is `CHANGELOG.md` `[3.2.91]`.
+
+**Internal milestone:** `3.2.91` / `versionCode = 214`. Room schema remains at v25. No Play Console upload yet; next step is release prep per `decisions/2026-05-26-release-cadence-all-clusters-then-ship.md`.
+
+**What changed:** `logic/Ids.kt` is now the central new-entity ID generator. Kotlin insert paths route new database entity IDs through UUID v4 generation. Existing legacy IDs remain valid and are not rewritten. Documented exceptions remain bounded: model-level defaults that cannot depend on `logic/`, one-time SQLite migration IDs, display-only bug report IDs, and the `"personal"` Project sentinel.
+
+**State after this milestone:** All UX audit clusters are closed for the current development line: P0, P1, P2, C22 P3, and C03b. Deferred/non-blocking follow-ups remain tracked separately: search/edit/export cosmetic account-name surfaces, Person-level UI aggregation, MF SIP taxonomy cleanup, voice search, daily/weekly budget limits, proper logo design, AI categorization, receipt OCR, NAV/stock auto-import, and multi-project scoping polish.
+
+**Verification recorded in changelog:** `IdsDataIntegrityTest` added; changelog records 296 JVM tests across 26 classes passing for the milestone. Later local verification in this workspace may require normal home-directory access for Robolectric lock/cache files.
 
 ### 2026-05-27 — 3.2.47 (C22 Stage 2 — Recurring last-day + preview + Goals deadline)
 

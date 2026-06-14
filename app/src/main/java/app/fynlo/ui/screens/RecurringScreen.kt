@@ -2,8 +2,6 @@ package app.fynlo.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -223,7 +221,8 @@ private fun RecurringCard(r: RecurringTransaction, isDue: Boolean = false, daysU
                 }
             }
             IconButton(onClick = { haptic.performHapticFeedback(HapticFeedbackType.LongPress); showDeleteConfirm = true }) {
-                Icon(Icons.Default.Delete, null, tint = Color.Red.copy(0.6f), modifier = Modifier.size(20.dp))
+                // 3.2.65 — was Color.Red; theme-aware error token.
+                Icon(Icons.Default.Delete, null, tint = MaterialTheme.colorScheme.error.copy(0.6f), modifier = Modifier.size(20.dp))
             }
         }
 }
@@ -285,245 +284,216 @@ private fun AddRecurringDialog(
         }
     }
 
-    AlertDialog(
-        modifier = Modifier.fillMaxWidth(0.95f),
-        properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false),
-        onDismissRequest = onDismiss,
-        title = { Text("Add Recurring Transaction") },
-        text = {
-            // C22 Stage 2 smoke fix #3 (3.2.50) — wrap the Column in
-            // verticalScroll so the form fits inside the AlertDialog text
-            // slot regardless of total content height. Pre-3.2.50 the form
-            // had ~10 fields totalling ~700dp but the dialog text slot is
-            // only ~400dp tall — bottom items (Frequency segments + Use-
-            // last-day + day input + preview) were clipped invisible.
-            // AlertDialog doesn't auto-scroll its text slot in this
-            // Material 3 + Compose version.
-            Column(
-                modifier = Modifier.verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                OutlinedTextField(value = name, onValueChange = { name = it },
-                    label = { Text("Name (e.g. Monthly Rent)") }, singleLine = true,
-                    modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp))
+    // C22 dialog universalization (3.2.55) — migrated to canonical FormDialog.
+    // This is the most complex form (10 fields across conditional branches),
+    // so the bold section labels are especially important for scannability.
+    app.fynlo.ui.components.FormDialog(
+        title = "Add Recurring Transaction",
+        onDismiss = onDismiss,
+    ) {
+        app.fynlo.ui.components.FormSectionLabel("Name")
+        Spacer(Modifier.height(6.dp))
+        OutlinedTextField(
+            value = name, onValueChange = { name = it },
+            placeholder = { Text("e.g. Monthly Rent") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)
+        )
 
-                // 3.2.11 chip-sweep: 2-option mutually-exclusive toggle → SegmentedButtonRow
-                // (matches the Income/Expense toggle at the top of AddTransactionDialog).
-                // `icon = {}` per the 3.2.8 lesson — checkmark eats label width
-                // unnecessarily when selection is already carried by the filled background.
-                val typeOptions = listOf("Income", "Expense")
-                SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-                    typeOptions.forEachIndexed { idx, t ->
-                        SegmentedButton(
-                            selected = type == t,
-                            onClick = { type = t },
-                            shape = SegmentedButtonDefaults.itemShape(idx, typeOptions.size),
-                            icon = {},
-                            label = { Text(t) },
-                        )
-                    }
-                }
-
-                OutlinedTextField(value = amount, onValueChange = { amount = it },
-                    label = { Text("Amount (leave blank to enter each time)") }, singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp))
-
-                // C04 Stage 3: replaced free-text "Category" OutlinedTextField
-                // with a chip-picker. "Custom" sentinel reveals the freeform
-                // input only when the user opts in, matching the AddTransaction
-                // dialog UX and keeping curated categories the default path.
-                Text("Category", style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant)
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    categories.forEach { cat ->
-                        FilterChip(
-                            selected = selectedCategory == cat,
-                            onClick = { selectedCategory = cat },
-                            label = { Text(cat) },
-                            shape = RoundedCornerShape(12.dp)
-                        )
-                    }
-                }
-                if (selectedCategory == "Custom") {
-                    OutlinedTextField(value = customCategory, onValueChange = { customCategory = it },
-                        label = { Text("Custom category name") }, singleLine = true,
-                        modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp))
-                }
-
-                OutlinedTextField(value = fromAcct, onValueChange = { fromAcct = it },
-                    label = { Text("Account (e.g. HDFC Bank)") }, singleLine = true,
-                    modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp))
-
-                // C22 Stage 2 smoke fix #2 (3.2.49) — Frequency picker
-                // reverted from ExposedDropdownMenuBox to SegmentedButtonRow.
-                // The 3.2.10 history said the dropdown was chosen because
-                // 4 labels didn't fit in a SegmentedButtonRow, but smoke on
-                // 3.2.47 + 3.2.48 showed the dropdown is failing harder:
-                // it renders collapsed inside the AlertDialog (label /
-                // value / supporting-text all clipped, only the chevron
-                // visible). The user couldn't see it was a picker at all.
-                //
-                // SegmentedButtonRow with full 4 labels fits with the
-                // dialog content fillMaxWidth + small fontSize on the
-                // labels; if "Yearly" still clips on a 320dp-wide device,
-                // it'd at most truncate by 1 char ("Yearl…") which is
-                // still legibly a Yearly option. Strictly better than the
-                // chevron-only render the dropdown produced.
-                Text(
-                    "Frequency",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                val freqOptions = listOf("Daily", "Weekly", "Monthly", "Yearly")
-                SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-                    freqOptions.forEachIndexed { idx, option ->
-                        SegmentedButton(
-                            selected = frequency == option,
-                            onClick = { frequency = option },
-                            shape = SegmentedButtonDefaults.itemShape(idx, freqOptions.size),
-                            icon = {},
-                            label = {
-                                Text(
-                                    option,
-                                    style = MaterialTheme.typography.labelSmall,
-                                    maxLines = 1
-                                )
-                            },
-                        )
-                    }
-                }
-
-                if (frequency == "Monthly" || frequency == "Yearly") {
-                    // C22 Stage 2 (3.2.47) — "last day of month" support
-                    // (audit §C22 #218). When checked, dayOfMonth is forced
-                    // to 31 (sentinel — RecurringWorker clamps it to
-                    // today.lengthOfMonth(), so Feb fires the 28th, Apr the
-                    // 30th, etc.). When unchecked, the user types a number
-                    // 1-31 (was 1-28 pre-C22 due to lack of clamp in worker).
-                    val isLastDay = dayOfMonth.toIntOrNull() == 31
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Checkbox(
-                            checked = isLastDay,
-                            onCheckedChange = { checked ->
-                                dayOfMonth = if (checked) "31" else "1"
-                            }
-                        )
-                        Text(
-                            "Use last day of month",
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                    }
-                    OutlinedTextField(
-                        value = dayOfMonth,
-                        onValueChange = { newVal ->
-                            // Only allow valid 1-31 input; drop anything else.
-                            val n = newVal.toIntOrNull()
-                            if (newVal.isEmpty() || (n != null && n in 1..31)) {
-                                dayOfMonth = newVal
-                            }
-                        },
-                        label = { Text("Day of month (1-31)") },
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
-                        enabled = !isLastDay,
-                    )
-                }
-
-                // C22 Stage 2 (3.2.47) — preview next 3 occurrences (audit
-                // §C22 #220). Pure-UI calc; no schema impact. Helps users
-                // sanity-check date / frequency before saving — especially
-                // useful for "last day of month" so they see how Feb shifts.
-                val previewDates = remember(frequency, dayOfMonth) {
-                    val today  = java.time.LocalDate.now()
-                    val target = dayOfMonth.toIntOrNull() ?: 1
-                    val out    = mutableListOf<java.time.LocalDate>()
-                    when (frequency) {
-                        "Daily" -> for (i in 1..3) out += today.plusDays(i.toLong())
-                        "Weekly" -> {
-                            // Next 3 Mondays.
-                            var d = today.plusDays(1)
-                            while (out.size < 3) {
-                                if (d.dayOfWeek.value == 1) out += d
-                                d = d.plusDays(1)
-                            }
-                        }
-                        "Monthly" -> {
-                            // Walk forward month-by-month, clamping target to
-                            // each month's length so day-31 still produces a
-                            // valid date in shorter months.
-                            var ym = java.time.YearMonth.from(today)
-                            while (out.size < 3) {
-                                val day = minOf(target, ym.lengthOfMonth())
-                                val date = ym.atDay(day)
-                                if (date.isAfter(today)) out += date
-                                ym = ym.plusMonths(1)
-                            }
-                        }
-                        "Yearly" -> {
-                            var y = today.year
-                            while (out.size < 3) {
-                                val ym = java.time.YearMonth.of(y, 1)
-                                val day = minOf(target, ym.lengthOfMonth())
-                                val date = ym.atDay(day)
-                                if (date.isAfter(today)) out += date
-                                y += 1
-                            }
-                        }
-                    }
-                    out
-                }
-                if (previewDates.isNotEmpty()) {
-                    val fmt = java.time.format.DateTimeFormatter.ofPattern("d MMM yyyy")
-                    Text(
-                        "Next occurrences: " + previewDates.joinToString(" · ") { it.format(fmt) },
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                // C17 (3.2.42) — inline reason for the disabled Add button.
-                app.fynlo.ui.components.DisabledButtonHint(
-                    if (name.isBlank()) "Enter a name to continue" else null
+        Spacer(Modifier.height(14.dp))
+        app.fynlo.ui.components.FormSectionLabel("Type")
+        Spacer(Modifier.height(6.dp))
+        val typeOptions = listOf("Income", "Expense")
+        SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+            typeOptions.forEachIndexed { idx, t ->
+                SegmentedButton(
+                    selected = type == t,
+                    onClick = { type = t },
+                    shape = SegmentedButtonDefaults.itemShape(idx, typeOptions.size),
+                    icon = {},
+                    label = { Text(t) },
                 )
             }
-        },
-        confirmButton = {
-            Button(
-                onClick = {
-                    if (name.isNotBlank()) {
-                        // C04 Stage 3: resolve the final category — chip label
-                        // for curated picks, the user-typed string for Custom.
-                        // The outer call site uses this final value for both
-                        // the RecurringTransaction insert AND the recency
-                        // record so e.g. "Charity" (not "Custom") is what
-                        // re-prefills next time.
-                        val finalCategory =
-                            if (selectedCategory == "Custom") customCategory else selectedCategory
-                        onConfirm(RecurringTransaction(
-                            name       = name,
-                            type       = type,
-                            amount     = amount.toDoubleOrNull() ?: 0.0,
-                            category   = finalCategory,
-                            fromAcct   = if (type == "Expense") fromAcct else "",
-                            toAcct     = if (type == "Income") fromAcct else "",
-                            frequency  = frequency,
-                            // C22 Stage 2 — range now 1-31. Worker clamps to
-                            // month.lengthOfMonth() at run time so day-31
-                            // safely fires on Feb 28 / Apr 30 / etc.
-                            dayOfMonth = dayOfMonth.toIntOrNull()?.coerceIn(1, 31) ?: 1
-                        ))
+        }
+
+        Spacer(Modifier.height(14.dp))
+        app.fynlo.ui.components.FormSectionLabel("Amount")
+        Spacer(Modifier.height(6.dp))
+        OutlinedTextField(
+            value = amount, onValueChange = { amount = it },
+            placeholder = { Text("Leave blank to enter each time") },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+            modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)
+        )
+
+        Spacer(Modifier.height(14.dp))
+        app.fynlo.ui.components.FormSectionLabel("Category")
+        Spacer(Modifier.height(8.dp))
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            categories.forEach { cat ->
+                FilterChip(
+                    selected = selectedCategory == cat,
+                    onClick = { selectedCategory = cat },
+                    label = { Text(cat) },
+                    shape = RoundedCornerShape(12.dp)
+                )
+            }
+        }
+        if (selectedCategory == "Custom") {
+            Spacer(Modifier.height(8.dp))
+            OutlinedTextField(
+                value = customCategory, onValueChange = { customCategory = it },
+                placeholder = { Text("Custom category name") }, singleLine = true,
+                modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)
+            )
+        }
+
+        Spacer(Modifier.height(14.dp))
+        app.fynlo.ui.components.FormSectionLabel("Account")
+        Spacer(Modifier.height(6.dp))
+        OutlinedTextField(
+            value = fromAcct, onValueChange = { fromAcct = it },
+            placeholder = { Text("e.g. HDFC Bank") }, singleLine = true,
+            modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)
+        )
+
+        Spacer(Modifier.height(14.dp))
+        app.fynlo.ui.components.FormSectionLabel("Frequency")
+        Spacer(Modifier.height(6.dp))
+        val freqOptions = listOf("Daily", "Weekly", "Monthly", "Yearly")
+        SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+            freqOptions.forEachIndexed { idx, option ->
+                SegmentedButton(
+                    selected = frequency == option,
+                    onClick = { frequency = option },
+                    shape = SegmentedButtonDefaults.itemShape(idx, freqOptions.size),
+                    icon = {},
+                    label = {
+                        Text(
+                            option,
+                            style = MaterialTheme.typography.labelSmall,
+                            maxLines = 1
+                        )
+                    },
+                )
+            }
+        }
+
+        if (frequency == "Monthly" || frequency == "Yearly") {
+            // C22 Stage 2 (3.2.47) — "last day of month" support (audit
+            // §C22 #218). When checked, dayOfMonth is forced to 31 (sentinel
+            // — RecurringWorker clamps it to today.lengthOfMonth()).
+            val isLastDay = dayOfMonth.toIntOrNull() == 31
+            Spacer(Modifier.height(10.dp))
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Checkbox(
+                    checked = isLastDay,
+                    onCheckedChange = { checked ->
+                        dayOfMonth = if (checked) "31" else "1"
+                    }
+                )
+                Text(
+                    "Use last day of month",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
+            Spacer(Modifier.height(6.dp))
+            OutlinedTextField(
+                value = dayOfMonth,
+                onValueChange = { newVal ->
+                    val n = newVal.toIntOrNull()
+                    if (newVal.isEmpty() || (n != null && n in 1..31)) {
+                        dayOfMonth = newVal
                     }
                 },
-                enabled = name.isNotBlank()
-            ) { Text("Add") }
-        },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
-    )
+                placeholder = { Text("Day of month (1-31)") },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                enabled = !isLastDay,
+            )
+        }
+
+        // C22 Stage 2 (3.2.47) — preview next 3 occurrences (audit §C22 #220).
+        val previewDates = remember(frequency, dayOfMonth) {
+            val today  = java.time.LocalDate.now()
+            val target = dayOfMonth.toIntOrNull() ?: 1
+            val out    = mutableListOf<java.time.LocalDate>()
+            when (frequency) {
+                "Daily" -> for (i in 1..3) out += today.plusDays(i.toLong())
+                "Weekly" -> {
+                    var d = today.plusDays(1)
+                    while (out.size < 3) {
+                        if (d.dayOfWeek.value == 1) out += d
+                        d = d.plusDays(1)
+                    }
+                }
+                "Monthly" -> {
+                    var ym = java.time.YearMonth.from(today)
+                    while (out.size < 3) {
+                        val day = minOf(target, ym.lengthOfMonth())
+                        val date = ym.atDay(day)
+                        if (date.isAfter(today)) out += date
+                        ym = ym.plusMonths(1)
+                    }
+                }
+                "Yearly" -> {
+                    var y = today.year
+                    while (out.size < 3) {
+                        val ym = java.time.YearMonth.of(y, 1)
+                        val day = minOf(target, ym.lengthOfMonth())
+                        val date = ym.atDay(day)
+                        if (date.isAfter(today)) out += date
+                        y += 1
+                    }
+                }
+            }
+            out
+        }
+        if (previewDates.isNotEmpty()) {
+            Spacer(Modifier.height(8.dp))
+            val fmt = java.time.format.DateTimeFormatter.ofPattern("d MMM yyyy")
+            Text(
+                "Next occurrences: " + previewDates.joinToString(" · ") { it.format(fmt) },
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+
+        Spacer(Modifier.height(20.dp))
+        Button(
+            onClick = {
+                if (name.isNotBlank()) {
+                    val finalCategory =
+                        if (selectedCategory == "Custom") customCategory else selectedCategory
+                    onConfirm(RecurringTransaction(
+                        name       = name,
+                        type       = type,
+                        amount     = amount.toDoubleOrNull() ?: 0.0,
+                        category   = finalCategory,
+                        fromAcct   = if (type == "Expense") fromAcct else "",
+                        toAcct     = if (type == "Income") fromAcct else "",
+                        frequency  = frequency,
+                        dayOfMonth = dayOfMonth.toIntOrNull()?.coerceIn(1, 31) ?: 1
+                    ))
+                }
+            },
+            enabled = name.isNotBlank(),
+            modifier = Modifier.fillMaxWidth().height(52.dp),
+            shape = RoundedCornerShape(16.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = app.fynlo.ui.theme.Emerald500),
+        ) {
+            Text("Add Recurring", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
+        }
+        app.fynlo.ui.components.DisabledButtonHint(
+            if (name.isBlank()) "Enter a name to continue" else null
+        )
+    }
 }
 
 

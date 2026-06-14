@@ -1,4 +1,4 @@
-﻿package app.fynlo.data.model
+package app.fynlo.data.model
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
@@ -14,6 +14,12 @@ data class RecurringTransaction(
     val category    : String  = "",
     val fromAcct    : String  = "",
     val toAcct      : String  = "",
+    // C03b Stage #1c (3.2.89) — additive id mirror, mirrors the
+    // Transaction.fromAcctId / toAcctId shape from Stage #1a. Lets
+    // RecurringWorker fire each month using id-keyed balance updates so
+    // a rename can't orphan auto-generated rows.
+    val fromAcctId  : String  = "",
+    val toAcctId    : String  = "",
     val frequency   : String  = "Monthly",   // Daily / Weekly / Monthly / Yearly
     val dayOfMonth  : Int     = 1,           // 1-28
     val notes       : String  = "",

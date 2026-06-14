@@ -10,6 +10,8 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import app.fynlo.data.model.*
 import app.fynlo.data.model.FlowResult
+import app.fynlo.logic.XirrCalculator
+import app.fynlo.logic.CagrCalculator
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
@@ -23,7 +25,17 @@ class FinanceViewModel @Inject constructor(
     private val repository: FinanceRepository,
     private val recalcCoordinator: RecalcCoordinator,
     private val recentlyUsedTracker: RecentlyUsedTracker,
+    @dagger.hilt.android.qualifiers.ApplicationContext private val context: android.content.Context
 ) : ViewModel() {
+
+    val isPrivacyMode: StateFlow<Boolean> = app.fynlo.data.UserPreferences.privacyModeEnabled(context)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
+    fun togglePrivacyMode() {
+        viewModelScope.launch {
+            app.fynlo.data.UserPreferences.setPrivacyModeEnabled(context, !isPrivacyMode.value)
+        }
+    }
 
     private val _uiState = MutableStateFlow<UiState>(UiState.Initial)
     val uiState: StateFlow<UiState> = _uiState.asStateFlow()
@@ -129,6 +141,11 @@ class FinanceViewModel @Inject constructor(
             list.filter { pid.isEmpty() || it.projectId == pid || it.projectId.isEmpty() || it.projectId == "personal" }
         }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
+    val valuations: StateFlow<List<InvestmentValuation>> =
+        combine(repository.allValuations, _currentProjectId) { list, pid ->
+            list.filter { pid.isEmpty() || it.projectId == pid || it.projectId.isEmpty() || it.projectId == "personal" }
+        }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
 
@@ -152,10 +169,18 @@ class FinanceViewModel @Inject constructor(
     }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyMap())
 
     val financialSummary: StateFlow<FinancialSummary> = combine(
-        transactions, accounts, investments, borrowers, debts
-    ) { trans, accts, invs, brws, dbts ->
-        val totalCash        = accts.sumOf { it.balance }
-        val totalInvestments = invs.sumOf { it.currentVal }
+        transactions, accounts, investments, borrowers, debts, valuations
+    ) { args: Array<List<*>> ->
+        val trans = args[0] as List<Transaction>
+        val accts = args[1] as List<Account>
+        val invs  = args[2] as List<Investment>
+        val brws  = args[3] as List<Borrower>
+        val dbts  = args[4] as List<Debt>
+        val vals  = args[5] as List<InvestmentValuation>
+
+        val totalCashVal     = accts.sumOf { it.balance }
+        val totalInvestVal   = invs.sumOf { it.currentVal }
+
         // Exclude written-off borrowers from receivables (they're bad debt)
         val activeBrws = brws.filter { it.status != "WrittenOff" }
 
@@ -164,7 +189,7 @@ class FinanceViewModel @Inject constructor(
                 b.frozenInterest  // frozen at default date — no further accrual
             else
                 app.fynlo.logic.InterestEngine.calcIntAccrued(
-                    b.amount, b.rate, b.date, b.type, b.due,
+                    b.amount, b.rate, b.date, b.intType, b.due,
                     totalPaid = b.paidPrincipal  // only principal reduces interest base
                 )
             app.fynlo.logic.InterestEngine.calcOutstanding(
@@ -175,7 +200,7 @@ class FinanceViewModel @Inject constructor(
         val totalInterestLoans = activeBrws.filter { it.rate > 0 }.sumOf { b ->
             val accrued = if (b.status == "Defaulted" && b.frozenInterest > 0) b.frozenInterest
             else app.fynlo.logic.InterestEngine.calcIntAccrued(
-                b.amount, b.rate, b.date, b.type, b.due, totalPaid = b.paidPrincipal
+                b.amount, b.rate, b.date, b.intType, b.due, totalPaid = b.paidPrincipal
             )
             // Derive paidInterest from (paid - paidPrincipal) — more reliable than paidInterest field
             // which can get out of sync when rebuild queries run
@@ -194,7 +219,7 @@ class FinanceViewModel @Inject constructor(
         val interestBrwMap = activeBrws.filter { it.rate > 0 }.associate { b ->
             val accrued = if (b.status == "Defaulted" && b.frozenInterest > 0) b.frozenInterest
             else app.fynlo.logic.InterestEngine.calcIntAccrued(
-                b.amount, b.rate, b.date, b.type, b.due, totalPaid = b.paidPrincipal
+                b.amount, b.rate, b.date, b.intType, b.due, totalPaid = b.paidPrincipal
             )
             b.name to app.fynlo.logic.InterestEngine.calcOutstanding(b.amount, accrued, b.paidPrincipal, b.paidInterest)
         }
@@ -205,7 +230,7 @@ class FinanceViewModel @Inject constructor(
 
         // Use totalInterestLoans + totalHandLoans (both correctly use paid/paidPrincipal per type)
         // totalReceivables uses paidPrincipal for all loans which is wrong for hand loans
-        val totalAssets       = totalCash + totalInvestments + totalInterestLoans + totalHandLoans
+        val totalAssets       = totalCashVal + totalInvestVal + totalInterestLoans + totalHandLoans
         val totalDebtPrincipal = dbts.sumOf { it.amount - it.paid }
         val totalDebtInterest  = dbts.sumOf { d ->
             app.fynlo.logic.InterestEngine.calcIntAccrued(
@@ -222,9 +247,68 @@ class FinanceViewModel @Inject constructor(
         val totalInterestExpense  = trans.filter { it.category == "Interest Expense" }.sumOf { it.amount }
         val totalInterestIncome   = trans.filter { it.category == "Loan Repayment" }.sumOf { it.amount }
         val invGrowth      = invs.sumOf { it.currentVal - (it.invested - it.withdrawn) }
-        val avgYield       = if (brws.isNotEmpty()) brws.map { it.rate }.average() else 0.0
+
+        // C14 #5 (3.2.82) — Yield on ACTIVE interest-bearing loans only.
+        val interestBearing = activeBrws.filter { it.rate > 0 }
+        val avgYield       = if (interestBearing.isNotEmpty()) interestBearing.map { it.rate }.average() else 0.0
+
         val net            = totalAssets - (totalDebtPrincipal + totalDebtInterest)
         val accountsMap    = accts.associate { it.name to it.balance }
+
+        // ── Performance Analytics (XIRR/CAGR) ──────────────────────────────────
+        // C14 #5 (3.2.82) — Portfolio-wide annualised metrics.
+        val todayStr = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
+
+        // 1. Investment Performance
+        val invCagr = CagrCalculator.portfolio(
+            invs.map { Triple(it.invested, it.currentVal, it.date) }
+        )
+
+        val invCashflows = mutableListOf<XirrCalculator.Cashflow>()
+        val invIds = invs.map { it.id }.toSet()
+
+        invs.forEach { inv ->
+            // Initial investment (negative cashflow)
+            if (inv.invested > 0) {
+                invCashflows.add(XirrCalculator.Cashflow(-inv.invested, inv.date))
+            }
+            // Terminal market value today (positive cashflow)
+            if (inv.currentVal > 0) {
+                invCashflows.add(XirrCalculator.Cashflow(inv.currentVal, todayStr))
+            }
+        }
+
+        // Add any "Investment Returns" (Income) for these investments (e.g. dividends)
+        trans.filter { it.type.lowercase() == "income" && (it.category == "Investment Returns" || invIds.contains(it.ref)) }
+            .forEach { t ->
+                invCashflows.add(XirrCalculator.Cashflow(t.amount, t.date))
+            }
+
+        val invXirr = XirrCalculator.calc(invCashflows)
+
+        // 2. Lending Performance (Interest-bearing only)
+        val lendCashflows = mutableListOf<XirrCalculator.Cashflow>()
+        val brwIds = activeBrws.filter { it.rate > 0 }.map { it.id }.toSet()
+        val lendTrans = trans.filter { it.category == "Lending" || it.category == "Loan Repayment" || brwIds.contains(it.ref) }
+        lendTrans.forEach { t ->
+            val amt = if (t.type.lowercase() == "expense") -t.amount else t.amount
+            lendCashflows.add(XirrCalculator.Cashflow(amt, t.date))
+        }
+        // Terminal outstanding principal + accrued interest
+        activeBrws.filter { it.rate > 0 }.forEach { b ->
+            val accrued = if (b.status == "Defaulted" && b.frozenInterest > 0) b.frozenInterest
+            else app.fynlo.logic.InterestEngine.calcIntAccrued(
+                b.amount, b.rate, b.date, b.intType, b.due, totalPaid = b.paidPrincipal
+            )
+            val outstanding = app.fynlo.logic.InterestEngine.calcOutstanding(b.amount, accrued, b.paidPrincipal, b.paidInterest)
+            if (outstanding > 0) {
+                lendCashflows.add(XirrCalculator.Cashflow(outstanding, todayStr))
+            }
+        }
+        val lendXirr = XirrCalculator.calc(lendCashflows)
+
+        // 3. Combined Portfolio XIRR (Deployed Capital)
+        val portXirr = XirrCalculator.calc(invCashflows + lendCashflows)
 
         // Calculate per-account growth (Month-to-Date inflow - outflow)
         val currentMonthPrefix = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM"))
@@ -236,8 +320,8 @@ class FinanceViewModel @Inject constructor(
         }
 
         FinancialSummary(
-            totalCash              = totalCash,
-            totalInvestments       = totalInvestments,
+            totalCash              = totalCashVal,
+            totalInvestments       = totalInvestVal,
             totalReceivables       = totalReceivables,
             totalAssets            = totalAssets,
             totalDebtPrincipal     = totalDebtPrincipal,
@@ -249,13 +333,17 @@ class FinanceViewModel @Inject constructor(
             totalBadDebtWriteOffs  = totalBadDebtWriteOffs,
             netWorth               = net,
             investmentGrowth       = invGrowth,
-            lendingYield           = avgYield,
-            debtBurden             = if (net != 0.0) ((totalDebtPrincipal + totalDebtInterest) / net) * 100 else 0.0,
-            totalInterestLoans     = totalInterestLoans,
-            totalHandLoans         = totalHandLoans,
+            investmentCagr         = invCagr,
+            investmentXirr         = invXirr,
             investmentTypeBreakdown  = invTypeMap,
             interestLendingBreakdown = interestBrwMap,
             handLendingBreakdown     = handBrwMap,
+            lendingYield           = avgYield,
+            lendingXirr            = lendXirr,
+            portfolioXirr          = portXirr,
+            debtBurden             = if (net != 0.0) ((totalDebtPrincipal + totalDebtInterest) / net) * 100 else 0.0,
+            totalInterestLoans     = totalInterestLoans,
+            totalHandLoans         = totalHandLoans,
             accountBreakdown       = accountsMap,
             accountGrowthMap       = growthMap
         )
@@ -572,7 +660,7 @@ class FinanceViewModel @Inject constructor(
             } catch (e: Exception) { android.util.Log.e("Restore", "txn: ${e.message}") }
 
             val cashAccount = app.fynlo.data.model.Account(
-                id = "1", name = "Cash in Hand", balance = 3962.0, type = "Cash"
+                id = "1", name = "Personal Cash", balance = 3962.0, type = "Cash"
             )
             val hdfcAccount = app.fynlo.data.model.Account(
                 id = "2", name = "HDFC Bank", balance = 122500.0, type = "Bank"
@@ -581,7 +669,7 @@ class FinanceViewModel @Inject constructor(
                 repository.dao.insertAccount(cashAccount)
                 repository.dao.insertAccount(hdfcAccount)
                 fs.collection("users").document(uid).collection("accounts")
-                    .document("1").set(mapOf("id" to "1", "name" to "Cash in Hand", "balance" to 3962.0, "type" to "Cash", "projectId" to "personal", "updatedAt" to System.currentTimeMillis())).await()
+                    .document("1").set(mapOf("id" to "1", "name" to "Personal Cash", "balance" to 3962.0, "type" to "Cash", "projectId" to "personal", "updatedAt" to System.currentTimeMillis())).await()
                 fs.collection("users").document(uid).collection("accounts")
                     .document("2").set(mapOf("id" to "2", "name" to "HDFC Bank", "balance" to 122500.0, "type" to "Bank", "projectId" to "personal", "updatedAt" to System.currentTimeMillis())).await()
             } catch (e: Exception) { android.util.Log.e("Restore", "accounts: ${e.message}") }
@@ -790,6 +878,18 @@ class FinanceViewModel @Inject constructor(
      * [deleteAccountPermanently]). [onComplete] runs on the main thread once
      * everything is cleared — the caller uses it to restart the app process.
      */
+    /**
+     * 3.2.74 — wipe Firestore for this user and re-push local. Used when
+     * stale cloud values are silently restoring themselves into local on
+     * every sync, growing net worth without user input.
+     */
+    fun resetCloudSyncToLocal(onComplete: (Boolean) -> Unit) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val ok = runCatching { repository.resetCloudSyncToLocal() }.isSuccess
+            kotlinx.coroutines.withContext(Dispatchers.Main) { onComplete(ok) }
+        }
+    }
+
     fun resetAllData(
         context: android.content.Context,
         authManager: app.fynlo.data.AuthManager,
@@ -848,7 +948,7 @@ class FinanceViewModel @Inject constructor(
 
     fun executeFlow(result: app.fynlo.data.model.FlowResult) {
         viewModelScope.launch(Dispatchers.IO) {
-            val id = java.util.UUID.randomUUID().toString()
+            val id = app.fynlo.logic.Ids.newId()
             when (result.eventType) {
                 "Received" -> {
                     val t = app.fynlo.data.model.Transaction(
@@ -1142,7 +1242,7 @@ class FinanceViewModel @Inject constructor(
                 if (!today.isBefore(nextDue)) {
                     // Create the transaction
                     val txn = Transaction(
-                        id       = java.util.UUID.randomUUID().toString(),
+                        id       = app.fynlo.logic.Ids.newId(),
                         date     = today.format(fmt),
                         type     = r.type,
                         amount   = r.amount,
@@ -1169,18 +1269,18 @@ class FinanceViewModel @Inject constructor(
 
     fun populateDummyData() {
         viewModelScope.launch(Dispatchers.IO) {
-            val cash = Account("1", "Cash in Hand", "Cash",  5000.0,  projectId = pid)
+            val cash = Account("1", "Personal Cash", "Cash",  5000.0,  projectId = pid)
             val bank = Account("2", "HDFC Bank",    "Bank",  45000.0, projectId = pid)
             repository.insertAccount(cash)
             repository.insertAccount(bank)
 
             val borrower1 = Borrower(
                 "b1", "John Doe", amount = 10000.0, rate = 2.0,
-                date = "2024-01-10", due = "2024-12-31", type = "Simple Interest",
-                sourceAccount = "Cash in Hand",
+                date = "2024-01-10", due = "2024-12-31", intType = "Simple Interest",
+                sourceAccount = "Personal Cash",
                 notes = "Personal loan for home renovation.", projectId = pid
             )
-            repository.insertBorrowerWithSource(borrower1, "Cash in Hand", pid)
+            repository.insertBorrowerWithSource(borrower1, "Personal Cash", pid)
 
             val gold = Investment(
                 "i1", "Gold Coins", "Gold", invested = 50000.0, currentVal = 58000.0,
@@ -1201,10 +1301,10 @@ class FinanceViewModel @Inject constructor(
             repository.insertDebtWithDestination(debt1, "HDFC Bank", pid)
 
             listOf(
-                Transaction("t1", today, "Expense", 1200.0, fromAcct = "Cash in Hand", category = "Food",     notes = "Dinner at Barbeque Nation.", projectId = pid),
+                Transaction("t1", today, "Expense", 1200.0, fromAcct = "Personal Cash", category = "Food",     notes = "Dinner at Barbeque Nation.", projectId = pid),
                 Transaction("t2", today, "Expense", 2500.0, fromAcct = "HDFC Bank",    category = "Fuel",     notes = "Full tank refill.",           projectId = pid),
                 Transaction("t3", today, "Income",  60000.0, toAcct  = "HDFC Bank",    category = "Salary",   notes = "April 2024 Salary.",           projectId = pid),
-                Transaction("t4", today, "Expense", 800.0,  fromAcct = "Cash in Hand", category = "Shopping", notes = "New charger cable.",           projectId = pid)
+                Transaction("t4", today, "Expense", 800.0,  fromAcct = "Personal Cash", category = "Shopping", notes = "New charger cable.",           projectId = pid)
             ).forEach { repository.insertTransaction(it) }
         }
     }

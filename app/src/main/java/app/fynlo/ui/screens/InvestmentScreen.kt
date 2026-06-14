@@ -6,8 +6,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -47,6 +45,8 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 @Composable
 fun InvestmentScreen(viewModel: FinanceViewModel) {
     val investments    by viewModel.investments.collectAsState()
+    val summary        by viewModel.financialSummary.collectAsState()
+    val isPrivacy      by viewModel.isPrivacyMode.collectAsState()
     val accounts       by viewModel.accounts.collectAsState()
     val debts          by viewModel.debts.collectAsState()
         val haptic = LocalHapticFeedback.current
@@ -95,7 +95,7 @@ val currentProject by viewModel.currentProject.collectAsState()
             onConfirm  = { newVal, date, notes ->
                 viewModel.addValuation(
                     app.fynlo.data.model.InvestmentValuation(
-                        id = UUID.randomUUID().toString(),
+                        id = app.fynlo.logic.Ids.newId(),
                         investmentId = updatingInvest!!.id,
                         date = DateUtils.parseInput(date),
                         value = newVal,
@@ -115,7 +115,7 @@ val currentProject by viewModel.currentProject.collectAsState()
         var withdrawAmt by remember { mutableStateOf("") }
         var withdrawExpanded by remember { mutableStateOf(false) }
         val withdrawAccountOptions = if (accounts.isNotEmpty()) accounts
-        else listOf(app.fynlo.data.model.Account(id = "cash", name = "Cash in Hand", type = "Cash", balance = 0.0))
+        else listOf(app.fynlo.data.model.Account(id = "cash", name = "Personal Cash", type = "Cash", balance = 0.0))
         var withdrawAccount by remember { mutableStateOf(withdrawAccountOptions.first()) }
 
         androidx.compose.ui.window.Dialog(
@@ -308,7 +308,7 @@ val currentProject by viewModel.currentProject.collectAsState()
                         Text("Portfolio Value",
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text(CurrencyFormatter.detail(portfolioValue, currencyCode, locale),
+                        Text(if (isPrivacy) "••••" else CurrencyFormatter.detail(portfolioValue, currencyCode, locale),
                             style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.ExtraBold),
                             color = if (isPortfolioUp) Emerald500 else SemanticRed)
                         if (netInvested > 0) {
@@ -323,23 +323,53 @@ val currentProject by viewModel.currentProject.collectAsState()
                                     color = if (isPortfolioUp) Emerald500 else SemanticRed,
                                 )
                                 Text(
-                                    if (isPortfolioUp) "+${CurrencyFormatter.detail(portfolioGrowth, currencyCode, locale)}"
+                                    if (isPrivacy) "••••"
+                                    else if (isPortfolioUp) "+${CurrencyFormatter.detail(portfolioGrowth, currencyCode, locale)}"
                                     else               CurrencyFormatter.negative(portfolioGrowth, currencyCode, locale),
                                     style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                                     color = if (isPortfolioUp) Emerald500 else SemanticRed,
                                 )
-                                Text(
-                                    "(${if (isPortfolioUp) "+" else ""}${String.format(locale, "%.1f", growthPct)}%)",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = if (isPortfolioUp) Emerald500 else SemanticRed,
-                                )
+                                if (!isPrivacy) {
+                                    Text(
+                                        "(${if (isPortfolioUp) "+" else ""}${String.format(locale, "%.1f", growthPct)}%)",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = if (isPortfolioUp) Emerald500 else SemanticRed,
+                                    )
+                                }
                             }
                             Text(
-                                "${CurrencyFormatter.detail(netInvested, currencyCode, locale)} invested · ${app.fynlo.logic.pluralize(investments.size, "holding")}",
+                                "${if (isPrivacy) "••••" else CurrencyFormatter.detail(netInvested, currencyCode, locale)} invested · ${app.fynlo.logic.pluralize(investments.size, "holding")}",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.padding(top = 2.dp),
                             )
+                            // C14 #5 (3.2.82) — portfolio-level CAGR. Weighted
+                            // by invested principal × duration. NaN when there
+                            // isn't enough time elapsed (same-day) or all
+                            // holdings are zero-value — rendered as "—".
+                            val portfolioCagr = summary.investmentCagr
+                            val portfolioXirr = summary.investmentXirr
+
+                            if (!portfolioCagr.isNaN()) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                    modifier = Modifier.padding(top = 2.dp)
+                                ) {
+                                    Text(
+                                        "CAGR: ${app.fynlo.logic.CagrCalculator.format(portfolioCagr)}",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = if (portfolioCagr >= 0) Emerald500 else SemanticRed,
+                                    )
+                                    if (!portfolioXirr.isNaN()) {
+                                        Text(
+                                            "XIRR: ${app.fynlo.logic.XirrCalculator.format(portfolioXirr)}",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = if (portfolioXirr >= 0) Emerald500 else SemanticRed,
+                                        )
+                                    }
+                                }
+                            }
                         } else {
                             Text(app.fynlo.logic.pluralize(investments.size, "holding"),
                                 style = MaterialTheme.typography.bodySmall,
@@ -382,7 +412,7 @@ val currentProject by viewModel.currentProject.collectAsState()
                             // Legend
                             Spacer(Modifier.height(8.dp))
                             allocation.forEachIndexed { i, (type, value) ->
-                                val pct = (value / portfolioValue * 100).toInt()
+                                    val pct = (value / portfolioValue * 100).toInt()
                                 Row(
                                     Modifier.fillMaxWidth().padding(vertical = 2.dp),
                                     Arrangement.SpaceBetween,
@@ -399,8 +429,9 @@ val currentProject by viewModel.currentProject.collectAsState()
                                         Text(type,
                                             style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold))
                                     }
+                                    val rowValueText = if (isPrivacy) "••••" else "${CurrencyFormatter.detail(value, currencyCode, locale)} · $pct%"
                                     Text(
-                                        "${CurrencyFormatter.detail(value, currencyCode, locale)} · $pct%",
+                                        rowValueText,
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
@@ -423,6 +454,7 @@ val currentProject by viewModel.currentProject.collectAsState()
                     InvestmentCard(
                         invest   = invest,
                         currencyCode = currencyCode,
+                        isPrivacy = isPrivacy,
                         onDelete    = { deletingInvest = invest },
                         onWithdraw  = { withdrawingInvest = invest },
                         onEdit   = { editingInvest = invest },
@@ -447,7 +479,7 @@ val currentProject by viewModel.currentProject.collectAsState()
 }
 
 @Composable
-fun InvestmentCard(invest: Investment, currencyCode: String = "INR", onDelete: () -> Unit, onEdit: () -> Unit, onUpdate: () -> Unit, onViewHistory: () -> Unit, onWithdraw: () -> Unit = {}) {
+fun InvestmentCard(invest: Investment, currencyCode: String = "INR", isPrivacy: Boolean = false, onDelete: () -> Unit, onEdit: () -> Unit, onUpdate: () -> Unit, onViewHistory: () -> Unit, onWithdraw: () -> Unit = {}) {
     val growth = invest.currentVal - (invest.invested - invest.withdrawn)
     val growthPercent = if (invest.invested > 0) (growth / invest.invested) * 100 else 0.0
     val isProfit = growth >= 0
@@ -477,8 +509,9 @@ fun InvestmentCard(invest: Investment, currencyCode: String = "INR", onDelete: (
                         shape = RoundedCornerShape(8.dp),
                         color = if (isProfit) Emerald500.copy(alpha = 0.1f) else SemanticRed.copy(alpha = 0.1f)
                     ) {
+                        val growthPctText = if (isPrivacy) "••••" else "${if (isProfit) "+" else ""}${String.format(Locale.getDefault(), "%.1f", growthPercent)}%"
                         Text(
-                            "${if (isProfit) "+" else ""}${String.format(Locale.getDefault(), "%.1f", growthPercent)}%",
+                            text = growthPctText,
                             style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
                             color = if (isProfit) Emerald500 else SemanticRed,
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
@@ -507,17 +540,30 @@ fun InvestmentCard(invest: Investment, currencyCode: String = "INR", onDelete: (
                 Column {
                     Text("Invested", style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text(CurrencyFormatter.detail(invest.invested, currencyCode),
+                    Text(if (isPrivacy) "••••" else CurrencyFormatter.detail(invest.invested, currencyCode),
                         style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold))
                     Text("Since ${DateUtils.formatToDisplay(invest.date)}",
-                        style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+                        style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    // C14 #5 (3.2.82) — annualised return for this holding.
+                    val cagr = remember(invest) {
+                        app.fynlo.logic.CagrCalculator.calc(invest.invested, invest.currentVal, invest.date)
+                    }
+                    if (!cagr.isNaN()) {
+                        Text(
+                            "${if (isPrivacy) "••••" else app.fynlo.logic.CagrCalculator.format(cagr)} CAGR",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = if (cagr >= 0) Emerald500 else SemanticRed,
+                        )
+                    }
                 }
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text("Gain / Loss", style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    val gainLossText = if (isPrivacy) "••••"
+                                       else if (isProfit) "+${CurrencyFormatter.hero(growth, currencyCode)}"
+                                       else          CurrencyFormatter.negative(growth, currencyCode)
                     Text(
-                        if (isProfit) "+${CurrencyFormatter.hero(growth, currencyCode)}"
-                        else          CurrencyFormatter.negative(growth, currencyCode),
+                        text = gainLossText,
                         style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                         color = if (isProfit) Emerald500 else SemanticRed
                     )
@@ -525,7 +571,7 @@ fun InvestmentCard(invest: Investment, currencyCode: String = "INR", onDelete: (
                 Column(horizontalAlignment = Alignment.End) {
                     Text("Current Value", style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text(CurrencyFormatter.detail(invest.currentVal, currencyCode),
+                    Text(if (isPrivacy) "••••" else CurrencyFormatter.detail(invest.currentVal, currencyCode),
                         style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold,
                             color = if (isProfit) Emerald500 else SemanticRed))
                 }
@@ -533,16 +579,16 @@ fun InvestmentCard(invest: Investment, currencyCode: String = "INR", onDelete: (
 
             if (invest.withdrawn > 0) {
                 Spacer(Modifier.height(6.dp))
-                Text("Withdrawn: ${CurrencyFormatter.detail(invest.withdrawn, currencyCode)}",
+                Text("Withdrawn: ${if (isPrivacy) "••••" else CurrencyFormatter.detail(invest.withdrawn, currencyCode)}",
                     style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
 
             if (invest.notes.isNotEmpty()) {
                 Spacer(Modifier.height(8.dp))
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.AutoMirrored.Filled.Notes, null, Modifier.size(13.dp), tint = Color.Gray)
+                    Icon(Icons.AutoMirrored.Filled.Notes, null, Modifier.size(13.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(Modifier.width(6.dp))
-                    Text(invest.notes, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                    Text(invest.notes, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
 
@@ -607,54 +653,108 @@ fun UpdateInvestmentValueDialog(
     val growth   = parsed?.let { it - investment.invested }
     val locale   = java.util.Locale.getDefault()
 
-    AlertDialog(
-        modifier = Modifier.fillMaxWidth(0.95f),
-        properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false),
-        onDismissRequest = onDismiss,
-        title = { Text("Log New Valuation") },
-        text = {
-            // C22 Stage 2 cross-dialog sweep (3.2.51) — verticalScroll wrap.
-            Column(
-                modifier = Modifier.verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Text(investment.name, style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant)
-                
-                OutlinedTextField(
-                    value = newValue, onValueChange = { newValue = it },
-                    label = { Text("New Market Value ($currencySymbol)") }, singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)
-                )
+    // C22 dialog universalization (3.2.54) — migrated to canonical FormDialog.
+    app.fynlo.ui.components.FormDialog(
+        title = "Log New Valuation",
+        onDismiss = onDismiss,
+    ) {
+        Text(investment.name, style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
 
-                app.fynlo.ui.components.DatePickerField(value = date, onValueChange = { date = it }, label = "Valuation Date")
+        Spacer(Modifier.height(14.dp))
+        app.fynlo.ui.components.FormSectionLabel("New market value ($currencySymbol)")
+        Spacer(Modifier.height(6.dp))
+        OutlinedTextField(
+            value = newValue, onValueChange = { newValue = it },
+            placeholder = { Text("0") },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+            modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)
+        )
 
-                OutlinedTextField(
-                    value = notes, onValueChange = { notes = it },
-                    label = { Text("Notes (optional)") },
-                    modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)
-                )
+        Spacer(Modifier.height(14.dp))
+        app.fynlo.ui.components.FormSectionLabel("Valuation date")
+        Spacer(Modifier.height(6.dp))
+        app.fynlo.ui.components.DatePickerField(value = date, onValueChange = { date = it }, label = "")
 
-                if (growth != null) {
-                    val pct = if (investment.invested > 0) (growth / investment.invested) * 100 else 0.0
-                    val growthStr = if (growth >= 0) "+${CurrencyFormatter.detail(growth, currencyCode, locale)}"
-                                    else            CurrencyFormatter.negative(growth, currencyCode, locale)
-                    Text(
-                        "Total Growth: $growthStr (${String.format(locale, "%.1f", pct)}%)",
-                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
-                        color = if (growth >= 0) Emerald500 else SemanticRed
-                    )
+        Spacer(Modifier.height(14.dp))
+        app.fynlo.ui.components.FormSectionLabel("Notes (optional)")
+        Spacer(Modifier.height(6.dp))
+        OutlinedTextField(
+            value = notes, onValueChange = { notes = it },
+            placeholder = { Text("Why did the value change?") },
+            modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)
+        )
+
+        if (growth != null) {
+            // C14 #7 (3.2.82) — celebration line: delta vs the PREVIOUS
+            // valuation (not vs original invested). When the new value
+            // grows vs last-known, surface a green "+₹X since last update"
+            // line so the win moment is visible. Negative shows a muted
+            // red. Zero hides the line.
+            val prevVal = investment.currentVal
+            val deltaSinceLast = (parsed ?: 0.0) - prevVal
+            if (kotlin.math.abs(deltaSinceLast) > 0.005 && newValue.isNotBlank()) {
+                Spacer(Modifier.height(8.dp))
+                val deltaStr = if (deltaSinceLast >= 0)
+                    "+${CurrencyFormatter.detail(deltaSinceLast, currencyCode, locale)}"
+                else
+                    CurrencyFormatter.negative(deltaSinceLast, currencyCode, locale)
+                Surface(
+                    shape = RoundedCornerShape(10.dp),
+                    color = if (deltaSinceLast >= 0) Emerald500.copy(alpha = 0.12f)
+                            else SemanticRed.copy(alpha = 0.12f),
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Text(
+                            if (deltaSinceLast >= 0) "🎉" else "⚠",
+                            style = MaterialTheme.typography.titleMedium,
+                        )
+                        Column(Modifier.weight(1f)) {
+                            Text(
+                                "$deltaStr since last update",
+                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                                color = if (deltaSinceLast >= 0) Emerald500 else SemanticRed,
+                            )
+                            Text(
+                                "Previously ${CurrencyFormatter.detail(prevVal, currencyCode, locale)}",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
                 }
             }
-        },
-        confirmButton = {
-            Button(onClick = { parsed?.let { onConfirm(it, date, notes) } }, enabled = parsed != null) {
-                Text("Log Valuation")
-            }
-        },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
-    )
+            Spacer(Modifier.height(8.dp))
+            val pct = if (investment.invested > 0) (growth / investment.invested) * 100 else 0.0
+            val growthStr = if (growth >= 0) "+${CurrencyFormatter.detail(growth, currencyCode, locale)}"
+                            else            CurrencyFormatter.negative(growth, currencyCode, locale)
+            Text(
+                "Total Growth: $growthStr (${String.format(locale, "%.1f", pct)}%)",
+                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                color = if (growth >= 0) Emerald500 else SemanticRed
+            )
+        }
+
+        Spacer(Modifier.height(20.dp))
+        Button(
+            onClick = { parsed?.let { onConfirm(it, date, notes) } },
+            enabled = parsed != null,
+            modifier = Modifier.fillMaxWidth().height(52.dp),
+            shape = RoundedCornerShape(16.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = Emerald500),
+        ) {
+            Text("Log Valuation", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
+        }
+        app.fynlo.ui.components.DisabledButtonHint(
+            if (parsed == null) "Enter a valid market value to continue" else null
+        )
+    }
 }
 
 @Composable
@@ -673,7 +773,7 @@ fun ValuationHistoryDialog(
             Column(Modifier.fillMaxWidth()) {
                 Text(investment.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(12.dp))
-                
+
                 if (valuations.isEmpty()) {
                     // C19 (3.2.43) — was "No records found" plain text; the
                     // audit called out Valuation History as having no
@@ -704,6 +804,22 @@ fun ValuationHistoryDialog(
                         )
                     }
                 } else {
+                    // C14 #9 (3.2.82) — line chart above the list. Sorted
+                    // chronologically (oldest → newest); polyline through
+                    // the value points with min/max labelled. Uses min-max
+                    // normalisation against the visible value range so even
+                    // small percentage changes are readable. Hidden when
+                    // there are fewer than 2 points (a single dot isn't a
+                    // chart).
+                    val sorted = remember(valuations) { valuations.sortedBy { it.date } }
+                    if (sorted.size >= 2) {
+                        ValuationHistoryChart(
+                            valuations = sorted,
+                            currencyCode = currencyCode,
+                        )
+                        Spacer(Modifier.height(12.dp))
+                    }
+
                     LazyColumn(modifier = Modifier.heightIn(max = 400.dp)) {
                         items(valuations) { v ->
                             Row(
@@ -714,7 +830,7 @@ fun ValuationHistoryDialog(
                                 Column {
                                     Text(DateUtils.formatToDisplay(v.date), style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
                                     if (v.notes.isNotBlank()) {
-                                        Text(v.notes, style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+                                        Text(v.notes, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                     }
                                 }
                                 Text(CurrencyFormatter.detail(v.value, currencyCode), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.ExtraBold)
@@ -727,4 +843,113 @@ fun ValuationHistoryDialog(
         },
         confirmButton = { TextButton(onClick = onDismiss) { Text("Close") } }
     )
+}
+
+/**
+ * C14 #9 (3.2.82) — line chart for Valuation History.
+ *
+ * Renders a normalised polyline of valuation values over time using a
+ * Compose `Canvas`. Min-max normalisation keeps small percentage changes
+ * readable (a 2% gain over the full year would be invisible against a
+ * y=0 baseline). Min / current / max value labels overlay the chart;
+ * dates on the x-axis are derived from first + last valuations.
+ *
+ * Same chart shape used by NetWorthHistoryScreen / ProfitLossScreen —
+ * the audit asked for "Report archetype within Invest" and this matches
+ * the §9.14 line-chart pattern.
+ */
+@Composable
+private fun ValuationHistoryChart(
+    valuations: List<app.fynlo.data.model.InvestmentValuation>,
+    currencyCode: String,
+) {
+    val locale = java.util.Locale.getDefault()
+    val values = valuations.map { it.value }
+    val minV = values.min()
+    val maxV = values.max()
+    val range = (maxV - minV).coerceAtLeast(1.0)  // avoid div-by-zero on flat history
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+            .padding(12.dp),
+    ) {
+        // Top row: min + current label
+        Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
+            Text(
+                "Min: ${CurrencyFormatter.detail(minV, currencyCode, locale)}",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                "Max: ${CurrencyFormatter.detail(maxV, currencyCode, locale)}",
+                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                color = Emerald500,
+            )
+        }
+        Spacer(Modifier.height(8.dp))
+
+        val lineColor = Emerald500
+        val gridColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
+        androidx.compose.foundation.Canvas(
+            modifier = Modifier.fillMaxWidth().height(120.dp),
+        ) {
+            val n = values.size
+            if (n < 2) return@Canvas
+            val w = size.width
+            val h = size.height
+            val padding = 6f
+            val plotW = w - padding * 2
+            val plotH = h - padding * 2
+            // 3-line subtle grid (top / mid / bottom)
+            for (i in 0..2) {
+                val y = padding + plotH * i / 2f
+                drawLine(
+                    color = gridColor,
+                    start = androidx.compose.ui.geometry.Offset(padding, y),
+                    end   = androidx.compose.ui.geometry.Offset(w - padding, y),
+                    strokeWidth = 1f,
+                )
+            }
+            // Polyline
+            val points = values.mapIndexed { i, v ->
+                val x = padding + plotW * (i / (n - 1).toFloat())
+                val yNorm = ((v - minV) / range).toFloat()
+                val y = padding + plotH * (1f - yNorm)
+                androidx.compose.ui.geometry.Offset(x, y)
+            }
+            for (i in 1 until points.size) {
+                drawLine(
+                    color = lineColor,
+                    start = points[i - 1],
+                    end   = points[i],
+                    strokeWidth = 4f,
+                    cap   = androidx.compose.ui.graphics.StrokeCap.Round,
+                )
+            }
+            // Endpoint dot at the latest value so the "now" position reads at a glance.
+            drawCircle(
+                color  = lineColor,
+                radius = 5f,
+                center = points.last(),
+            )
+        }
+
+        Spacer(Modifier.height(6.dp))
+        // x-axis date labels (first + last)
+        Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
+            Text(
+                DateUtils.formatToDisplay(valuations.first().date),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.outlineVariant,
+            )
+            Text(
+                DateUtils.formatToDisplay(valuations.last().date),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.outlineVariant,
+            )
+        }
+    }
 }

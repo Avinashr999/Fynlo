@@ -1,6 +1,8 @@
 package app.fynlo.ui.screens
 
 import android.content.Intent
+import app.fynlo.logic.displayFromAcct
+import app.fynlo.logic.displayToAcct
 import androidx.core.content.FileProvider
 import androidx.compose.foundation.background
 import androidx.compose.ui.draw.clip
@@ -61,21 +63,27 @@ fun MoneyFlowScreen(viewModel: FinanceViewModel) {
     var selectedTab by remember { mutableIntStateOf(0) }
     val tabs = listOf("All", "Income", "Expense", "Transfer", "Lending", "Debt")
 
-    val allFlows = remember(transactions, borrowers, debts) {
+    val allFlows = remember(transactions, borrowers, debts, accounts) {
         val flows = mutableListOf<FlowEntry>()
+        // C03b Stage #1b-2 (3.2.88) — resolve account names via id so a
+        // renamed account aggregates into a single node (not two: one
+        // with the old stored name + one with the new name).
+        val idToName = accounts.associate { it.id to it.name }
 
         transactions.forEach { t ->
+            val fromName = t.displayFromAcct(idToName).ifBlank { "Unknown" }
+            val toName   = t.displayToAcct(idToName).ifBlank { "Unknown" }
             when (t.type.lowercase()) {
                 "income" -> flows.add(FlowEntry(
                     from     = t.category.ifBlank { "External" },
-                    to       = t.toAcct.ifBlank { "Unknown" },
+                    to       = toName,
                     amount   = t.amount,
                     label    = t.desc.ifBlank { t.category },
                     date     = t.date,
                     flowType = FlowType.INCOME
                 ))
                 "expense" -> flows.add(FlowEntry(
-                    from     = t.fromAcct.ifBlank { "Unknown" },
+                    from     = fromName,
                     to       = t.category.ifBlank { "Expense" },
                     amount   = t.amount,
                     label    = t.desc.ifBlank { t.category },
@@ -83,16 +91,16 @@ fun MoneyFlowScreen(viewModel: FinanceViewModel) {
                     flowType = FlowType.EXPENSE
                 ))
                 "transfer" -> flows.add(FlowEntry(
-                    from     = t.fromAcct.ifBlank { "Unknown" },
-                    to       = t.toAcct.ifBlank { "Unknown" },
+                    from     = fromName,
+                    to       = toName,
                     amount   = t.amount,
                     label    = "Transfer",
                     date     = t.date,
                     flowType = FlowType.TRANSFER
                 ))
                 "investment" -> flows.add(FlowEntry(
-                    from     = t.fromAcct.ifBlank { "Account" },
-                    to       = t.toAcct.ifBlank { t.category },
+                    from     = fromName.ifBlank { "Account" },
+                    to       = t.toAcct.ifBlank { t.category },  // category fallback unchanged
                     amount   = t.amount,
                     label    = t.desc.ifBlank { "Investment" },
                     date     = t.date,

@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.dp
 import app.fynlo.billing.BillingManager
 import app.fynlo.data.AuthManager
+import app.fynlo.logic.toRecurringTemplate
 import androidx.navigation.NavController
 import androidx.navigation.NavType
 import androidx.navigation.navArgument
@@ -207,6 +208,11 @@ fun MainNavigation(viewModel: FinanceViewModel) {
 
     // Dialog Triggering
     if (showExpenseDialog) {
+        // 3.2.59 — wire real account / investment / debt names so the
+        // source picker is a dropdown of existing entities (orphan fix).
+        val allAccounts by viewModel.allAccountsUnfiltered.collectAsState()
+        val allInvestments by viewModel.investments.collectAsState()
+        val allDebts by viewModel.debts.collectAsState()
         AddTransactionDialog(
             onDismiss = { showExpenseDialog = false },
             onConfirm = { txn ->
@@ -216,6 +222,12 @@ fun MainNavigation(viewModel: FinanceViewModel) {
             initialIsIncome = addTxnIsIncome,
             rememberLastCategory = { isIncome -> viewModel.rememberLastTransactionCategory(isIncome) },
             onRecordCategory = { isIncome, cat -> viewModel.recordTransactionCategory(isIncome, cat) },
+            // 3.2.81 (C13 #5) — "Repeat monthly?" → also create a recurring template.
+            // `_root_ide_package_.app.fynlo.logic.…` not needed; use the import alias via toRecurringTemplate.
+            onRepeatMonthly = { txn -> viewModel.addRecurringTransaction(toRecurringTemplate(txn)) },
+            bankAccounts    = allAccounts.map { it.name },
+            investmentNames = allInvestments.map { it.name },
+            debtNames       = allDebts.map { it.name },
         )
     }
     
@@ -458,6 +470,13 @@ fun MainNavigation(viewModel: FinanceViewModel) {
                         )
                     },
                     actions = {
+                        val isPrivacy by viewModel.isPrivacyMode.collectAsState()
+                        IconButton(onClick = { viewModel.togglePrivacyMode() }) {
+                            Icon(
+                                if (isPrivacy) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                contentDescription = "Toggle Privacy"
+                            )
+                        }
                         IconButton(onClick = { navController.navigate(Screen.GlobalSearch.route) }) {
                             Icon(Icons.Default.Search, contentDescription = "Search")
                         }
@@ -609,10 +628,14 @@ fun MainNavigation(viewModel: FinanceViewModel) {
                 ) { backStackEntry ->
                     LoansHubScreen(
                         viewModel = viewModel,
-                        onNavigateToDetail = { id -> navController.navigate("customer/$id") },
+                        onNavigateToDetail     = { id -> navController.navigate("customer/$id") },
                         onNavigateToDebtDetail = { id -> navController.navigate("debt/$id") },
-                        onNavigateToCalendar = { navController.navigate(Screen.Calendar.route) },
-                        initialTab = backStackEntry.arguments?.getInt("tab") ?: 0
+                        onNavigateToCalendar   = { navController.navigate(Screen.Calendar.route) },
+                        // 3.2.63 — plumbed through so the Payoff plan tile inside
+                        // the Owed-tab DebtScreen actually navigates instead of
+                        // hitting the default no-op lambda.
+                        onNavigateToPayoffPlan = { navController.navigate(Screen.DebtPayoff.route) },
+                        initialTab = backStackEntry.arguments?.getInt("tab") ?: 0,
                     )
                 }
                 composable(Screen.Lending.route) {
@@ -625,7 +648,12 @@ fun MainNavigation(viewModel: FinanceViewModel) {
                 composable(Screen.Debts.route) {
                     DebtScreen(
                         viewModel = viewModel,
-                        onNavigateToDetail = { id -> navController.navigate("debt/$id") }
+                        onNavigateToDetail     = { id -> navController.navigate("debt/$id") },
+                        // 3.2.62 — was navGated() which silently redirected non-Pro users
+                        // to the upgrade screen, making the new payoff-plan tile feel
+                        // "broken/untappable". Payoff Planner is pure math on existing
+                        // data — no premium-vendor cost — so it should be free.
+                        onNavigateToPayoffPlan = { navController.navigate(Screen.DebtPayoff.route) },
                     )
                 }
                 composable(Screen.Invest.route) { InvestmentScreen(viewModel) }

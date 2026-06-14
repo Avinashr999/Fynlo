@@ -74,7 +74,7 @@ val borrowers by viewModel.borrowers.collectAsState()
         .sortedByDescending { it.date }
 
     val interest = InterestEngine.calcIntAccrued(
-        borrower.amount, borrower.rate, borrower.date, borrower.type, borrower.due, borrower.paid
+        borrower.amount, borrower.rate, borrower.date, borrower.intType, borrower.due, borrower.paid
     )
     val totalOutstanding = InterestEngine.calcOutstanding(borrower.amount, interest, borrower.paid)
 
@@ -168,7 +168,7 @@ val borrowers by viewModel.borrowers.collectAsState()
                 appendLine()
                 appendLine("*Loan Summary:*")
                 appendLine("• Principal: ${CurrencyFormatter.detail(borrower.amount, currencyCode, locale)}")
-                if (borrower.rate > 0) appendLine("• Interest accrued (${borrower.rate}% ${InterestEngine.label(borrower.type)}): ${CurrencyFormatter.detail(interest, currencyCode, locale)}")
+                if (borrower.rate > 0) appendLine("• Interest accrued (${borrower.rate}% ${InterestEngine.label(borrower.intType)}): ${CurrencyFormatter.detail(interest, currencyCode, locale)}")
                 if (borrower.paid > 0)  appendLine("• Amount paid so far: ${CurrencyFormatter.detail(borrower.paid, currencyCode, locale)}")
                 appendLine("• *Total outstanding: ${CurrencyFormatter.detail(totalOutstanding, currencyCode, locale)}*")
                 appendLine()
@@ -417,7 +417,7 @@ val borrowers by viewModel.borrowers.collectAsState()
                     if (borrower.rate > 0) {
                         Spacer(Modifier.height(8.dp))
                         Text(
-                            "Rate: ${borrower.rate}% • ${app.fynlo.logic.InterestEngine.label(borrower.type)}",
+                            "Rate: ${borrower.rate}% • ${app.fynlo.logic.InterestEngine.label(borrower.intType)}",
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -517,12 +517,77 @@ val borrowers by viewModel.borrowers.collectAsState()
                 }
             }
 
+            // 3.2.83 — XIRR (effective annualised return) on this loan.
+            // Cashflows from lender's perspective:
+            //   - principal disbursed on `loanDate` as a NEGATIVE outflow
+            //   - each Payment received as a POSITIVE inflow on its date
+            //   - imputed current `totalOutstanding` at today's date as a
+            //     POSITIVE "if I called the loan now" cashflow, so XIRR
+            //     stays meaningful for ongoing loans (not yet fully paid).
+            //     Excel / Sheets `XIRR` does the same when modelling
+            //     mark-to-market on an open position.
+            // Hidden when there are no payments OR the math degenerates
+            // (single cashflow, no inflows, etc.). Format renders "—" then.
+            if (loanPayments.isNotEmpty()) {
+                item {
+                    val xirr = remember(loanPayments, borrower, totalOutstanding) {
+                        val flows = mutableListOf<app.fynlo.logic.XirrCalculator.Cashflow>()
+                        flows += app.fynlo.logic.XirrCalculator.Cashflow(
+                            amount = -borrower.amount,
+                            date   = borrower.date,
+                        )
+                        loanPayments.forEach { p ->
+                            flows += app.fynlo.logic.XirrCalculator.Cashflow(p.amount, p.date)
+                        }
+                        if (totalOutstanding > 0.01) {
+                            flows += app.fynlo.logic.XirrCalculator.Cashflow(
+                                amount = totalOutstanding,
+                                date   = java.time.LocalDate.now()
+                                    .format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd")),
+                            )
+                        }
+                        app.fynlo.logic.XirrCalculator.calc(flows)
+                    }
+                    if (!xirr.isNaN()) {
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = (if (xirr >= 0) Emerald500 else SemanticRed).copy(alpha = 0.1f),
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Column(Modifier.weight(1f)) {
+                                    Text(
+                                        "Effective return (XIRR)",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                    Text(
+                                        "Annualised rate across all repayments",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.outlineVariant,
+                                    )
+                                }
+                                Text(
+                                    app.fynlo.logic.XirrCalculator.format(xirr),
+                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.ExtraBold),
+                                    color = if (xirr >= 0) Emerald500 else SemanticRed,
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
             if (loanPayments.isEmpty()) {
                 item {
                     Text(
                         "No payments collected yet.",
                         style = MaterialTheme.typography.bodySmall,
-                        color = Color.Gray
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             } else {
@@ -587,7 +652,7 @@ fun PaymentItem(payment: Payment, currencyCode: String, locale: Locale) {
             Text(
                 DateUtils.formatToDisplay(payment.date),
                 style = MaterialTheme.typography.labelSmall,
-                color = Color.Gray
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             if (payment.notes.isNotBlank()) {
                 Text(
@@ -610,7 +675,7 @@ fun PaymentItem(payment: Payment, currencyCode: String, locale: Locale) {
 @Composable
 fun DetailItem(label: String, value: String) {
     Column {
-        Text(label, style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+        Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Text(value, style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold))
     }
 }

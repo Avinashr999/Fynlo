@@ -52,7 +52,7 @@ fun CollectPaymentDialog(
         if (borrower.status == "Defaulted" && borrower.frozenInterest > 0) borrower.frozenInterest
         else InterestEngine.calcIntAccrued(
             borrower.amount, borrower.rate, borrower.date,
-            borrower.type, borrower.due, totalPaid = borrower.paidPrincipal
+            borrower.intType, borrower.due, totalPaid = borrower.paidPrincipal
         )
     }
     val interestOutstanding = remember(accruedInterest, borrower) {
@@ -71,7 +71,7 @@ fun CollectPaymentDialog(
     var expanded by remember { mutableStateOf(false) }
 
     val accountOptions = if (accounts.isNotEmpty()) accounts
-    else listOf(Account(id = "cash", name = "Cash in Hand", type = "Cash", balance = 0.0))
+    else listOf(Account(id = "cash", name = "Personal Cash", type = "Cash", balance = 0.0))
     var selectedAccount by remember { mutableStateOf(accountOptions.first()) }
 
     val principalVal = principalStr.toDoubleOrNull() ?: 0.0
@@ -112,7 +112,7 @@ fun CollectPaymentDialog(
                         }
                         if (borrower.rate > 0) {
                             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
-                                Text("Interest (${borrower.rate}% ${InterestEngine.label(borrower.type)})",
+                                Text("Interest (${borrower.rate}% ${InterestEngine.label(borrower.intType)})",
                                     style = MaterialTheme.typography.bodySmall)
                                 Text(CurrencyFormatter.detail(interestOutstanding, currencyCode, locale),
                                     style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
@@ -279,7 +279,7 @@ fun CollectPaymentDialog(
                     Button(
                         onClick = {
                             val payment = Payment(
-                                id        = UUID.randomUUID().toString(),
+                                id        = app.fynlo.logic.Ids.newId(),
                                 loanId    = borrower.id,
                                 name      = borrower.name,
                                 date      = DateUtils.parseInput(date),
@@ -337,7 +337,7 @@ fun PayDebtDialog(
     var expanded by remember { mutableStateOf(false) }
 
     val accountOptions = if (accounts.isNotEmpty()) accounts
-    else listOf(Account(id = "cash", name = "Cash in Hand", type = "Cash", balance = 0.0))
+    else listOf(Account(id = "cash", name = "Personal Cash", type = "Cash", balance = 0.0))
     var selectedAccount by remember { mutableStateOf(accountOptions.first()) }
 
     val principalVal = principalStr.toDoubleOrNull() ?: 0.0
@@ -500,7 +500,7 @@ fun PayDebtDialog(
                     Button(
                         onClick = {
                             val payment = DebtPayment(
-                                id        = UUID.randomUUID().toString(),
+                                id        = app.fynlo.logic.Ids.newId(),
                                 debtId    = debt.id,
                                 name      = debt.name,
                                 date      = DateUtils.parseInput(date),

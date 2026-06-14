@@ -20,14 +20,20 @@ data class FinancialSummary(
 
     // ── Investment ─────────────────────────────────────────────────────────────
     val investmentGrowth: Double = 0.0,       // sum(currentVal - invested)
+    val investmentCagr: Double = Double.NaN,
+    val investmentXirr: Double = Double.NaN,
     val investmentTypeBreakdown: Map<String, Double> = emptyMap(),
 
     // ── Lending ────────────────────────────────────────────────────────────────
     val totalInterestLoans: Double = 0.0,     // total outstanding from interest-bearing loans
     val totalHandLoans: Double = 0.0,         // total outstanding from hand loans (0%)
     val lendingYield: Double = 0.0,           // average interest rate across active loans
+    val lendingXirr: Double = Double.NaN,
     val interestLendingBreakdown: Map<String, Double> = emptyMap(),
     val handLendingBreakdown: Map<String, Double> = emptyMap(),
+
+    // ── Portfolio ──────────────────────────────────────────────────────────────
+    val portfolioXirr: Double = Double.NaN,
 
     // ── Misc ───────────────────────────────────────────────────────────────────
     val debtBurden: Double = 0.0,

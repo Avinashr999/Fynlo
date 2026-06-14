@@ -5,6 +5,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -84,19 +86,110 @@ fun SettingsScreen(
     LaunchedEffect(displayNameFlow) { if (displayName.isEmpty()) displayName = displayNameFlow }
 
 
+    // C22 (3.2.66) — backup-encryption UI state. Toggle persists for the
+    // session only (not on DataStore — encryption is a per-export choice,
+    // not a long-term preference). `pendingExportPassword` survives the
+    // dialog→SAF gap; `pendingImportBytes` survives the SAF→dialog gap on
+    // the restore side when the picked file is detected as encrypted.
+    var encryptOnExport       by remember { mutableStateOf(false) }
+    var showExportPwdDialog   by remember { mutableStateOf(false) }
+    var pendingExportPassword by remember { mutableStateOf("") }
+    var pendingImportBytes    by remember { mutableStateOf<ByteArray?>(null) }
+    var importErrorMessage    by remember { mutableStateOf<String?>(null) }
+
+    // C22 (3.2.67) — CSV import state. `pendingCsvRows` holds the parsed
+    // CSV after the SAF picker callback completes; presence triggers the
+    // column-mapping dialog. Importer result surfaces as a one-shot
+    // snackbar-ish line in the dialog before dismiss.
+    var pendingCsvRows by remember { mutableStateOf<List<List<String>>?>(null) }
+    var csvImportSummary by remember { mutableStateOf<String?>(null) }
+    val allAccountsForImport by viewModel.allAccountsUnfiltered.collectAsState()
+
     // ── Export launchers ────────────────────────────────────────────────────
     val jsonLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("application/json")
     ) { uri -> uri?.let { scope.launch {
         val json = viewModel.exportAllData()
-        context.contentResolver.openOutputStream(it)?.use { os -> os.write(json.toByteArray()) }
+        val bytes = if (pendingExportPassword.isNotBlank()) {
+            // C22 (3.2.66) — encrypt with the password captured pre-SAF.
+            // Wipe the password immediately after use; we don't want it
+            // sitting in process memory longer than necessary.
+            val pwd = pendingExportPassword
+            pendingExportPassword = ""
+            app.fynlo.logic.EncryptedBackup.encrypt(json, pwd)
+        } else json.toByteArray()
+        context.contentResolver.openOutputStream(it)?.use { os -> os.write(bytes) }
     }}}
 
+    // 3.2.70 — sample CSV exporter so users can test Import without having
+    // a real bank export. Saves a tiny 5-row file via CreateDocument SAF
+    // so the user picks where to drop it (Downloads is the obvious choice).
+    val csvSampleLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("text/csv")
+    ) { uri -> uri?.let { scope.launch(Dispatchers.IO) {
+        runCatching {
+            val sample = buildString {
+                appendLine("Date,Description,Amount,Category")
+                appendLine("2026-05-20,Salary credit,50000,Salary")
+                appendLine("2026-05-21,Coffee at Blue Tokai,-380,Food")
+                appendLine("2026-05-22,Uber to office,-145,Transport")
+                appendLine("2026-05-23,Amazon — wireless mouse,-1299,Shopping")
+                appendLine("2026-05-25,Refund — wrong item returned,1299,Shopping")
+            }
+            context.contentResolver.openOutputStream(it)?.use { os ->
+                os.write(sample.toByteArray(Charsets.UTF_8))
+            }
+            kotlinx.coroutines.withContext(Dispatchers.Main) {
+                android.widget.Toast.makeText(
+                    context,
+                    "Sample CSV saved. Now tap Import Bank Statement and pick it.",
+                    android.widget.Toast.LENGTH_LONG,
+                ).show()
+            }
+        }
+    }}}
+
+    // C22 (3.2.67 → 3.2.68 smoke fix) — Use `OpenDocument` not `GetContent`.
+    // `GetContent("*/*")` opens to the recents-only SAF chooser on many
+    // Android versions and surfaces an empty "no files" screen if the
+    // user has no recent CSVs — user reported "no options coming to save
+    // in files". `OpenDocument` with an explicit MIME array launches the
+    // full SAF file browser (Downloads, internal storage, Drive, etc.)
+    // and lists files matching any of the listed types.
+    val csvImportLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri -> uri?.let { scope.launch(Dispatchers.IO) {
+        runCatching {
+            context.contentResolver.openInputStream(it)?.bufferedReader()?.use { r ->
+                val text = r.readText()
+                val rows = app.fynlo.logic.CsvParser.parse(text)
+                kotlinx.coroutines.withContext(Dispatchers.Main) {
+                    pendingCsvRows = rows
+                    csvImportSummary = null
+                }
+            }
+        }.onFailure {
+            kotlinx.coroutines.withContext(Dispatchers.Main) {
+                csvImportSummary = "Couldn't read the file: ${it.message}"
+            }
+        }
+    }}}
+
+    // 3.2.68 smoke fix — same OpenDocument switch as the CSV launcher.
+    // GetContent("*/*") opens to recents on many Android versions; users
+    // looking for a backup in Downloads couldn't reach it. OpenDocument
+    // launches the full SAF browser.
     val importLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.GetContent()
+        ActivityResultContracts.OpenDocument()
     ) { uri -> uri?.let { scope.launch {
         context.contentResolver.openInputStream(it)?.use { ins ->
-            viewModel.restoreData(ins.bufferedReader().readText())
+            val bytes = ins.readBytes()
+            if (app.fynlo.logic.EncryptedBackup.isEncrypted(bytes)) {
+                // Defer restore until the user supplies the password.
+                pendingImportBytes = bytes
+            } else {
+                viewModel.restoreData(String(bytes, Charsets.UTF_8))
+            }
         }
     }}}
 
@@ -143,6 +236,73 @@ fun SettingsScreen(
             onSkip    = { showResetPinGate = false }
         )
         return
+    }
+
+    // C22 (3.2.66) — backup-encryption dialogs.
+    if (showExportPwdDialog) {
+        BackupPasswordDialog(
+            mode = BackupPasswordMode.SET,
+            onConfirm = { pwd ->
+                pendingExportPassword = pwd
+                showExportPwdDialog = false
+                jsonLauncher.launch("Fynlo_Backup_${System.currentTimeMillis()}.fynloenc")
+            },
+            onDismiss = { showExportPwdDialog = false },
+        )
+    }
+    pendingCsvRows?.let { rows ->
+        val allTransactions by viewModel.transactions.collectAsState()
+        CsvImportDialog(
+            rows = rows,
+            accounts = allAccountsForImport.map { it.name },
+            existingTransactions = allTransactions,
+            onDismiss = { pendingCsvRows = null; csvImportSummary = null },
+            onConfirm = { mapping, targetAccount ->
+                scope.launch(Dispatchers.IO) {
+                    val results = app.fynlo.logic.BankStatementImport.mapRows(
+                        rows = rows,
+                        columns = mapping,
+                        targetAccount = targetAccount,
+                        existingTransactions = allTransactions
+                    )
+                    val ok = results.filterIsInstance<app.fynlo.logic.BankStatementImport.RowResult.Ok>()
+                    val unique = ok.filter { !it.isDuplicate }
+                    val dups = ok.size - unique.size
+                    val skipped = results.size - ok.size
+
+                    for (r in unique) viewModel.addTransaction(r.transaction)
+
+                    kotlinx.coroutines.withContext(Dispatchers.Main) {
+                        csvImportSummary = "Imported ${unique.size} transactions" +
+                                           (if (dups > 0) ", $dups duplicates skipped" else "") +
+                                           (if (skipped > 0) ", $skipped errors skipped" else "")
+                        pendingCsvRows = null
+                    }
+                }
+            },
+            initialSummary = csvImportSummary,
+        )
+    }
+
+    pendingImportBytes?.let { bytes ->
+        BackupPasswordDialog(
+            mode = BackupPasswordMode.ENTER,
+            errorMessage = importErrorMessage,
+            onConfirm = { pwd ->
+                try {
+                    val plain = app.fynlo.logic.EncryptedBackup.decrypt(bytes, pwd)
+                    viewModel.restoreData(plain)
+                    pendingImportBytes = null
+                    importErrorMessage = null
+                } catch (e: Exception) {
+                    importErrorMessage = "Wrong password or the backup is corrupted."
+                }
+            },
+            onDismiss = {
+                pendingImportBytes = null
+                importErrorMessage = null
+            },
+        )
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
@@ -319,12 +479,58 @@ fun SettingsScreen(
 
                 SettingsDivider()
 
+                // C22 (3.2.66) — encryption toggle. Off by default so the
+                // existing Export flow is unchanged for users who don't
+                // need encryption; flipping on routes the next export
+                // through a password dialog → AES-GCM under PBKDF2.
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(Icons.Default.Lock, null, tint = Blue, modifier = Modifier.size(20.dp))
+                    Spacer(Modifier.width(12.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text("Encrypt backup with password",
+                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold))
+                        Text(
+                            if (encryptOnExport) "Next export will be AES-encrypted. Keep the password safe — there's no recovery."
+                            else "Export will be plain JSON (readable by anyone with the file).",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    // 3.2.63 lesson — explicit unchecked colors so the Switch
+                    // stays visible against the surface in light mode.
+                    Switch(
+                        checked = encryptOnExport,
+                        onCheckedChange = { encryptOnExport = it },
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor    = Color.White,
+                            checkedTrackColor    = Emerald500,
+                            uncheckedThumbColor  = MaterialTheme.colorScheme.onSurfaceVariant,
+                            uncheckedTrackColor  = MaterialTheme.colorScheme.surface,
+                            uncheckedBorderColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    )
+                }
+
                 SettingsActionRow(
                     icon  = Icons.Default.FileDownload,
                     color = Blue,
                     title = "Export JSON Backup",
-                    subtitle = "Full backup for restore"
-                ) { if (isPro) jsonLauncher.launch("Fynlo_Backup_${System.currentTimeMillis()}.json") else onNavigateToUpgrade() }
+                    subtitle = if (encryptOnExport) "Encrypted with password"
+                               else "Full backup for restore"
+                ) {
+                    if (!isPro) {
+                        onNavigateToUpgrade()
+                    } else if (encryptOnExport) {
+                        // Password dialog → SAF picker → encrypt + write.
+                        showExportPwdDialog = true
+                    } else {
+                        pendingExportPassword = ""
+                        jsonLauncher.launch("Fynlo_Backup_${System.currentTimeMillis()}.json")
+                    }
+                }
 
                 SettingsDivider()
 
@@ -340,9 +546,64 @@ fun SettingsScreen(
                 SettingsActionRow(
                     icon  = Icons.Default.FileUpload,
                     color = Amber,
-                    title = "Restore from JSON",
-                    subtitle = "Import a previously exported backup"
-                ) { importLauncher.launch("application/json") }
+                    title = "Restore Backup",
+                    subtitle = "Import a previously exported JSON or .fynloenc backup"
+                ) {
+                    // 3.2.69 smoke fix — single `*/*` so Samsung / Xiaomi
+                    // pickers don't hide files whose declared MIME isn't in
+                    // the array. Our reader auto-detects encrypted vs plain
+                    // via magic header, so file type doesn't matter at the
+                    // picker level.
+                    importLauncher.launch(arrayOf("*/*"))
+                }
+
+                SettingsDivider()
+
+                // C22 (3.2.67) — bank statement CSV import.
+                // 3.2.70 — discoverable sample for first-time testing. Saves
+                // a 5-row example file to user-chosen location so they can
+                // immediately exercise the Import flow without needing a
+                // real bank export.
+                // NOTE: Icons.AutoMirrored.Filled.NoteAdd doesn't exist; use
+                // Icons.Default.NoteAdd (deprecation warning is harmless).
+                SettingsActionRow(
+                    icon  = Icons.Default.Description,
+                    color = Carbon500,
+                    title = "Save sample CSV (for testing)",
+                    subtitle = "Drop a 5-row example file in Downloads, then run Import",
+                ) {
+                    csvSampleLauncher.launch("fynlo_sample.csv")
+                }
+
+                SettingsDivider()
+
+                SettingsActionRow(
+                    icon  = Icons.Default.TableChart,
+                    color = Blue,
+                    title = "Import Bank Statement (CSV)",
+                    subtitle = "Map columns from your bank export and bulk-add transactions"
+                ) {
+                    if (allAccountsForImport.isEmpty()) {
+                        // 3.2.68 smoke fix — was set into csvImportSummary which
+                        // only renders inside the mapping dialog (never opens
+                        // without rows). A Toast surfaces immediately.
+                        android.widget.Toast.makeText(
+                            context,
+                            "Add an account first — imported transactions need a destination.",
+                            android.widget.Toast.LENGTH_LONG,
+                        ).show()
+                    } else {
+                        // 3.2.69 smoke fix — was an array including specific CSV
+                        // MIMEs plus `*/*`. User reported "navigated to my files
+                        // but cant see file" — Samsung / Xiaomi pickers interpret
+                        // the MIME array strictly and HIDE files whose declared
+                        // MIME isn't in the list (even when `*/*` is included).
+                        // Switching to a single-element `arrayOf("*/*")` shows
+                        // every file unconditionally. Our parser is tolerant; the
+                        // column-mapping dialog gates bad files (zero rows).
+                        csvImportLauncher.launch(arrayOf("*/*"))
+                    }
+                }
 
                 SettingsDivider()
 
@@ -364,7 +625,7 @@ fun SettingsScreen(
                     icon     = Icons.Default.Calculate,
                     color    = Amber,
                     title    = "Recalculate Balances",
-                    subtitle = "Fixes account balances that got out of sync. Run this if Cash in Hand or any account shows a wrong amount."
+                    subtitle = "Fixes account balances that got out of sync. Run this if Personal Cash or any account shows a wrong amount."
                 ) {
                     if (recalcInFlight) return@SettingsActionRow
                     recalcInFlight = true
@@ -375,6 +636,74 @@ fun SettingsScreen(
                             recalcInFlight = false
                         }
                     }
+                }
+
+                SettingsDivider()
+
+                // 3.2.72 — diagnostic: show every balance-mutation site so
+                // the user can see which subsystem is moving net worth.
+                var showAuditLog by remember { mutableStateOf(false) }
+                SettingsActionRow(
+                    icon  = Icons.Default.History,
+                    color = Carbon500,
+                    title = "Balance change log",
+                    subtitle = "See every account-balance mutation (recurring, sync, manual) since launch"
+                ) { showAuditLog = true }
+
+                if (showAuditLog) {
+                    BalanceAuditLogDialog(
+                        onDismiss = { showAuditLog = false },
+                        onClear = { scope.launch { app.fynlo.logic.BalanceAuditLog.clear(context) } },
+                    )
+                }
+
+                SettingsDivider()
+
+                // 3.2.74 — wipe Firestore + re-push local. Use when stale
+                // cloud data is "restoring" itself into local on every sync.
+                var showResetCloudConfirm by remember { mutableStateOf(false) }
+                var resetCloudInFlight by remember { mutableStateOf(false) }
+                SettingsActionRow(
+                    icon  = Icons.Default.CloudOff,
+                    color = Amber,
+                    title = "Reset cloud sync to match local",
+                    subtitle = "Wipes Firestore and re-pushes current local data. Use if mystery values keep restoring on launch (see Balance change log)."
+                ) { showResetCloudConfirm = true }
+
+                if (showResetCloudConfirm) {
+                    AlertDialog(
+                        onDismissRequest = { showResetCloudConfirm = false },
+                        title = { Text("Reset cloud sync?") },
+                        text = {
+                            Text(
+                                "This wipes all your Fynlo data on Firestore (cloud) and re-pushes the current local data as the new canonical version.\n\n" +
+                                "Local data stays untouched. Other devices signed in to the same account will be re-synced from the new cloud state on their next launch.\n\n" +
+                                "Use this only if the Balance change log shows SYNC_PULL_DEBT / _BORROWER entries restoring values you don't recognise."
+                            )
+                        },
+                        confirmButton = {
+                            TextButton(
+                                onClick = {
+                                    if (resetCloudInFlight) return@TextButton
+                                    resetCloudInFlight = true
+                                    viewModel.resetCloudSyncToLocal { ok ->
+                                        resetCloudInFlight = false
+                                        showResetCloudConfirm = false
+                                        android.widget.Toast.makeText(
+                                            context,
+                                            if (ok) "Cloud reset. Force-stop and relaunch to verify no SYNC_PULL entries appear."
+                                            else "Reset failed — check your network and try again.",
+                                            android.widget.Toast.LENGTH_LONG,
+                                        ).show()
+                                    }
+                                },
+                                colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                            ) { Text(if (resetCloudInFlight) "Resetting…" else "Reset cloud") }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = { showResetCloudConfirm = false }) { Text("Cancel") }
+                        }
+                    )
                 }
 
                 recalcDelta?.let { delta ->
@@ -641,24 +970,21 @@ fun SettingsScreen(
 
         SettingsSectionLabel("App Info")
         SettingsCard {
+            // C18 #4 (3.2.78) — was an email-shortcut; the audit deferred
+            // an in-app form. ReportBugDialog captures the report in a
+            // structured Crashlytics non-fatal (so support gets it without
+            // the user having to remember to actually send the email), and
+            // keeps the email fallback for offline / no-Play-Services cases.
+            var showBugDialog by remember { mutableStateOf(false) }
+            if (showBugDialog) {
+                app.fynlo.ui.components.ReportBugDialog(onDismiss = { showBugDialog = false })
+            }
             SettingsActionRow(
                 icon     = Icons.Default.BugReport,
                 color    = Red,
                 title    = "Report a Bug",
-                subtitle = "Send feedback via email"
-            ) {
-                val deviceInfo = buildString {
-                    appendLine("Device: ${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}")
-                    appendLine("Android: ${android.os.Build.VERSION.RELEASE}")
-                    appendLine("App Version: ${app.fynlo.BuildConfig.VERSION_NAME} (${app.fynlo.BuildConfig.VERSION_CODE})")
-                    appendLine("\nDescribe your issue:\n[Type here]")
-                }
-                context.startActivity(android.content.Intent(android.content.Intent.ACTION_SENDTO).apply {
-                    data = android.net.Uri.parse("mailto:fynloapp.support@gmail.com")
-                    putExtra(android.content.Intent.EXTRA_SUBJECT, "Fynlo Bug Report")
-                    putExtra(android.content.Intent.EXTRA_TEXT, deviceInfo)
-                })
-            }
+                subtitle = "In-app form with device info and reference ID"
+            ) { showBugDialog = true }
             // C18 fix #5 (3.2.20) — Rate-on-Play-Store gated by positive
             // engagement. The audit's complaint was the rate-prompt being
             // shown immediately rather than after the user has actually
@@ -745,7 +1071,7 @@ fun SettingsScreen(
                 if (showRestoreConfirm) AlertDialog(
                     onDismissRequest = { showRestoreConfirm = false },
                     title = { Text("Restore Real Data?") },
-                    text  = { Text("Clears all transactions and restores Cash in Hand ₹3,962 + HDFC Bank ₹1,22,500.") },
+                    text  = { Text("Clears all transactions and restores Personal Cash ₹3,962 + HDFC Bank ₹1,22,500.") },
                     confirmButton = { Button(onClick = { viewModel.restoreRealData(); showRestoreConfirm = false }) { Text("Restore") } },
                     dismissButton = { TextButton(onClick = { showRestoreConfirm = false }) { Text("Cancel") } }
                 )
@@ -1001,6 +1327,460 @@ private fun SettingsActionRow(
         }
         Icon(Icons.AutoMirrored.Filled.ArrowForwardIos, null,
             Modifier.size(14.dp), tint = MaterialTheme.colorScheme.outlineVariant)
+    }
+}
+
+/**
+ * C22 (3.2.66) — password dialog for encrypted-backup export/import.
+ *
+ * - [BackupPasswordMode.SET]: export flow. Requires a second "confirm
+ *   password" field to defend against typos (no recovery if the user
+ *   exports with a misremembered password). Minimum length 8.
+ * - [BackupPasswordMode.ENTER]: restore flow. Single field; the magic
+ *   header is what told us the file is encrypted, so we just need the
+ *   password to decrypt. [errorMessage] surfaces "wrong password" from
+ *   a previous failed attempt without dismissing the dialog.
+ */
+/**
+ * C22 (3.2.67) — column-mapping dialog for CSV import.
+ *
+ * Surfaces the parsed CSV headers (first row) as the option set for four
+ * column dropdowns: Date, Description, Amount, Category (optional). The
+ * user also picks a target Account; all mapped rows land there so the
+ * orphan-account regression from 3.2.59 can't recur.
+ *
+ * Live preview of the first 3 mapped rows updates as the user changes
+ * mappings — gives them confidence the columns are right before they
+ * commit. Skipped-row count surfaces in the button label.
+ */
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@Composable
+private fun CsvImportDialog(
+    rows: List<List<String>>,
+    accounts: List<String>,
+    existingTransactions: List<app.fynlo.data.model.Transaction> = emptyList(),
+    onDismiss: () -> Unit,
+    onConfirm: (app.fynlo.logic.BankStatementImport.ColumnMap, String) -> Unit,
+    initialSummary: String?,
+) {
+    val header = rows.firstOrNull().orEmpty()
+    val dataRowCount = (rows.size - 1).coerceAtLeast(0)
+
+    // Default heuristic picks: scan headers for the obvious names; fall
+    // back to index 0/1/2 if no match (works for unlabelled exports).
+    fun findCol(vararg keywords: String): Int {
+        val i = header.indexOfFirst { h -> keywords.any { k -> h.contains(k, ignoreCase = true) } }
+        return if (i >= 0) i else -1
+    }
+    var dateCol     by remember { mutableStateOf(findCol("date", "txn date", "value date").let { if (it < 0) 0 else it }) }
+    var descCol     by remember { mutableStateOf(findCol("desc", "narration", "particulars", "memo").let { if (it < 0) 1.coerceAtMost(header.lastIndex.coerceAtLeast(0)) else it }) }
+    var amountCol   by remember { mutableStateOf(findCol("amount", "amt", "debit", "credit").let { if (it < 0) 2.coerceAtMost(header.lastIndex.coerceAtLeast(0)) else it }) }
+    // -1 sentinel = "None" (no category column).
+    var categoryCol by remember { mutableStateOf(findCol("category", "cat")) }
+    var targetAccount by remember { mutableStateOf(accounts.firstOrNull().orEmpty()) }
+
+    val mapping = app.fynlo.logic.BankStatementImport.ColumnMap(
+        dateCol = dateCol,
+        descriptionCol = descCol,
+        amountCol = amountCol,
+        categoryCol = if (categoryCol < 0) null else categoryCol,
+    )
+    val preview = remember(rows, mapping, targetAccount, existingTransactions) {
+        if (rows.size > 1 && targetAccount.isNotBlank()) {
+            app.fynlo.logic.BankStatementImport.mapRows(rows.take(4), mapping, targetAccount, existingTransactions)
+        } else emptyList()
+    }
+    val previewOk = preview.filterIsInstance<app.fynlo.logic.BankStatementImport.RowResult.Ok>()
+    val previewSkipped = preview.size - previewOk.size
+
+    app.fynlo.ui.components.FormDialog(
+        title = "Map CSV columns",
+        onDismiss = onDismiss,
+    ) {
+        if (initialSummary != null) {
+            Text(initialSummary, style = MaterialTheme.typography.bodySmall,
+                color = if (initialSummary.startsWith("Imported")) Emerald500
+                        else MaterialTheme.colorScheme.error)
+            Spacer(Modifier.height(12.dp))
+        }
+
+        Text(
+            "$dataRowCount data rows detected. Pick which column holds each piece of information.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.height(14.dp))
+
+        // Header preview chips so the user sees their actual column names.
+        if (header.isNotEmpty()) {
+            app.fynlo.ui.components.FormSectionLabel("Detected headers")
+            Spacer(Modifier.height(6.dp))
+            androidx.compose.foundation.layout.FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                header.forEachIndexed { i, h ->
+                    AssistChip(
+                        onClick = {},
+                        label = { Text("${i + 1}. ${h.take(18)}", style = MaterialTheme.typography.labelSmall) },
+                        shape = RoundedCornerShape(8.dp),
+                    )
+                }
+            }
+            Spacer(Modifier.height(14.dp))
+        }
+
+        CsvColumnPicker("Date column",        header, dateCol,     allowNone = false) { dateCol = it }
+        Spacer(Modifier.height(10.dp))
+        CsvColumnPicker("Description column", header, descCol,     allowNone = false) { descCol = it }
+        Spacer(Modifier.height(10.dp))
+        CsvColumnPicker("Amount column",      header, amountCol,   allowNone = false) { amountCol = it }
+        Spacer(Modifier.height(10.dp))
+        CsvColumnPicker("Category column (optional)", header, categoryCol, allowNone = true) { categoryCol = it }
+
+        Spacer(Modifier.height(14.dp))
+        app.fynlo.ui.components.FormSectionLabel("Import into account")
+        Spacer(Modifier.height(6.dp))
+        var acctExpanded by remember { mutableStateOf(false) }
+        ExposedDropdownMenuBox(expanded = acctExpanded, onExpandedChange = { acctExpanded = !acctExpanded }) {
+            OutlinedTextField(
+                value = targetAccount,
+                onValueChange = {},
+                readOnly = true,
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = acctExpanded) },
+                modifier = Modifier
+                    .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, true)
+                    .fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+            )
+            ExposedDropdownMenu(expanded = acctExpanded, onDismissRequest = { acctExpanded = false }) {
+                accounts.forEach { acct ->
+                    DropdownMenuItem(text = { Text(acct) },
+                        onClick = { targetAccount = acct; acctExpanded = false })
+                }
+            }
+        }
+
+        if (preview.isNotEmpty()) {
+            Spacer(Modifier.height(14.dp))
+            app.fynlo.ui.components.FormSectionLabel("Preview (first ${preview.size} rows)")
+            Spacer(Modifier.height(6.dp))
+            preview.forEach { r ->
+                when (r) {
+                    is app.fynlo.logic.BankStatementImport.RowResult.Ok -> {
+                        val t = r.transaction
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                "${if (r.isDuplicate) "⚠ Dup" else "✓"} ${t.date} · ${t.category} · ${"%.2f".format(t.amount)}",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = if (r.isDuplicate) SemanticAmber else MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                    is app.fynlo.logic.BankStatementImport.RowResult.Skip -> {
+                        Text(
+                            "✗ Row ${r.rowIndex}: ${r.reason}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                    }
+                }
+            }
+            if (previewSkipped > 0) {
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    "Fix the date/amount column picks if too many rows skip.",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.outlineVariant,
+                )
+            }
+        }
+
+        Spacer(Modifier.height(16.dp))
+        val canConfirm = dataRowCount > 0 && targetAccount.isNotBlank() && previewOk.isNotEmpty()
+        Button(
+            onClick = { onConfirm(mapping, targetAccount) },
+            enabled = canConfirm,
+            modifier = Modifier.fillMaxWidth().height(48.dp),
+            shape = RoundedCornerShape(14.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = Emerald500),
+        ) {
+            Text(
+                "Import $dataRowCount rows into $targetAccount",
+                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+            )
+        }
+        if (!canConfirm) {
+            Spacer(Modifier.height(6.dp))
+            Text(
+                when {
+                    targetAccount.isBlank() -> "Pick a target account."
+                    previewOk.isEmpty()     -> "Preview rows all skip — check your column picks."
+                    else                    -> "No data rows to import."
+                },
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.outlineVariant,
+            )
+        }
+    }
+}
+
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@Composable
+private fun CsvColumnPicker(
+    label: String,
+    headers: List<String>,
+    selectedIndex: Int,
+    allowNone: Boolean,
+    onPick: (Int) -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val display = when {
+        selectedIndex < 0          -> "None"
+        selectedIndex < headers.size -> "${selectedIndex + 1}. ${headers[selectedIndex]}"
+        else                       -> "Column ${selectedIndex + 1}"
+    }
+    Column {
+        app.fynlo.ui.components.FormSectionLabel(label)
+        Spacer(Modifier.height(6.dp))
+        ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = !expanded }) {
+            OutlinedTextField(
+                value = display,
+                onValueChange = {},
+                readOnly = true,
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                modifier = Modifier
+                    .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, true)
+                    .fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+            )
+            ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                if (allowNone) {
+                    DropdownMenuItem(text = { Text("None") },
+                        onClick = { onPick(-1); expanded = false })
+                }
+                headers.forEachIndexed { i, h ->
+                    DropdownMenuItem(
+                        text = { Text("${i + 1}. $h") },
+                        onClick = { onPick(i); expanded = false }
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * 3.2.72 — diagnostic dialog showing every account-balance mutation.
+ *
+ * Entries are reactive (StateFlow from BalanceAuditLog.observe) so the
+ * list updates without re-opening the dialog if a sync fires while it's
+ * visible. Most useful as: open the dialog, force-stop the app, relaunch,
+ * watch what SYNC_PULL entries appear at the top — that's the "what
+ * mutated on launch" trace.
+ */
+@Composable
+private fun BalanceAuditLogDialog(
+    onDismiss: () -> Unit,
+    onClear: () -> Unit,
+) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val entries by app.fynlo.logic.BalanceAuditLog.observe(context).collectAsState(initial = emptyList())
+    val dateFmt = remember {
+        java.time.format.DateTimeFormatter.ofPattern("MMM d, HH:mm:ss")
+            .withZone(java.time.ZoneId.systemDefault())
+    }
+
+    app.fynlo.ui.components.FormDialog(
+        title = "Balance change log",
+        onDismiss = onDismiss,
+    ) {
+        Text(
+            if (entries.isEmpty()) "No balance changes recorded yet. Once you add, edit, sync, or recurring transactions fire, they'll show up here newest-first."
+            else "${entries.size} balance mutation${if (entries.size == 1) "" else "s"} recorded (newest first, capped at 200). " +
+                 "Look for SYNC_PULL entries on relaunch — those are Firestore overwriting your local balance.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+
+        if (entries.isNotEmpty()) {
+            Spacer(Modifier.height(12.dp))
+            LazyColumn(
+                modifier = Modifier.fillMaxWidth().heightIn(max = 420.dp),
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                items(entries, key = { it.timestamp.toString() + it.account + it.source }) { entry ->
+                    AuditEntryRow(entry, dateFmt)
+                }
+            }
+        }
+
+        Spacer(Modifier.height(16.dp))
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedButton(
+                onClick = onClear,
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(12.dp),
+            ) { Text("Clear log") }
+            Button(
+                onClick = onDismiss,
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Emerald500),
+            ) { Text("Close") }
+        }
+    }
+}
+
+@Composable
+private fun AuditEntryRow(
+    entry: app.fynlo.logic.BalanceAuditLog.Entry,
+    dateFmt: java.time.format.DateTimeFormatter,
+) {
+    // Tint the row by source so SYNC_PULL stands out — that's the one
+    // the diagnostic exists to flag.
+    val tintColor = when (entry.source) {
+        "SYNC_PULL"          -> SemanticAmber
+        "RECURRING_WORKER"   -> Blue
+        "MANUAL_TXN"         -> Emerald500
+        "DELETE_TXN"         -> MaterialTheme.colorScheme.error
+        "QUICK_EDIT_BALANCE" -> SemanticAmber
+        else                 -> MaterialTheme.colorScheme.onSurfaceVariant
+    }
+    val sign = when {
+        entry.delta > 0  -> "+"
+        entry.delta < 0  -> "−"
+        else             -> ""
+    }
+    val deltaText = "$sign${"%.2f".format(kotlin.math.abs(entry.delta))}"
+    Surface(
+        shape = RoundedCornerShape(8.dp),
+        color = tintColor.copy(alpha = 0.08f),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(Modifier.padding(horizontal = 10.dp, vertical = 6.dp)) {
+            Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
+                Text(
+                    "${entry.source} · ${entry.account}",
+                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                    color = tintColor,
+                )
+                Text(
+                    deltaText,
+                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                    color = if (entry.delta < 0) MaterialTheme.colorScheme.error else Emerald500,
+                )
+            }
+            Text(
+                "${dateFmt.format(java.time.Instant.ofEpochMilli(entry.timestamp))} — ${entry.note}",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+private enum class BackupPasswordMode { SET, ENTER }
+
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@Composable
+private fun BackupPasswordDialog(
+    mode: BackupPasswordMode,
+    errorMessage: String? = null,
+    onConfirm: (String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var password by remember { mutableStateOf("") }
+    var confirm  by remember { mutableStateOf("") }
+    var showText by remember { mutableStateOf(false) }
+
+    val title = when (mode) {
+        BackupPasswordMode.SET   -> "Set backup password"
+        BackupPasswordMode.ENTER -> "Enter backup password"
+    }
+
+    val tooShort   = mode == BackupPasswordMode.SET && password.isNotEmpty() && password.length < 8
+    val mismatch   = mode == BackupPasswordMode.SET && confirm.isNotEmpty() && confirm != password
+    val canConfirm = when (mode) {
+        BackupPasswordMode.SET   -> password.length >= 8 && confirm == password
+        BackupPasswordMode.ENTER -> password.isNotEmpty()
+    }
+
+    val visualTransformation =
+        if (showText) androidx.compose.ui.text.input.VisualTransformation.None
+        else          androidx.compose.ui.text.input.PasswordVisualTransformation()
+
+    app.fynlo.ui.components.FormDialog(title = title, onDismiss = onDismiss) {
+        if (mode == BackupPasswordMode.SET) {
+            Text(
+                "There's no recovery if you lose this password. " +
+                "Write it down somewhere safe.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.height(14.dp))
+        }
+
+        app.fynlo.ui.components.FormSectionLabel("Password")
+        Spacer(Modifier.height(6.dp))
+        OutlinedTextField(
+            value = password,
+            onValueChange = { password = it },
+            placeholder = { Text("At least 8 characters") },
+            singleLine = true,
+            visualTransformation = visualTransformation,
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+            isError = tooShort,
+            supportingText = if (tooShort) {{ Text("Use at least 8 characters.") }} else null,
+        )
+
+        if (mode == BackupPasswordMode.SET) {
+            Spacer(Modifier.height(12.dp))
+            app.fynlo.ui.components.FormSectionLabel("Confirm password")
+            Spacer(Modifier.height(6.dp))
+            OutlinedTextField(
+                value = confirm,
+                onValueChange = { confirm = it },
+                placeholder = { Text("Re-type the same password") },
+                singleLine = true,
+                visualTransformation = visualTransformation,
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                isError = mismatch,
+                supportingText = if (mismatch) {{ Text("Passwords don't match.") }} else null,
+            )
+        }
+
+        Spacer(Modifier.height(6.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Checkbox(
+                checked = showText,
+                onCheckedChange = { showText = it },
+            )
+            Text("Show password", style = MaterialTheme.typography.labelMedium)
+        }
+
+        if (errorMessage != null) {
+            Spacer(Modifier.height(6.dp))
+            Text(errorMessage,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.error)
+        }
+
+        Spacer(Modifier.height(16.dp))
+        Button(
+            onClick  = { onConfirm(password) },
+            enabled  = canConfirm,
+            modifier = Modifier.fillMaxWidth().height(48.dp),
+            shape    = RoundedCornerShape(14.dp),
+            colors   = ButtonDefaults.buttonColors(containerColor = Emerald500),
+        ) {
+            Text(when (mode) {
+                BackupPasswordMode.SET   -> "Encrypt & save"
+                BackupPasswordMode.ENTER -> "Decrypt & restore"
+            }, style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold))
+        }
     }
 }
 

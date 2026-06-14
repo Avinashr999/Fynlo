@@ -25,11 +25,272 @@ import app.fynlo.data.model.FlowTemplate
         NetWorthSnapshot::class,
         InvestmentValuation::class
     ],
-    version = 17,
+    version = 25,
     exportSchema = true
 )
 abstract class FynloDatabase : RoomDatabase() {
     abstract fun dao(): FynloDao
+}
+
+// C03b Stage #3 (3.2.90) — additive `peopleId` on borrowers + debts.
+// Mirrors the v22→v23 / v23→v24 account-id pattern but for the
+// borrower/debt → person relationship. Three-step backfill:
+//
+//   1. ALTER both tables to add the new column.
+//   2. Link rows whose `phone` already matches an existing Person to
+//      that Person's id. The Person was likely created via the People
+//      screen separately from the loan; this captures the implicit
+//      association.
+//   3. For every (name, phone) pair that's still unlinked AND has a
+//      non-empty phone (so we can dedup safely), create one Person row
+//      and link every borrower + debt with that phone to it. Empty-phone
+//      rows are skipped — we can't dedup safely on name alone (two
+//      "Ravi"s in the same project could be distinct people) so they
+//      stay with peopleId = '' until the user manually links them via
+//      the People screen.
+//
+// SQLite-portable random ids: `lower(hex(randomblob(8)))` → 16-char hex
+// strings prefixed with 'P-' to match the existing `P-001`-style
+// scheme. Distinct enough for the small number of rows a single user's
+// data has; the resolver-on-write path uses UUIDs for new Person rows
+// created post-migration so the two schemes coexist.
+//
+// Idempotent — re-running is safe because the WHERE clauses guard on
+// `peopleId = ''` and `NOT EXISTS` against existing Person rows.
+val MIGRATION_24_25 = object : Migration(24, 25) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        val now = System.currentTimeMillis()
+
+        // 1. Add columns.
+        db.execSQL("ALTER TABLE `borrowers` ADD COLUMN `peopleId` TEXT NOT NULL DEFAULT ''")
+        db.execSQL("ALTER TABLE `debts`     ADD COLUMN `peopleId` TEXT NOT NULL DEFAULT ''")
+
+        // 2. Link rows to existing Person records by phone.
+        db.execSQL("""
+            UPDATE `borrowers`
+            SET    `peopleId` = COALESCE(
+                       (SELECT `id` FROM `people` WHERE `phone` = `borrowers`.`phone` AND `phone` != ''),
+                       ''
+                   )
+            WHERE  `phone` != '' AND `peopleId` = ''
+        """.trimIndent())
+        db.execSQL("""
+            UPDATE `debts`
+            SET    `peopleId` = COALESCE(
+                       (SELECT `id` FROM `people` WHERE `phone` = `debts`.`phone` AND `phone` != ''),
+                       ''
+                   )
+            WHERE  `phone` != '' AND `peopleId` = ''
+        """.trimIndent())
+
+        // 3. Create new Person rows for unmatched non-empty phones, then
+        //    re-run the link pass. The INSERT...SELECT GROUP BY clause
+        //    dedups across borrowers + debts in a single pass — a phone
+        //    that appears in both tables ends up with exactly one new
+        //    Person, and both rows link to it.
+        db.execSQL("""
+            INSERT INTO `people` (id, name, phone, type, notes, projectId, updatedAt, createdAt)
+            SELECT
+                'P-' || lower(hex(randomblob(8))),
+                MIN(name),
+                phone,
+                'Individual',
+                '',
+                MIN(projectId),
+                $now,
+                $now
+            FROM (
+                SELECT name, phone, projectId FROM borrowers WHERE phone != '' AND peopleId = ''
+                UNION ALL
+                SELECT name, phone, projectId FROM debts     WHERE phone != '' AND peopleId = ''
+            ) AS combined
+            WHERE NOT EXISTS (SELECT 1 FROM people WHERE people.phone = combined.phone AND people.phone != '')
+            GROUP BY phone
+        """.trimIndent())
+
+        // 4. Final link pass — now every non-empty phone has a matching
+        //    Person row (existing or just-created), so the UPDATE
+        //    populates `peopleId` everywhere.
+        db.execSQL("""
+            UPDATE `borrowers`
+            SET    `peopleId` = COALESCE(
+                       (SELECT `id` FROM `people` WHERE `phone` = `borrowers`.`phone` AND `phone` != ''),
+                       ''
+                   )
+            WHERE  `phone` != '' AND `peopleId` = ''
+        """.trimIndent())
+        db.execSQL("""
+            UPDATE `debts`
+            SET    `peopleId` = COALESCE(
+                       (SELECT `id` FROM `people` WHERE `phone` = `debts`.`phone` AND `phone` != ''),
+                       ''
+                   )
+            WHERE  `phone` != '' AND `peopleId` = ''
+        """.trimIndent())
+    }
+}
+
+// C03b Stage #1c (3.2.89) — additive `fromAcctId` / `toAcctId` on
+// recurring_transactions. Mirrors `MIGRATION_22_23` (which did the same
+// for the transactions table). Same rationale: an account rename can't
+// orphan a RecurringWorker auto-fire if the worker keys on the immutable
+// id instead of the stored name.
+//
+// Backfill uses the same name-join trick. Orphans (no matching account
+// at migration time) leave the id at `''` — RecurringScreen's create
+// path resolves on every save so the id catches up the next time the
+// user edits the row, and `applyAccountDelta` in the worker falls
+// through to the legacy name-keyed query for any row that stays
+// orphaned.
+val MIGRATION_23_24 = object : Migration(23, 24) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE `recurring_transactions` ADD COLUMN `fromAcctId` TEXT NOT NULL DEFAULT ''")
+        db.execSQL("ALTER TABLE `recurring_transactions` ADD COLUMN `toAcctId`   TEXT NOT NULL DEFAULT ''")
+        db.execSQL("""
+            UPDATE `recurring_transactions`
+            SET    `fromAcctId` = COALESCE(
+                       (SELECT `id` FROM `accounts` WHERE `accounts`.`name` = `recurring_transactions`.`fromAcct`),
+                       ''
+                   )
+            WHERE  `fromAcct` != '' AND `fromAcctId` = ''
+        """.trimIndent())
+        db.execSQL("""
+            UPDATE `recurring_transactions`
+            SET    `toAcctId`   = COALESCE(
+                       (SELECT `id` FROM `accounts` WHERE `accounts`.`name` = `recurring_transactions`.`toAcct`),
+                       ''
+                   )
+            WHERE  `toAcct`   != '' AND `toAcctId`   = ''
+        """.trimIndent())
+    }
+}
+
+// C03b Stage #1a (3.2.86) — additive `fromAcctId` / `toAcctId` on transactions.
+// The audit's §C03b complaint is that `Transaction.fromAcct` / `.toAcct` are
+// account-name *strings*, which means an account rename silently orphans
+// every row referencing the old name (the 3.2.59 bug pattern). Stage #1a is
+// the **additive** half of the fix:
+//   - Add nullable `fromAcctId` / `toAcctId` columns (TEXT, NOT NULL, default
+//     ''). Empty string means "unresolved at write time".
+//   - Backfill from accounts by joining on name. Rows whose name doesn't
+//     match any current account stay with '' (the migration can't invent an
+//     id that doesn't exist; the orphan repair tool from 3.2.59 still
+//     covers those manually).
+//   - Reads still come from `fromAcct` / `toAcct`. Stage #1b will flip the
+//     reads and drop the name columns once `fromAcctId` is proven stable
+//     across a release cycle.
+//
+// Idempotent: re-running the UPDATE is a no-op (`WHERE fromAcctId = ''`).
+// Safe for users with renamed accounts because the v20→v21 and v21→v22
+// migrations already rebalanced `fromAcct` / `toAcct` to the canonical name
+// before this join runs.
+val MIGRATION_22_23 = object : Migration(22, 23) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE `transactions` ADD COLUMN `fromAcctId` TEXT NOT NULL DEFAULT ''")
+        db.execSQL("ALTER TABLE `transactions` ADD COLUMN `toAcctId`   TEXT NOT NULL DEFAULT ''")
+        db.execSQL("""
+            UPDATE `transactions`
+            SET    `fromAcctId` = COALESCE(
+                       (SELECT `id` FROM `accounts` WHERE `accounts`.`name` = `transactions`.`fromAcct`),
+                       ''
+                   )
+            WHERE  `fromAcct` != '' AND `fromAcctId` = ''
+        """.trimIndent())
+        db.execSQL("""
+            UPDATE `transactions`
+            SET    `toAcctId`   = COALESCE(
+                       (SELECT `id` FROM `accounts` WHERE `accounts`.`name` = `transactions`.`toAcct`),
+                       ''
+                   )
+            WHERE  `toAcct`   != '' AND `toAcctId`   = ''
+        """.trimIndent())
+    }
+}
+
+// 3.2.76 — Re-apply the "Cash in Hand" → "Personal Cash" rename AND bump
+// `updatedAt` to NOW on every renamed row. The original v20→v21 migration
+// renamed the rows but left `updatedAt` untouched. The Firestore listener's
+// last-write-wins guard (`remote.updatedAt >= local.updatedAt`) then saw
+// cloud's "Cash in Hand" as the same age as local's "Personal Cash" and
+// overwrote local back to the old name on the next sync. Bumping
+// `updatedAt` makes local strictly newer, so the listener no-ops; the
+// post-init `pushAllLocalToFirestore` then carries the new name to cloud.
+//
+// Idempotent — no rows match if local was never reverted, or has already
+// been re-renamed by this migration.
+val MIGRATION_21_22 = object : Migration(21, 22) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        val now = System.currentTimeMillis()
+        db.execSQL("UPDATE `accounts`               SET `name`          = 'Personal Cash', `updatedAt` = $now WHERE `name`          = 'Cash in Hand'")
+        db.execSQL("UPDATE `transactions`           SET `fromAcct`      = 'Personal Cash', `updatedAt` = $now WHERE `fromAcct`      = 'Cash in Hand'")
+        db.execSQL("UPDATE `transactions`           SET `toAcct`        = 'Personal Cash', `updatedAt` = $now WHERE `toAcct`        = 'Cash in Hand'")
+        db.execSQL("UPDATE `borrowers`              SET `sourceAccount` = 'Personal Cash', `updatedAt` = $now WHERE `sourceAccount` = 'Cash in Hand'")
+        db.execSQL("UPDATE `recurring_transactions` SET `fromAcct`      = 'Personal Cash', `updatedAt` = $now WHERE `fromAcct`      = 'Cash in Hand'")
+        db.execSQL("UPDATE `recurring_transactions` SET `toAcct`        = 'Personal Cash', `updatedAt` = $now WHERE `toAcct`        = 'Cash in Hand'")
+    }
+}
+
+// 3.2.75 — Account-name rename: "Cash in Hand" → "Personal Cash".
+//   Account names are used as string keys for DAO balance lookups
+//   (`WHERE name = :name`), so we have to update every column that
+//   references "Cash in Hand" in lockstep — otherwise transactions
+//   orphan from their account (the 3.2.59 bug pattern).
+//
+//   Updated columns:
+//     - accounts.name
+//     - transactions.fromAcct + toAcct
+//     - borrowers.sourceAccount
+//     - recurring_transactions.fromAcct + toAcct
+//
+//   No-op for users who already renamed their cash account or don't
+//   have one named "Cash in Hand". Idempotent (running twice has no
+//   effect because the second pass finds no rows matching the old name).
+val MIGRATION_20_21 = object : Migration(20, 21) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("UPDATE `accounts`               SET `name`          = 'Personal Cash' WHERE `name`          = 'Cash in Hand'")
+        db.execSQL("UPDATE `transactions`           SET `fromAcct`      = 'Personal Cash' WHERE `fromAcct`      = 'Cash in Hand'")
+        db.execSQL("UPDATE `transactions`           SET `toAcct`        = 'Personal Cash' WHERE `toAcct`        = 'Cash in Hand'")
+        db.execSQL("UPDATE `borrowers`              SET `sourceAccount` = 'Personal Cash' WHERE `sourceAccount` = 'Cash in Hand'")
+        db.execSQL("UPDATE `recurring_transactions` SET `fromAcct`      = 'Personal Cash' WHERE `fromAcct`      = 'Cash in Hand'")
+        db.execSQL("UPDATE `recurring_transactions` SET `toAcct`        = 'Personal Cash' WHERE `toAcct`        = 'Cash in Hand'")
+    }
+}
+
+// C22 (3.2.57) — Per-budget warning threshold.
+//   Adds `alertThresholdPct` to the `budgets` table (INTEGER, default 80).
+//   Pre-3.2.57 the BudgetCard hardcoded a 0.8 ratio for the NEAR LIMIT
+//   state; backfilling all existing rows to 80 preserves that behaviour
+//   exactly. Non-breaking; no data motion beyond the default.
+val MIGRATION_19_20 = object : Migration(19, 20) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE `budgets` ADD COLUMN `alertThresholdPct` INTEGER NOT NULL DEFAULT 80")
+    }
+}
+
+// C22 (3.2.56) — Projects description.
+//   Adds a single column to the `projects` table:
+//     - `description` (TEXT, default "") — optional one-line subtitle on the
+//       project card. Existing projects backfill to empty.
+//   Non-breaking; the column was missing entirely before v19.
+val MIGRATION_18_19 = object : Migration(18, 19) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE `projects` ADD COLUMN `description` TEXT NOT NULL DEFAULT ''")
+    }
+}
+
+// C22 (3.2.55) — Goals icon picker + account link.
+// Adds two new columns to the `goals` table:
+//   - `iconKey` (TEXT, default "star") — stable icon sentinel rendered by
+//     GoalIcons.iconFor(). All existing rows backfill to "star" so pre-3.2.55
+//     goals look identical after migration.
+//   - `linkedAccount` (TEXT, default "") — optional account name. Empty means
+//     "not linked". Goals created via legacy versions stay unlinked.
+// Non-breaking: both columns NOT NULL with sensible defaults; no data motion.
+val MIGRATION_17_18 = object : Migration(17, 18) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE `goals` ADD COLUMN `iconKey` TEXT NOT NULL DEFAULT 'star'")
+        db.execSQL("ALTER TABLE `goals` ADD COLUMN `linkedAccount` TEXT NOT NULL DEFAULT ''")
+    }
 }
 
 val MIGRATION_7_8 = object : Migration(7, 8) {

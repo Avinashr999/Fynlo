@@ -161,7 +161,7 @@ fun SmartFlowWizardScreen(
                     Button(
                         onClick = {
                             val inv = Investment(
-                                id = UUID.randomUUID().toString(),
+                                id = app.fynlo.logic.Ids.newId(),
                                 name = assetName,
                                 type = assetType,
                                 invested = investedAmt.toDoubleOrNull() ?: 0.0,
@@ -172,7 +172,7 @@ fun SmartFlowWizardScreen(
                             
                             val debt = if (selectedSource == sources[1]) {
                                 Debt(
-                                    id = UUID.randomUUID().toString(),
+                                    id = app.fynlo.logic.Ids.newId(),
                                     name = lenderName,
                                     amount = investedAmt.toDoubleOrNull() ?: 0.0,
                                     rate = loanInterestRate.toDoubleOrNull() ?: 0.0,

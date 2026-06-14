@@ -53,7 +53,7 @@ fun WealthDistributionBar(
             modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            LegendItem("Idle Cash", SemanticBlue, "${(cashWeight * 100).toInt()}%")
+            LegendItem("Office & Petty Cash", SemanticBlue, "${(cashWeight * 100).toInt()}%")
             LegendItem("Growing Assets", SemanticAmber, "${(growingWeight * 100).toInt()}%")
             LegendItem("Hand Loans", Carbon400, "${(handLoanWeight * 100).toInt()}%")
         }
@@ -71,10 +71,13 @@ private fun LegendItem(label: String, color: Color, percent: String) {
 
 @Composable
 fun AccountGrowthIndicator(growth: Double, currencyCode: String = "INR", locale: Locale = Locale.getDefault()) {
+    // 3.2.65 — neutral case was Color.Gray (fixed mid-grey, invisible
+    // against Carbon800 dark surface). onSurfaceVariant adapts per theme.
+    val neutralTint = MaterialTheme.colorScheme.onSurfaceVariant
     val color = when {
         growth > 0 -> Emerald400
         growth < 0 -> SemanticRed
-        else -> Color.Gray
+        else -> neutralTint
     }
     val icon = when {
         growth > 0 -> Icons.Default.TrendingUp

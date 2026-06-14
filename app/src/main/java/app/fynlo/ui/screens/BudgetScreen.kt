@@ -2,8 +2,6 @@ package app.fynlo.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -104,9 +102,13 @@ fun BudgetScreen(viewModel: FinanceViewModel) {
                     val totalSpent   = budgets.sumOf { expenses[it.category] ?: 0.0 }
                     val totalRemain  = totalLimit - totalSpent
                     val overBudget   = budgets.count { (expenses[it.category] ?: 0.0) > it.limitAmount }
+                    // C22 (3.2.57) — per-budget threshold replaces the
+                    // hardcoded 0.8. Each budget's own `alertThresholdPct`
+                    // gates whether it counts toward the "near limit"
+                    // total in the overview chip.
                     val nearLimit    = budgets.count { b ->
-                        val pct = (expenses[b.category] ?: 0.0) / b.limitAmount
-                        pct >= 0.8 && pct < 1.0
+                        val pct = (expenses[b.category] ?: 0.0) / b.limitAmount * 100
+                        pct >= b.alertThresholdPct && pct < 100
                     }
 
                     Column(
@@ -221,7 +223,10 @@ fun BudgetCard(
     val pct          = (progress * 100).toInt()
     val remaining    = budget.limitAmount - actualSpent
     val isExceeded   = actualSpent > budget.limitAmount
-    val isNearLimit  = pct >= 80 && !isExceeded
+    // C22 (3.2.57) — per-budget warning threshold (default 80; user can
+    // tighten to 50 for "must not slip" categories or loosen to 95 for
+    // "rough cap" ones).
+    val isNearLimit  = pct >= budget.alertThresholdPct && !isExceeded
     val dailyBudget  = budget.limitAmount / (daysPassed + daysRemaining)
     val dailySpent   = if (daysPassed > 0) actualSpent / daysPassed else 0.0
     val projectedEnd = dailySpent * (daysPassed + daysRemaining)
@@ -250,7 +255,9 @@ fun BudgetCard(
                     Text(budget.category, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
                 }
                 IconButton(onClick = { haptic.performHapticFeedback(HapticFeedbackType.LongPress); showDeleteConfirm = true }, modifier = Modifier.size(32.dp)) {
-                    Icon(Icons.Default.Delete, null, Modifier.size(18.dp), tint = Color.Red.copy(alpha = 0.5f))
+                    // 3.2.65 — was Color.Red; theme-aware error token so the
+                    // delete tint stays balanced in both light and dark.
+                    Icon(Icons.Default.Delete, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.error.copy(alpha = 0.5f))
                 }
             }
 
@@ -296,6 +303,20 @@ fun BudgetCard(
                 Spacer(Modifier.height(4.dp))
                 Text("⚠ At this rate you'll exceed by ${CurrencyFormatter.detail(projectedEnd - budget.limitAmount, currencyCode, locale)} this month",
                     style = MaterialTheme.typography.labelSmall, color = SemanticAmber)
+            }
+            // C22 (3.2.57) — surface the user's chosen warning threshold.
+            // Default 80 stays hidden (no point telling the user about a
+            // setting they didn't change). Non-default values show as a
+            // muted bottom-line so the user can see why a particular
+            // budget tripped (or didn't trip) the NEAR LIMIT state at the
+            // percentage it did.
+            if (budget.alertThresholdPct != 80) {
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    "Warning set at ${budget.alertThresholdPct}%",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.outlineVariant
+                )
             }
     }
 }
@@ -352,6 +373,10 @@ fun AddBudgetDialog(
     var selectedCategory by remember { mutableStateOf("") }
     var customCategory   by remember { mutableStateOf("") }
     var limit            by remember { mutableStateOf("") }
+    // C22 (3.2.57) — per-budget warning threshold (50..95 in 5% steps,
+    // default 80). The slider lives below the limit field so it reads as
+    // "set the cap, then tune when you want to be warned".
+    var thresholdPct     by remember { mutableStateOf(80) }
 
     // C04 Stage 3: chained-fallback prefill, applied once on dialog open.
     //   1. Try `suggestCategory()` — the highest-uncapped-spend heuristic.
@@ -389,73 +414,91 @@ fun AddBudgetDialog(
 
     val finalCategory = if (selectedCategory == "Custom") customCategory else selectedCategory
 
-    AlertDialog(
-        modifier = Modifier.fillMaxWidth(0.95f),
-        properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false),
-        onDismissRequest = onDismiss,
-        title = { Text("Set Category Limit") },
-        text = {
-            // C22 Stage 2 cross-dialog sweep (3.2.51) — AlertDialog.text slot
-            // doesn't auto-scroll in Material 3 / Compose. Wrap form Columns
-            // in verticalScroll proactively so chip picker + custom name +
-            // limit field + disabled-button hint never clip on shorter
-            // dialog viewports.
-            Column(
-                modifier = Modifier.verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                // C05-established chip-picker pattern (FlowRow of FilterChips)
-                // — same shape AddTransactionDialog uses, with "Custom" as
-                // the trailing affordance. Wraps onto multiple rows on
-                // narrow screens, unlike a single-row LazyRow.
-                androidx.compose.foundation.layout.FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    categories.forEach { cat ->
-                        FilterChip(
-                            selected = selectedCategory == cat,
-                            onClick = { selectedCategory = cat },
-                            label = { Text(cat, style = MaterialTheme.typography.labelSmall) },
-                            shape = RoundedCornerShape(12.dp),
-                        )
-                    }
-                }
-                if (selectedCategory == "Custom") {
-                    OutlinedTextField(
-                        value = customCategory,
-                        onValueChange = { customCategory = it },
-                        label = { Text("Custom category name") }, singleLine = true,
-                        modifier = androidx.compose.ui.Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
-                    )
-                }
-                OutlinedTextField(value = limit, onValueChange = { limit = it },
-                    label = { Text("Monthly Limit ($currencySymbol)") }, singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    modifier = androidx.compose.ui.Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp))
+    // C22 dialog universalization (3.2.54) — migrated to canonical FormDialog.
+    app.fynlo.ui.components.FormDialog(
+        title = "Set Category Limit",
+        onDismiss = onDismiss,
+    ) {
+        val limitNum = limit.toDoubleOrNull() ?: 0.0
+        val disabledReason: String? = when {
+            finalCategory.isBlank() -> "Pick a category to continue"
+            limitNum <= 0.0         -> "Enter a positive monthly limit to continue"
+            else                    -> null
+        }
 
-                // C17 (3.2.42) — inline reason rendered inside the dialog
-                // text slot (above the buttons) explaining what's blocking
-                // the Save button. AlertDialog's confirmButton slot only
-                // accepts a single button so the hint sits with the form
-                // fields rather than under the button.
-                val limitNum = limit.toDoubleOrNull() ?: 0.0
-                val disabledReason: String? = when {
-                    finalCategory.isBlank() -> "Pick a category to continue"
-                    limitNum <= 0.0         -> "Enter a positive monthly limit to continue"
-                    else                    -> null
-                }
-                app.fynlo.ui.components.DisabledButtonHint(disabledReason)
+        app.fynlo.ui.components.FormSectionLabel("Category")
+        Spacer(Modifier.height(8.dp))
+        androidx.compose.foundation.layout.FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            categories.forEach { cat ->
+                FilterChip(
+                    selected = selectedCategory == cat,
+                    onClick = { selectedCategory = cat },
+                    label = { Text(cat, style = MaterialTheme.typography.labelSmall) },
+                    shape = RoundedCornerShape(12.dp),
+                )
             }
-        },
-        confirmButton = {
-            Button(
-                onClick = { onConfirm(Budget(finalCategory, limit.toDoubleOrNull() ?: 0.0)) },
-                enabled = finalCategory.isNotBlank() && (limit.toDoubleOrNull() ?: 0.0) > 0
-            ) { Text("Save") }
-        },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
-    )
+        }
+        if (selectedCategory == "Custom") {
+            Spacer(Modifier.height(8.dp))
+            OutlinedTextField(
+                value = customCategory,
+                onValueChange = { customCategory = it },
+                placeholder = { Text("Custom category name") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+            )
+        }
+
+        Spacer(Modifier.height(14.dp))
+        app.fynlo.ui.components.FormSectionLabel("Monthly limit ($currencySymbol)")
+        Spacer(Modifier.height(6.dp))
+        OutlinedTextField(
+            value = limit,
+            onValueChange = { limit = it },
+            placeholder = { Text("0") },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+        )
+
+        // C22 (3.2.57) — discrete warning-threshold slider (50..95 in 5%
+        // steps). Material 3 Slider takes a continuous float; we coerce
+        // to the nearest 5% on change. 9 steps means 10 anchor points
+        // including the endpoints. Default 80 matches the pre-3.2.57
+        // hardcoded ratio so AddBudget-and-Save reproduces existing UX.
+        Spacer(Modifier.height(14.dp))
+        app.fynlo.ui.components.FormSectionLabel("Warn me at $thresholdPct% of limit")
+        Spacer(Modifier.height(4.dp))
+        Slider(
+            value = thresholdPct.toFloat(),
+            onValueChange = { f ->
+                val snapped = (f / 5).toInt() * 5
+                thresholdPct = snapped.coerceIn(50, 95)
+            },
+            valueRange = 50f..95f,
+            steps = 8,  // 10 anchors (50, 55, ..., 95) → 8 intermediate
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
+            Text("50%", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outlineVariant)
+            Text("95%", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outlineVariant)
+        }
+
+        Spacer(Modifier.height(20.dp))
+        Button(
+            onClick = { onConfirm(Budget(finalCategory, limitNum, alertThresholdPct = thresholdPct)) },
+            enabled = disabledReason == null,
+            modifier = Modifier.fillMaxWidth().height(52.dp),
+            shape = RoundedCornerShape(16.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = Emerald500),
+        ) {
+            Text("Save Budget", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
+        }
+        app.fynlo.ui.components.DisabledButtonHint(disabledReason)
+    }
 }

@@ -49,10 +49,10 @@ fun AddLendingDialog(
     var due by remember { mutableStateOf(initialBorrower?.due?.let { DateUtils.formatToDisplay(it) } ?: "") }
     var notes by remember { mutableStateOf(initialBorrower?.notes ?: "") }
     val isPro by app.fynlo.billing.BillingManager.isPro.collectAsState()
-    var selectedType by remember { mutableStateOf(initialBorrower?.type ?: "Simple Interest") }
+    var selectedType by remember { mutableStateOf(initialBorrower?.intType ?: "Simple Interest") }
 
     val accountOptions = if (accounts.isNotEmpty()) accounts
-        else listOf(app.fynlo.data.model.Account(id = "cash", name = "Cash in Hand", type = "Cash", balance = 0.0))
+        else listOf(app.fynlo.data.model.Account(id = "cash", name = "Personal Cash", type = "Cash", balance = 0.0))
     var selectedAccount by remember { mutableStateOf(accountOptions.first()) }
 
     val advancedInterestTypes = listOf("Reducing Balance", "Compound Interest", "Both")
@@ -210,10 +210,10 @@ fun AddLendingDialog(
 
                 Button(
                     onClick = {
-                        val finalSource = if (isEdit) "Cash in Hand" else selectedAccount.name
+                        val finalSource = if (isEdit) "Personal Cash" else selectedAccount.name
                         val rawId = initialBorrower?.id ?: ""
                         val borrower = Borrower(
-                            id     = if (rawId.isBlank()) UUID.randomUUID().toString() else rawId,
+                            id     = if (rawId.isBlank()) app.fynlo.logic.Ids.newId() else rawId,
                             sourceAccount = if (!isEdit) selectedAccount.name else initialBorrower!!.sourceAccount,
                             name   = selectedPerson?.name ?: initialBorrower?.name ?: "Unknown",
                             phone  = selectedPerson?.phone ?: initialBorrower?.phone ?: "",
@@ -221,7 +221,7 @@ fun AddLendingDialog(
                             rate   = rate.toDoubleOrNull() ?: 0.0,
                             date   = DateUtils.parseInput(date),
                             due    = if (due.isNotEmpty()) DateUtils.parseInput(due) else "",
-                            type   = selectedType,
+                            intType = selectedType,
                             status = initialBorrower?.status ?: "Active",
                             notes  = notes,
                             paid   = initialBorrower?.paid ?: 0.0

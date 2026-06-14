@@ -10,6 +10,11 @@ data class Debt(
     @PrimaryKey val id: String,
     val name: String,
     val phone: String = "",
+    // C03b Stage #3 (3.2.90) — additive FK into the `people` table.
+    // Mirrors `Borrower.peopleId`. Lets multiple debts to the same
+    // lender (a family member, a recurring vendor) link to ONE Person
+    // row. Same backfill + resolver rules as Borrower.
+    val peopleId: String = "",
     val type: String = "Friend / Family",
     val amount: Double,
     val rate: Double,

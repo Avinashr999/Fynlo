@@ -58,7 +58,9 @@ fun SyncStatusBadge(status: SyncStatus, modifier: Modifier = Modifier) {
         is SyncStatus.Error -> Icon(
             imageVector        = Icons.Default.Warning,
             contentDescription = "Sync Error",
-            tint               = Color.Red,
+            // 3.2.65 — was Color.Red; theme-aware so the warning reads
+            // correctly in both light and dark mode.
+            tint               = MaterialTheme.colorScheme.error,
             modifier           = modifier.size(22.dp)
         )
     }

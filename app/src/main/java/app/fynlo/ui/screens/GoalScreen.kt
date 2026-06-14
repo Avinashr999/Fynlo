@@ -31,6 +31,7 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 fun GoalScreen(viewModel: FinanceViewModel) {
     val haptic = LocalHapticFeedback.current
     val goals by viewModel.goals.collectAsState()
+    val accounts by viewModel.allAccountsUnfiltered.collectAsState()
     val currentProject by viewModel.currentProject.collectAsState()
     val currencyCode = currentProject?.currency ?: "INR"
     val currencySymbol = app.fynlo.logic.CurrencyUtils.symbolFor(currencyCode)
@@ -40,6 +41,7 @@ fun GoalScreen(viewModel: FinanceViewModel) {
     if (showAddDialog) {
         AddGoalDialog(
             currencySymbol = currencySymbol,
+            accounts = accounts.map { it.name },
             onDismiss = { showAddDialog = false },
             onConfirm = { goal ->
                 viewModel.addGoal(goal)
@@ -122,7 +124,14 @@ fun GoalCard(goal: Goal, currencyCode: String, locale: Locale, onDelete: () -> U
             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
                 Row(verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Icon(Icons.Default.Star, null, Modifier.size(20.dp), tint = SemanticAmber)
+                    // C22 (3.2.55) — render the user-picked icon (defaults to
+                    // Star for legacy goals). iconFor() falls back to Star on
+                    // unknown keys so a future-version goal opened on an older
+                    // build still renders.
+                    Icon(
+                        app.fynlo.ui.components.GoalIcons.iconFor(goal.iconKey),
+                        null, Modifier.size(20.dp), tint = SemanticAmber
+                    )
                     Text(goal.name, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
                     if (isComplete) {
                         Surface(color = Emerald500.copy(alpha = 0.12f), shape = RoundedCornerShape(6.dp)) {
@@ -167,16 +176,36 @@ fun GoalCard(goal: Goal, currencyCode: String, locale: Locale, onDelete: () -> U
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
+            // C22 (3.2.55) — linkedAccount badge. Saved-amount math is
+            // unchanged for this stage; the badge is informational only.
+            if (goal.linkedAccount.isNotBlank()) {
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    "Linked to: ${goal.linkedAccount}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
         }
 }
 
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
-fun AddGoalDialog(currencySymbol: String, onDismiss: () -> Unit, onConfirm: (Goal) -> Unit) {
+fun AddGoalDialog(
+    currencySymbol: String,
+    accounts: List<String> = emptyList(),
+    onDismiss: () -> Unit,
+    onConfirm: (Goal) -> Unit,
+) {
     var name by remember { mutableStateOf("") }
     var target by remember { mutableStateOf("") }
     var saved by remember { mutableStateOf("") }
     // C22 Stage 2 (3.2.47) — target-date field per audit §C22 #207.
     var deadline by remember { mutableStateOf("") }
+    // C22 (3.2.55) — icon picker + linked-account dropdown.
+    var iconKey by remember { mutableStateOf("star") }
+    var linkedAccount by remember { mutableStateOf("") }
+    var acctExpanded by remember { mutableStateOf(false) }
 
     // C22 dialog universalization (3.2.53) — migrated from AlertDialog to
     // the canonical FormDialog pattern (Lending-style). Bold section labels,
@@ -242,15 +271,85 @@ fun AddGoalDialog(currencySymbol: String, onDismiss: () -> Unit, onConfirm: (Goa
             shape = RoundedCornerShape(12.dp),
         )
 
+        // C22 (3.2.55) — icon picker. 6 curated icons; default "star" matches
+        // the pre-3.2.55 look so an unchanged tap-Save still renders the same.
+        Spacer(Modifier.height(14.dp))
+        app.fynlo.ui.components.FormSectionLabel("Icon")
+        Spacer(Modifier.height(8.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            app.fynlo.ui.components.GoalIcons.all.forEach { opt ->
+                val selected = iconKey == opt.key
+                Surface(
+                    modifier = Modifier.size(40.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    color = if (selected) SemanticAmber.copy(alpha = 0.18f)
+                            else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                    onClick = { iconKey = opt.key },
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            opt.icon,
+                            contentDescription = opt.label,
+                            tint = if (selected) SemanticAmber
+                                   else MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(20.dp),
+                        )
+                    }
+                }
+            }
+        }
+
+        // C22 (3.2.55) — linked account dropdown. Optional; "None" means no
+        // link. When an account is picked, the goal card surfaces a "Linked
+        // to: X" badge. Auto-deduct on contribution is a separate stage —
+        // for now this is metadata-only.
+        if (accounts.isNotEmpty()) {
+            Spacer(Modifier.height(14.dp))
+            app.fynlo.ui.components.FormSectionLabel("Linked account (optional)")
+            Spacer(Modifier.height(6.dp))
+            ExposedDropdownMenuBox(
+                expanded = acctExpanded,
+                onExpandedChange = { acctExpanded = !acctExpanded }
+            ) {
+                OutlinedTextField(
+                    value = linkedAccount.ifBlank { "None" },
+                    onValueChange = {},
+                    readOnly = true,
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = acctExpanded) },
+                    modifier = Modifier
+                        .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, true)
+                        .fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                )
+                ExposedDropdownMenu(
+                    expanded = acctExpanded,
+                    onDismissRequest = { acctExpanded = false }
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("None") },
+                        onClick = { linkedAccount = ""; acctExpanded = false }
+                    )
+                    accounts.forEach { acct ->
+                        DropdownMenuItem(
+                            text = { Text(acct) },
+                            onClick = { linkedAccount = acct; acctExpanded = false }
+                        )
+                    }
+                }
+            }
+        }
+
         Spacer(Modifier.height(20.dp))
         Button(
             onClick = {
                 onConfirm(Goal(
-                    id = UUID.randomUUID().toString(),
+                    id = app.fynlo.logic.Ids.newId(),
                     name = name.trim(),
                     targetAmount = targetNum,
                     savedAmount = saved.toDoubleOrNull() ?: 0.0,
                     deadline = deadline.trim(),
+                    iconKey = iconKey,
+                    linkedAccount = linkedAccount.trim(),
                 ))
             },
             enabled = disabledReason == null,

@@ -6,12 +6,15 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Notes
 import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Payment
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -22,15 +25,18 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import app.fynlo.FinanceViewModel
 import app.fynlo.data.model.DebtPayment
 import app.fynlo.logic.CurrencyFormatter
 import app.fynlo.logic.DateUtils
+import app.fynlo.logic.DebtPayoffPlanner
 import app.fynlo.logic.InterestEngine
 import app.fynlo.ui.components.AddDebtDialog
 import app.fynlo.ui.components.PayDebtDialog
 import app.fynlo.ui.theme.Emerald500
+import app.fynlo.ui.theme.SemanticAmber
 import app.fynlo.ui.theme.SemanticRed
 import java.util.Locale
 
@@ -207,6 +213,93 @@ fun DebtDetailScreen(
                         Text("Make Payment")
                     }
                 }
+
+                // C22 (3.2.64) — extra-payment what-if scenario.
+                item {
+                    WhatIfSection(
+                        debt = debt,
+                        outstandingBalance = totalOutstanding,
+                        currencyCode = currencyCode,
+                        locale = locale,
+                    )
+                }
+            }
+
+            // 3.2.85 — EMI & Amortization section (only if tenure is set).
+            if (debt.tenure > 0 && debt.intType == "Reducing Balance") {
+                item {
+                    EmiPlanningSection(
+                        debt = debt,
+                        currencyCode = currencyCode,
+                        locale = locale
+                    )
+                }
+            }
+
+            // 3.2.83 — XIRR (effective borrowing rate) on this debt.
+            // Cashflows from borrower's perspective (mirror of Lending):
+            //   - principal received on `debtDate` as a POSITIVE inflow
+            //   - each DebtPayment made as a NEGATIVE outflow on its date
+            //   - imputed current `totalOutstanding` at today as a
+            //     NEGATIVE "what I still owe" cashflow, so XIRR stays
+            //     meaningful for ongoing debts. Same mark-to-today logic
+            //     as the lending XIRR.
+            if (debtPayments.isNotEmpty()) {
+                item {
+                    val xirr = remember(debtPayments, debt, totalOutstanding) {
+                        val flows = mutableListOf<app.fynlo.logic.XirrCalculator.Cashflow>()
+                        flows += app.fynlo.logic.XirrCalculator.Cashflow(
+                            amount = debt.amount,
+                            date   = debt.date,
+                        )
+                        debtPayments.forEach { p ->
+                            flows += app.fynlo.logic.XirrCalculator.Cashflow(-p.amount, p.date)
+                        }
+                        if (totalOutstanding > 0.01) {
+                            flows += app.fynlo.logic.XirrCalculator.Cashflow(
+                                amount = -totalOutstanding,
+                                date   = java.time.LocalDate.now()
+                                    .format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd")),
+                            )
+                        }
+                        app.fynlo.logic.XirrCalculator.calc(flows)
+                    }
+                    if (!xirr.isNaN()) {
+                        // Higher rate = worse for the borrower → Red tint
+                        // (semantic_expense). Negative XIRR on a debt is
+                        // odd but possible (e.g. heavily-prepaid interest-
+                        // free loan); render Emerald in that case.
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = (if (xirr > 0) SemanticRed else Emerald500).copy(alpha = 0.1f),
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Column(Modifier.weight(1f)) {
+                                    Text(
+                                        "Effective rate paid (XIRR)",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                    Text(
+                                        "Annualised cost of this debt across all payments",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.outlineVariant,
+                                    )
+                                }
+                                Text(
+                                    app.fynlo.logic.XirrCalculator.format(xirr),
+                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.ExtraBold),
+                                    color = if (xirr > 0) SemanticRed else Emerald500,
+                                )
+                            }
+                        }
+                    }
+                }
             }
 
             item {
@@ -234,7 +327,7 @@ fun DebtDetailScreen(
                     Text(
                         "No payments made yet.",
                         style = MaterialTheme.typography.bodySmall,
-                        color = Color.Gray
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             } else {
@@ -299,7 +392,7 @@ private fun DebtPaymentItem(payment: DebtPayment, currencyCode: String, locale: 
             Text(
                 DateUtils.formatToDisplay(payment.date),
                 style = MaterialTheme.typography.labelSmall,
-                color = Color.Gray
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             if (payment.notes.isNotBlank()) {
                 Text(
@@ -316,5 +409,251 @@ private fun DebtPaymentItem(payment: DebtPayment, currencyCode: String, locale: 
                 color = SemanticRed
             )
         )
+    }
+}
+
+/**
+ * C22 (3.2.64) — extra-payment what-if. Reuses [DebtPayoffPlanner] with a
+ * single-debt list to compare two scenarios:
+ *   - **Baseline** — what happens at the user's current monthly pace
+ *     (derived from `paid / monthsElapsed`, floored to a sensible
+ *     minimum so a brand-new debt with no payment history still produces
+ *     a number).
+ *   - **Scenario** — baseline + a user-set extra-payment amount.
+ *
+ * Surfaces months saved + interest saved + new payoff month. Toggleable
+ * (default OFF) so the detail screen stays focused on view + pay; users
+ * who want to plan opt in.
+ */
+@Composable
+private fun WhatIfSection(
+    debt: app.fynlo.data.model.Debt,
+    outstandingBalance: Double,
+    currencyCode: String,
+    locale: Locale,
+) {
+    var expanded by remember { mutableStateOf(false) }
+
+    Surface(
+        onClick = { expanded = !expanded },
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(14.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+    ) {
+        Column(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("What if I pay extra?",
+                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold))
+                    Text("See months saved + interest saved at a higher monthly pace.",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                // 3.2.63 lesson — explicit unchecked colors so the Switch
+                // is visible on this tinted background in light mode too.
+                Switch(
+                    checked = expanded,
+                    onCheckedChange = { expanded = it },
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor    = Color.White,
+                        checkedTrackColor    = Emerald500,
+                        uncheckedThumbColor  = MaterialTheme.colorScheme.onSurfaceVariant,
+                        uncheckedTrackColor  = MaterialTheme.colorScheme.surface,
+                        uncheckedBorderColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                )
+            }
+
+            if (expanded) {
+                Spacer(Modifier.height(12.dp))
+
+                // Baseline monthly pace — start from what the user is
+                // actually doing. If no payments yet, fall back to a
+                // sensible "minimum that covers interest + chips away".
+                val baseline = remember(debt) {
+                    val today = java.time.LocalDate.now()
+                    val loanDate = runCatching {
+                        java.time.LocalDate.parse(debt.date,
+                            java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd"))
+                    }.getOrDefault(today)
+                    val months = (java.time.temporal.ChronoUnit.DAYS.between(loanDate, today) / 30.0)
+                        .coerceAtLeast(1.0)
+                    val actual = debt.paid / months
+                    // Fallback when no payment history: monthly interest +
+                    // 2% of outstanding principal. Always positive so the
+                    // planner doesn't trip its infeasibility guard on a
+                    // fresh debt.
+                    val fallback = outstandingBalance * (debt.rate / 12.0 / 100.0) +
+                                   outstandingBalance * 0.02
+                    maxOf(actual, fallback).coerceAtLeast(100.0)
+                }
+
+                var extraText by remember(debt.id) {
+                    // Default extra = 25% of baseline so the first render
+                    // shows a meaningful diff, not a zero-extra no-op.
+                    mutableStateOf((baseline * 0.25).toLong().toString())
+                }
+                val extra = extraText.toDoubleOrNull() ?: 0.0
+
+                val baselineInput = listOf(DebtPayoffPlanner.DebtInput(
+                    id = debt.id, name = debt.name,
+                    outstandingBalance = outstandingBalance,
+                    annualRatePct = debt.rate,
+                ))
+                val basePlan     = remember(baselineInput, baseline) {
+                    DebtPayoffPlanner.plan(baselineInput, baseline, DebtPayoffPlanner.Strategy.AVALANCHE)
+                }
+                val scenarioPlan = remember(baselineInput, baseline, extra) {
+                    DebtPayoffPlanner.plan(baselineInput, baseline + extra, DebtPayoffPlanner.Strategy.AVALANCHE)
+                }
+
+                // Hero of baseline.
+                Text(
+                    "At current pace (${CurrencyFormatter.detail(baseline, currencyCode, locale)}/mo): " +
+                    if (basePlan.feasible) "paid off in ${basePlan.totalMonths} mo, " +
+                        "${CurrencyFormatter.detail(basePlan.totalInterestPaid, currencyCode, locale)} interest"
+                    else "interest is outpacing payments — never paid off",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+
+                Spacer(Modifier.height(10.dp))
+
+                OutlinedTextField(
+                    value = extraText,
+                    onValueChange = { extraText = it.filter { c -> c.isDigit() || c == '.' } },
+                    label = { Text("Extra payment / month (${app.fynlo.logic.CurrencyUtils.symbolFor(currencyCode)})") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                )
+
+                Spacer(Modifier.height(10.dp))
+
+                if (!scenarioPlan.feasible) {
+                    Text("Even with the extra, your payments don't cover interest. Try a larger amount.",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = SemanticRed)
+                } else {
+                    val newMonths = scenarioPlan.totalMonths
+                    val newInterest = scenarioPlan.totalInterestPaid
+                    val monthsSaved   = (basePlan.totalMonths - newMonths).coerceAtLeast(0)
+                    val interestSaved = (basePlan.totalInterestPaid - newInterest).coerceAtLeast(0.0)
+                    val payoffDate = remember(newMonths) {
+                        java.time.LocalDate.now().plusMonths(newMonths.toLong())
+                            .format(java.time.format.DateTimeFormatter.ofPattern("MMM yyyy", locale))
+                    }
+
+                    Row(Modifier.fillMaxWidth(), Arrangement.spacedBy(8.dp)) {
+                        WhatIfStat(
+                            label = "Paid off in",
+                            value = "$newMonths mo",
+                            sub   = "(by $payoffDate)",
+                            color = Emerald500,
+                            modifier = Modifier.weight(1f),
+                        )
+                        WhatIfStat(
+                            label = "Months saved",
+                            value = "$monthsSaved",
+                            sub   = if (monthsSaved > 0) "sooner" else "no change",
+                            color = if (monthsSaved > 0) Emerald500 else MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.weight(1f),
+                        )
+                        WhatIfStat(
+                            label = "Interest saved",
+                            value = CurrencyFormatter.detail(interestSaved, currencyCode, locale),
+                            sub   = if (interestSaved > 1.0) "vs baseline" else "no change",
+                            color = if (interestSaved > 1.0) Emerald500 else MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+
+                    if (!basePlan.feasible && scenarioPlan.feasible) {
+                        Spacer(Modifier.height(6.dp))
+                        Text(
+                            "The extra pushes you over the line — without it, " +
+                            "interest grows faster than payments and the debt never clears.",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = SemanticAmber,
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun EmiPlanningSection(
+    debt: app.fynlo.data.model.Debt,
+    currencyCode: String,
+    locale: Locale,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val (emi, totalInterest) = remember(debt) {
+        app.fynlo.logic.EmiPrepaymentSimulator.baseline(debt.amount, debt.rate, debt.tenure)
+    }
+
+    Surface(
+        onClick = { expanded = !expanded },
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(14.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+    ) {
+        Column(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("EMI & Amortization",
+                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold))
+                    Text("Original loan schedule and monthly EMI",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Icon(
+                    if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            if (expanded) {
+                Spacer(Modifier.height(12.dp))
+                Row(Modifier.fillMaxWidth(), Arrangement.spacedBy(8.dp)) {
+                    WhatIfStat(
+                        label = "Monthly EMI",
+                        value = CurrencyFormatter.detail(emi, currencyCode, locale),
+                        sub   = "Reducing Bal.",
+                        color = Emerald500,
+                        modifier = Modifier.weight(1f),
+                    )
+                    WhatIfStat(
+                        label = "Total Interest",
+                        value = CurrencyFormatter.detail(totalInterest, currencyCode, locale),
+                        sub   = "over ${debt.tenure} mo",
+                        color = SemanticAmber,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+
+                Spacer(Modifier.height(12.dp))
+                Text(
+                    "This is the baseline schedule for a ₹${String.format(locale, "%,.0f", debt.amount)} loan at ${debt.rate}% for ${debt.tenure} months.",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun WhatIfStat(label: String, value: String, sub: String, color: Color, modifier: Modifier) {
+    Surface(modifier, RoundedCornerShape(12.dp), color = color.copy(alpha = 0.1f)) {
+        Column(Modifier.padding(10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(value, style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.ExtraBold), color = color)
+            Text(sub, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
     }
 }

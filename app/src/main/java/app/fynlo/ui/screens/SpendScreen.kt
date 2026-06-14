@@ -1,5 +1,6 @@
 package app.fynlo.ui.screens
 
+import app.fynlo.logic.displayFromAcct
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -25,6 +26,7 @@ import androidx.compose.ui.unit.sp
 import app.fynlo.FinanceViewModel
 import app.fynlo.data.model.Transaction
 import app.fynlo.logic.CurrencyFormatter
+import app.fynlo.logic.toRecurringTemplate
 import app.fynlo.ui.components.AddTransactionDialog
 import java.time.LocalDate
 import java.time.YearMonth
@@ -90,12 +92,27 @@ val transactions by viewModel.transactions.collectAsState()
         }
     }
 
+    // 3.2.81 — hoisted from inside the dialog scope so ExpenseRow can
+    // pass it to the edit dialog too.
+    val allAccounts by viewModel.allAccountsUnfiltered.collectAsState()
+
     if (showDialog) {
+        // 3.2.59 — wire real account / investment / debt names so the
+        // source picker is a dropdown of existing entities.
+        val allInvestments by viewModel.investments.collectAsState()
+        val allDebts by viewModel.debts.collectAsState()
         AddTransactionDialog(
             onDismiss = { showDialog = false },
             onConfirm = { txn -> haptic.performHapticFeedback(HapticFeedbackType.LongPress); viewModel.addTransaction(txn); showDialog = false },
             rememberLastCategory = { isIncome -> viewModel.rememberLastTransactionCategory(isIncome) },
             onRecordCategory = { isIncome, cat -> viewModel.recordTransactionCategory(isIncome, cat) },
+            // 3.2.81 (C13 #5) — when user toggles "Repeat monthly?" ON,
+            // also create a RecurringTransaction template alongside the
+            // one-time insert.
+            onRepeatMonthly = { txn -> viewModel.addRecurringTransaction(toRecurringTemplate(txn)) },
+            bankAccounts    = allAccounts.map { it.name },
+            investmentNames = allInvestments.map { it.name },
+            debtNames       = allDebts.map { it.name },
         )
     }
 
@@ -292,7 +309,14 @@ val transactions by viewModel.transactions.collectAsState()
                         txns.forEach { txn ->
                             ExpenseRow(txn, currencyCode, locale,
                                 onDelete = { viewModel.deleteTransaction(txn) },
-                                onEdit   = { viewModel.editTransaction(txn, it) }
+                                onEdit   = { viewModel.editTransaction(txn, it) },
+                                // 3.2.81 — accounts list from the parent
+                                // composable; lets the edit dialog show a
+                                // real Account picker (#9).
+                                bankAccounts = allAccounts.map { it.name },
+                                // C03b Stage #1b-2 (3.2.88) — id → current name
+                                // for rename-reflective sub-label.
+                                accountIdToName = allAccounts.associate { it.id to it.name },
                             )
                             HorizontalDivider(Modifier.padding(vertical = 2.dp),
                                 color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
@@ -317,7 +341,13 @@ private fun ExpenseRow(
     currencyCode: String,
     locale: Locale,
     onDelete: () -> Unit = {},
-    onEdit: (app.fynlo.data.model.Transaction) -> Unit = {}
+    onEdit: (app.fynlo.data.model.Transaction) -> Unit = {},
+    // 3.2.81 — propagate account names so EditTransactionDialog's new
+    // Account picker (C13 #9) has real options instead of free-text.
+    bankAccounts: List<String> = emptyList(),
+    // C03b Stage #1b-2 (3.2.88) — id → current Account.name lookup so
+    // the row's sub-label reflects renames immediately.
+    accountIdToName: Map<String, String> = emptyMap(),
 ) {
     val haptic = LocalHapticFeedback.current
     var showDeleteConfirm by remember { mutableStateOf(false) }
@@ -338,9 +368,10 @@ private fun ExpenseRow(
     }
     if (showEditDialog) {
         app.fynlo.ui.components.EditTransactionDialog(
-            transaction = txn,
-            onDismiss   = { showEditDialog = false },
-            onConfirm   = { updated -> onEdit(updated); showEditDialog = false }
+            transaction  = txn,
+            bankAccounts = bankAccounts,
+            onDismiss    = { showEditDialog = false },
+            onConfirm    = { updated -> onEdit(updated); showEditDialog = false }
         )
     }
 
@@ -357,7 +388,8 @@ private fun ExpenseRow(
         }
         Column(Modifier.weight(1f)) {
             Text(txn.category, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold))
-            Text(txn.desc.ifBlank { txn.fromAcct }.ifBlank { txn.date },
+            // C03b Stage #1b-2: resolve via id; falls back to stored name.
+            Text(txn.desc.ifBlank { txn.displayFromAcct(accountIdToName) }.ifBlank { txn.date },
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
         }

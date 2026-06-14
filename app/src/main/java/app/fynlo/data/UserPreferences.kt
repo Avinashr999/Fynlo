@@ -47,6 +47,7 @@ object UserPreferences {
     private val USER_DISPLAY_NAME = stringPreferencesKey("user_display_name")
     private val DEFAULT_CURRENCY = stringPreferencesKey("default_currency")
     private val DATE_FORMAT = stringPreferencesKey("date_format")
+    private val PRIVACY_MODE_ENABLED = booleanPreferencesKey("privacy_mode_enabled")
 
     /** Last time recalculateAllBalances() ran (epoch millis). 0L = never.
      *  Used by C02 (UX_AUDIT §C02) for auto-recalc-on-launch debouncing and
@@ -59,6 +60,13 @@ object UserPreferences {
      *  (the dataset is small — ≤5 entries × ~10 slots ≤ 50 entries total).
      *  Empty / unset reads decode as an empty `RecentlyUsedSnapshot`. */
     private val RECENTLY_USED = stringPreferencesKey("recently_used")
+
+    /** C22 (3.2.58) — last 8 queries typed into GlobalSearchScreen, JSON
+     *  list, most-recent first. Surfaced as tap-chips below the search bar
+     *  when the input is empty. Capped at 8 so the chip row never wraps
+     *  more than once on a normal phone width. */
+    private val RECENT_SEARCHES = stringPreferencesKey("recent_searches")
+    private const val RECENT_SEARCHES_CAP = 8
 
     // ── Read (Flow-based, reactive) ──────────────────────────────────────
 
@@ -95,9 +103,22 @@ object UserPreferences {
     fun dateFormat(context: Context): Flow<String> =
         context.dataStore.data.map { it[DATE_FORMAT] ?: "dd-MM-yyyy" }
 
+    fun privacyModeEnabled(context: Context): Flow<Boolean> =
+        context.dataStore.data.map { it[PRIVACY_MODE_ENABLED] ?: false }
+
     /** Last successful recalc time as epoch millis; `0L` until the first recalc. */
     fun lastRecalcAt(context: Context): Flow<Long> =
         context.dataStore.data.map { it[LAST_RECALC_AT] ?: 0L }
+
+    /** C22 (3.2.58) — last 8 search queries, most-recent first. Empty list
+     *  until the user runs their first search. Decoder is fault-tolerant:
+     *  corrupted blob → empty list (same pattern as `recentlyUsed`). */
+    fun recentSearches(context: Context): Flow<List<String>> =
+        context.dataStore.data.map { prefs ->
+            val raw = prefs[RECENT_SEARCHES] ?: return@map emptyList()
+            runCatching { Json.decodeFromString<List<String>>(raw) }
+                .getOrDefault(emptyList())
+        }
 
     /** Reactive [RecentlyUsedSnapshot]; empty snapshot until first record (C04).
      *  Decoder is fault-tolerant: a corrupted / unparseable blob yields an
@@ -191,9 +212,34 @@ object UserPreferences {
         context.dataStore.edit { it[DATE_FORMAT] = format }
     }
 
+    suspend fun setPrivacyModeEnabled(context: Context, enabled: Boolean) {
+        context.dataStore.edit { it[PRIVACY_MODE_ENABLED] = enabled }
+    }
+
     /** Stamps the recalc time (epoch millis). Only called from `RecalcCoordinator`. */
     suspend fun setLastRecalcAt(context: Context, epochMillis: Long) {
         context.dataStore.edit { it[LAST_RECALC_AT] = epochMillis }
+    }
+
+    /** C22 (3.2.58) — record a search query. Dedup (case-insensitive) +
+     *  most-recent-first + cap at 8. Blank queries are ignored. */
+    suspend fun recordRecentSearch(context: Context, query: String) {
+        val trimmed = query.trim()
+        if (trimmed.isBlank()) return
+        context.dataStore.edit { prefs ->
+            val current = prefs[RECENT_SEARCHES]
+                ?.let { runCatching { Json.decodeFromString<List<String>>(it) }.getOrDefault(emptyList()) }
+                ?: emptyList()
+            val deduped = current.filter { !it.equals(trimmed, ignoreCase = true) }
+            val next = (listOf(trimmed) + deduped).take(RECENT_SEARCHES_CAP)
+            prefs[RECENT_SEARCHES] = Json.encodeToString(next)
+        }
+    }
+
+    /** C22 (3.2.58) — wipe the recent-searches list. Surfaced via a "Clear
+     *  recent searches" action; also called from `clearAll`. */
+    suspend fun clearRecentSearches(context: Context) {
+        context.dataStore.edit { it.remove(RECENT_SEARCHES) }
     }
 
     /** C04: atomic read-modify-write on the [RecentlyUsedSnapshot] blob.

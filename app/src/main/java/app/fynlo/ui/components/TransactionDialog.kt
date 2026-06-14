@@ -41,6 +41,27 @@ fun AddTransactionDialog(
     // boundary C05 enforces on the chip list itself.
     rememberLastCategory: suspend (Boolean) -> String? = { null },
     onRecordCategory: (Boolean, String) -> Unit = { _, _ -> },
+    // 3.2.59 — orphan-account bug fix. Before this, the Bank / Investment /
+    // Debts source chip surfaced a free-text "Which bank?" input. Users
+    // could type "hdfc" while their account was named "HDFC Bank"; the
+    // transaction saved fine, but `dao.updateAccountBalance(name=hdfc, ...)`
+    // matched zero rows so the balance never changed. The transaction
+    // became an orphan visible in history and the budget (because the
+    // budget joins on category) but invisible in account balances and net
+    // worth. Surfacing the actual lists here drives an ExposedDropdownMenu
+    // so the user picks an existing entity by default; "Create new..."
+    // is appended so genuinely-new accounts/investments/debts can still
+    // be created. Defaults are empty so test/preview call sites still
+    // construct cleanly — they just see the free-text fallback.
+    bankAccounts:    List<String> = emptyList(),
+    investmentNames: List<String> = emptyList(),
+    debtNames:       List<String> = emptyList(),
+    // C13 #5 (3.2.81) — "Repeat monthly?" toggle on the Add dialog. When
+    // ON, the caller's onRepeatMonthly callback fires alongside onConfirm
+    // with the same transaction, letting the call site insert a parallel
+    // RecurringTransaction template (day-of-month derived from the txn
+    // date). Default no-op for tests / call sites that haven't wired it.
+    onRepeatMonthly: (Transaction) -> Unit = { _ -> },
 ) {
     var isIncome by remember { mutableStateOf(initialIsIncome) }
     var amount by remember { mutableStateOf("") }
@@ -48,6 +69,13 @@ fun AddTransactionDialog(
     var desc by remember { mutableStateOf("") }
     var date by remember { mutableStateOf(java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy"))) }
     var notes by remember { mutableStateOf("") }
+    // C13 #7 (3.2.81) — Tags. The `Transaction.tags` column has existed
+    // since the entity was first defined; just no UI to read/write it.
+    // Free-text, comma-separated convention so the same column can power
+    // a future tag-filter pill row without migration.
+    var tags by remember { mutableStateOf("") }
+    // C13 #5 (3.2.81) — Recurring toggle state.
+    var repeatMonthly by remember { mutableStateOf(false) }
 
     // C05: the visible category list is driven by the Income/Expense toggle.
     // Recomputed via `remember(isIncome)` so the chip row updates the moment
@@ -200,9 +228,31 @@ fun AddTransactionDialog(
                     "Bank" -> "Which bank?"; "Investment" -> "Which investment?"
                     "Debts" -> "Which debt / loan?"; "Custom" -> "Custom source name"; else -> ""
                 }
+                // 3.2.59 — for Bank / Investment / Debts, pick the right
+                // backing list and render a dropdown of existing entities
+                // plus a sentinel "Create new..." entry. Custom stays as
+                // free-text (it's the affordance for user-supplied names).
+                // When the relevant list is empty (fresh install, no
+                // accounts/investments/debts yet) the dropdown collapses
+                // to free-text so the user can still create one inline.
+                val sourceList: List<String> = when (selectedSrc) {
+                    "Bank"       -> bankAccounts
+                    "Investment" -> investmentNames
+                    "Debts"      -> debtNames
+                    else         -> emptyList()
+                }
                 if (sourceLabel.isNotEmpty()) {
                     Spacer(Modifier.height(10.dp))
-                    SoftField(sourceDetailName, sourceLabel) { sourceDetailName = it }
+                    if (sourceList.isNotEmpty() && selectedSrc != "Custom") {
+                        SourceDropdown(
+                            label    = sourceLabel,
+                            options  = sourceList,
+                            selected = sourceDetailName,
+                            onPick   = { sourceDetailName = it },
+                        )
+                    } else {
+                        SoftField(sourceDetailName, sourceLabel) { sourceDetailName = it }
+                    }
                 }
 
                 Spacer(Modifier.height(20.dp))
@@ -213,26 +263,68 @@ fun AddTransactionDialog(
                 Spacer(Modifier.height(12.dp))
                 SoftField(notes, "Notes (optional)") { notes = it }
 
+                // C13 #7 (3.2.81) — Tags field. Comma-separated, free-text
+                // by design — keeps the data model identical to legacy
+                // exports and lets the user paste from notes apps.
+                Spacer(Modifier.height(12.dp))
+                SoftField(tags, "Tags (comma-separated, optional)") { tags = it }
+
+                // C13 #5 (3.2.81) — Repeat monthly toggle. Auto-derives
+                // dayOfMonth from the txn date (clamped to 1..31). When the
+                // user picks a date late in February (e.g. the 28th) the
+                // RecurringWorker's last-day clamp at run time still does
+                // the right thing for shorter months.
+                Spacer(Modifier.height(12.dp))
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            "Repeat monthly?",
+                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                        )
+                        Text(
+                            "Also save as a recurring template (fires on day ${runCatching { DateUtils.parseInput(date).takeLast(2).toInt() }.getOrDefault(1)} each month)",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Switch(
+                        checked = repeatMonthly,
+                        onCheckedChange = { repeatMonthly = it },
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor    = androidx.compose.ui.graphics.Color.White,
+                            checkedTrackColor    = Emerald500,
+                            uncheckedThumbColor  = MaterialTheme.colorScheme.onSurfaceVariant,
+                            uncheckedTrackColor  = MaterialTheme.colorScheme.surface,
+                            uncheckedBorderColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    )
+                }
+
                 Spacer(Modifier.height(24.dp))
 
                 // ── Save ──────────────────────────────────────────────────────
                 Button(
                     onClick = {
                         val finalAccount = when (selectedSrc) {
-                            "Cash" -> "Cash in Hand"
+                            "Cash" -> "Personal Cash"
                             "Custom" -> sourceDetailName
                             else -> sourceDetailName.ifEmpty { selectedSrc }
                         }
                         val finalCategory =
                             if (selectedCategory == "Custom") customCategory else selectedCategory
                         val txn = Transaction(
-                            id = UUID.randomUUID().toString(),
+                            id = app.fynlo.logic.Ids.newId(),
                             date = DateUtils.parseInput(date),
                             type = if (isIncome) "Income" else "Expense",
                             amount = amount.toDoubleOrNull() ?: 0.0,
                             category = finalCategory,
                             desc = desc,
                             notes = notes,
+                            tags = tags.trim(),
                             fromAcct = if (isIncome) "" else finalAccount,
                             toAcct = if (isIncome) finalAccount else ""
                         )
@@ -244,6 +336,9 @@ fun AddTransactionDialog(
                         // previews) still submit cleanly.
                         onRecordCategory(isIncome, finalCategory)
                         onConfirm(txn)
+                        // C13 #5 — also fire the recurring callback so the
+                        // call site can create the matching template.
+                        if (repeatMonthly) onRepeatMonthly(txn)
                     },
                     // C17 (3.2.42) — was just enabled-on-amount-positive;
                     // now uses a per-field disabledReason so the user sees
@@ -306,6 +401,95 @@ private fun BasicTextFieldAmount(value: String, accent: androidx.compose.ui.grap
             inner()
         }
     )
+}
+
+/**
+ * 3.2.59 — orphan-account fix. Replaces the free-text bank / investment /
+ * debt input with a dropdown of existing entities so the typed name
+ * can't drift away from the canonical account.name and silently break
+ * the balance-update WHERE clause.
+ *
+ * - When the user has at least one matching entity, the dropdown lists
+ *   them with the first option pre-selected on open.
+ * - A trailing "+ Create new…" sentinel reveals a free-text input so
+ *   genuinely-new entities can still be created inline.
+ * - Custom is intentionally not routed here — Custom is the affordance
+ *   for arbitrary names (e.g. "Friend Vikas") so free-text is correct.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SourceDropdown(
+    label: String,
+    options: List<String>,
+    selected: String,
+    onPick: (String) -> Unit,
+) {
+    val createNew = "+ Create new…"
+    var expanded by remember { mutableStateOf(false) }
+    var createMode by remember(options) {
+        // If the current value isn't in the option list AND isn't blank,
+        // the caller is editing an entry that pre-dates the dropdown
+        // (e.g. an orphan transaction's free-text name). Start in create
+        // mode so they can keep the typed value visible.
+        mutableStateOf(selected.isNotBlank() && selected !in options)
+    }
+    // Auto-fill the first option when nothing's selected yet so the
+    // user can tap Save immediately and still get a valid account.
+    LaunchedEffect(options) {
+        if (!createMode && selected.isBlank() && options.isNotEmpty()) {
+            onPick(options.first())
+        }
+    }
+
+    if (createMode) {
+        SoftField(selected, label, onPick)
+        Spacer(Modifier.height(6.dp))
+        TextButton(onClick = { createMode = false; if (options.isNotEmpty()) onPick(options.first()) }) {
+            Text("← Pick from existing", style = MaterialTheme.typography.labelSmall)
+        }
+    } else {
+        ExposedDropdownMenuBox(
+            expanded = expanded,
+            onExpandedChange = { expanded = !expanded },
+        ) {
+            OutlinedTextField(
+                value         = selected.ifBlank { options.firstOrNull().orEmpty() },
+                onValueChange = {},
+                readOnly      = true,
+                label         = { Text(label) },
+                trailingIcon  = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                singleLine    = true,
+                shape         = RoundedCornerShape(16.dp),
+                modifier      = Modifier
+                    .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, true)
+                    .fillMaxWidth(),
+                colors        = OutlinedTextFieldDefaults.colors(
+                    focusedContainerColor   = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+                    focusedBorderColor      = Emerald500,
+                    unfocusedBorderColor    = androidx.compose.ui.graphics.Color.Transparent,
+                    focusedLabelColor       = Emerald500,
+                    cursorColor             = Emerald500
+                )
+            )
+            ExposedDropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false }
+            ) {
+                options.forEach { opt ->
+                    DropdownMenuItem(
+                        text    = { Text(opt) },
+                        onClick = { onPick(opt); expanded = false }
+                    )
+                }
+                HorizontalDivider()
+                DropdownMenuItem(
+                    text    = { Text(createNew, color = Emerald500) },
+                    onClick = { onPick(""); createMode = true; expanded = false }
+                )
+            }
+        }
+    }
 }
 
 @Composable

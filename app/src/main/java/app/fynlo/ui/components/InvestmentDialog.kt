@@ -383,7 +383,7 @@ fun AddInvestmentDialog(
                         onClick = {
                             val parsedDate = DateUtils.parseInput(date)
                             val investment = Investment(
-                                id         = initialInvestment?.id?.takeIf { it.isNotBlank() } ?: UUID.randomUUID().toString(),
+                                id         = initialInvestment?.id?.takeIf { it.isNotBlank() } ?: app.fynlo.logic.Ids.newId(),
                                 name       = name.trim(),
                                 type       = type,
                                 invested   = amountDouble,
@@ -411,7 +411,7 @@ fun AddInvestmentDialog(
                                 SOURCE_NEW_LOAN -> {
                                     val loanAmt = loanAmount.toDoubleOrNull() ?: amountDouble
                                     val newDebt = Debt(
-                                        id      = UUID.randomUUID().toString(),
+                                        id      = app.fynlo.logic.Ids.newId(),
                                         name    = lenderName.trim(),
                                         type    = "Bank / NBFC Loan",
                                         amount  = loanAmt,

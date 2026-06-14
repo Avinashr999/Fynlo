@@ -915,10 +915,10 @@ object ExportUtility {
         // Borrower detail table
         b.sectionHeader("Borrower Details")
         val mid = PAGE_W / 2f
-        // Audit C21 #17 — no silent Interest Type default. If borrower.type
+        // Audit C21 #17 — no silent Interest Type default. If borrower.intType
         // is blank, render "Not specified" rather than silently producing
         // "${rate}% p.a. ()" which falsely suggests Simple Interest.
-        val typeLabel = borrower.type.ifBlank { "Not specified" }
+        val typeLabel = borrower.intType.ifBlank { "Not specified" }
         val details = listOf(
             "Borrower Name"   to borrower.name,
             "Phone"           to borrower.phone.ifBlank { "-" },

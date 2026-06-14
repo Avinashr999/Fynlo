@@ -47,13 +47,14 @@ fun AddDebtDialog(
 
     var amount   by remember { mutableStateOf(initialDebt?.amount?.toString() ?: "") }
     var rate     by remember { mutableStateOf(initialDebt?.rate?.toString() ?: "") }
+    var tenure   by remember { mutableStateOf(initialDebt?.tenure?.let { if (it > 0) it.toString() else "" } ?: "") }
     var date     by remember { mutableStateOf(initialDebt?.date?.let { DateUtils.formatToDisplay(it) } ?: java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy"))) }
     var due      by remember { mutableStateOf(initialDebt?.due?.let { DateUtils.formatToDisplay(it) } ?: "") }
     var notes    by remember { mutableStateOf(initialDebt?.notes ?: "") }
 
     // Actual account dropdown
     val accountOptions = if (accounts.isNotEmpty()) accounts
-    else listOf(Account(id = "cash", name = "Cash in Hand", type = "Cash", balance = 0.0))
+    else listOf(Account(id = "cash", name = "Personal Cash", type = "Cash", balance = 0.0))
     var selectedAccount  by remember { mutableStateOf(accountOptions.first()) }
     var expandedDest     by remember { mutableStateOf(false) }
 
@@ -167,10 +168,19 @@ fun AddDebtDialog(
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier.fillMaxWidth())
                 DatePickerField(value = date, onValueChange = { date = it }, label = "Date Taken")
-                OutlinedTextField(value = rate, onValueChange = { rate = it },
-                    label = { Text("Annual Interest Rate (%)") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    modifier = Modifier.fillMaxWidth())
+
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(value = rate, onValueChange = { rate = it },
+                        label = { Text("Rate (%)") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.weight(1f))
+
+                    OutlinedTextField(value = tenure, onValueChange = { tenure = it },
+                        label = { Text("Tenure (mo)") },
+                        placeholder = { Text("Optional") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.weight(1f))
+                }
 
                 // ── Interest type ─────────────────────────────────────────
                 // C12 (3.2.25) — display labels routed through
@@ -204,12 +214,13 @@ fun AddDebtDialog(
                     Button(
                         onClick = {
                             val debt = Debt(
-                                id      = initialDebt?.id?.takeIf { it.isNotBlank() } ?: UUID.randomUUID().toString(),
+                                id      = initialDebt?.id?.takeIf { it.isNotBlank() } ?: app.fynlo.logic.Ids.newId(),
                                 name    = lenderName,
                                 amount  = amount.toDoubleOrNull() ?: 0.0,
                                 rate    = rate.toDoubleOrNull() ?: 0.0,
                                 date    = DateUtils.parseInput(date),
                                 due     = if (due.isNotEmpty()) DateUtils.parseInput(due) else "",
+                                tenure  = tenure.toIntOrNull() ?: 0,
                                 notes   = notes,
                                 status  = initialDebt?.status ?: "Active",
                                 type    = initialDebt?.type ?: "Friend / Family",

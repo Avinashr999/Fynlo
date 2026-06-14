@@ -11,6 +11,7 @@ import kotlinx.coroutines.tasks.await
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Before
+import org.junit.Ignore
 import org.junit.Test
 import org.junit.runner.RunWith
 
@@ -22,6 +23,7 @@ import org.junit.runner.RunWith
  * touched.
  */
 @RunWith(AndroidJUnit4::class)
+@Ignore("Requires a local Firestore emulator reachable from an Android emulator at 10.0.2.2:8080; exclude from normal physical-device release gate.")
 class FirestoreResetTest {
 
     private lateinit var fs: FirebaseFirestore

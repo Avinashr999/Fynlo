@@ -378,6 +378,9 @@ class FynloDatabaseMigrationTest {
                 MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11,
                 MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14,
                 MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17,
+                MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20,
+                MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23,
+                MIGRATION_23_24, MIGRATION_24_25,
             )
             .build()
         try {
@@ -546,6 +549,487 @@ class FynloDatabaseMigrationTest {
             "Substring match must NOT trigger — exact-match only on the three literals.",
             "Income Tax", rows["borderline"],
         )
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // C22 (3.2.55) — v17 → v18 migration tests.
+    //   Adds `iconKey` (default "star") and `linkedAccount` (default "")
+    //   to the `goals` table. All pre-3.2.55 goals must backfill cleanly.
+    // ─────────────────────────────────────────────────────────────────────
+
+    /**
+     * Pre-existing goal rows must surface with `iconKey = "star"` and
+     * `linkedAccount = ""` after migrating to v18. No data motion; default
+     * values come from the ALTER TABLE clause.
+     */
+    @Test
+    @Throws(IOException::class)
+    fun migrate17to18_backfillsGoalIconKeyAndLinkedAccountWithDefaults() {
+        helper.createDatabase(TEST_DB, 17).apply {
+            // The `goals` schema at v17 already has every column except
+            // iconKey/linkedAccount. Insert a representative row.
+            execSQL("""
+                INSERT INTO goals (id, name, targetAmount, savedAmount, deadline,
+                                   notes, projectId, updatedAt, createdAt)
+                VALUES ('g1', 'New Car', 500000.0, 100000.0, '2026-12-31',
+                        '', 'personal', 1700000000000, 1700000000000)
+            """.trimIndent())
+            close()
+        }
+
+        val db = helper.runMigrationsAndValidate(TEST_DB, 18, true, MIGRATION_17_18)
+
+        db.query("SELECT iconKey, linkedAccount FROM goals WHERE id = 'g1'").use { c ->
+            assertTrue("Row must survive migration.", c.moveToFirst())
+            assertEquals("Default iconKey must be 'star'.", "star", c.getString(0))
+            assertEquals("Default linkedAccount must be empty.", "", c.getString(1))
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // C22 (3.2.56) — v18 → v19 migration tests.
+    //   Adds `description` (default "") to the `projects` table. All
+    //   pre-3.2.56 projects must backfill to empty description.
+    // ─────────────────────────────────────────────────────────────────────
+
+    @Test
+    @Throws(IOException::class)
+    fun migrate18to19_backfillsProjectDescriptionWithEmptyDefault() {
+        helper.createDatabase(TEST_DB, 18).apply {
+            execSQL("""
+                INSERT INTO projects (id, name, icon, color, currency, createdAt, updatedAt)
+                VALUES ('p1', 'Side Business', 'business', '#10b981', 'USD',
+                        '2025-01-01', 1700000000000)
+            """.trimIndent())
+            close()
+        }
+
+        val db = helper.runMigrationsAndValidate(TEST_DB, 19, true, MIGRATION_18_19)
+
+        db.query("SELECT description FROM projects WHERE id = 'p1'").use { c ->
+            assertTrue("Row must survive migration.", c.moveToFirst())
+            assertEquals("Default description must be empty.", "", c.getString(0))
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // C22 (3.2.57) — v19 → v20 migration tests.
+    //   Adds `alertThresholdPct` (default 80) to the `budgets` table.
+    //   Existing rows must backfill to 80 so the NEAR LIMIT state fires at
+    //   the same ratio (0.8) as before the migration.
+    // ─────────────────────────────────────────────────────────────────────
+
+    @Test
+    @Throws(IOException::class)
+    fun migrate19to20_backfillsBudgetAlertThresholdToEightyPercent() {
+        helper.createDatabase(TEST_DB, 19).apply {
+            execSQL("""
+                INSERT INTO budgets (category, limitAmount, period, projectId, updatedAt, createdAt)
+                VALUES ('Food', 10000.0, 'Monthly', 'personal',
+                        1700000000000, 1700000000000)
+            """.trimIndent())
+            close()
+        }
+
+        val db = helper.runMigrationsAndValidate(TEST_DB, 20, true, MIGRATION_19_20)
+
+        db.query("SELECT alertThresholdPct FROM budgets WHERE category = 'Food'").use { c ->
+            assertTrue("Row must survive migration.", c.moveToFirst())
+            assertEquals("Default threshold must be 80 to preserve pre-3.2.57 NEAR LIMIT behaviour.",
+                80, c.getInt(0))
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // 3.2.75 — v20 → v21 migration tests.
+    //   Renames "Cash in Hand" → "Personal Cash" across every column where
+    //   the string appears as an account key. Non-matching rows pass
+    //   through unchanged.
+    // ─────────────────────────────────────────────────────────────────────
+
+    @Test
+    @Throws(IOException::class)
+    fun migrate20to21_renamesCashInHandAcrossAccountsAndTransactions() {
+        helper.createDatabase(TEST_DB, 20).apply {
+            execSQL("""
+                INSERT INTO accounts (id, name, type, balance, icon, color, notes, projectId, updatedAt, createdAt)
+                VALUES ('a-cash', 'Cash in Hand', 'Cash', 1000.0, '', '#3b82f6', '', 'personal', 1700000000000, 1700000000000),
+                       ('a-bank', 'HDFC Bank',    'Bank', 5000.0, '', '#3b82f6', '', 'personal', 1700000000000, 1700000000000)
+            """.trimIndent())
+            execSQL("""
+                INSERT INTO transactions (id, date, type, amount, fromAcct, toAcct, category,
+                                          subcat, person, desc, ref, notes, tags, projectId,
+                                          updatedAt, createdAt)
+                VALUES
+                  ('t-out',  '2026-05-28', 'Expense', 100.0, 'Cash in Hand', '',             'Food',     '', '', '', '', '', '', 'personal', 1700000000000, 1700000000000),
+                  ('t-in',   '2026-05-28', 'Income',  500.0, '',             'Cash in Hand', 'Salary',   '', '', '', '', '', '', 'personal', 1700000000000, 1700000000000),
+                  ('t-keep', '2026-05-28', 'Expense', 200.0, 'HDFC Bank',    '',             'Food',     '', '', '', '', '', '', 'personal', 1700000000000, 1700000000000)
+            """.trimIndent())
+            close()
+        }
+
+        val db = helper.runMigrationsAndValidate(TEST_DB, 21, true, MIGRATION_20_21)
+
+        db.query("SELECT name FROM accounts WHERE id = 'a-cash'").use { c ->
+            assertTrue(c.moveToFirst())
+            assertEquals("Personal Cash", c.getString(0))
+        }
+        db.query("SELECT name FROM accounts WHERE id = 'a-bank'").use { c ->
+            assertTrue(c.moveToFirst())
+            assertEquals("HDFC Bank should be unchanged.", "HDFC Bank", c.getString(0))
+        }
+        db.query("SELECT fromAcct, toAcct FROM transactions WHERE id = 't-out'").use { c ->
+            assertTrue(c.moveToFirst())
+            assertEquals("Personal Cash", c.getString(0))
+            assertEquals("", c.getString(1))
+        }
+        db.query("SELECT fromAcct, toAcct FROM transactions WHERE id = 't-in'").use { c ->
+            assertTrue(c.moveToFirst())
+            assertEquals("", c.getString(0))
+            assertEquals("Personal Cash", c.getString(1))
+        }
+        db.query("SELECT fromAcct FROM transactions WHERE id = 't-keep'").use { c ->
+            assertTrue(c.moveToFirst())
+            assertEquals("HDFC Bank", c.getString(0))
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // C03b Stage #1a (3.2.86) — v22 → v23 migration tests.
+    //   Adds `fromAcctId` / `toAcctId` (TEXT NOT NULL DEFAULT '') to the
+    //   `transactions` table and backfills each non-empty name from the
+    //   corresponding `accounts.id`. Rows whose `fromAcct` / `toAcct` does
+    //   not match any current account leave the id at '' (orphans surface
+    //   to the 3.2.59 repair tool — the migration must not invent ids).
+    // ─────────────────────────────────────────────────────────────────────
+
+    @Test
+    @Throws(IOException::class)
+    fun migrate22to23_addsAccountIdColumnsAndBackfillsFromAccountNames() {
+        helper.createDatabase(TEST_DB, 22).apply {
+            // Two accounts with known ids.
+            execSQL("""
+                INSERT INTO accounts (id, name, type, balance, icon, color, notes, projectId, updatedAt, createdAt)
+                VALUES
+                  ('acc-cash', 'Personal Cash', 'Cash', 1000.0, '', '#3b82f6', '', 'personal', 1700000000000, 1700000000000),
+                  ('acc-hdfc', 'HDFC Bank',     'Bank', 5000.0, '', '#3b82f6', '', 'personal', 1700000000000, 1700000000000)
+            """.trimIndent())
+            // Mixed transactions covering every shape:
+            //   - resolvable expense (fromAcct only)
+            //   - resolvable income  (toAcct only)
+            //   - resolvable transfer (both)
+            //   - orphan expense (fromAcct points at vanished account)
+            //   - blank both (legacy income row with no toAcct — leaves '')
+            execSQL("""
+                INSERT INTO transactions (id, date, type, amount, fromAcct, toAcct, category,
+                                          subcat, person, desc, ref, notes, tags, projectId,
+                                          updatedAt, createdAt)
+                VALUES
+                  ('t-exp',      '2026-05-28', 'Expense',  100.0, 'Personal Cash', '',              'Food',   '', '', '', '', '', '', 'personal', 1700000000000, 1700000000000),
+                  ('t-inc',      '2026-05-28', 'Income',   500.0, '',              'HDFC Bank',     'Salary', '', '', '', '', '', '', 'personal', 1700000000000, 1700000000000),
+                  ('t-xfer',     '2026-05-28', 'Transfer', 200.0, 'HDFC Bank',     'Personal Cash', 'Transfer', '', '', '', '', '', '', 'personal', 1700000000000, 1700000000000),
+                  ('t-orphan',   '2026-05-28', 'Expense',   50.0, 'Vanished Acct', '',              'Misc',   '', '', '', '', '', '', 'personal', 1700000000000, 1700000000000),
+                  ('t-no-acct',  '2026-05-28', 'Income',    10.0, '',              '',              'Salary', '', '', '', '', '', '', 'personal', 1700000000000, 1700000000000)
+            """.trimIndent())
+            close()
+        }
+
+        val db = helper.runMigrationsAndValidate(TEST_DB, 23, true, MIGRATION_22_23)
+
+        // Resolvable rows: id mirror matches the source account id.
+        db.query("SELECT fromAcctId, toAcctId FROM transactions WHERE id = ?",
+                 arrayOf("t-exp")).use { c ->
+            assertTrue(c.moveToFirst())
+            assertEquals("acc-cash", c.getString(0))
+            assertEquals("",         c.getString(1))
+        }
+        db.query("SELECT fromAcctId, toAcctId FROM transactions WHERE id = ?",
+                 arrayOf("t-inc")).use { c ->
+            assertTrue(c.moveToFirst())
+            assertEquals("",          c.getString(0))
+            assertEquals("acc-hdfc",  c.getString(1))
+        }
+        db.query("SELECT fromAcctId, toAcctId FROM transactions WHERE id = ?",
+                 arrayOf("t-xfer")).use { c ->
+            assertTrue(c.moveToFirst())
+            assertEquals("acc-hdfc",  c.getString(0))
+            assertEquals("acc-cash",  c.getString(1))
+        }
+        // Orphan: fromAcct has no matching Account row → id stays '' (the
+        // migration must NOT invent an id; orphans surface to the existing
+        // 3.2.59 repair tool).
+        db.query("SELECT fromAcctId, toAcctId FROM transactions WHERE id = ?",
+                 arrayOf("t-orphan")).use { c ->
+            assertTrue(c.moveToFirst())
+            assertEquals("Orphan row must surface with empty id, not a guessed one.",
+                "", c.getString(0))
+            assertEquals("", c.getString(1))
+        }
+        // Both-blank: nothing to backfill.
+        db.query("SELECT fromAcctId, toAcctId FROM transactions WHERE id = ?",
+                 arrayOf("t-no-acct")).use { c ->
+            assertTrue(c.moveToFirst())
+            assertEquals("", c.getString(0))
+            assertEquals("", c.getString(1))
+        }
+    }
+
+    /**
+     * Idempotence: re-running the migration must be a no-op for rows whose
+     * id was already populated by a previous run. The migration's UPDATE
+     * uses `WHERE fromAcctId = ''` to guard exactly this case.
+     */
+    @Test
+    @Throws(IOException::class)
+    fun migrate22to23_doesNotOverwriteAlreadyPopulatedIds() {
+        helper.createDatabase(TEST_DB, 22).apply {
+            execSQL("""
+                INSERT INTO accounts (id, name, type, balance, icon, color, notes, projectId, updatedAt, createdAt)
+                VALUES ('acc-renamed', 'New Name', 'Bank', 100.0, '', '#3b82f6', '', 'personal', 1700000000000, 1700000000000)
+            """.trimIndent())
+            // A row whose fromAcct still says "Old Name" but whose ID column
+            // ... well, the column doesn't exist at v22 yet. So we can only
+            // assert the WHERE-guard intent indirectly. Instead, just check
+            // that running the migration once then re-applying the same
+            // UPDATE leaves the field untouched (which is what the guard
+            // does in practice). We run the migration, then verify a
+            // second pass of the same UPDATE on the v23 schema is a no-op.
+            execSQL("""
+                INSERT INTO transactions (id, date, type, amount, fromAcct, toAcct, category,
+                                          subcat, person, desc, ref, notes, tags, projectId,
+                                          updatedAt, createdAt)
+                VALUES ('t-renamed', '2026-05-28', 'Expense', 100.0, 'Old Name', '',
+                        'Misc', '', '', '', '', '', '', 'personal', 1700000000000, 1700000000000)
+            """.trimIndent())
+            close()
+        }
+
+        val db = helper.runMigrationsAndValidate(TEST_DB, 23, true, MIGRATION_22_23)
+
+        // 'Old Name' has no matching account → fromAcctId stays empty.
+        db.query("SELECT fromAcctId FROM transactions WHERE id = 't-renamed'").use { c ->
+            assertTrue(c.moveToFirst())
+            assertEquals("", c.getString(0))
+        }
+
+        // Manually set the id (simulating Stage #1b's resolver or a manual repair).
+        db.execSQL("UPDATE transactions SET fromAcctId = 'acc-renamed' WHERE id = 't-renamed'")
+
+        // Re-applying the v22→v23 backfill SQL must NOT overwrite the
+        // already-populated id (the WHERE fromAcctId = '' guard).
+        db.execSQL("""
+            UPDATE `transactions`
+            SET    `fromAcctId` = COALESCE(
+                       (SELECT `id` FROM `accounts` WHERE `accounts`.`name` = `transactions`.`fromAcct`),
+                       ''
+                   )
+            WHERE  `fromAcct` != '' AND `fromAcctId` = ''
+        """.trimIndent())
+        db.query("SELECT fromAcctId FROM transactions WHERE id = 't-renamed'").use { c ->
+            assertTrue(c.moveToFirst())
+            assertEquals("Already-populated id must survive a repeated backfill pass.",
+                "acc-renamed", c.getString(0))
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // C03b Stage #1c (3.2.89) — v23 → v24 migration tests.
+    //   Adds `fromAcctId` / `toAcctId` (TEXT NOT NULL DEFAULT '') to the
+    //   `recurring_transactions` table and backfills by joining on name —
+    //   mirrors `MIGRATION_22_23` exactly. RecurringWorker uses the
+    //   stored id at fire time for rename-safe balance updates.
+    // ─────────────────────────────────────────────────────────────────────
+
+    @Test
+    @Throws(IOException::class)
+    fun migrate23to24_addsAccountIdColumnsAndBackfillsRecurringTemplatesFromAccountNames() {
+        helper.createDatabase(TEST_DB, 23).apply {
+            execSQL("""
+                INSERT INTO accounts (id, name, type, balance, icon, color, notes, projectId, updatedAt, createdAt)
+                VALUES
+                  ('acc-hdfc', 'HDFC Bank',     'Bank', 5000.0, '', '#3b82f6', '', 'personal', 1700000000000, 1700000000000),
+                  ('acc-cash', 'Personal Cash', 'Cash', 1000.0, '', '#3b82f6', '', 'personal', 1700000000000, 1700000000000)
+            """.trimIndent())
+            // Three recurring templates covering the cases the resolver
+            // and the worker care about:
+            //   - resolvable expense  → fromAcct only
+            //   - resolvable income   → toAcct only
+            //   - orphan expense      → fromAcct points at vanished account
+            execSQL("""
+                INSERT INTO recurring_transactions
+                    (id, name, type, amount, category, fromAcct, toAcct, frequency,
+                     dayOfMonth, notes, isActive, lastRun, projectId, updatedAt, createdAt)
+                VALUES
+                    ('rt-rent',   'Monthly Rent',   'Expense', 10000.0, 'Rent',   'HDFC Bank',     '',          'Monthly', 1, '', 1, '', 'personal', 1700000000000, 1700000000000),
+                    ('rt-salary', 'Monthly Salary', 'Income',  60000.0, 'Salary', '',              'HDFC Bank', 'Monthly', 1, '', 1, '', 'personal', 1700000000000, 1700000000000),
+                    ('rt-orphan', 'Old Card EMI',   'Expense',  5000.0, 'EMI',    'Vanished Card', '',          'Monthly', 5, '', 1, '', 'personal', 1700000000000, 1700000000000)
+            """.trimIndent())
+            close()
+        }
+
+        val db = helper.runMigrationsAndValidate(TEST_DB, 24, true, MIGRATION_23_24)
+
+        db.query("SELECT fromAcctId, toAcctId FROM recurring_transactions WHERE id = ?",
+                 arrayOf("rt-rent")).use { c ->
+            assertTrue(c.moveToFirst())
+            assertEquals("acc-hdfc", c.getString(0))
+            assertEquals("",         c.getString(1))
+        }
+        db.query("SELECT fromAcctId, toAcctId FROM recurring_transactions WHERE id = ?",
+                 arrayOf("rt-salary")).use { c ->
+            assertTrue(c.moveToFirst())
+            assertEquals("",         c.getString(0))
+            assertEquals("acc-hdfc", c.getString(1))
+        }
+        db.query("SELECT fromAcctId, toAcctId FROM recurring_transactions WHERE id = ?",
+                 arrayOf("rt-orphan")).use { c ->
+            assertTrue(c.moveToFirst())
+            assertEquals("Orphan template — id stays empty (worker falls back to name).",
+                "", c.getString(0))
+            assertEquals("", c.getString(1))
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // C03b Stage #3 (3.2.90) — v24 → v25 migration tests.
+    //   Adds `peopleId` (TEXT NOT NULL DEFAULT '') to borrowers + debts.
+    //   Three-step backfill: link to existing Person rows by phone,
+    //   create new Person rows for unmatched non-empty phones (deduped
+    //   across borrowers + debts), then re-link. Empty-phone rows stay
+    //   peopleId = '' for the user to link manually.
+    // ─────────────────────────────────────────────────────────────────────
+
+    @Test
+    @Throws(IOException::class)
+    fun migrate24to25_linksBorrowerAndDebtToExistingPersonByPhone() {
+        helper.createDatabase(TEST_DB, 24).apply {
+            // Person already created via the People screen, with phone.
+            execSQL("""
+                INSERT INTO people (id, name, phone, type, notes, projectId, updatedAt, createdAt)
+                VALUES ('P-ravi', 'Ravi Kumar', '9876543210', 'Individual', '', 'personal', 1700000000000, 1700000000000)
+            """.trimIndent())
+            // Borrower with the same phone — implicit association.
+            execSQL("""
+                INSERT INTO borrowers
+                    (id, name, phone, address, guarantor, amount, rate, date, due, tenure, type,
+                     paid, paidPrincipal, paidInterest, status, defaultDate, frozenInterest,
+                     sourceAccount, notes, projectId, updatedAt, createdAt)
+                VALUES ('b-ravi', 'Ravi', '9876543210', '', '', 50000.0, 12.0, '2024-01-01', '', 0,
+                        'Simple Interest', 0.0, 0.0, 0.0, 'Active', '', 0.0, '', '',
+                        'personal', 1700000000000, 1700000000000)
+            """.trimIndent())
+            // Debt with the same phone — same Person.
+            execSQL("""
+                INSERT INTO debts
+                    (id, name, phone, type, amount, rate, date, due, tenure, intType,
+                     paid, paidPrincipal, paidInterest, status, collateral, notes, projectId,
+                     updatedAt, createdAt)
+                VALUES ('d-ravi', 'Ravi (cash advance)', '9876543210', 'Friend / Family',
+                        20000.0, 0.0, '2024-02-01', '', 0, 'Simple Interest',
+                        0.0, 0.0, 0.0, 'Active', '', '', 'personal',
+                        1700000000000, 1700000000000)
+            """.trimIndent())
+            close()
+        }
+
+        val db = helper.runMigrationsAndValidate(TEST_DB, 25, true, MIGRATION_24_25)
+
+        db.query("SELECT peopleId FROM borrowers WHERE id = 'b-ravi'").use { c ->
+            assertTrue(c.moveToFirst())
+            assertEquals("Borrower must link to the existing Person row.",
+                "P-ravi", c.getString(0))
+        }
+        db.query("SELECT peopleId FROM debts WHERE id = 'd-ravi'").use { c ->
+            assertTrue(c.moveToFirst())
+            assertEquals("Debt with the same phone must link to the same Person.",
+                "P-ravi", c.getString(0))
+        }
+    }
+
+    @Test
+    @Throws(IOException::class)
+    fun migrate24to25_createsNewPersonForUnmatchedPhoneAndLinksBothBorrowerAndDebt() {
+        helper.createDatabase(TEST_DB, 24).apply {
+            // No pre-existing Person.
+            execSQL("""
+                INSERT INTO borrowers
+                    (id, name, phone, address, guarantor, amount, rate, date, due, tenure, type,
+                     paid, paidPrincipal, paidInterest, status, defaultDate, frozenInterest,
+                     sourceAccount, notes, projectId, updatedAt, createdAt)
+                VALUES ('b-new', 'Suresh', '9112233445', '', '', 25000.0, 18.0, '2024-03-01', '', 0,
+                        'Compound Interest', 0.0, 0.0, 0.0, 'Active', '', 0.0, '', '',
+                        'personal', 1700000000000, 1700000000000)
+            """.trimIndent())
+            // Debt with the SAME phone — must dedup to one Person.
+            execSQL("""
+                INSERT INTO debts
+                    (id, name, phone, type, amount, rate, date, due, tenure, intType,
+                     paid, paidPrincipal, paidInterest, status, collateral, notes, projectId,
+                     updatedAt, createdAt)
+                VALUES ('d-new', 'Suresh', '9112233445', 'Friend / Family',
+                        5000.0, 0.0, '2024-04-01', '', 0, 'Simple Interest',
+                        0.0, 0.0, 0.0, 'Active', '', '', 'personal',
+                        1700000000000, 1700000000000)
+            """.trimIndent())
+            close()
+        }
+
+        val db = helper.runMigrationsAndValidate(TEST_DB, 25, true, MIGRATION_24_25)
+
+        // Exactly ONE Person was created for the phone.
+        db.query("SELECT COUNT(*) FROM people WHERE phone = '9112233445'").use { c ->
+            assertTrue(c.moveToFirst())
+            assertEquals(
+                "Migration must dedup borrowers + debts with the same phone into ONE Person.",
+                1, c.getInt(0),
+            )
+        }
+        // Both borrower and debt link to that same Person.
+        var borrowerPersonId = ""
+        var debtPersonId     = ""
+        db.query("SELECT peopleId FROM borrowers WHERE id = 'b-new'").use { c ->
+            assertTrue(c.moveToFirst())
+            borrowerPersonId = c.getString(0)
+        }
+        db.query("SELECT peopleId FROM debts WHERE id = 'd-new'").use { c ->
+            assertTrue(c.moveToFirst())
+            debtPersonId = c.getString(0)
+        }
+        assertEquals("Borrower and debt must point at the same Person id.",
+            borrowerPersonId, debtPersonId)
+        assertTrue("Created Person id must be non-empty.", borrowerPersonId.isNotEmpty())
+    }
+
+    @Test
+    @Throws(IOException::class)
+    fun migrate24to25_leavesEmptyPhoneBorrowerUnlinked() {
+        helper.createDatabase(TEST_DB, 24).apply {
+            execSQL("""
+                INSERT INTO borrowers
+                    (id, name, phone, address, guarantor, amount, rate, date, due, tenure, type,
+                     paid, paidPrincipal, paidInterest, status, defaultDate, frozenInterest,
+                     sourceAccount, notes, projectId, updatedAt, createdAt)
+                VALUES ('b-anon', 'Anonymous', '', '', '', 1000.0, 0.0, '2024-05-01', '', 0,
+                        'Simple Interest', 0.0, 0.0, 0.0, 'Active', '', 0.0, '', '',
+                        'personal', 1700000000000, 1700000000000)
+            """.trimIndent())
+            close()
+        }
+
+        val db = helper.runMigrationsAndValidate(TEST_DB, 25, true, MIGRATION_24_25)
+
+        db.query("SELECT peopleId FROM borrowers WHERE id = 'b-anon'").use { c ->
+            assertTrue(c.moveToFirst())
+            assertEquals(
+                "Empty-phone borrowers must stay unlinked — dedup on name alone is unsafe.",
+                "", c.getString(0),
+            )
+        }
+        db.query("SELECT COUNT(*) FROM people").use { c ->
+            assertTrue(c.moveToFirst())
+            assertEquals("No Person row should be created for empty-phone rows.",
+                0, c.getInt(0))
+        }
     }
 
     @After

@@ -50,6 +50,7 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
     val currentProjectId  by viewModel.currentProjectId.collectAsState()
     val currentProject    by viewModel.currentProject.collectAsState()
     val isSyncReady       by viewModel.isSyncReady.collectAsState()
+    val isPrivacy         by viewModel.isPrivacyMode.collectAsState()
     val locale            = Locale.getDefault()
     val currencyCode      = currentProject?.currency ?: "INR"
     val cs                = app.fynlo.logic.CurrencyUtils.symbolFor(currencyCode)
@@ -66,7 +67,7 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
     val lastRecalcAt by app.fynlo.data.UserPreferences
         .lastRecalcAt(context).collectAsState(initial = 0L)
 
-    fun fmt(v: Double) = CurrencyFormatter.hero(v, currencyCode, locale)
+    fun fmt(v: Double) = if (isPrivacy) "••••" else CurrencyFormatter.hero(v, currencyCode, locale)
 
     // Map account name → an icon based on its type (Bank/Cash/UPI/Trading)
     val typeByName = remember(accounts) { accounts.associate { it.name to it.type.lowercase() } }
@@ -80,19 +81,46 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
         }
     }
 
+    // 3.2.59 — collect account/transaction lists once for both AddTxn dialog
+    // and the orphan-repair banner.
+    val allAccountsHome by viewModel.allAccountsUnfiltered.collectAsState()
+    val allInvestmentsHome by viewModel.investments.collectAsState()
+    val allDebtsHome by viewModel.debts.collectAsState()
+    val allTransactionsHome by viewModel.transactions.collectAsState()
+    val accountNames = remember(allAccountsHome) { allAccountsHome.map { it.name } }
+    val orphans = remember(allTransactionsHome, accountNames) {
+        app.fynlo.logic.OrphanTransactionsScanner.scan(allTransactionsHome, accountNames)
+    }
+    var showOrphanDialog by remember { mutableStateOf(false) }
+
     if (showAddTxn) {
         AddTransactionDialog(
             onDismiss = { showAddTxn = false },
             onConfirm = { txn -> haptic.performHapticFeedback(HapticFeedbackType.LongPress); viewModel.addTransaction(txn); showAddTxn = false },
             rememberLastCategory = { isIncome -> viewModel.rememberLastTransactionCategory(isIncome) },
             onRecordCategory = { isIncome, cat -> viewModel.recordTransactionCategory(isIncome, cat) },
-            initialIsIncome = addTxnIncome
+            // 3.2.81 (C13 #5) — "Repeat monthly?" → also create a recurring template.
+            onRepeatMonthly = { txn -> viewModel.addRecurringTransaction(app.fynlo.logic.toRecurringTemplate(txn)) },
+            initialIsIncome = addTxnIncome,
+            bankAccounts    = accountNames,
+            investmentNames = allInvestmentsHome.map { it.name },
+            debtNames       = allDebtsHome.map { it.name },
+        )
+    }
+
+    if (showOrphanDialog) {
+        app.fynlo.ui.components.OrphanRepairDialog(
+            orphans      = orphans,
+            accounts     = accountNames,
+            currencyCode = currencyCode,
+            onFix        = { old, new -> viewModel.editTransaction(old, new) },
+            onDismiss    = { showOrphanDialog = false },
         )
     }
 
     if (activeBreakdownType != null) {
         val title = when (activeBreakdownType) {
-            BreakdownType.IDLE_CASH -> "Idle Cash Breakdown"
+            BreakdownType.IDLE_CASH -> "Office & Petty Cash Breakdown"
             BreakdownType.GROWING_ASSETS -> "Growing Assets Breakdown"
             BreakdownType.HAND_LOANS -> "Hand Loans Breakdown"
             else -> ""
@@ -103,11 +131,13 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
             BreakdownType.HAND_LOANS -> Icons.Default.Handshake
             else -> Icons.Default.Info
         }
+        // 3.2.65 — fallback was Color.Gray; theme-aware now.
+        val unknownTypeTint = MaterialTheme.colorScheme.onSurfaceVariant
         val color = when (activeBreakdownType) {
             BreakdownType.IDLE_CASH -> SemanticBlue
             BreakdownType.GROWING_ASSETS -> SemanticAmber
             BreakdownType.HAND_LOANS -> Carbon500
-            else -> Color.Gray
+            else -> unknownTypeTint
         }
         val data = when (activeBreakdownType) {
             BreakdownType.IDLE_CASH -> summary.accountBreakdown
@@ -152,6 +182,43 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
     ) {
         Spacer(Modifier.height(12.dp))
 
+        // 3.2.59 — orphan-transaction banner. Pre-3.2.59 the AddTransaction
+        // dialog accepted free-text bank names that could miss the
+        // canonical account row; surface the count + a one-tap repair
+        // action so users can re-attach orphans to real accounts (which
+        // then reflects in balances + net worth on next recalc).
+        if (orphans.isNotEmpty()) {
+            Surface(
+                onClick = { showOrphanDialog = true },
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(14.dp),
+                color = SemanticAmber.copy(alpha = 0.12f),
+                border = BorderStroke(0.5.dp, SemanticAmber.copy(alpha = 0.4f)),
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    Icon(Icons.Default.WarningAmber, null, tint = SemanticAmber, modifier = Modifier.size(20.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            "${orphans.size} transaction${if (orphans.size == 1) "" else "s"} not linked to any account",
+                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                            color = SemanticAmber,
+                        )
+                        Text(
+                            "Tap to re-point them so your balances reflect the spend.",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Icon(Icons.AutoMirrored.Default.ArrowForward, null, tint = SemanticAmber, modifier = Modifier.size(18.dp))
+                }
+            }
+            Spacer(Modifier.height(12.dp))
+        }
+
         // ── Greeting + project switcher ───────────────────────────────────────
         Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
             Text(greeting, style = MaterialTheme.typography.bodyMedium,
@@ -192,8 +259,9 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
             Text("Total net worth", style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.height(6.dp))
+            val nwText = if (isPrivacy) "••••" else CurrencyFormatter.hero(summary.netWorth, currencyCode, locale)
             Text(
-                text = CurrencyFormatter.hero(summary.netWorth, currencyCode, locale),
+                text = nwText,
                 fontSize = 42.sp,
                 fontWeight = FontWeight.ExtraBold,
                 color = MaterialTheme.colorScheme.onSurface
@@ -237,9 +305,10 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
                         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
                         Icon(if (up) Icons.Default.ArrowUpward else Icons.Default.ArrowDownward,
                             null, Modifier.size(13.dp), tint = trendColor)
+                        val trendText = if (isPrivacy) "••••"
+                                        else (if (up) "+" else "") + CurrencyFormatter.hero(trend, currencyCode, locale)
                         Text(
-                            if (up) "+${CurrencyFormatter.hero(trend, currencyCode, locale)}"
-                            else    CurrencyFormatter.hero(trend, currencyCode, locale),
+                            text = trendText,
                             style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold), color = trendColor)
                     }
                 }
@@ -277,7 +346,7 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
         Spacer(Modifier.height(24.dp))
 
         // ── Net-worth trend chart card (tap → full history) ───────────────────
-        NetWorthTrendCard(netWorthSnapshots.sortedBy { it.date }, cs, locale) { onNavigateToScreen("net_worth_hist") }
+        NetWorthTrendCard(netWorthSnapshots.sortedBy { it.date }, cs, locale, isPrivacy) { onNavigateToScreen("net_worth_hist") }
 
         Spacer(Modifier.height(28.dp))
 
@@ -310,7 +379,7 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
         // ── Insights ──────────────────────────────────────────────────────────
         SectionHeader("Insights")
         Spacer(Modifier.height(4.dp))
-        NeoInsightRow("Idle Cash", fmt(summary.totalCash), SemanticBlue) { activeBreakdownType = BreakdownType.IDLE_CASH }
+        NeoInsightRow("Office & Petty Cash", fmt(summary.totalCash), SemanticBlue) { activeBreakdownType = BreakdownType.IDLE_CASH }
         HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f))
         NeoInsightRow("Growing Assets", fmt(summary.totalInvestments + summary.totalInterestLoans), SemanticAmber) { activeBreakdownType = BreakdownType.GROWING_ASSETS }
         HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f))
@@ -380,6 +449,7 @@ private fun NetWorthTrendCard(
     snaps: List<app.fynlo.data.model.NetWorthSnapshot>,
     cs: String,
     locale: Locale,
+    isPrivacy: Boolean,
     onClick: () -> Unit
 ) {
     Surface(
@@ -426,9 +496,11 @@ private fun NetWorthTrendCard(
                 }
                 Spacer(Modifier.height(8.dp))
                 Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
-                    Text("$cs${String.format(locale, "%,.0f", pts.first().netWorth)}",
+                    val startText = if (isPrivacy) "••••" else "$cs${String.format(locale, "%,.0f", pts.first().netWorth)}"
+                    val endText   = if (isPrivacy) "••••" else "$cs${String.format(locale, "%,.0f", pts.last().netWorth)}"
+                    Text(startText,
                         style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text("$cs${String.format(locale, "%,.0f", pts.last().netWorth)}",
+                    Text(endText,
                         style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold), color = lineColor)
                 }
             }

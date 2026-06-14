@@ -9,9 +9,12 @@ import kotlinx.serialization.Serializable
 data class Project(
     @PrimaryKey val id: String,
     val name: String,
-    val icon: String = "business",       // icon key for UI
+    val icon: String = "business",       // icon key for UI; see ProjectIcons.iconFor
     val color: String = "#3b82f6",       // hex color for UI chip
     val currency: String = "INR",
     val createdAt: String = "",
-    val updatedAt: Long = 0L
+    val updatedAt: Long = 0L,
+    // C22 (3.2.56) — optional one-line description rendered as a subtitle
+    // on the project card. Blank = no subtitle. Storage-only; no validation.
+    val description: String = "",
 )
