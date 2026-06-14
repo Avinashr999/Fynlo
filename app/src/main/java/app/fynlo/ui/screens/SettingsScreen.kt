@@ -574,6 +574,7 @@ fun SettingsScreen(
         SettingsSectionLabel("Backup & Export")
         SettingsCard {
             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                if (app.fynlo.BuildConfig.DEBUG) {
                 // Compact auto-backup status
                 Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
@@ -591,6 +592,7 @@ fun SettingsScreen(
                 ) { if (isPro) xlsxLauncher.launch("Fynlo_Backup_${System.currentTimeMillis()}.xlsx") else onNavigateToUpgrade() }
 
                 SettingsDivider()
+                }
 
                 // C22 (3.2.66) — encryption toggle. Off by default so the
                 // existing Export flow is unchanged for users who don't
@@ -685,6 +687,7 @@ fun SettingsScreen(
 
                 SettingsDivider()
 
+                if (app.fynlo.BuildConfig.DEBUG) {
                 // C22 (3.2.67) — bank statement CSV import.
                 // 3.2.70 — discoverable sample for first-time testing. Saves
                 // a 5-row example file to user-chosen location so they can
@@ -702,6 +705,7 @@ fun SettingsScreen(
                 }
 
                 SettingsDivider()
+                }
 
                 SettingsActionRow(
                     icon  = Icons.Default.TableChart,
@@ -764,6 +768,7 @@ fun SettingsScreen(
                     }
                 }
 
+                if (app.fynlo.BuildConfig.DEBUG) {
                 SettingsDivider()
 
                 // 3.2.72 — diagnostic: show every balance-mutation site so
@@ -830,6 +835,7 @@ fun SettingsScreen(
                             TextButton(onClick = { showResetCloudConfirm = false }) { Text("Cancel") }
                         }
                     )
+                }
                 }
 
                 recalcDelta?.let { delta ->
