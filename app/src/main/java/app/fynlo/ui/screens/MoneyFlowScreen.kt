@@ -386,7 +386,10 @@ fun MoneyFlowScreen(viewModel: FinanceViewModel) {
                     }
                 }
             } else {
-                itemsIndexed(filteredFlows, key = { _, it -> "${it.date}_${it.label}_${it.amount}" }) { index, flow ->
+                itemsIndexed(
+                    filteredFlows,
+                    key = { index, flow -> "flow_${index}_${flow.date}_${flow.flowType}_${flow.label}_${flow.amount}" },
+                ) { index, flow ->
                     if (index > 0) {
                         HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f))
                     }
