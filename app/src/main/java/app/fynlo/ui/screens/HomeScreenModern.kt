@@ -504,7 +504,6 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
                     addTxnIncome = false
                     showAddTxn = true
                 },
-                onOpenSettings = { onNavigateToScreen("settings") },
             )
             Spacer(Modifier.height(22.dp))
         } else {
@@ -642,7 +641,6 @@ private fun DashboardNudges(
     recentActivityCount: Int,
     onOpenDues: () -> Unit,
     onAddTransaction: () -> Unit,
-    onOpenSettings: () -> Unit,
 ) {
     val items = buildList {
         if (dueSoonCount > 0) {
@@ -667,15 +665,6 @@ private fun DashboardNudges(
                 )
             )
         }
-        add(
-            NudgeItem(
-                title = "Keep a backup",
-                subtitle = "Export from Settings after important changes",
-                icon = Icons.Default.Cloud,
-                color = Emerald500,
-                onClick = onOpenSettings,
-            )
-        )
     }.take(2)
 
     if (items.isEmpty()) return
