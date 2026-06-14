@@ -232,12 +232,9 @@ class FinanceViewModel @Inject constructor(
         // Use totalInterestLoans + totalHandLoans (both correctly use paid/paidPrincipal per type)
         // totalReceivables uses paidPrincipal for all loans which is wrong for hand loans
         val totalAssets       = totalCashVal + totalInvestVal + totalInterestLoans + totalHandLoans
-        val totalDebtPrincipal = dbts.sumOf { it.amount - it.paid }
-        val totalDebtInterest  = dbts.sumOf { d ->
-            app.fynlo.logic.InterestEngine.calcIntAccrued(
-                d.amount, d.rate, d.date, d.intType, d.due, totalPaid = d.paid
-            )
-        }
+        val debtLiabilities = dbts.map { app.fynlo.logic.DebtLiabilityCalculator.outstanding(it) }
+        val totalDebtPrincipal = debtLiabilities.sumOf { it.principal }
+        val totalDebtInterest  = debtLiabilities.sumOf { it.interest }
         // Exclude journal_only entries (Bad Debt write-offs, Interest Expense P&L entries)
         // from cash flow totals — they are accounting entries, not actual cash movements
         val cashTrans     = trans.filter { it.tags != "journal_only" }
