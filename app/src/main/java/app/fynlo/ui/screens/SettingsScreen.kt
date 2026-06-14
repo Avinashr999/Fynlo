@@ -98,6 +98,9 @@ fun SettingsScreen(
     var pendingExportPassword by remember { mutableStateOf("") }
     var pendingImportBytes    by remember { mutableStateOf<ByteArray?>(null) }
     var importErrorMessage    by remember { mutableStateOf<String?>(null) }
+    var pendingRestoreJson    by remember { mutableStateOf<String?>(null) }
+    var pendingRestorePreview by remember { mutableStateOf<app.fynlo.data.BackupRestorePreview?>(null) }
+    var restorePreviewError   by remember { mutableStateOf<String?>(null) }
 
     // C22 (3.2.67) — CSV import state. `pendingCsvRows` holds the parsed
     // CSV after the SAF picker callback completes; presence triggers the
@@ -193,7 +196,14 @@ fun SettingsScreen(
                 // Defer restore until the user supplies the password.
                 pendingImportBytes = bytes
             } else {
-                viewModel.restoreData(String(bytes, Charsets.UTF_8))
+                val json = String(bytes, Charsets.UTF_8)
+                runCatching { app.fynlo.data.BackupRestorePreviewer.preview(json) }
+                    .onSuccess { preview ->
+                        pendingRestoreJson = json
+                        pendingRestorePreview = preview
+                        restorePreviewError = null
+                    }
+                    .onFailure { restorePreviewError = it.message ?: "Backup could not be read." }
             }
         }
     }}}
@@ -338,16 +348,63 @@ fun SettingsScreen(
             onConfirm = { pwd ->
                 try {
                     val plain = app.fynlo.logic.EncryptedBackup.decrypt(bytes, pwd)
-                    viewModel.restoreData(plain)
+                    val preview = app.fynlo.data.BackupRestorePreviewer.preview(plain)
+                    pendingRestoreJson = plain
+                    pendingRestorePreview = preview
                     pendingImportBytes = null
                     importErrorMessage = null
                 } catch (e: Exception) {
-                    importErrorMessage = "Wrong password or the backup is corrupted."
+                    importErrorMessage = e.message ?: "Wrong password or the backup is corrupted."
                 }
             },
             onDismiss = {
                 pendingImportBytes = null
                 importErrorMessage = null
+            },
+        )
+    }
+
+    restorePreviewError?.let { message ->
+        AlertDialog(
+            onDismissRequest = { restorePreviewError = null },
+            title = { Text("Backup cannot be restored") },
+            text = { Text(message) },
+            confirmButton = {
+                TextButton(onClick = { restorePreviewError = null }) { Text("OK") }
+            },
+        )
+    }
+
+    pendingRestorePreview?.let { preview ->
+        BackupRestorePreviewDialog(
+            preview = preview,
+            onDismiss = {
+                pendingRestoreJson = null
+                pendingRestorePreview = null
+            },
+            onConfirm = {
+                val json = pendingRestoreJson
+                if (json != null) {
+                    pendingRestoreJson = null
+                    pendingRestorePreview = null
+                    scope.launch(Dispatchers.IO) {
+                        runCatching { viewModel.restoreDataNow(json) }
+                            .onSuccess {
+                                kotlinx.coroutines.withContext(Dispatchers.Main) {
+                                    android.widget.Toast.makeText(
+                                        context,
+                                        "Restore complete. Backup data loaded.",
+                                        android.widget.Toast.LENGTH_LONG,
+                                    ).show()
+                                }
+                            }
+                            .onFailure {
+                                kotlinx.coroutines.withContext(Dispatchers.Main) {
+                                    restorePreviewError = it.message ?: "Restore failed."
+                                }
+                            }
+                    }
+                }
             },
         )
     }
@@ -574,7 +631,7 @@ fun SettingsScreen(
                     color = Blue,
                     title = "Export JSON Backup",
                     subtitle = if (encryptOnExport) "Encrypted with password"
-                               else "Full backup for restore"
+                               else "All projects, accounts, entries, loans, debts, investments, and settings"
                 ) {
                     if (!isPro) {
                         onNavigateToUpgrade()
@@ -611,7 +668,7 @@ fun SettingsScreen(
                     icon  = Icons.Default.FileUpload,
                     color = Amber,
                     title = "Restore Backup",
-                    subtitle = "Import a previously exported JSON or .fynloenc backup"
+                    subtitle = "Preview counts and integrity before replacing current data"
                 ) {
                     // 3.2.69 smoke fix — single `*/*` so Samsung / Xiaomi
                     // pickers don't hide files whose declared MIME isn't in
@@ -1965,6 +2022,69 @@ private fun AuditEntryRow(
 }
 
 private enum class BackupPasswordMode { SET, ENTER }
+
+@Composable
+private fun BackupRestorePreviewDialog(
+    preview: app.fynlo.data.BackupRestorePreview,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Restore backup?") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(
+                    "This will replace the data currently on this device.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    preview.counts.filter { it.second > 0 }.forEach { (label, count) ->
+                        Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
+                            Text(label, style = MaterialTheme.typography.bodySmall)
+                            Text(
+                                count.toString(),
+                                style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
+                            )
+                        }
+                    }
+                }
+                if (preview.warnings.isEmpty()) {
+                    AssistChip(
+                        onClick = {},
+                        label = { Text("Integrity check passed", style = MaterialTheme.typography.labelSmall) },
+                        leadingIcon = { Icon(Icons.Default.Verified, null, Modifier.size(16.dp), tint = Emerald500) },
+                    )
+                } else {
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text(
+                            "Review warnings",
+                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                            color = SemanticAmber,
+                        )
+                        preview.warnings.take(4).forEach { warning ->
+                            Text(
+                                warning,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = onConfirm,
+                colors = ButtonDefaults.buttonColors(containerColor = SemanticRed),
+            ) { Text("Replace data") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        },
+    )
+}
 
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable

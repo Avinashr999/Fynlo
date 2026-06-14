@@ -1089,6 +1089,10 @@ class FinanceViewModel @Inject constructor(
         viewModelScope.launch(Dispatchers.IO) { repository.restoreDataFromJson(json) }
     }
 
+    suspend fun restoreDataNow(json: String) {
+        repository.restoreDataFromJson(json)
+    }
+
     suspend fun exportToCSV(): String {
         recalcCoordinator.runAndStamp()
         val csv = app.fynlo.logic.ExportUtility.generateCSV(
