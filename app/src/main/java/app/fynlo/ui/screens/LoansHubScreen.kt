@@ -21,6 +21,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.fynlo.FinanceViewModel
@@ -64,7 +65,7 @@ fun LoansHubScreen(
     val debts by viewModel.debts.collectAsState()
     val currentProject by viewModel.currentProject.collectAsState()
     val currencyCode = currentProject?.currency ?: "INR"
-    val locale = remember { java.util.Locale.getDefault() }
+    val locale = LocalLocale.current.platformLocale
 
     // Active-borrower count — mirrors `LendingScreen.isActive`: not settled,
     // not written off, still has outstanding balance (hand loans use `paid`,

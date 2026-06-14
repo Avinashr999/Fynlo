@@ -36,10 +36,10 @@ import app.fynlo.logic.DateUtils
 import app.fynlo.logic.InterestEngine
 import app.fynlo.ui.components.AddDebtDialog
 import app.fynlo.ui.components.PayDebtDialog
-import java.util.Locale
 import app.fynlo.ui.theme.*
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalLocale
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -60,7 +60,7 @@ val debts by viewModel.debts.collectAsState()
     val isPrivacy by viewModel.isPrivacyMode.collectAsState()
     val currentProject by viewModel.currentProject.collectAsState()
     val currencyCode = currentProject?.currency ?: "INR"
-    val locale = Locale.getDefault()
+    val locale = LocalLocale.current.platformLocale
     var searchQuery by remember { mutableStateOf("") }
     // C12 Stage 2 (3.2.27) — Active/Overdue/Closed segmented filter for parity
     // with LendingScreen. Active = paid < amount; Overdue = active AND due
@@ -152,7 +152,7 @@ val debts by viewModel.debts.collectAsState()
                     }
                     Column(Modifier.weight(1f)) {
                         Text(
-                            "Payoff plan — Snowball vs Avalanche",
+                            "Payoff plan: Snowball vs Avalanche",
                             style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
                             color = Emerald500,
                         )
@@ -184,7 +184,7 @@ val debts by viewModel.debts.collectAsState()
             OutlinedTextField(
                 value         = searchQuery,
                 onValueChange = { searchQuery = it; expanded = true },
-                placeholder   = { Text("Search debts…") },
+                placeholder   = { Text("Search debts") },
                 leadingIcon   = { Icon(Icons.Default.Search, null) },
                 trailingIcon  = { if (searchQuery.isNotBlank()) IconButton(onClick = { searchQuery = ""; expanded = false }) { Icon(Icons.Default.Clear, null, Modifier.size(18.dp)) } },
                 singleLine    = true,
@@ -227,7 +227,7 @@ val debts by viewModel.debts.collectAsState()
                             onClick = { statusFilter = label },
                             shape = SegmentedButtonDefaults.itemShape(idx, filters.size),
                             icon = {},
-                            label = { Text("$label  ·  $count", style = MaterialTheme.typography.labelMedium) },
+                            label = { Text("$label  -  $count", style = MaterialTheme.typography.labelMedium) },
                         )
                     }
                 }
@@ -239,7 +239,7 @@ val debts by viewModel.debts.collectAsState()
                     EmptyDebtState(onAdd = { showAddDialog = true })
                 } else {
                     val msg = when (statusFilter) {
-                        "Overdue" -> "No overdue debts — you're on track 🎉"
+                        "Overdue" -> "No overdue debts. You're on track."
                         "Closed"  -> "No closed debts yet"
                         else      -> "No active debts"
                     }
@@ -284,7 +284,7 @@ fun DebtCard(
     isPrivacy: Boolean = false,
     onClick: () -> Unit,
 ) {
-    val locale = Locale.getDefault()
+    val locale = LocalLocale.current.platformLocale
     val today  = remember { java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd")) }
     val isOverdue = debt.due.isNotBlank() && debt.due < today && debt.paid < debt.amount
 
@@ -371,8 +371,6 @@ fun EmptyDebtState(onAdd: () -> Unit = {}) {
         actionLabel = "Add First Debt"
     )
 }
-
-
 
 
 

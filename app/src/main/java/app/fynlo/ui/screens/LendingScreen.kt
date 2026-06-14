@@ -52,10 +52,10 @@ import app.fynlo.logic.DateUtils
 import app.fynlo.logic.InterestEngine
 import app.fynlo.ui.components.AddLendingDialog
 import app.fynlo.ui.components.CollectPaymentDialog
-import java.util.Locale
 import app.fynlo.ui.theme.*
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalLocale
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -68,6 +68,7 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
     val isPrivacy     by viewModel.isPrivacyMode.collectAsState()
     val currentProject by viewModel.currentProject.collectAsState()
     val currencyCode = currentProject?.currency ?: "INR"
+    val locale = LocalLocale.current.platformLocale
     var showEmiCalc by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
     var showAddDialog by remember { mutableStateOf(false) }
@@ -161,7 +162,7 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         PremiumStatCard(
                             label = "Yield",
-                            value = if (isPrivacy) "••••" else "${String.format("%.1f", summary.lendingYield)}%",
+                            value = if (isPrivacy) "••••" else "${String.format(locale, "%.1f", summary.lendingYield)}%",
                             iconTint = Emerald500
                         )
                         if (!summary.lendingXirr.isNaN()) {
@@ -190,7 +191,7 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
             item {
                 OutlinedTextField(
                     value = searchQuery, onValueChange = { searchQuery = it },
-                    placeholder = { Text("Search borrowers…") },
+                    placeholder = { Text("Search borrowers") },
                     leadingIcon = { Icon(Icons.Default.Search, null, tint = Emerald500) },
                     trailingIcon = { if (searchQuery.isNotBlank()) IconButton(onClick = { searchQuery = "" }) { Icon(Icons.Default.Clear, null, Modifier.size(18.dp)) } },
                     singleLine = true, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp),
@@ -221,7 +222,7 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
                             onClick = { statusFilter = label },
                             shape = SegmentedButtonDefaults.itemShape(idx, filters.size),
                             icon = {},
-                            label = { Text("$label  ·  $count", style = MaterialTheme.typography.labelMedium) },
+                            label = { Text("$label  -  $count", style = MaterialTheme.typography.labelMedium) },
                         )
                     }
                 }
@@ -232,7 +233,7 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
             if (displayed.isEmpty()) {
                 item {
                     val msg = when (statusFilter) {
-                        "Overdue" -> "No overdue loans — you're up to date 🎉"
+                        "Overdue" -> "No overdue loans. You're up to date."
                         "Closed"  -> "No closed loans yet"
                         else      -> if (borrowers.isEmpty()) null
                                      else "No active loans"
@@ -289,7 +290,7 @@ fun LendingCard(
     // packed 6+ inline action callbacks plus a 70-line WhatsApp message
     // builder; all of that lifted to the detail screen so the list stays
     // scannable. Matches DebtCard visually per audit #5.
-    val locale = java.util.Locale.getDefault()
+    val locale = LocalLocale.current.platformLocale
     val interest = app.fynlo.logic.InterestEngine.calcIntAccrued(
         amount = borrower.amount, rate = borrower.rate,
         loanDate = borrower.date, intType = borrower.intType,
@@ -394,7 +395,7 @@ fun EmiCalculatorDialog(onDismiss: () -> Unit) {
     var useReducing  by remember { mutableStateOf(true) }
     var useSimple    by remember { mutableStateOf(false) }
     // useCompound = !useReducing && !useSimple (overdue scenario only)
-    val locale     = remember { java.util.Locale.getDefault() }
+    val locale     = LocalLocale.current.platformLocale
 
     // Reducing balance EMI
     val emiReducing = remember(principal, rate, tenure) {
@@ -530,7 +531,7 @@ fun EmiCalculatorDialog(onDismiss: () -> Unit) {
             if (isOverdue) {
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    "Loan is overdue — compound interest applies.",
+                    "Loan is overdue. Compound interest applies.",
                     style = MaterialTheme.typography.labelSmall,
                     color = SemanticRed
                 )
@@ -577,9 +578,6 @@ fun EmiCalculatorDialog(onDismiss: () -> Unit) {
         }
     }
     }
-
-
-
 
 
 
