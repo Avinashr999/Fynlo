@@ -46,8 +46,8 @@ import androidx.compose.ui.semantics.testTagsAsResourceId
 
 // ── Country code data ─────────────────────────────────────────────────────────
 data class CountryCode(val code: String, val flag: String, val name: String) {
-    val display get() = "$flag $code"
-    val full    get() = "$code $flag $name"
+    val display get() = code
+    val full    get() = "$code $name"
 }
 
 val COUNTRY_CODES = listOf(
@@ -192,7 +192,7 @@ fun PeopleScreen(viewModel: FinanceViewModel) {
         OutlinedTextField(
             value = searchQuery,
             onValueChange = { searchQuery = it },
-            placeholder = { Text("Search contacts...") },
+            placeholder = { Text("Search contacts") },
             leadingIcon = { Icon(Icons.Default.Search, null, Modifier.size(20.dp)) },
             trailingIcon = { if (searchQuery.isNotEmpty()) IconButton(onClick = { searchQuery = "" }) { Icon(Icons.Default.Clear, null) } },
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
@@ -240,6 +240,8 @@ fun PeopleScreen(viewModel: FinanceViewModel) {
 
             if (people.isEmpty()) {
                 item { EmptyPeopleState(onAdd = { showAddDialog = true }) }
+            } else if (filteredPeople.isEmpty()) {
+                item { EmptyPeopleSearchState(onClear = { searchQuery = "" }) }
             } else {
                 itemsIndexed(filteredPeople, key = { _, p -> p.id }) { index, person ->
                     PersonCard(
@@ -341,7 +343,7 @@ fun PersonCard(person: Person, onEdit: () -> Unit, onDelete: () -> Unit) {
                         }
                     } else {
                         Text(
-                            "No phone — tap edit to add",
+                            "No phone - tap edit to add",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.error.copy(alpha = 0.6f)
                         )
@@ -530,9 +532,40 @@ fun EmptyPeopleState(onAdd: () -> Unit = {}) {
             icon        = Icons.Default.Person,
             title       = "No contacts yet",
             subtitle    = "Contacts link loans to people and enable WhatsApp / SMS reminders.",
-            actionLabel = "Add First Contact",
+            actionLabel = "Add contact",
             onAction    = onAdd,
         )
+    }
+}
+
+@Composable
+fun EmptyPeopleSearchState(onClear: () -> Unit = {}) {
+    Box(modifier = Modifier.fillMaxWidth().padding(vertical = 40.dp)) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Icon(
+                Icons.Default.Search,
+                contentDescription = null,
+                modifier = Modifier.size(44.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f),
+            )
+            Text(
+                "No matching contacts",
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Text(
+                "Clear search to see everyone in your contact book.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            OutlinedButton(onClick = onClear) {
+                Text("Clear search")
+            }
+        }
     }
 }
 
@@ -581,7 +614,7 @@ private fun ImportContactsDialog(
         onDismiss = onDismiss,
     ) {
         Text(
-            if (newContacts.isEmpty()) "No new contacts to import — your contact book already covers everyone with a phone number."
+            if (newContacts.isEmpty()) "No new contacts to import - your contact book already covers everyone with a phone number."
             else "${newContacts.size} contacts available. Tick the ones you want to add.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -592,7 +625,7 @@ private fun ImportContactsDialog(
             OutlinedTextField(
                 value = query,
                 onValueChange = { query = it },
-                placeholder = { Text("Search name or number…") },
+                placeholder = { Text("Search name or number") },
                 leadingIcon = { Icon(Icons.Default.Search, null) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),

@@ -19,10 +19,10 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import java.util.Locale
 import app.fynlo.FinanceViewModel
 import app.fynlo.data.model.Transaction
 import app.fynlo.logic.CurrencyFormatter
@@ -43,7 +43,7 @@ fun TransactionHistoryScreen(viewModel: FinanceViewModel) {
     // 3.2.81 — account names for the edit dialog's new Account picker (C13 #9).
     val allAccounts by viewModel.accounts.collectAsState()
     val currencyCode = currentProject?.currency ?: "INR"
-    val locale = Locale.getDefault()
+    val locale = LocalLocale.current.platformLocale
 
     var selectedType   by remember { mutableStateOf("All") }
     var showDateFilter by remember { mutableStateOf(false) }
@@ -77,6 +77,10 @@ fun TransactionHistoryScreen(viewModel: FinanceViewModel) {
     val totalIncome  = filteredHistory.filter { it.type.equals("income", true) }.sumOf { it.amount }
     val totalExpense = filteredHistory.filter { it.type.equals("expense", true) }.sumOf { it.amount }
     val net = totalIncome - totalExpense
+    val hasActiveFilters = searchQuery.isNotBlank() ||
+        selectedType != "All" ||
+        fromDate.isNotBlank() ||
+        toDate.isNotBlank()
     val hairline = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f)
 
     if (showBulkDeleteConfirm) {
@@ -138,15 +142,19 @@ fun TransactionHistoryScreen(viewModel: FinanceViewModel) {
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
 
-                val incText = if (isPrivacy) "••••" else CurrencyFormatter.detail(totalIncome, currencyCode, locale)
-                Text("▲ $incText",
+                val incText = if (isPrivacy) "Hidden" else CurrencyFormatter.detail(totalIncome, currencyCode, locale)
+                Text(
+                    "In $incText",
                     style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
-                    color = Emerald500)
+                    color = Emerald500
+                )
 
-                val expText = if (isPrivacy) "••••" else CurrencyFormatter.detail(totalExpense, currencyCode, locale)
-                Text("▼ $expText",
+                val expText = if (isPrivacy) "Hidden" else CurrencyFormatter.detail(totalExpense, currencyCode, locale)
+                Text(
+                    "Out $expText",
                     style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
-                    color = SemanticRed)
+                    color = SemanticRed
+                )
             }
         }
 
@@ -179,7 +187,7 @@ fun TransactionHistoryScreen(viewModel: FinanceViewModel) {
             // ── Soft search ────────────────────────────────────────────────────
             HistorySoftField(
                 value = searchQuery,
-                placeholder = "Search transactions…",
+                placeholder = "Search transactions",
                 leading = Icons.Default.Search,
                 onChange = { viewModel.updateSearchQuery(it) }
             )
@@ -308,7 +316,16 @@ fun TransactionHistoryScreen(viewModel: FinanceViewModel) {
         Spacer(Modifier.height(8.dp))
 
         if (filteredHistory.isEmpty()) {
-            EmptyTransactionState()
+            EmptyTransactionState(
+                hasActiveFilters = hasActiveFilters,
+                onClearFilters = {
+                    viewModel.updateSearchQuery("")
+                    selectedType = "All"
+                    fromDate = ""
+                    toDate = ""
+                    showDateFilter = false
+                },
+            )
         } else {
             app.fynlo.ui.components.PullRefresh(viewModel) {
             LazyColumn(
@@ -466,7 +483,7 @@ fun TransactionItem(
         isExpense  -> SemanticRed
         else       -> SemanticBlue
     }
-    val locale = java.util.Locale.getDefault()
+    val locale = LocalLocale.current.platformLocale
     var showEditDialog by remember { mutableStateOf(false) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
 
@@ -591,11 +608,11 @@ fun TransactionItem(
 
         Spacer(Modifier.width(8.dp))
 
-        val amountText = if (isPrivacy) "••••"
+        val amountText = if (isPrivacy) "Hidden"
                          else when {
                              isIncome  -> "+${CurrencyFormatter.detail(txn.amount, currencyCode, locale)}"
                              isExpense -> CurrencyFormatter.negative(txn.amount, currencyCode, locale)
-                             else      -> "↔${CurrencyFormatter.detail(txn.amount, currencyCode, locale)}"
+                              else      -> "Transfer ${CurrencyFormatter.detail(txn.amount, currencyCode, locale)}"
                          }
         Text(
             text  = amountText,
@@ -607,17 +624,40 @@ fun TransactionItem(
 }
 
 @Composable
-fun EmptyTransactionState() {
+fun EmptyTransactionState(
+    hasActiveFilters: Boolean = false,
+    onClearFilters: () -> Unit = {},
+) {
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
             Icon(
                 Icons.Default.ReceiptLong,
                 contentDescription = null,
-                modifier = Modifier.size(64.dp),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
+                modifier = Modifier.size(56.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f)
             )
-            Spacer(modifier = Modifier.height(16.dp))
-            Text("No transactions yet", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(
+                if (hasActiveFilters) "No matching transactions" else "No transactions yet",
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                if (hasActiveFilters) {
+                    "Clear search or date filters to see more entries."
+                } else {
+                    "Use the + button to add income, expense, or transfer entries."
+                },
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            if (hasActiveFilters) {
+                OutlinedButton(onClick = onClearFilters) {
+                    Text("Clear filters")
+                }
+            }
         }
     }
 }
