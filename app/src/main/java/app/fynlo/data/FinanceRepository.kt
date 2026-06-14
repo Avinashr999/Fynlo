@@ -735,6 +735,11 @@ class FinanceRepository(
         sync { setAccount(account) }
     }
 
+    suspend fun deleteUnusedAccount(account: Account) {
+        dao.deleteAccountById(account.id)
+        sync { deleteAccount(account.id) }
+    }
+
     suspend fun updateInvestmentValue(investment: Investment, newCurrentVal: Double) {
         val updated = investment.copy(currentVal = newCurrentVal, updatedAt = System.currentTimeMillis())
         dao.insertInvestment(updated)

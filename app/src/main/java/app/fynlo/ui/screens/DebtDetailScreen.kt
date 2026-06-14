@@ -225,15 +225,12 @@ fun DebtDetailScreen(
                 }
             }
 
-            // 3.2.85 — EMI & Amortization section (only if tenure is set).
-            if (debt.tenure > 0 && debt.intType == "Reducing Balance") {
-                item {
-                    EmiPlanningSection(
-                        debt = debt,
-                        currencyCode = currencyCode,
-                        locale = locale
-                    )
-                }
+            item {
+                EmiPlanningSection(
+                    debt = debt,
+                    currencyCode = currencyCode,
+                    locale = locale
+                )
             }
 
             // 3.2.83 — XIRR (effective borrowing rate) on this debt.
@@ -244,60 +241,54 @@ fun DebtDetailScreen(
             //     NEGATIVE "what I still owe" cashflow, so XIRR stays
             //     meaningful for ongoing debts. Same mark-to-today logic
             //     as the lending XIRR.
-            if (debtPayments.isNotEmpty()) {
-                item {
-                    val xirr = remember(debtPayments, debt, totalOutstanding) {
-                        val flows = mutableListOf<app.fynlo.logic.XirrCalculator.Cashflow>()
+            item {
+                val xirr = remember(debtPayments, debt, totalOutstanding) {
+                    val flows = mutableListOf<app.fynlo.logic.XirrCalculator.Cashflow>()
+                    flows += app.fynlo.logic.XirrCalculator.Cashflow(
+                        amount = debt.amount,
+                        date   = debt.date,
+                    )
+                    debtPayments.forEach { p ->
+                        flows += app.fynlo.logic.XirrCalculator.Cashflow(-p.amount, p.date)
+                    }
+                    if (totalOutstanding > 0.01) {
                         flows += app.fynlo.logic.XirrCalculator.Cashflow(
-                            amount = debt.amount,
-                            date   = debt.date,
+                            amount = -totalOutstanding,
+                            date   = java.time.LocalDate.now()
+                                .format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd")),
                         )
-                        debtPayments.forEach { p ->
-                            flows += app.fynlo.logic.XirrCalculator.Cashflow(-p.amount, p.date)
-                        }
-                        if (totalOutstanding > 0.01) {
-                            flows += app.fynlo.logic.XirrCalculator.Cashflow(
-                                amount = -totalOutstanding,
-                                date   = java.time.LocalDate.now()
-                                    .format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd")),
+                    }
+                    app.fynlo.logic.XirrCalculator.calc(flows)
+                }
+                val xirrColor = if (!xirr.isNaN() && xirr <= 0) Emerald500 else SemanticRed
+                Surface(
+                    shape = RoundedCornerShape(10.dp),
+                    color = xirrColor.copy(alpha = 0.1f),
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text(
+                                "Effective rate paid (XIRR)",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            Text(
+                                if (xirr.isNaN()) "Shown after enough dated cashflows exist"
+                                else "Annualised cost of this debt across all payments",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.outlineVariant,
                             )
                         }
-                        app.fynlo.logic.XirrCalculator.calc(flows)
-                    }
-                    if (!xirr.isNaN()) {
-                        // Higher rate = worse for the borrower → Red tint
-                        // (semantic_expense). Negative XIRR on a debt is
-                        // odd but possible (e.g. heavily-prepaid interest-
-                        // free loan); render Emerald in that case.
-                        Surface(
-                            shape = RoundedCornerShape(10.dp),
-                            color = (if (xirr > 0) SemanticRed else Emerald500).copy(alpha = 0.1f),
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Column(Modifier.weight(1f)) {
-                                    Text(
-                                        "Effective rate paid (XIRR)",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                    Text(
-                                        "Annualised cost of this debt across all payments",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.outlineVariant,
-                                    )
-                                }
-                                Text(
-                                    app.fynlo.logic.XirrCalculator.format(xirr),
-                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.ExtraBold),
-                                    color = if (xirr > 0) SemanticRed else Emerald500,
-                                )
-                            }
-                        }
+                        Text(
+                            app.fynlo.logic.XirrCalculator.format(xirr),
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.ExtraBold),
+                            color = xirrColor,
+                        )
                     }
                 }
             }
@@ -591,8 +582,16 @@ private fun EmiPlanningSection(
     locale: Locale,
 ) {
     var expanded by remember { mutableStateOf(false) }
-    val (emi, totalInterest) = remember(debt) {
-        app.fynlo.logic.EmiPrepaymentSimulator.baseline(debt.amount, debt.rate, debt.tenure)
+    val isReducingBalance = debt.intType.contains("Reducing", ignoreCase = true)
+    val canCalculate = debt.amount > 0.0 && debt.tenure > 0 && isReducingBalance
+    val emiResult = remember(debt, canCalculate) {
+        if (canCalculate) {
+            runCatching {
+                app.fynlo.logic.EmiPrepaymentSimulator.baseline(debt.amount, debt.rate, debt.tenure)
+            }.getOrNull()
+        } else {
+            null
+        }
     }
 
     Surface(
@@ -606,7 +605,9 @@ private fun EmiPlanningSection(
                 Column(Modifier.weight(1f)) {
                     Text("EMI & Amortization",
                         style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold))
-                    Text("Original loan schedule and monthly EMI",
+                    Text(
+                        if (canCalculate) "Original loan schedule and monthly EMI"
+                        else "Add tenure and Reducing Balance type to calculate EMI",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
@@ -619,29 +620,44 @@ private fun EmiPlanningSection(
 
             if (expanded) {
                 Spacer(Modifier.height(12.dp))
-                Row(Modifier.fillMaxWidth(), Arrangement.spacedBy(8.dp)) {
-                    WhatIfStat(
-                        label = "Monthly EMI",
-                        value = CurrencyFormatter.detail(emi, currencyCode, locale),
-                        sub   = "Reducing Bal.",
-                        color = Emerald500,
-                        modifier = Modifier.weight(1f),
+                val result = emiResult
+                if (result == null) {
+                    val reason = when {
+                        debt.tenure <= 0 -> "Edit this debt and enter Tenure (mo)."
+                        !isReducingBalance -> "Edit this debt and set Interest Type to Reducing Balance."
+                        else -> "Enter a valid amount, rate, and tenure."
+                    }
+                    Text(
+                        reason,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
-                    WhatIfStat(
-                        label = "Total Interest",
-                        value = CurrencyFormatter.detail(totalInterest, currencyCode, locale),
-                        sub   = "over ${debt.tenure} mo",
-                        color = SemanticAmber,
-                        modifier = Modifier.weight(1f),
+                } else {
+                    val (emi, totalInterest) = result
+                    Row(Modifier.fillMaxWidth(), Arrangement.spacedBy(8.dp)) {
+                        WhatIfStat(
+                            label = "Monthly EMI",
+                            value = CurrencyFormatter.detail(emi, currencyCode, locale),
+                            sub   = "Reducing Bal.",
+                            color = Emerald500,
+                            modifier = Modifier.weight(1f),
+                        )
+                        WhatIfStat(
+                            label = "Total Interest",
+                            value = CurrencyFormatter.detail(totalInterest, currencyCode, locale),
+                            sub   = "over ${debt.tenure} mo",
+                            color = SemanticAmber,
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+
+                    Spacer(Modifier.height(12.dp))
+                    Text(
+                        "This is the baseline schedule for a ₹${String.format(locale, "%,.0f", debt.amount)} loan at ${debt.rate}% for ${debt.tenure} months.",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-
-                Spacer(Modifier.height(12.dp))
-                Text(
-                    "This is the baseline schedule for a ₹${String.format(locale, "%,.0f", debt.amount)} loan at ${debt.rate}% for ${debt.tenure} months.",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
             }
         }
     }

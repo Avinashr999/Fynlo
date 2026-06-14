@@ -855,6 +855,56 @@ class FinanceViewModel @Inject constructor(
         }
     }
 
+    fun saveAccount(account: Account) {
+        viewModelScope.launch(Dispatchers.IO) {
+            repository.upsertAccount(
+                account.copy(
+                    projectId = pid,
+                    updatedAt = System.currentTimeMillis(),
+                    createdAt = if (account.createdAt > 0L) account.createdAt else System.currentTimeMillis(),
+                )
+            )
+        }
+    }
+
+    fun transferBetweenAccounts(from: Account, to: Account, amount: Double) {
+        if (amount <= 0.0 || from.id == to.id) return
+        viewModelScope.launch(Dispatchers.IO) {
+            val now = System.currentTimeMillis()
+            repository.insertTransaction(
+                Transaction(
+                    id = app.fynlo.logic.Ids.newId(),
+                    date = today,
+                    type = "Transfer",
+                    amount = amount,
+                    fromAcct = from.name,
+                    toAcct = to.name,
+                    fromAcctId = from.id,
+                    toAcctId = to.id,
+                    category = "Transfer",
+                    desc = "Transfer from ${from.name} to ${to.name}",
+                    projectId = pid,
+                    updatedAt = now,
+                    createdAt = now,
+                )
+            )
+        }
+    }
+
+    fun closeAccount(account: Account) {
+        if (kotlin.math.abs(account.balance) > 0.005) return
+        val marker = "[fynlo:closed-account]"
+        val notes = if (account.notes.contains(marker)) account.notes else listOf(account.notes, marker)
+            .filter { it.isNotBlank() }
+            .joinToString("\n")
+        saveAccount(account.copy(notes = notes))
+    }
+
+    fun deleteUnusedAccount(account: Account) {
+        viewModelScope.launch(Dispatchers.IO) {
+            repository.deleteUnusedAccount(account)
+        }
+    }
 
     fun addGoal(goal: Goal) {
         viewModelScope.launch(Dispatchers.IO) {
@@ -1050,6 +1100,23 @@ class FinanceViewModel @Inject constructor(
         return csv
     }
 
+    suspend fun exportDataToCSV(scope: String): String {
+        recalcCoordinator.runAndStamp()
+        val csv = app.fynlo.logic.ExportUtility.generateDataExportCSV(
+            scope = scope,
+            accounts = accounts.value,
+            transactions = transactions.value,
+            borrowers = borrowers.value,
+            debts = debts.value,
+            investments = investments.value,
+            people = people.value,
+            budgets = budgets.value,
+            goals = goals.value,
+        )
+        app.fynlo.data.Analytics.dataExported("csv_${scope.lowercase()}")
+        return csv
+    }
+
     suspend fun exportToPDF(
         outputStream: java.io.OutputStream,
         // C11 (3.2.40) — user's Date Format pref, collected by the caller.
@@ -1082,6 +1149,31 @@ class FinanceViewModel @Inject constructor(
             dateFormat  = dateFormat,
         )
         app.fynlo.data.Analytics.dataExported("pdf")
+    }
+
+    suspend fun exportDataToPDF(
+        outputStream: java.io.OutputStream,
+        scope: String,
+        dateFormat: String = app.fynlo.logic.DateUtils.DEFAULT_COMPACT_PATTERN,
+    ) {
+        recalcCoordinator.runAndStamp()
+        app.fynlo.logic.ExportUtility.generateDataExportPDF(
+            outputStream = outputStream,
+            scope = scope,
+            accounts = accounts.value,
+            transactions = transactions.value,
+            borrowers = borrowers.value,
+            debts = debts.value,
+            investments = investments.value,
+            people = people.value,
+            budgets = budgets.value,
+            goals = goals.value,
+            currencyCode = currentProject.value?.currency ?: "INR",
+            projectName = currentProject.value?.name ?: "Personal",
+            userEmail = app.fynlo.data.AuthManager().userEmail,
+            dateFormat = dateFormat,
+        )
+        app.fynlo.data.Analytics.dataExported("pdf_${scope.lowercase()}")
     }
 
     /**

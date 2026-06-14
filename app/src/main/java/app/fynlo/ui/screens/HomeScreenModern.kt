@@ -29,6 +29,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.fynlo.FinanceViewModel
+import app.fynlo.data.model.Account
 import app.fynlo.logic.CurrencyFormatter
 import app.fynlo.ui.components.AddTransactionDialog
 import app.fynlo.ui.components.PortfolioBreakdownSheet
@@ -56,6 +57,10 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
     val cs                = app.fynlo.logic.CurrencyUtils.symbolFor(currencyCode)
     var showAddTxn        by remember { mutableStateOf(false) }
     var addTxnIncome      by remember { mutableStateOf(false) }
+    var accountDialogInitial by remember { mutableStateOf<Account?>(null) }
+    var showAccountDialog by remember { mutableStateOf(false) }
+    var transferFromAccount by remember { mutableStateOf<Account?>(null) }
+    var showTransferDialog by remember { mutableStateOf(false) }
     val netWorthSnapshots by viewModel.getNetWorthSnapshots().collectAsState(initial = emptyList())
     var activeBreakdownType by remember { mutableStateOf<BreakdownType?>(null) }
 
@@ -87,6 +92,8 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
     val allInvestmentsHome by viewModel.investments.collectAsState()
     val allDebtsHome by viewModel.debts.collectAsState()
     val allTransactionsHome by viewModel.transactions.collectAsState()
+    val activeAccounts = remember(accounts) { accounts.filterNot { it.isClosedAccount() } }
+    val activeAccountNames = remember(activeAccounts) { activeAccounts.map { it.name } }
     val accountNames = remember(allAccountsHome) { allAccountsHome.map { it.name } }
     val orphans = remember(allTransactionsHome, accountNames) {
         app.fynlo.logic.OrphanTransactionsScanner.scan(allTransactionsHome, accountNames)
@@ -102,10 +109,73 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
             // 3.2.81 (C13 #5) — "Repeat monthly?" → also create a recurring template.
             onRepeatMonthly = { txn -> viewModel.addRecurringTransaction(app.fynlo.logic.toRecurringTemplate(txn)) },
             initialIsIncome = addTxnIncome,
-            bankAccounts    = accountNames,
+            bankAccounts    = activeAccountNames,
             investmentNames = allInvestmentsHome.map { it.name },
             debtNames       = allDebtsHome.map { it.name },
         )
+    }
+
+    if (showAccountDialog) {
+        val initial = accountDialogInitial
+        val linkedCount = remember(initial, allTransactionsHome) {
+            initial?.let { account ->
+                allTransactionsHome.count { it.linksAccount(account) }
+            } ?: 0
+        }
+        val canClose = initial != null && kotlin.math.abs(initial.balance) <= 0.005
+        val canDelete = initial != null && linkedCount == 0
+        AccountManageDialog(
+            initial = initial,
+            currencyCode = currencyCode,
+            linkedTransactionCount = linkedCount,
+            canTransfer = initial != null && activeAccounts.any { it.id != initial.id },
+            canClose = canClose,
+            canDelete = canDelete,
+            onDismiss = { showAccountDialog = false },
+            onConfirm = { account ->
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                viewModel.saveAccount(account)
+                showAccountDialog = false
+            },
+            onTransfer = initial?.let { account ->
+                {
+                    transferFromAccount = account
+                    showAccountDialog = false
+                    showTransferDialog = true
+                }
+            },
+            onClose = initial?.let { account ->
+                {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    viewModel.closeAccount(account)
+                    showAccountDialog = false
+                }
+            },
+            onDelete = initial?.let { account ->
+                {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    viewModel.deleteUnusedAccount(account)
+                    showAccountDialog = false
+                }
+            },
+        )
+    }
+
+    if (showTransferDialog) {
+        val from = transferFromAccount
+        if (from != null) {
+            AccountTransferDialog(
+                from = from,
+                accounts = activeAccounts.filter { it.id != from.id },
+                currencyCode = currencyCode,
+                onDismiss = { showTransferDialog = false },
+                onConfirm = { to, amount ->
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    viewModel.transferBetweenAccounts(from, to, amount)
+                    showTransferDialog = false
+                },
+            )
+        }
     }
 
     if (showOrphanDialog) {
@@ -361,16 +431,38 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
         Spacer(Modifier.height(28.dp))
 
         // ── Accounts ──────────────────────────────────────────────────────────
-        SectionHeader("Accounts")
+        Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
+            SectionHeader("Accounts")
+            IconButton(onClick = {
+                accountDialogInitial = null
+                showAccountDialog = true
+            }) {
+                Icon(Icons.Default.Add, contentDescription = "Add Account", tint = Emerald500)
+            }
+        }
         Spacer(Modifier.height(4.dp))
-        if (summary.accountBreakdown.isEmpty()) {
+        val activeAccountByName = activeAccounts.associateBy { it.name }
+        val visibleAccountEntries = summary.accountBreakdown.entries.filter { activeAccountByName[it.key] != null }
+        if (visibleAccountEntries.isEmpty()) {
             Text("No accounts yet. Tap + to add one.", Modifier.padding(vertical = 16.dp),
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         } else {
-            summary.accountBreakdown.entries.forEachIndexed { idx, entry ->
+            visibleAccountEntries.forEachIndexed { idx, entry ->
                 if (idx > 0) HorizontalDivider(thickness = 0.5.dp,
                     color = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f))
-                NeoAccountRow(entry.key, fmt(entry.value), iconFor(entry.key)) { onNavigateToScreen("statement/${entry.key}") }
+                val account = activeAccountByName[entry.key]
+                NeoAccountRow(
+                    name = entry.key,
+                    balance = fmt(entry.value),
+                    icon = iconFor(entry.key),
+                    onClick = { onNavigateToScreen("statement/${entry.key}") },
+                    onEdit = account?.let {
+                        {
+                            accountDialogInitial = it
+                            showAccountDialog = true
+                        }
+                    },
+                )
             }
         }
 
@@ -391,6 +483,16 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
     }
     }
 }
+
+private const val CLOSED_ACCOUNT_MARKER = "[fynlo:closed-account]"
+
+private fun Account.isClosedAccount(): Boolean = notes.contains(CLOSED_ACCOUNT_MARKER)
+
+private fun app.fynlo.data.model.Transaction.linksAccount(account: Account): Boolean =
+    fromAcctId == account.id ||
+        toAcctId == account.id ||
+        (fromAcctId.isBlank() && fromAcct == account.name) ||
+        (toAcctId.isBlank() && toAcct == account.name)
 
 @Composable
 private fun SectionHeader(title: String) {
@@ -413,7 +515,13 @@ private fun NeoAction(label: String, icon: ImageVector, color: Color, modifier: 
 }
 
 @Composable
-private fun NeoAccountRow(name: String, balance: String, icon: ImageVector, onClick: () -> Unit) {
+private fun NeoAccountRow(
+    name: String,
+    balance: String,
+    icon: ImageVector,
+    onClick: () -> Unit,
+    onEdit: (() -> Unit)? = null,
+) {
     Row(
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 14.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -425,8 +533,235 @@ private fun NeoAccountRow(name: String, balance: String, icon: ImageVector, onCl
             }
             Text(name, style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium))
         }
-        Text(balance, style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold))
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(balance, style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold))
+            if (onEdit != null) {
+                IconButton(onClick = onEdit, modifier = Modifier.size(36.dp)) {
+                    Icon(Icons.Default.Edit, contentDescription = "Edit Account", modifier = Modifier.size(18.dp))
+                }
+            }
+        }
     }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun AccountManageDialog(
+    initial: Account?,
+    currencyCode: String,
+    linkedTransactionCount: Int,
+    canTransfer: Boolean,
+    canClose: Boolean,
+    canDelete: Boolean,
+    onDismiss: () -> Unit,
+    onConfirm: (Account) -> Unit,
+    onTransfer: (() -> Unit)?,
+    onClose: (() -> Unit)?,
+    onDelete: (() -> Unit)?,
+) {
+    var name by remember(initial) { mutableStateOf(initial?.name ?: "") }
+    var type by remember(initial) { mutableStateOf(initial?.type ?: "Bank") }
+    var balance by remember(initial) {
+        mutableStateOf(initial?.balance?.toBigDecimal()?.stripTrailingZeros()?.toPlainString() ?: "")
+    }
+    var expanded by remember { mutableStateOf(false) }
+    val accountTypes = listOf("Bank", "Cash", "UPI", "Trading")
+    val amount = balance.toDoubleOrNull()
+    val isValid = name.isNotBlank() && amount != null
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(if (initial == null) "Add Account" else "Edit Account") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("Account name") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                ExposedDropdownMenuBox(
+                    expanded = expanded,
+                    onExpandedChange = { expanded = !expanded },
+                ) {
+                    OutlinedTextField(
+                        value = type,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Type") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
+                        modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, true).fillMaxWidth(),
+                    )
+                    ExposedDropdownMenu(
+                        expanded = expanded,
+                        onDismissRequest = { expanded = false },
+                    ) {
+                        accountTypes.forEach { option ->
+                            DropdownMenuItem(
+                                text = { Text(option) },
+                                onClick = {
+                                    type = option
+                                    expanded = false
+                                },
+                            )
+                        }
+                    }
+                }
+                OutlinedTextField(
+                    value = balance,
+                    onValueChange = { balance = it.filter { c -> c.isDigit() || c == '.' || c == '-' } },
+                    label = { Text("Balance (${app.fynlo.logic.CurrencyUtils.symbolFor(currencyCode)})") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                if (initial != null) {
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.18f))
+                    Text(
+                        "Account actions",
+                        style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
+                    )
+                    OutlinedButton(
+                        enabled = canTransfer && onTransfer != null,
+                        onClick = { onTransfer?.invoke() },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Icon(Icons.Default.SwapHoriz, null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text("Transfer balance")
+                    }
+                    OutlinedButton(
+                        enabled = canClose && onClose != null,
+                        onClick = { onClose?.invoke() },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Icon(Icons.Default.Block, null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text("Close account")
+                    }
+                    Text(
+                        if (canClose) "Closed accounts are hidden from new entries but history stays intact."
+                        else "Transfer the remaining balance before closing.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    OutlinedButton(
+                        enabled = canDelete && onDelete != null,
+                        onClick = { onDelete?.invoke() },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = SemanticRed),
+                    ) {
+                        Icon(Icons.Default.Delete, null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text("Delete account")
+                    }
+                    Text(
+                        if (canDelete) "Delete is available because this account has no transactions."
+                        else "$linkedTransactionCount linked transaction${if (linkedTransactionCount == 1) "" else "s"} found. Close it instead.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                enabled = isValid,
+                onClick = {
+                    onConfirm(
+                        Account(
+                            id = initial?.id?.takeIf { it.isNotBlank() } ?: app.fynlo.logic.Ids.newId(),
+                            name = name.trim(),
+                            type = type,
+                            balance = amount ?: 0.0,
+                            icon = initial?.icon ?: "",
+                            color = initial?.color ?: "#3b82f6",
+                            notes = initial?.notes ?: "",
+                            projectId = initial?.projectId ?: "personal",
+                            createdAt = initial?.createdAt ?: 0L,
+                        )
+                    )
+                },
+            ) { Text("Save") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        },
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun AccountTransferDialog(
+    from: Account,
+    accounts: List<Account>,
+    currencyCode: String,
+    onDismiss: () -> Unit,
+    onConfirm: (Account, Double) -> Unit,
+) {
+    var target by remember(from, accounts) { mutableStateOf(accounts.firstOrNull()) }
+    var amountText by remember(from) {
+        mutableStateOf(kotlin.math.abs(from.balance).toBigDecimal().stripTrailingZeros().toPlainString())
+    }
+    var expanded by remember { mutableStateOf(false) }
+    val amount = amountText.toDoubleOrNull()
+    val isValid = target != null && amount != null && amount > 0.0
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Transfer balance") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(
+                    "From ${from.name}",
+                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                )
+                ExposedDropdownMenuBox(
+                    expanded = expanded,
+                    onExpandedChange = { expanded = !expanded },
+                ) {
+                    OutlinedTextField(
+                        value = target?.name ?: "",
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("To account") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
+                        modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, true).fillMaxWidth(),
+                    )
+                    ExposedDropdownMenu(
+                        expanded = expanded,
+                        onDismissRequest = { expanded = false },
+                    ) {
+                        accounts.forEach { account ->
+                            DropdownMenuItem(
+                                text = { Text(account.name) },
+                                onClick = {
+                                    target = account
+                                    expanded = false
+                                },
+                            )
+                        }
+                    }
+                }
+                OutlinedTextField(
+                    value = amountText,
+                    onValueChange = { amountText = it.filter { c -> c.isDigit() || c == '.' } },
+                    label = { Text("Amount (${app.fynlo.logic.CurrencyUtils.symbolFor(currencyCode)})") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                enabled = isValid,
+                onClick = { target?.let { onConfirm(it, amount ?: 0.0) } },
+            ) { Text("Transfer") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        },
+    )
 }
 
 @Composable

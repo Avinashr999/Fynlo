@@ -104,6 +104,9 @@ fun SettingsScreen(
     var pendingCsvRows by remember { mutableStateOf<List<List<String>>?>(null) }
     var csvImportSummary by remember { mutableStateOf<String?>(null) }
     val allAccountsForImport by viewModel.allAccountsUnfiltered.collectAsState()
+    var showDataExportDialog by remember { mutableStateOf(false) }
+    var selectedDataExportScope by remember { mutableStateOf(DataExportScope.WHOLE) }
+    var selectedDataExportFormat by remember { mutableStateOf(DataExportFormat.PDF) }
 
     // ── Export launchers ────────────────────────────────────────────────────
     val jsonLauncher = rememberLauncherForActivityResult(
@@ -204,6 +207,27 @@ fun SettingsScreen(
         }
     }}}
 
+    val dataExportCsvLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("text/csv")
+    ) { uri -> uri?.let { scope.launch(Dispatchers.IO) {
+        val csv = viewModel.exportDataToCSV(selectedDataExportScope.id)
+        context.contentResolver.openOutputStream(it)?.use { os ->
+            os.write(csv.toByteArray(Charsets.UTF_8))
+        }
+    }}}
+
+    val dataExportPdfLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/pdf")
+    ) { uri -> uri?.let { scope.launch(Dispatchers.IO) {
+        context.contentResolver.openOutputStream(it)?.use { os ->
+            viewModel.exportDataToPDF(
+                outputStream = os,
+                scope = selectedDataExportScope.id,
+                dateFormat = dateFormat,
+            )
+        }
+    }}}
+
     val xlsxLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument(
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
@@ -248,6 +272,27 @@ fun SettingsScreen(
                 jsonLauncher.launch("Fynlo_Backup_${System.currentTimeMillis()}.fynloenc")
             },
             onDismiss = { showExportPwdDialog = false },
+        )
+    }
+    if (showDataExportDialog) {
+        DataExportDialog(
+            selectedScope = selectedDataExportScope,
+            selectedFormat = selectedDataExportFormat,
+            onScopeChange = { selectedDataExportScope = it },
+            onFormatChange = { selectedDataExportFormat = it },
+            onDismiss = { showDataExportDialog = false },
+            onExport = {
+                showDataExportDialog = false
+                val filename = app.fynlo.logic.ExportUtility.filename(
+                    "Data_${selectedDataExportScope.fileToken}",
+                    "Personal",
+                    selectedDataExportFormat.ext,
+                )
+                when (selectedDataExportFormat) {
+                    DataExportFormat.CSV -> dataExportCsvLauncher.launch(filename)
+                    DataExportFormat.PDF -> dataExportPdfLauncher.launch(filename)
+                }
+            },
         )
     }
     pendingCsvRows?.let { rows ->
@@ -540,6 +585,15 @@ fun SettingsScreen(
                     title = "Export PDF Report",
                     subtitle = "Financial summary report"
                 ) { if (isPro) pdfLauncher.launch("Fynlo_Report_${System.currentTimeMillis()}.pdf") else onNavigateToUpgrade() }
+
+                SettingsDivider()
+
+                SettingsActionRow(
+                    icon  = Icons.Default.Share,
+                    color = Green,
+                    title = "Export Data",
+                    subtitle = "Choose whole data or one section as CSV/PDF"
+                ) { if (isPro) showDataExportDialog = true else onNavigateToUpgrade() }
 
                 SettingsDivider()
 
@@ -1299,6 +1353,113 @@ fun buildCurrencyPickerOrder(recent: List<String>, full: List<String>): List<Str
     return out
 }
 
+private enum class DataExportFormat(val label: String, val ext: String) {
+    PDF("PDF", "pdf"),
+    CSV("CSV", "csv"),
+}
+
+private enum class DataExportScope(
+    val id: String,
+    val label: String,
+    val fileToken: String,
+    val subtitle: String,
+) {
+    WHOLE("whole", "Whole Data", "Whole_Data", "All readable sections"),
+    TRANSACTIONS("transactions", "Transactions", "Transactions", "History rows only"),
+    ACCOUNTS("accounts", "Accounts", "Accounts", "Account balances"),
+    LENDING("lending", "Lending", "Lending", "Loans you gave"),
+    DEBTS("debts", "Debts", "Debts", "Money you owe"),
+    INVESTMENTS("investments", "Investments", "Investments", "Investment records"),
+    PEOPLE("people", "People", "People", "Contact book"),
+    BUDGETS("budgets", "Budgets", "Budgets", "Budget limits"),
+    GOALS("goals", "Goals", "Goals", "Savings goals"),
+}
+
+@Composable
+private fun DataExportDialog(
+    selectedScope: DataExportScope,
+    selectedFormat: DataExportFormat,
+    onScopeChange: (DataExportScope) -> Unit,
+    onFormatChange: (DataExportFormat) -> Unit,
+    onDismiss: () -> Unit,
+    onExport: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Export Data") },
+        text = {
+            Column(
+                modifier = Modifier.heightIn(max = 520.dp).verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Text(
+                    "Format",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    DataExportFormat.entries.forEach { format ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth()
+                                .clip(RoundedCornerShape(10.dp))
+                                .clickable { onFormatChange(format) }
+                                .padding(horizontal = 4.dp, vertical = 2.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            RadioButton(
+                                selected = selectedFormat == format,
+                                onClick = { onFormatChange(format) },
+                            )
+                            Text(format.label, style = MaterialTheme.typography.bodyMedium)
+                        }
+                    }
+                }
+
+                Text(
+                    "Choose what to export",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    DataExportScope.entries.forEach { scope ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth()
+                                .clip(RoundedCornerShape(10.dp))
+                                .clickable { onScopeChange(scope) }
+                                .padding(horizontal = 4.dp, vertical = 2.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            RadioButton(
+                                selected = selectedScope == scope,
+                                onClick = { onScopeChange(scope) },
+                            )
+                            Column {
+                                Text(scope.label, style = MaterialTheme.typography.bodyMedium)
+                                Text(
+                                    scope.subtitle,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
+                    }
+                }
+
+            }
+        },
+        confirmButton = {
+            Button(onClick = onExport) {
+                Icon(Icons.Default.Share, null, Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text("Export")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        },
+    )
+}
+
 @Composable
 private fun SettingsActionRow(
     icon: ImageVector,
@@ -1783,4 +1944,3 @@ private fun BackupPasswordDialog(
         }
     }
 }
-

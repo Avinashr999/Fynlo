@@ -69,6 +69,7 @@ class FirestoreRepository(private val userId: String) {
     // ── Accounts ─────────────────────────────────────────────────────────────
 
     suspend fun setAccount(a: Account)         { col("accounts").document(a.id).set(a.toFirestoreMap()).await() }
+    suspend fun deleteAccount(id: String)      { col("accounts").document(id).delete().await() }
 
     // ── Transactions ─────────────────────────────────────────────────────────
 

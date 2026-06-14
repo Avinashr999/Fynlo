@@ -995,6 +995,204 @@ object ExportUtility {
         return sb.toString()
     }
 
+    fun generateDataExportCSV(
+        scope: String,
+        accounts: List<Account>,
+        transactions: List<Transaction>,
+        borrowers: List<Borrower>,
+        debts: List<Debt>,
+        investments: List<Investment>,
+        people: List<Person>,
+        budgets: List<Budget>,
+        goals: List<Goal>,
+    ): String {
+        val normalized = scope.lowercase(Locale.ENGLISH)
+        val sb = StringBuilder()
+        fun esc(v: String) = "\"${v.replace("\"", "\"\"")}\""
+        fun wants(key: String) = normalized == "whole" || normalized == key
+
+        sb.append("Fynlo - DATA EXPORT\n")
+        sb.append("Scope,${esc(labelForDataExportScope(scope))}\n")
+        sb.append("Generated,${LocalDate.now()}\n\n")
+
+        if (wants("transactions")) {
+            sb.append("--- TRANSACTIONS ---\n")
+            sb.append("Date,Type,Amount,From Account,To Account,Category,Description,Notes\n")
+            transactions.sortedByDescending { it.date }.forEach {
+                sb.append("${esc(it.date)},${esc(it.type)},${it.amount},${esc(it.fromAcct)},${esc(it.toAcct)},${esc(it.category)},${esc(it.desc)},${esc(it.notes)}\n")
+            }
+            sb.append('\n')
+        }
+        if (wants("accounts")) {
+            sb.append("--- ACCOUNTS ---\n")
+            sb.append("Name,Type,Balance,Notes\n")
+            accounts.sortedBy { it.name }.forEach {
+                sb.append("${esc(it.name)},${esc(it.type)},${it.balance},${esc(it.notes)}\n")
+            }
+            sb.append('\n')
+        }
+        if (wants("lending")) {
+            sb.append("--- LENDING ---\n")
+            sb.append("Name,Phone,Principal,Rate,Interest Type,Lent On,Due Date,Paid,Status,Notes\n")
+            borrowers.sortedBy { it.name }.forEach {
+                sb.append("${esc(it.name)},${esc(it.phone)},${it.amount},${it.rate},${esc(it.intType)},${esc(it.date)},${esc(it.due)},${it.paid},${esc(it.status)},${esc(it.notes)}\n")
+            }
+            sb.append('\n')
+        }
+        if (wants("debts")) {
+            sb.append("--- DEBTS ---\n")
+            sb.append("Name,Phone,Principal,Rate,Interest Type,Date,Due Date,Paid,Status,Notes\n")
+            debts.sortedBy { it.name }.forEach {
+                sb.append("${esc(it.name)},${esc(it.phone)},${it.amount},${it.rate},${esc(it.intType)},${esc(it.date)},${esc(it.due)},${it.paid},${esc(it.status)},${esc(it.notes)}\n")
+            }
+            sb.append('\n')
+        }
+        if (wants("investments")) {
+            sb.append("--- INVESTMENTS ---\n")
+            sb.append("Name,Type,Invested,Current Value,Growth,Date,Notes\n")
+            investments.sortedBy { it.name }.forEach {
+                sb.append("${esc(it.name)},${esc(it.type)},${it.invested},${it.currentVal},${it.currentVal - it.invested},${esc(it.date)},${esc(it.notes)}\n")
+            }
+            sb.append('\n')
+        }
+        if (wants("people")) {
+            sb.append("--- PEOPLE ---\n")
+            sb.append("Name,Phone,Type,Notes\n")
+            people.sortedBy { it.name }.forEach {
+                sb.append("${esc(it.name)},${esc(it.phone)},${esc(it.type)},${esc(it.notes)}\n")
+            }
+            sb.append('\n')
+        }
+        if (wants("budgets")) {
+            sb.append("--- BUDGETS ---\n")
+            sb.append("Category,Limit,Period,Alert Threshold %\n")
+            budgets.sortedBy { it.category }.forEach {
+                sb.append("${esc(it.category)},${it.limitAmount},${esc(it.period)},${it.alertThresholdPct}\n")
+            }
+            sb.append('\n')
+        }
+        if (wants("goals")) {
+            sb.append("--- GOALS ---\n")
+            sb.append("Name,Target,Saved,Deadline,Linked Account,Notes\n")
+            goals.sortedBy { it.name }.forEach {
+                sb.append("${esc(it.name)},${it.targetAmount},${it.savedAmount},${esc(it.deadline)},${esc(it.linkedAccount)},${esc(it.notes)}\n")
+            }
+        }
+
+        return sb.toString()
+    }
+
+    fun generateDataExportPDF(
+        outputStream: OutputStream,
+        scope: String,
+        accounts: List<Account>,
+        transactions: List<Transaction>,
+        borrowers: List<Borrower>,
+        debts: List<Debt>,
+        investments: List<Investment>,
+        people: List<Person>,
+        budgets: List<Budget>,
+        goals: List<Goal>,
+        currencyCode: String = "INR",
+        projectName: String = "Personal",
+        userEmail: String = "",
+        dateFormat: String = DateUtils.DEFAULT_COMPACT_PATTERN,
+    ) {
+        val normalized = scope.lowercase(Locale.ENGLISH)
+        fun wants(key: String) = normalized == "whole" || normalized == key
+        fun dt(iso: String) = if (iso.isBlank()) "-" else DateUtils.format(iso, DateUtils.Style.Compact, dateFormat)
+
+        val pdf = PdfDocument()
+        val b = PdfBuilder(pdf, outputStream)
+        b.startPage()
+        b.text("Fynlo ${labelForDataExportScope(scope)} Export", MARGIN, titlePaint(size = 20f))
+        b.nl(20f)
+        b.text(headerInfoLine(projectName, userEmail, "All time", currencyCode), MARGIN, bodyPaint(COLOR_GRAY, 9f))
+        b.nl(18f)
+
+        fun section(title: String, rows: List<List<String>>, widths: List<Float>) {
+            if (rows.isEmpty()) return
+            b.checkBreak(LINE_H * 5)
+            b.sectionHeader(title)
+            rows.forEachIndexed { index, row ->
+                b.drawTableRow(row, widths, isHeader = index == 0, altBg = index % 2 == 0)
+            }
+            b.nl(8f)
+        }
+
+        if (wants("transactions")) section(
+            "Transactions",
+            listOf(listOf("Date", "Type", "Amount", "Account", "Category")) +
+                transactions.sortedByDescending { it.date }.map {
+                    listOf(dt(it.date), it.type, fmt(it.amount, currencyCode), it.fromAcct.ifBlank { it.toAcct }, it.category)
+                },
+            listOf(70f, 70f, 90f, 155f, 130f),
+        )
+        if (wants("accounts")) section(
+            "Accounts",
+            listOf(listOf("Name", "Type", "Balance")) +
+                accounts.sortedBy { it.name }.map { listOf(it.name, it.type, fmt(it.balance, currencyCode)) },
+            listOf(220f, 120f, 175f),
+        )
+        if (wants("lending")) section(
+            "Lending",
+            listOf(listOf("Name", "Principal", "Rate", "Paid", "Status")) +
+                borrowers.sortedBy { it.name }.map {
+                    listOf(it.name, fmt(it.amount, currencyCode), "${it.rate}%", fmt(it.paid, currencyCode), it.status)
+                },
+            listOf(160f, 110f, 65f, 100f, 80f),
+        )
+        if (wants("debts")) section(
+            "Debts",
+            listOf(listOf("Name", "Principal", "Rate", "Paid", "Status")) +
+                debts.sortedBy { it.name }.map {
+                    listOf(it.name, fmt(it.amount, currencyCode), "${it.rate}%", fmt(it.paid, currencyCode), it.status)
+                },
+            listOf(160f, 110f, 65f, 100f, 80f),
+        )
+        if (wants("investments")) section(
+            "Investments",
+            listOf(listOf("Name", "Type", "Invested", "Current", "Growth")) +
+                investments.sortedBy { it.name }.map {
+                    listOf(it.name, it.type, fmt(it.invested, currencyCode), fmt(it.currentVal, currencyCode), fmt(it.currentVal - it.invested, currencyCode))
+                },
+            listOf(130f, 85f, 100f, 100f, 100f),
+        )
+        if (wants("people")) section(
+            "People",
+            listOf(listOf("Name", "Phone", "Type", "Notes")) +
+                people.sortedBy { it.name }.map { listOf(it.name, it.phone, it.type, it.notes) },
+            listOf(150f, 115f, 100f, 150f),
+        )
+        if (wants("budgets")) section(
+            "Budgets",
+            listOf(listOf("Category", "Limit", "Period", "Alert")) +
+                budgets.sortedBy { it.category }.map { listOf(it.category, fmt(it.limitAmount, currencyCode), it.period, "${it.alertThresholdPct}%") },
+            listOf(170f, 130f, 110f, 105f),
+        )
+        if (wants("goals")) section(
+            "Goals",
+            listOf(listOf("Name", "Target", "Saved", "Deadline")) +
+                goals.sortedBy { it.name }.map { listOf(it.name, fmt(it.targetAmount, currencyCode), fmt(it.savedAmount, currencyCode), dt(it.deadline)) },
+            listOf(185f, 120f, 120f, 90f),
+        )
+
+        b.finishPage()
+        b.save()
+    }
+
+    fun labelForDataExportScope(scope: String): String = when (scope.lowercase(Locale.ENGLISH)) {
+        "transactions" -> "Transactions"
+        "accounts" -> "Accounts"
+        "lending" -> "Lending"
+        "debts" -> "Debts"
+        "investments" -> "Investments"
+        "people" -> "People"
+        "budgets" -> "Budgets"
+        "goals" -> "Goals"
+        else -> "Whole Data"
+    }
+
     fun generateMoneyFlowCSV(
         flows: List<FlowEntry>,
         currencyCode: String = "INR",
