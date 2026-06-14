@@ -4,7 +4,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -14,6 +13,8 @@ import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.MoneyOff
 import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.Payments
@@ -88,6 +89,8 @@ val borrowers by viewModel.borrowers.collectAsState()
     var showReminderPicker by remember { mutableStateOf(false) }
     var showDefaultConfirm by remember { mutableStateOf(false) }
     var showWriteOffConfirm by remember { mutableStateOf(false) }
+    var showEffectiveReturn by remember { mutableStateOf(false) }
+    var showPaymentHistory by remember { mutableStateOf(false) }
 
     if (showEditDialog) {
         AddLendingDialog(
@@ -499,21 +502,25 @@ val borrowers by viewModel.borrowers.collectAsState()
             }
 
             item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                LoanExpandableSection(
+                    title = "Payment History",
+                    subtitle = if (loanPayments.isEmpty()) "No payments collected yet"
+                               else app.fynlo.logic.pluralize(loanPayments.size, "payment"),
+                    expanded = showPaymentHistory,
+                    onToggle = { showPaymentHistory = !showPaymentHistory },
                 ) {
-                    Text(
-                        "Payment History",
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
-                    )
-                    if (loanPayments.isNotEmpty()) {
+                    if (loanPayments.isEmpty()) {
                         Text(
-                            app.fynlo.logic.pluralize(loanPayments.size, "payment"),
-                            style = MaterialTheme.typography.labelSmall,
+                            "No payments collected yet.",
+                            style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
+                    } else {
+                        Column {
+                            loanPayments.forEach { payment ->
+                                PaymentItem(payment, currencyCode, locale)
+                            }
+                        }
                     }
                 }
             }
@@ -550,50 +557,37 @@ val borrowers by viewModel.borrowers.collectAsState()
                         app.fynlo.logic.XirrCalculator.calc(flows)
                     }
                     if (!xirr.isNaN()) {
-                        Surface(
-                            shape = RoundedCornerShape(10.dp),
-                            color = (if (xirr >= 0) Emerald500 else SemanticRed).copy(alpha = 0.1f),
-                            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                        val xirrColor = if (xirr >= 0) Emerald500 else SemanticRed
+                        LoanExpandableSection(
+                            title = "Effective return",
+                            subtitle = "Annualised return across repayments (XIRR)",
+                            expanded = showEffectiveReturn,
+                            onToggle = { showEffectiveReturn = !showEffectiveReturn },
                         ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically,
+                            Surface(
+                                shape = RoundedCornerShape(10.dp),
+                                color = xirrColor.copy(alpha = 0.1f),
+                                modifier = Modifier.fillMaxWidth(),
                             ) {
-                                Column(Modifier.weight(1f)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
                                     Text(
-                                        "Effective return (XIRR)",
+                                        "XIRR",
                                         style = MaterialTheme.typography.labelSmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
                                     Text(
-                                        "Annualised rate across all repayments",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.outlineVariant,
+                                        app.fynlo.logic.XirrCalculator.format(xirr),
+                                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.ExtraBold),
+                                        color = xirrColor,
                                     )
                                 }
-                                Text(
-                                    app.fynlo.logic.XirrCalculator.format(xirr),
-                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.ExtraBold),
-                                    color = if (xirr >= 0) Emerald500 else SemanticRed,
-                                )
                             }
                         }
                     }
-                }
-            }
-
-            if (loanPayments.isEmpty()) {
-                item {
-                    Text(
-                        "No payments collected yet.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            } else {
-                items(loanPayments, key = { it.id }) { payment ->
-                    PaymentItem(payment, currencyCode, locale)
                 }
             }
 
@@ -622,6 +616,47 @@ val borrowers by viewModel.borrowers.collectAsState()
                         Text(borrower.notes, style = MaterialTheme.typography.bodyMedium)
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun LoanExpandableSection(
+    title: String,
+    subtitle: String,
+    expanded: Boolean,
+    onToggle: () -> Unit,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    Surface(
+        onClick = onToggle,
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(14.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+    ) {
+        Column(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        title,
+                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                    )
+                    Text(
+                        subtitle,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Icon(
+                    if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            if (expanded) {
+                Spacer(Modifier.height(12.dp))
+                content()
             }
         }
     }

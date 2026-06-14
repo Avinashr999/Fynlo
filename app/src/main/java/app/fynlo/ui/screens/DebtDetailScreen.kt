@@ -3,7 +3,6 @@ package app.fynlo.ui.screens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -85,6 +84,8 @@ fun DebtDetailScreen(
     var showEditDialog    by remember { mutableStateOf(false) }
     var showPayDialog     by remember { mutableStateOf(false) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
+    var showEffectiveRate by remember { mutableStateOf(false) }
+    var showPaymentHistory by remember { mutableStateOf(false) }
 
     if (showEditDialog) {
         AddDebtDialog(
@@ -262,69 +263,58 @@ fun DebtDetailScreen(
                     app.fynlo.logic.XirrCalculator.calc(flows)
                 }
                 val xirrColor = if (!xirr.isNaN() && xirr <= 0) Emerald500 else SemanticRed
-                Surface(
-                    shape = RoundedCornerShape(10.dp),
-                    color = xirrColor.copy(alpha = 0.1f),
-                    modifier = Modifier.fillMaxWidth(),
+                DebtExpandableSection(
+                    title = "Effective rate",
+                    subtitle = if (xirr.isNaN()) "Available after enough dated cashflows" else "Annualised borrowing cost (XIRR)",
+                    expanded = showEffectiveRate,
+                    onToggle = { showEffectiveRate = !showEffectiveRate },
                 ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = xirrColor.copy(alpha = 0.1f),
+                        modifier = Modifier.fillMaxWidth(),
                     ) {
-                        Column(Modifier.weight(1f)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
                             Text(
-                                "Effective rate paid (XIRR)",
+                                "XIRR",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                             Text(
-                                if (xirr.isNaN()) "Shown after enough dated cashflows exist"
-                                else "Annualised cost of this debt across all payments",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.outlineVariant,
+                                app.fynlo.logic.XirrCalculator.format(xirr),
+                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.ExtraBold),
+                                color = xirrColor,
                             )
                         }
-                        Text(
-                            app.fynlo.logic.XirrCalculator.format(xirr),
-                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.ExtraBold),
-                            color = xirrColor,
-                        )
                     }
                 }
             }
 
             item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                DebtExpandableSection(
+                    title = "Payment History",
+                    subtitle = if (debtPayments.isEmpty()) "No payments made yet"
+                               else app.fynlo.logic.pluralize(debtPayments.size, "payment"),
+                    expanded = showPaymentHistory,
+                    onToggle = { showPaymentHistory = !showPaymentHistory },
                 ) {
-                    Text(
-                        "Payment History",
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
-                    )
-                    if (debtPayments.isNotEmpty()) {
+                    if (debtPayments.isEmpty()) {
                         Text(
-                            app.fynlo.logic.pluralize(debtPayments.size, "payment"),
-                            style = MaterialTheme.typography.labelSmall,
+                            "No payments made yet.",
+                            style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
+                    } else {
+                        Column {
+                            debtPayments.forEach { payment ->
+                                DebtPaymentItem(payment, currencyCode, locale)
+                            }
+                        }
                     }
-                }
-            }
-
-            if (debtPayments.isEmpty()) {
-                item {
-                    Text(
-                        "No payments made yet.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            } else {
-                items(debtPayments, key = { it.id }) { payment ->
-                    DebtPaymentItem(payment, currencyCode, locale)
                 }
             }
 
@@ -353,6 +343,47 @@ fun DebtDetailScreen(
                         Text(debt.notes, style = MaterialTheme.typography.bodyMedium)
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DebtExpandableSection(
+    title: String,
+    subtitle: String,
+    expanded: Boolean,
+    onToggle: () -> Unit,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    Surface(
+        onClick = onToggle,
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(14.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+    ) {
+        Column(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        title,
+                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                    )
+                    Text(
+                        subtitle,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Icon(
+                    if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            if (expanded) {
+                Spacer(Modifier.height(12.dp))
+                content()
             }
         }
     }

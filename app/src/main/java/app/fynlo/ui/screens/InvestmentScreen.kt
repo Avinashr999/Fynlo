@@ -17,6 +17,8 @@ import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material.icons.filled.CallMade
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.*
@@ -485,6 +487,10 @@ fun InvestmentCard(invest: Investment, currencyCode: String = "INR", isPrivacy: 
     val growthPercent = if (invest.invested > 0) (growth / invest.invested) * 100 else 0.0
     val isProfit = growth >= 0
     var menuOpen by remember { mutableStateOf(false) }
+    var showReturnDetails by remember { mutableStateOf(false) }
+    val cagr = remember(invest) {
+        app.fynlo.logic.CagrCalculator.calc(invest.invested, invest.currentVal, invest.date)
+    }
 
     Column(modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp)) {
             // ── Header: name + type badge + action icons ──────────────────────
@@ -545,17 +551,6 @@ fun InvestmentCard(invest: Investment, currencyCode: String = "INR", isPrivacy: 
                         style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold))
                     Text("Since ${DateUtils.formatToDisplay(invest.date)}",
                         style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    // C14 #5 (3.2.82) — annualised return for this holding.
-                    val cagr = remember(invest) {
-                        app.fynlo.logic.CagrCalculator.calc(invest.invested, invest.currentVal, invest.date)
-                    }
-                    if (!cagr.isNaN()) {
-                        Text(
-                            "${if (isPrivacy) "Hidden" else app.fynlo.logic.CagrCalculator.format(cagr)} CAGR",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = if (cagr >= 0) Emerald500 else SemanticRed,
-                        )
-                    }
                 }
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text("Gain / Loss", style = MaterialTheme.typography.labelSmall,
@@ -575,6 +570,29 @@ fun InvestmentCard(invest: Investment, currencyCode: String = "INR", isPrivacy: 
                     Text(if (isPrivacy) "Hidden" else CurrencyFormatter.detail(invest.currentVal, currencyCode),
                         style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold,
                             color = if (isProfit) Emerald500 else SemanticRed))
+                }
+            }
+
+            if (!cagr.isNaN()) {
+                Spacer(Modifier.height(10.dp))
+                InvestmentExpandableSection(
+                    title = "Return details",
+                    subtitle = "CAGR since ${DateUtils.formatToDisplay(invest.date)}",
+                    expanded = showReturnDetails,
+                    onToggle = { showReturnDetails = !showReturnDetails },
+                ) {
+                    Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
+                        Text(
+                            "Annualised return",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Text(
+                            if (isPrivacy) "Hidden" else app.fynlo.logic.CagrCalculator.format(cagr),
+                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                            color = if (cagr >= 0) Emerald500 else SemanticRed,
+                        )
+                    }
                 }
             }
 
@@ -627,6 +645,44 @@ fun InvestmentCard(invest: Investment, currencyCode: String = "INR", isPrivacy: 
                 }
             }
         }
+}
+
+@Composable
+private fun InvestmentExpandableSection(
+    title: String,
+    subtitle: String,
+    expanded: Boolean,
+    onToggle: () -> Unit,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    Surface(
+        onClick = onToggle,
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.32f),
+    ) {
+        Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 9.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(title, style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold))
+                    Text(
+                        subtitle,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Icon(
+                    if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            if (expanded) {
+                Spacer(Modifier.height(10.dp))
+                content()
+            }
+        }
+    }
 }
 
 @Composable
