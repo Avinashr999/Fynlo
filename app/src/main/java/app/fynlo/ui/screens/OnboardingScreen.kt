@@ -1,4 +1,4 @@
-package app.fynlo.ui.screens
+﻿package app.fynlo.ui.screens
 
 import androidx.compose.animation.*
 import androidx.compose.foundation.Canvas
@@ -170,32 +170,31 @@ fun IllustrationSync() {
 
 private val pages = listOf(
     OnboardingPage(
-        "Your Finance Command Centre",
-        "Track net worth, loans, debts and investments — all synced to the cloud in real time.",
+        "Your Ledger, Clearly Separated",
+        "Track accounts, cash, projects, loans, debts, and investments without mixing the books.",
         Emerald500, { IllustrationNetWorth() }
     ),
     OnboardingPage(
-        "Manage Lending",
-        "Track money you lend to others with exact interest — Simple, Compound, or Reducing Balance.",
+        "Lend And Collect With Confidence",
+        "Follow every borrower, due date, payment, and interest method from one calm lending view.",
         SemanticBlue, { IllustrationLending() }
     ),
     OnboardingPage(
-        "Track Your Debts",
-        "Know exactly what you owe, interest accrued per day, and estimated payoff at your current rate.",
+        "Plan Debts Before They Drift",
+        "See EMI, interest, payoff pressure, and payment history before a loan surprises you.",
         SemanticRed, { IllustrationDebt() }
     ),
     OnboardingPage(
-        "Monitor Investments",
-        "Add gold, stocks, FDs and track their current value and growth over time.",
+        "Watch Wealth Grow",
+        "Track investments, valuations, XIRR, CAGR, and the cash that funds each asset.",
         SemanticAmber, { IllustrationInvestment() }
     ),
     OnboardingPage(
-        "Real-Time Cloud Sync",
-        "Sign in with Google to sync your data across all your devices instantly.",
+        "Your Data Stays Portable",
+        "Use optional sync, simple exports, encrypted backups, and reports when you need them.",
         SemanticBlue, { IllustrationSync() }
     )
 )
-
 @Composable
 fun OnboardingScreen(onComplete: () -> Unit) {
     var page by remember { mutableIntStateOf(0) }
@@ -216,7 +215,7 @@ fun OnboardingScreen(onComplete: () -> Unit) {
             verticalArrangement = Arrangement.Center
         ) {
             Surface(
-                modifier = Modifier.size(200.dp).clip(RoundedCornerShape(20.dp)),
+                modifier = Modifier.size(208.dp).clip(RoundedCornerShape(28.dp)),
                 color    = current.color.copy(alpha = 0.10f)
             ) {
                 Box(contentAlignment = Alignment.Center) {
@@ -276,7 +275,7 @@ fun OnboardingScreen(onComplete: () -> Unit) {
                     colors  = ButtonDefaults.buttonColors(containerColor = current.color)
                 ) {
                     Text(
-                        if (page == pages.lastIndex) "Get Started" else "Next →",
+                        if (page == pages.lastIndex) "Get Started" else "Next â†’",
                         fontWeight = FontWeight.Bold,
                         fontSize = 16.sp
                     )

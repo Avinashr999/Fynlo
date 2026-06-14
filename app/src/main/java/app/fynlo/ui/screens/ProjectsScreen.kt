@@ -3,7 +3,6 @@ package app.fynlo.ui.screens
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -18,9 +17,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.fynlo.FinanceViewModel
 import app.fynlo.data.model.Project
+import app.fynlo.ui.theme.Emerald500
+import app.fynlo.ui.theme.PremiumScreenHeader
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
-import java.util.UUID
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 
@@ -91,23 +91,27 @@ fun ProjectsScreen(viewModel: FinanceViewModel, onNavigateToUpgrade: () -> Unit 
         )
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
-    ) {
+    Column(modifier = Modifier.fillMaxSize()) {
+        PremiumScreenHeader("Projects", "Separate books for every money world")
+        Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
         Row(
             modifier            = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment   = Alignment.CenterVertically
         ) {
             Text(
-                "Your Projects",
+                "Your books",
                 style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
             )
-            FilledTonalButton(onClick = {
-                if (isPro || projects.isEmpty()) showAddDialog = true else onNavigateToUpgrade()
-            }) {
+            FilledTonalButton(
+                onClick = {
+                    if (isPro || projects.isEmpty()) showAddDialog = true else onNavigateToUpgrade()
+                },
+                colors = ButtonDefaults.filledTonalButtonColors(
+                    containerColor = Emerald500.copy(alpha = 0.12f),
+                    contentColor = Emerald500,
+                ),
+            ) {
                 Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(6.dp))
                 Text("New Project")
@@ -116,8 +120,8 @@ fun ProjectsScreen(viewModel: FinanceViewModel, onNavigateToUpgrade: () -> Unit 
 
         Spacer(Modifier.height(16.dp))
 
-        LazyColumn(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            itemsIndexed(projects, key = { _, it -> it.id }) { index, project ->
+        LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            itemsIndexed(projects, key = { _, it -> it.id }) { _, project ->
                 ProjectCard(
                     project    = project,
                     isActive   = project.id == currentPid,
@@ -127,11 +131,8 @@ fun ProjectsScreen(viewModel: FinanceViewModel, onNavigateToUpgrade: () -> Unit 
                         if (project.id != "personal") deleteTarget = project
                     }
                 )
-                if (index < projects.lastIndex) {
-                    HorizontalDivider(thickness = 0.5.dp,
-                        color = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f))
-                }
             }
+        }
         }
     }
 }
@@ -145,8 +146,19 @@ private fun ProjectCard(
     onDuplicate: () -> Unit,
     onDelete: () -> Unit
 ) {
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(18.dp),
+            color = if (isActive) MaterialTheme.colorScheme.primary.copy(alpha = 0.08f) else MaterialTheme.colorScheme.surface,
+            tonalElevation = 1.dp,
+            border = androidx.compose.foundation.BorderStroke(
+                0.5.dp,
+                if (isActive) MaterialTheme.colorScheme.primary.copy(alpha = 0.28f)
+                else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f),
+            ),
+        ) {
         Row(
-            modifier          = Modifier.fillMaxWidth().clickable(onClick = onSelect).padding(vertical = 14.dp),
+            modifier          = Modifier.fillMaxWidth().clickable(onClick = onSelect).padding(14.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Color dot — now renders the user-picked icon (C22 3.2.56).
@@ -227,6 +239,7 @@ private fun ProjectCard(
                     )
                 }
             }
+        }
         }
 }
 
@@ -384,9 +397,6 @@ private fun AddProjectDialog(
         )
     }
 }
-
-
-
 
 
 

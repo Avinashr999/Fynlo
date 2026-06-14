@@ -1,6 +1,7 @@
 package app.fynlo.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -110,7 +111,7 @@ fun ProfileScreen(
     val uid      = app.authManager.userId
 
     Column(modifier = Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
-        PremiumScreenHeader("Profile & Security", "Account & security settings")
+        PremiumScreenHeader("Profile & Security", "Identity, sync, and app lock")
         Column(
         modifier = Modifier
             .fillMaxSize()
@@ -122,7 +123,7 @@ fun ProfileScreen(
         Column(
             modifier = Modifier.fillMaxWidth()
                 .clip(RoundedCornerShape(20.dp))
-                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+                .background(MaterialTheme.colorScheme.surface)
                 .padding(16.dp)
         ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -155,7 +156,7 @@ fun ProfileScreen(
         Row(
             modifier = Modifier.fillMaxWidth()
                 .clip(RoundedCornerShape(20.dp))
-                .background(MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.3f))
+                .background(SemanticBlue.copy(alpha = 0.08f))
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -181,10 +182,14 @@ fun ProfileScreen(
             color = Emerald500,
             modifier = Modifier.align(Alignment.Start).padding(start = 2.dp, bottom = 8.dp)
         )
-        Column(
-            Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp))
-                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+        Surface(
+            Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(20.dp),
+            color = MaterialTheme.colorScheme.surface,
+            tonalElevation = 1.dp,
+            border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f)),
         ) {
+        Column {
             // PIN Lock — tap anywhere to toggle on/off
             Row(
                 modifier = Modifier
@@ -283,6 +288,7 @@ fun ProfileScreen(
                     )
                 }
             }
+        }
         }
 
         Spacer(Modifier.height(24.dp))

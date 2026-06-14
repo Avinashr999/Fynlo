@@ -23,6 +23,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.fynlo.BuildConfig
+import app.fynlo.ui.components.FynloBrandMark
 import app.fynlo.ui.theme.*
 
 @Composable
@@ -35,11 +36,8 @@ fun AboutScreen() {
             .padding(horizontal = 16.dp)
             .verticalScroll(rememberScrollState())
     ) {
-        Text(
-            "About",
-            style    = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold),
-            modifier = Modifier.padding(vertical = 16.dp)
-        )
+        PremiumScreenHeader("About Fynlo", "Ledger-first finance, built for clarity")
+        Spacer(Modifier.height(16.dp))
 
         // ── App identity card ────────────────────────────────────────────────
         Row(
@@ -50,16 +48,11 @@ fun AboutScreen() {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-                Box(
-                    modifier        = Modifier.size(56.dp).clip(CircleShape).background(green.copy(alpha = 0.15f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(Icons.Default.AccountBalanceWallet, null, Modifier.size(28.dp), tint = green)
-                }
+                FynloBrandMark(size = 56.dp)
                 Column {
                     Text("Fynlo",
                         style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold))
-                    Text("Personal Finance Manager",
+                    Text("Personal finance ledger",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(Modifier.height(4.dp))
@@ -92,7 +85,7 @@ fun AboutScreen() {
 
         Column(
             Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp))
-                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+                .background(MaterialTheme.colorScheme.surface)
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
@@ -147,7 +140,7 @@ fun AboutScreen() {
         }
         Column(
             Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp))
-                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+                .background(MaterialTheme.colorScheme.surface)
         ) {
             AboutLinkRow(
                 icon  = Icons.Default.Shield,
@@ -175,7 +168,7 @@ fun AboutScreen() {
         // ── Footer ───────────────────────────────────────────────────────────
         Column(
             Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp))
-                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+                .background(MaterialTheme.colorScheme.surface)
                 .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(4.dp)

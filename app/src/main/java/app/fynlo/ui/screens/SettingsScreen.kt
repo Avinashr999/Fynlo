@@ -2,6 +2,7 @@ package app.fynlo.ui.screens
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -351,7 +352,7 @@ fun SettingsScreen(
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        PremiumScreenHeader("Settings", "App preferences & data management")
+        PremiumScreenHeader("Settings", "Your Fynlo control room")
         Column(
         modifier = Modifier
             .fillMaxSize()
@@ -359,6 +360,14 @@ fun SettingsScreen(
             .padding(horizontal = 16.dp)
     ) {
         // ── Upgrade to Pro (hidden until billing is enabled) ──────────────────
+        SettingsSummaryPanel(
+            currencyCode = defaultCurrency,
+            dateFormat = dateFormat,
+            notificationsEnabled = loanRemindersEnabled || budgetAlertsEnabled,
+            encryptedBackups = encryptOnExport,
+        )
+        Spacer(Modifier.height(18.dp))
+
         if (app.fynlo.billing.FeatureFlags.BILLING_ENABLED) {
             Row(
                 Modifier.fillMaxWidth()
@@ -417,7 +426,7 @@ fun SettingsScreen(
                 Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(Icons.Default.PhoneAndroid, null, tint = Amber, modifier = Modifier.size(24.dp))
+                SettingsIconBubble(Icons.Default.PhoneAndroid, Amber)
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
                     Text("Follow system theme",
@@ -457,7 +466,7 @@ fun SettingsScreen(
                     Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(Icons.Default.DarkMode, null, tint = Amber, modifier = Modifier.size(24.dp))
+                    SettingsIconBubble(Icons.Default.DarkMode, Amber)
                     Spacer(Modifier.width(12.dp))
                     Column(Modifier.weight(1f)) {
                         Text("Dark mode",
@@ -532,7 +541,7 @@ fun SettingsScreen(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Icon(Icons.Default.Lock, null, tint = Blue, modifier = Modifier.size(20.dp))
+                    SettingsIconBubble(Icons.Default.Lock, Blue)
                     Spacer(Modifier.width(12.dp))
                     Column(Modifier.weight(1f)) {
                         Text("Encrypt backup with password",
@@ -812,7 +821,7 @@ fun SettingsScreen(
                 Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(Icons.Default.Notifications, null, tint = Amber, modifier = Modifier.size(24.dp))
+                SettingsIconBubble(Icons.Default.Notifications, Amber)
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
                     Text("Loan reminders",
@@ -851,7 +860,7 @@ fun SettingsScreen(
                 Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(Icons.Default.PieChart, null, tint = Amber, modifier = Modifier.size(24.dp))
+                SettingsIconBubble(Icons.Default.PieChart, Amber)
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
                     Text("Budget alerts",
@@ -1299,29 +1308,35 @@ private fun SettingsSectionLabel(title: String) {
     // "Notifications", "Formatting" etc. don't need it.
     Text(
         title,
-        style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.padding(start = 4.dp, bottom = 8.dp, top = 4.dp),
+        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+        color = MaterialTheme.colorScheme.onSurface,
+        modifier = Modifier.padding(start = 2.dp, bottom = 10.dp, top = 4.dp),
     )
 }
 
 @Composable
 private fun SettingsCard(content: @Composable ColumnScope.() -> Unit) {
-    Column(
-        modifier = Modifier.fillMaxWidth()
-            .clip(RoundedCornerShape(20.dp))
-            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        content = content
-    )
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp),
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 1.dp,
+        shadowElevation = 0.dp,
+        border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f)),
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+            content = content
+        )
+    }
 }
 
 @Composable
 private fun SettingsDivider() {
     HorizontalDivider(
-        modifier  = Modifier.padding(vertical = 8.dp),
+        modifier  = Modifier.padding(start = 54.dp, top = 6.dp, bottom = 6.dp),
         thickness = 0.5.dp,
-        color     = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+        color     = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)
     )
 }
 
@@ -1341,6 +1356,110 @@ private fun SettingsDivider() {
  * divider) rather than using this flat form, but the dedupe/order contract
  * is the load-bearing piece, hence the test coverage.
  */
+@Composable
+private fun SettingsSummaryPanel(
+    currencyCode: String,
+    dateFormat: String,
+    notificationsEnabled: Boolean,
+    encryptedBackups: Boolean,
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        color = Emerald500.copy(alpha = 0.10f),
+        border = BorderStroke(0.5.dp, Emerald500.copy(alpha = 0.22f)),
+    ) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Box(
+                    Modifier.size(42.dp).clip(RoundedCornerShape(14.dp)).background(Emerald500.copy(alpha = 0.16f)),
+                    Alignment.Center,
+                ) {
+                    Icon(Icons.Default.Tune, null, Modifier.size(22.dp), tint = Emerald500)
+                }
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        "Preferences ready",
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                    )
+                    Text(
+                        "Currency, backups, alerts, and exports in one place",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                SettingsStatusPill(
+                    icon = Icons.Default.Payments,
+                    label = currencyCode,
+                    color = Emerald500,
+                    modifier = Modifier.weight(1f),
+                )
+                SettingsStatusPill(
+                    icon = Icons.Default.Event,
+                    label = dateFormat,
+                    color = SemanticBlue,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                SettingsStatusPill(
+                    icon = Icons.Default.Notifications,
+                    label = if (notificationsEnabled) "Alerts on" else "Alerts off",
+                    color = SemanticAmber,
+                    modifier = Modifier.weight(1f),
+                )
+                SettingsStatusPill(
+                    icon = Icons.Default.Lock,
+                    label = if (encryptedBackups) "Encrypted" else "Plain backup",
+                    color = SemanticBlue,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SettingsStatusPill(
+    icon: ImageVector,
+    label: String,
+    color: Color,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        modifier = modifier.heightIn(min = 38.dp),
+        shape = RoundedCornerShape(14.dp),
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.84f),
+        border = BorderStroke(0.5.dp, color.copy(alpha = 0.18f)),
+    ) {
+        Row(
+            Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(7.dp),
+        ) {
+            Icon(icon, null, Modifier.size(16.dp), tint = color)
+            Text(
+                label,
+                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+            )
+        }
+    }
+}
+
+@Composable
+private fun SettingsIconBubble(icon: ImageVector, color: Color) {
+    Box(
+        Modifier.size(42.dp).clip(RoundedCornerShape(14.dp)).background(color.copy(alpha = 0.12f)),
+        Alignment.Center,
+    ) {
+        Icon(icon, null, Modifier.size(21.dp), tint = color)
+    }
+}
+
 fun buildCurrencyPickerOrder(recent: List<String>, full: List<String>): List<String> {
     val seen = mutableSetOf<String>()
     val out  = mutableListOf<String>()
@@ -1469,25 +1588,28 @@ private fun SettingsActionRow(
     onClick: () -> Unit
 ) {
     Row(
-        Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 4.dp),
-        Arrangement.spacedBy(14.dp),
+        Modifier.fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 4.dp, vertical = 8.dp),
+        Arrangement.spacedBy(12.dp),
         Alignment.CenterVertically
     ) {
         Box(
-            Modifier.size(40.dp).clip(RoundedCornerShape(11.dp)).background(color.copy(0.1f)),
+            Modifier.size(42.dp).clip(RoundedCornerShape(14.dp)).background(color.copy(0.12f)),
             Alignment.Center
         ) {
-            Icon(icon, null, Modifier.size(20.dp), tint = color)
+            Icon(icon, null, Modifier.size(21.dp), tint = color)
         }
         Column(Modifier.weight(1f)) {
             Text(title,
-                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium))
+                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold))
             Text(subtitle,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         Icon(Icons.AutoMirrored.Filled.ArrowForwardIos, null,
-            Modifier.size(14.dp), tint = MaterialTheme.colorScheme.outlineVariant)
+            Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.65f))
     }
 }
 
