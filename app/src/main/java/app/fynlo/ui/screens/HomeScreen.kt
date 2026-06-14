@@ -21,6 +21,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -46,7 +47,7 @@ fun HomeScreen(viewModel: FinanceViewModel, onNavigateToScreen: (String) -> Unit
     val isSyncReady      by viewModel.isSyncReady.collectAsState()
     val isPrivacy        by viewModel.isPrivacyMode.collectAsState()
     val accounts         by viewModel.accounts.collectAsState()
-    val locale           = java.util.Locale.getDefault()
+    val locale           = LocalLocale.current.platformLocale
     val currencyCode     = currentProject?.currency ?: "INR"
     val currencySymbol   = app.fynlo.logic.CurrencyUtils.symbolFor(currencyCode)
     var showAddTxn       by remember { mutableStateOf(false) }

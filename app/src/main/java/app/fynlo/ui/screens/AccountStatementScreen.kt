@@ -16,6 +16,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalLocale
 import app.fynlo.FinanceViewModel
 import app.fynlo.logic.CurrencyFormatter
 import app.fynlo.logic.matchesAccount
@@ -35,7 +36,7 @@ fun AccountStatementScreen(
     val currencyCode = currentProject?.currency ?: "INR"
     val currencySymbol = app.fynlo.logic.CurrencyUtils.symbolFor(currencyCode)
     val account      = accounts.find { it.name == accountName }
-    val locale       = remember { Locale.getDefault() }
+    val locale       = LocalLocale.current.platformLocale
 
     // C03b Stage #1b-2 (3.2.88) — match by immutable account id first
     // (rename-safe), fall back to stored name for legacy orphan rows.

@@ -39,6 +39,7 @@ import java.util.*
 import app.fynlo.ui.theme.*
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalLocale
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -129,7 +130,7 @@ val currentProject by viewModel.currentProject.collectAsState()
             ) {
                 Column(Modifier.padding(24.dp)) {
                     Text("Withdraw from Investment", style = MaterialTheme.typography.headlineSmall)
-                    Text("${inv.name}  •  Current Value: ${CurrencyFormatter.detail(inv.currentVal, currencyCode)}",
+                    Text("${inv.name} - Current Value: ${CurrencyFormatter.detail(inv.currentVal, currencyCode)}",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(Modifier.height(16.dp))
@@ -281,7 +282,7 @@ val currentProject by viewModel.currentProject.collectAsState()
         .groupBy { it.type.ifBlank { "Other" } }
         .mapValues { e -> e.value.sumOf { it.currentVal } }
         .entries.sortedByDescending { it.value }
-    val locale = remember { Locale.getDefault() }
+    val locale = LocalLocale.current.platformLocale
 
     Column(
         modifier = Modifier
@@ -308,7 +309,7 @@ val currentProject by viewModel.currentProject.collectAsState()
                         Text("Portfolio Value",
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text(if (isPrivacy) "••••" else CurrencyFormatter.detail(portfolioValue, currencyCode, locale),
+                        Text(if (isPrivacy) "Hidden" else CurrencyFormatter.detail(portfolioValue, currencyCode, locale),
                             style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.ExtraBold),
                             color = if (isPortfolioUp) Emerald500 else SemanticRed)
                         if (netInvested > 0) {
@@ -318,12 +319,12 @@ val currentProject by viewModel.currentProject.collectAsState()
                                 modifier = Modifier.padding(top = 4.dp),
                             ) {
                                 Text(
-                                    if (isPortfolioUp) "↑" else "↓",
+                                    if (isPortfolioUp) "Up" else "Down",
                                     style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                                     color = if (isPortfolioUp) Emerald500 else SemanticRed,
                                 )
                                 Text(
-                                    if (isPrivacy) "••••"
+                                    if (isPrivacy) "Hidden"
                                     else if (isPortfolioUp) "+${CurrencyFormatter.detail(portfolioGrowth, currencyCode, locale)}"
                                     else               CurrencyFormatter.negative(portfolioGrowth, currencyCode, locale),
                                     style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
@@ -338,7 +339,7 @@ val currentProject by viewModel.currentProject.collectAsState()
                                 }
                             }
                             Text(
-                                "${if (isPrivacy) "••••" else CurrencyFormatter.detail(netInvested, currencyCode, locale)} invested · ${app.fynlo.logic.pluralize(investments.size, "holding")}",
+                                "${if (isPrivacy) "Hidden" else CurrencyFormatter.detail(netInvested, currencyCode, locale)} invested - ${app.fynlo.logic.pluralize(investments.size, "holding")}",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.padding(top = 2.dp),
@@ -429,7 +430,7 @@ val currentProject by viewModel.currentProject.collectAsState()
                                         Text(type,
                                             style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold))
                                     }
-                                    val rowValueText = if (isPrivacy) "••••" else "${CurrencyFormatter.detail(value, currencyCode, locale)} · $pct%"
+                                    val rowValueText = if (isPrivacy) "Hidden" else "${CurrencyFormatter.detail(value, currencyCode, locale)} - $pct%"
                                     Text(
                                         rowValueText,
                                         style = MaterialTheme.typography.bodySmall,
@@ -509,7 +510,7 @@ fun InvestmentCard(invest: Investment, currencyCode: String = "INR", isPrivacy: 
                         shape = RoundedCornerShape(8.dp),
                         color = if (isProfit) Emerald500.copy(alpha = 0.1f) else SemanticRed.copy(alpha = 0.1f)
                     ) {
-                        val growthPctText = if (isPrivacy) "••••" else "${if (isProfit) "+" else ""}${String.format(Locale.getDefault(), "%.1f", growthPercent)}%"
+                        val growthPctText = if (isPrivacy) "Hidden" else "${if (isProfit) "+" else ""}${String.format(LocalLocale.current.platformLocale, "%.1f", growthPercent)}%"
                         Text(
                             text = growthPctText,
                             style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
@@ -540,7 +541,7 @@ fun InvestmentCard(invest: Investment, currencyCode: String = "INR", isPrivacy: 
                 Column {
                     Text("Invested", style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text(if (isPrivacy) "••••" else CurrencyFormatter.detail(invest.invested, currencyCode),
+                    Text(if (isPrivacy) "Hidden" else CurrencyFormatter.detail(invest.invested, currencyCode),
                         style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold))
                     Text("Since ${DateUtils.formatToDisplay(invest.date)}",
                         style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -550,7 +551,7 @@ fun InvestmentCard(invest: Investment, currencyCode: String = "INR", isPrivacy: 
                     }
                     if (!cagr.isNaN()) {
                         Text(
-                            "${if (isPrivacy) "••••" else app.fynlo.logic.CagrCalculator.format(cagr)} CAGR",
+                            "${if (isPrivacy) "Hidden" else app.fynlo.logic.CagrCalculator.format(cagr)} CAGR",
                             style = MaterialTheme.typography.labelSmall,
                             color = if (cagr >= 0) Emerald500 else SemanticRed,
                         )
@@ -559,7 +560,7 @@ fun InvestmentCard(invest: Investment, currencyCode: String = "INR", isPrivacy: 
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text("Gain / Loss", style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    val gainLossText = if (isPrivacy) "••••"
+                    val gainLossText = if (isPrivacy) "Hidden"
                                        else if (isProfit) "+${CurrencyFormatter.hero(growth, currencyCode)}"
                                        else          CurrencyFormatter.negative(growth, currencyCode)
                     Text(
@@ -571,7 +572,7 @@ fun InvestmentCard(invest: Investment, currencyCode: String = "INR", isPrivacy: 
                 Column(horizontalAlignment = Alignment.End) {
                     Text("Current Value", style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text(if (isPrivacy) "••••" else CurrencyFormatter.detail(invest.currentVal, currencyCode),
+                    Text(if (isPrivacy) "Hidden" else CurrencyFormatter.detail(invest.currentVal, currencyCode),
                         style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold,
                             color = if (isProfit) Emerald500 else SemanticRed))
                 }
@@ -579,7 +580,7 @@ fun InvestmentCard(invest: Investment, currencyCode: String = "INR", isPrivacy: 
 
             if (invest.withdrawn > 0) {
                 Spacer(Modifier.height(6.dp))
-                Text("Withdrawn: ${if (isPrivacy) "••••" else CurrencyFormatter.detail(invest.withdrawn, currencyCode)}",
+                Text("Withdrawn: ${if (isPrivacy) "Hidden" else CurrencyFormatter.detail(invest.withdrawn, currencyCode)}",
                     style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
 
@@ -651,7 +652,7 @@ fun UpdateInvestmentValueDialog(
 
     val parsed   = newValue.toDoubleOrNull()
     val growth   = parsed?.let { it - investment.invested }
-    val locale   = java.util.Locale.getDefault()
+    val locale   = LocalLocale.current.platformLocale
 
     // C22 dialog universalization (3.2.54) — migrated to canonical FormDialog.
     app.fynlo.ui.components.FormDialog(
@@ -863,7 +864,7 @@ private fun ValuationHistoryChart(
     valuations: List<app.fynlo.data.model.InvestmentValuation>,
     currencyCode: String,
 ) {
-    val locale = java.util.Locale.getDefault()
+    val locale = LocalLocale.current.platformLocale
     val values = valuations.map { it.value }
     val minV = values.min()
     val maxV = values.max()

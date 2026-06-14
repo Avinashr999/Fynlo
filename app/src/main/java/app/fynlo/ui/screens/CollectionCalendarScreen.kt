@@ -24,6 +24,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalLocale
 import app.fynlo.FinanceViewModel
 import app.fynlo.data.model.Borrower
 import app.fynlo.logic.CurrencyFormatter
@@ -76,7 +77,7 @@ fun CollectionCalendarScreen(
     val currentProject by viewModel.currentProject.collectAsState()
     val currencyCode = currentProject?.currency ?: "INR"
     val today = remember { LocalDate.now() }
-    val locale = Locale.getDefault()
+    val locale = LocalLocale.current.platformLocale
     val dbFmt = DateTimeFormatter.ofPattern("yyyy-MM-dd")
 
     var displayMonth by remember { mutableStateOf(YearMonth.now()) }

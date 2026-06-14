@@ -22,6 +22,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalLocale
 import app.fynlo.FinanceViewModel
 import app.fynlo.logic.CurrencyFormatter
 import java.time.LocalDate
@@ -69,7 +70,7 @@ fun ReportsHubScreen(
     val investments    by viewModel.investments.collectAsState()
     val currentProject by viewModel.currentProject.collectAsState()
     val currencyCode   = currentProject?.currency ?: "INR"
-    val locale         = remember { Locale.getDefault() }
+    val locale         = LocalLocale.current.platformLocale
     // C21 Stage 3 — net-worth snapshots for the trend-line chart in the
     // exported PDF. The on-screen Reports landing already uses these via
     // the tile preview computation; threading them to Export PDF too.

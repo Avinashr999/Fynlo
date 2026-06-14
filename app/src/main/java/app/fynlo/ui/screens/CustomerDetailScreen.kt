@@ -39,6 +39,7 @@ import java.util.*
 import app.fynlo.ui.theme.*
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalLocale
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -54,7 +55,7 @@ val borrowers by viewModel.borrowers.collectAsState()
     val accounts by viewModel.accounts.collectAsState()
     val currentProject by viewModel.currentProject.collectAsState()
     val currencyCode = currentProject?.currency ?: "INR"
-    val locale = Locale.getDefault()
+    val locale = LocalLocale.current.platformLocale
 
     // C11 (3.2.40) — user's Date Format pref for the loan-statement PDF.
     val dateFormat by app.fynlo.data.UserPreferences.dateFormat(androidx.compose.ui.platform.LocalContext.current)

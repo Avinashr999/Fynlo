@@ -12,6 +12,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalLocale
 import app.fynlo.data.model.Transaction
 import app.fynlo.logic.OrphanTransactionsScanner.Orphan
 import app.fynlo.logic.OrphanTransactionsScanner.Side
@@ -43,7 +44,7 @@ fun OrphanRepairDialog(
     onFix:        (old: Transaction, new: Transaction) -> Unit,
     onDismiss:    () -> Unit,
 ) {
-    val locale = remember { Locale.getDefault() }
+    val locale = LocalLocale.current.platformLocale
     FormDialog(
         title     = "Fix orphan transactions",
         onDismiss = onDismiss,

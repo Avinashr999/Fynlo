@@ -7,6 +7,7 @@ import androidx.core.content.FileProvider
 import androidx.compose.foundation.background
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLocale
 import app.fynlo.logic.ExportUtility
 import java.io.File
 import androidx.compose.foundation.layout.*
@@ -56,7 +57,7 @@ fun MoneyFlowScreen(viewModel: FinanceViewModel) {
     val accounts     by viewModel.accounts.collectAsState()
     val currentProject by viewModel.currentProject.collectAsState()
     val currencyCode = currentProject?.currency ?: "INR"
-    val locale       = remember { Locale.getDefault() }
+    val locale       = LocalLocale.current.platformLocale
     val context      = LocalContext.current
     var showExportMenu by remember { mutableStateOf(false) }
 
@@ -376,6 +377,11 @@ fun MoneyFlowScreen(viewModel: FinanceViewModel) {
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.outlineVariant
                             )
+                            if (selectedTab != 0) {
+                                OutlinedButton(onClick = { selectedTab = 0 }) {
+                                    Text("Show all flows")
+                                }
+                            }
                         }
                     }
                 }
@@ -406,8 +412,8 @@ private fun AccountFlowCard(name: String, inflow: Double, outflow: Double, curre
         }
         Spacer(Modifier.width(8.dp))
         Column(horizontalAlignment = Alignment.End) {
-            Text("▲ ${CurrencyFormatter.detail(inflow, currencyCode, locale)}", fontSize = 11.sp, color = Emerald500)
-            Text("▼ ${CurrencyFormatter.detail(outflow, currencyCode, locale)}", fontSize = 11.sp, color = SemanticRed)
+            Text("In ${CurrencyFormatter.detail(inflow, currencyCode, locale)}", fontSize = 11.sp, color = Emerald500)
+            Text("Out ${CurrencyFormatter.detail(outflow, currencyCode, locale)}", fontSize = 11.sp, color = SemanticRed)
         }
     }
 }

@@ -15,6 +15,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalLocale
 import app.fynlo.FinanceViewModel
 import app.fynlo.data.model.Debt
 import app.fynlo.logic.CurrencyFormatter
@@ -30,7 +31,7 @@ fun DebtPayoffScreen(viewModel: FinanceViewModel) {
     val isPrivacy by viewModel.isPrivacyMode.collectAsState()
     val currentProject by viewModel.currentProject.collectAsState()
     val currencyCode = currentProject?.currency ?: "INR"
-    val locale = remember { Locale.getDefault() }
+    val locale = LocalLocale.current.platformLocale
 
     val activeDebts = debts.filter { it.status != "Cleared" && it.amount > it.paid }
 

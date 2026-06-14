@@ -35,6 +35,7 @@ import java.util.Locale
 import app.fynlo.ui.theme.*
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalLocale
 
 
 private val CAT_COLORS = ChartColors
@@ -47,7 +48,7 @@ val transactions by viewModel.transactions.collectAsState()
     val budgets      by viewModel.budgets.collectAsState()
     val currentProject by viewModel.currentProject.collectAsState()
     val currencyCode = currentProject?.currency ?: "INR"
-    val locale       = remember { Locale.getDefault() }
+    val locale       = LocalLocale.current.platformLocale
     var showDialog   by remember { mutableStateOf(false) }
 
     // Month navigation
@@ -412,11 +413,3 @@ private fun ExpenseRow(
         }
     }
 }
-
-
-
-
-
-
-
-

@@ -21,6 +21,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -56,7 +57,7 @@ fun MonthlySummaryScreen(viewModel: FinanceViewModel) {
     val currentProject     by viewModel.currentProject.collectAsState()
     val financialSummary   by viewModel.financialSummary.collectAsState()
     val currencyCode = currentProject?.currency ?: "INR"
-    val locale       = remember { Locale.getDefault() }
+    val locale       = LocalLocale.current.platformLocale
     val context      = LocalContext.current
 
     // ── Last 12 months — same financing-category exclusion as P&L Statement

@@ -22,6 +22,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalLocale
 import app.fynlo.FinanceViewModel
 import app.fynlo.logic.CurrencyFormatter
 import app.fynlo.logic.DateUtils
@@ -53,7 +54,7 @@ fun NetWorthHistoryScreen(viewModel: FinanceViewModel) {
     val summary   by viewModel.financialSummary.collectAsState()
     val currentProject by viewModel.currentProject.collectAsState()
     val currencyCode   = currentProject?.currency ?: "INR"
-    val locale         = remember { Locale.getDefault() }
+    val locale         = LocalLocale.current.platformLocale
 
     // Keep the daily auto-save (it's invisible to the user and accumulates the
     // real history). Only the user-facing "open daily" message is gone per

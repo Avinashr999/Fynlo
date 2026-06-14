@@ -27,6 +27,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalLocale
 import app.fynlo.FinanceViewModel
 import app.fynlo.logic.CurrencyFormatter
 import app.fynlo.logic.InterestEngine
@@ -99,7 +100,7 @@ fun InterestIncomeScreen(
     val currentProject by viewModel.currentProject.collectAsState()
     val currencyCode = currentProject?.currency ?: "INR"
     val currencySymbol = app.fynlo.logic.CurrencyUtils.symbolFor(currencyCode)
-    val locale = Locale.getDefault()
+    val locale = LocalLocale.current.platformLocale
 
     var rangeMonths by remember { mutableIntStateOf(12) }
 
@@ -491,4 +492,3 @@ private fun MonthRow(
     }
     HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f))
 }
-

@@ -21,6 +21,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalLocale
 import app.fynlo.FinanceViewModel
 import app.fynlo.logic.CurrencyFormatter
 import app.fynlo.ui.theme.*
@@ -62,7 +63,7 @@ fun ProfitLossScreen(viewModel: FinanceViewModel) {
     val currentProject by viewModel.currentProject.collectAsState()
     val currencyCode    = currentProject?.currency ?: "INR"
     val summary        by viewModel.financialSummary.collectAsState()
-    val locale          = remember { Locale.getDefault() }
+    val locale          = LocalLocale.current.platformLocale
     val context         = androidx.compose.ui.platform.LocalContext.current
 
     // ── Cash-basis figures — exclude financing activities (debt/lending/investment).
