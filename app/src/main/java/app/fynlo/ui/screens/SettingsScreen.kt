@@ -103,7 +103,7 @@ fun SettingsScreen(
     // snackbar-ish line in the dialog before dismiss.
     var pendingCsvRows by remember { mutableStateOf<List<List<String>>?>(null) }
     var csvImportSummary by remember { mutableStateOf<String?>(null) }
-    val allAccountsForImport by viewModel.allAccountsUnfiltered.collectAsState()
+    val allAccountsForImport by viewModel.accounts.collectAsState()
     var showDataExportDialog by remember { mutableStateOf(false) }
     var selectedDataExportScope by remember { mutableStateOf(DataExportScope.WHOLE) }
     var selectedDataExportFormat by remember { mutableStateOf(DataExportFormat.PDF) }

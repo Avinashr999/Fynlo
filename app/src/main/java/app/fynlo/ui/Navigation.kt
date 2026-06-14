@@ -210,7 +210,7 @@ fun MainNavigation(viewModel: FinanceViewModel) {
     if (showExpenseDialog) {
         // 3.2.59 — wire real account / investment / debt names so the
         // source picker is a dropdown of existing entities (orphan fix).
-        val allAccounts by viewModel.allAccountsUnfiltered.collectAsState()
+        val allAccounts by viewModel.accounts.collectAsState()
         val allInvestments by viewModel.investments.collectAsState()
         val allDebts by viewModel.debts.collectAsState()
         AddTransactionDialog(
@@ -907,6 +907,5 @@ fun DrawerDivider() {
         color     = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f)
     )
 }
-
 
 

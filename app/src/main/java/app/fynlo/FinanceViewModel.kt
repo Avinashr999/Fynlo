@@ -3,6 +3,7 @@ package app.fynlo
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.fynlo.data.FinanceRepository
+import app.fynlo.data.ProjectScope
 import app.fynlo.data.RecalcCoordinator
 import app.fynlo.data.RecentlyUsedTracker
 import app.fynlo.data.SyncStatus
@@ -93,12 +94,12 @@ class FinanceViewModel @Inject constructor(
 
     val borrowers: StateFlow<List<Borrower>> =
         combine(repository.allBorrowers, _currentProjectId) { list, pid ->
-            list.filter { pid.isEmpty() || it.projectId == pid || it.projectId.isEmpty() || it.projectId == "personal" }
+            list.filter { ProjectScope.belongsToSelectedProject(it.projectId, pid) }
         }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     val transactions: StateFlow<List<Transaction>> =
         combine(repository.allTransactions, _currentProjectId) { list, pid ->
-            list.filter { pid.isEmpty() || it.projectId == pid || it.projectId.isEmpty() || it.projectId == "personal" }
+            list.filter { ProjectScope.belongsToSelectedProject(it.projectId, pid) }
         }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     val allAccountsUnfiltered: StateFlow<List<Account>> =
@@ -107,17 +108,17 @@ class FinanceViewModel @Inject constructor(
 
     val accounts: StateFlow<List<Account>> =
         combine(repository.allAccounts, _currentProjectId) { list, pid ->
-            list.filter { pid.isEmpty() || it.projectId == pid || it.projectId.isEmpty() || it.projectId == "personal" }
+            list.filter { ProjectScope.belongsToSelectedProject(it.projectId, pid) }
         }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     val investments: StateFlow<List<Investment>> =
         combine(repository.allInvestments, _currentProjectId) { list, pid ->
-            list.filter { pid.isEmpty() || it.projectId == pid || it.projectId.isEmpty() || it.projectId == "personal" }
+            list.filter { ProjectScope.belongsToSelectedProject(it.projectId, pid) }
         }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     val debts: StateFlow<List<Debt>> =
         combine(repository.allDebts, _currentProjectId) { list, pid ->
-            list.filter { pid.isEmpty() || it.projectId == pid || it.projectId.isEmpty() || it.projectId == "personal" }
+            list.filter { ProjectScope.belongsToSelectedProject(it.projectId, pid) }
         }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     val payments: StateFlow<List<Payment>> =
@@ -128,22 +129,22 @@ class FinanceViewModel @Inject constructor(
 
     val people: StateFlow<List<Person>> =
         combine(repository.allPeople, _currentProjectId) { list, pid ->
-            list.filter { pid.isEmpty() || it.projectId == pid || it.projectId.isEmpty() || it.projectId == "personal" }
+            list.filter { ProjectScope.belongsToSelectedProject(it.projectId, pid) }
         }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     val budgets: StateFlow<List<Budget>> =
         combine(repository.allBudgets, _currentProjectId) { list, pid ->
-            list.filter { pid.isEmpty() || it.projectId == pid || it.projectId.isEmpty() || it.projectId == "personal" }
+            list.filter { ProjectScope.belongsToSelectedProject(it.projectId, pid) }
         }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     val goals: StateFlow<List<Goal>> =
         combine(repository.allGoals, _currentProjectId) { list, pid ->
-            list.filter { pid.isEmpty() || it.projectId == pid || it.projectId.isEmpty() || it.projectId == "personal" }
+            list.filter { ProjectScope.belongsToSelectedProject(it.projectId, pid) }
         }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     val valuations: StateFlow<List<InvestmentValuation>> =
         combine(repository.allValuations, _currentProjectId) { list, pid ->
-            list.filter { pid.isEmpty() || it.projectId == pid || it.projectId.isEmpty() || it.projectId == "personal" }
+            list.filter { ProjectScope.belongsToSelectedProject(it.projectId, pid) }
         }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     private val _searchQuery = MutableStateFlow("")

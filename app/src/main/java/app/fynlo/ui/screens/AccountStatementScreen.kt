@@ -30,7 +30,7 @@ fun AccountStatementScreen(
     onNavigateBack: () -> Unit
 ) {
     val transactions by viewModel.transactions.collectAsState()
-    val accounts     by viewModel.allAccountsUnfiltered.collectAsState()
+    val accounts     by viewModel.accounts.collectAsState()
     val currentProject by viewModel.currentProject.collectAsState()
     val currencyCode = currentProject?.currency ?: "INR"
     val currencySymbol = app.fynlo.logic.CurrencyUtils.symbolFor(currencyCode)

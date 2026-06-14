@@ -53,7 +53,7 @@ fun MoneyFlowScreen(viewModel: FinanceViewModel) {
     val transactions by viewModel.transactions.collectAsState()
     val borrowers    by viewModel.borrowers.collectAsState()
     val debts        by viewModel.debts.collectAsState()
-    val accounts     by viewModel.allAccountsUnfiltered.collectAsState()
+    val accounts     by viewModel.accounts.collectAsState()
     val currentProject by viewModel.currentProject.collectAsState()
     val currencyCode = currentProject?.currency ?: "INR"
     val locale       = remember { Locale.getDefault() }

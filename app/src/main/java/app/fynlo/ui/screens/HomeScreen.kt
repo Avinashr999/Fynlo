@@ -56,7 +56,7 @@ fun HomeScreen(viewModel: FinanceViewModel, onNavigateToScreen: (String) -> Unit
     if (showAddTxn) {
         // 3.2.59 — wire real account / investment / debt names so the
         // source picker is a dropdown of existing entities.
-        val allAccounts by viewModel.allAccountsUnfiltered.collectAsState()
+        val allAccounts by viewModel.accounts.collectAsState()
         val allInvestments by viewModel.investments.collectAsState()
         val allDebts by viewModel.debts.collectAsState()
         AddTransactionDialog(

@@ -31,7 +31,7 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 fun GoalScreen(viewModel: FinanceViewModel) {
     val haptic = LocalHapticFeedback.current
     val goals by viewModel.goals.collectAsState()
-    val accounts by viewModel.allAccountsUnfiltered.collectAsState()
+    val accounts by viewModel.accounts.collectAsState()
     val currentProject by viewModel.currentProject.collectAsState()
     val currencyCode = currentProject?.currency ?: "INR"
     val currencySymbol = app.fynlo.logic.CurrencyUtils.symbolFor(currencyCode)

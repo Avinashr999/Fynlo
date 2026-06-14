@@ -88,13 +88,12 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
 
     // 3.2.59 — collect account/transaction lists once for both AddTxn dialog
     // and the orphan-repair banner.
-    val allAccountsHome by viewModel.allAccountsUnfiltered.collectAsState()
     val allInvestmentsHome by viewModel.investments.collectAsState()
     val allDebtsHome by viewModel.debts.collectAsState()
     val allTransactionsHome by viewModel.transactions.collectAsState()
     val activeAccounts = remember(accounts) { accounts.filterNot { it.isClosedAccount() } }
     val activeAccountNames = remember(activeAccounts) { activeAccounts.map { it.name } }
-    val accountNames = remember(allAccountsHome) { allAccountsHome.map { it.name } }
+    val accountNames = activeAccountNames
     val orphans = remember(allTransactionsHome, accountNames) {
         app.fynlo.logic.OrphanTransactionsScanner.scan(allTransactionsHome, accountNames)
     }

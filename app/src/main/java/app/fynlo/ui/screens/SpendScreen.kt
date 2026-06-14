@@ -94,7 +94,7 @@ val transactions by viewModel.transactions.collectAsState()
 
     // 3.2.81 — hoisted from inside the dialog scope so ExpenseRow can
     // pass it to the edit dialog too.
-    val allAccounts by viewModel.allAccountsUnfiltered.collectAsState()
+    val allAccounts by viewModel.accounts.collectAsState()
 
     if (showDialog) {
         // 3.2.59 — wire real account / investment / debt names so the
@@ -412,7 +412,6 @@ private fun ExpenseRow(
         }
     }
 }
-
 
 
 

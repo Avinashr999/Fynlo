@@ -41,7 +41,7 @@ fun TransactionHistoryScreen(viewModel: FinanceViewModel) {
     val currentProject by viewModel.currentProject.collectAsState()
     val isPrivacy by viewModel.isPrivacyMode.collectAsState()
     // 3.2.81 — account names for the edit dialog's new Account picker (C13 #9).
-    val allAccounts by viewModel.allAccountsUnfiltered.collectAsState()
+    val allAccounts by viewModel.accounts.collectAsState()
     val currencyCode = currentProject?.currency ?: "INR"
     val locale = Locale.getDefault()
 
