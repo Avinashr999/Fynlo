@@ -195,6 +195,7 @@ private val pages = listOf(
         SemanticBlue, { IllustrationSync() }
     )
 )
+
 @Composable
 fun OnboardingScreen(onComplete: () -> Unit) {
     var page by remember { mutableIntStateOf(0) }
@@ -275,7 +276,7 @@ fun OnboardingScreen(onComplete: () -> Unit) {
                     colors  = ButtonDefaults.buttonColors(containerColor = current.color)
                 ) {
                     Text(
-                        if (page == pages.lastIndex) "Get Started" else "Next â†’",
+                        if (page == pages.lastIndex) "Get Started" else "Next",
                         fontWeight = FontWeight.Bold,
                         fontSize = 16.sp
                     )
