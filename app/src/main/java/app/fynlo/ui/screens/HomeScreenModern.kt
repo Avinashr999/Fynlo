@@ -985,6 +985,7 @@ private fun AccountTransferDialog(
         mutableStateOf(kotlin.math.abs(from.balance).toBigDecimal().stripTrailingZeros().toPlainString())
     }
     var expanded by remember { mutableStateOf(false) }
+    var submitting by remember(from.id) { mutableStateOf(false) }
     val amount = amountText.toDoubleOrNull()
     val isValid = target != null && amount != null && amount > 0.0
 
@@ -1035,8 +1036,13 @@ private fun AccountTransferDialog(
         },
         confirmButton = {
             Button(
-                enabled = isValid,
-                onClick = { target?.let { onConfirm(it, amount ?: 0.0) } },
+                enabled = isValid && !submitting,
+                onClick = {
+                    if (!submitting) {
+                        submitting = true
+                        target?.let { onConfirm(it, amount ?: 0.0) }
+                    }
+                },
             ) { Text("Transfer") }
         },
         dismissButton = {

@@ -58,6 +58,7 @@ fun AddLendingDialog(
 
     val advancedInterestTypes = listOf("Reducing Balance", "Compound Interest", "Both")
     val isEdit = initialBorrower != null
+    var submitting by remember(initialBorrower?.id) { mutableStateOf(false) }
 
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Surface(
@@ -211,6 +212,8 @@ fun AddLendingDialog(
 
                 Button(
                     onClick = {
+                        if (submitting) return@Button
+                        submitting = true
                         val finalSource = if (isEdit) "Personal Cash" else selectedAccount.name
                         val rawId = initialBorrower?.id ?: ""
                         val borrower = Borrower(
@@ -229,7 +232,7 @@ fun AddLendingDialog(
                         )
                         onConfirm(borrower, finalSource)
                     },
-                    enabled = (selectedPerson != null || isEdit) && (amount.toDoubleOrNull() ?: 0.0) > 0.0,
+                    enabled = (selectedPerson != null || isEdit) && (amount.toDoubleOrNull() ?: 0.0) > 0.0 && !submitting,
                     modifier = Modifier.fillMaxWidth().height(52.dp),
                     shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Emerald500)

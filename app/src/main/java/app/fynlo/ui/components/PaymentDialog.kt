@@ -70,6 +70,7 @@ fun CollectPaymentDialog(
     var date by remember { mutableStateOf(today.format(java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy"))) }
     var notes by remember { mutableStateOf("") }
     var expanded by remember { mutableStateOf(false) }
+    var submitting by remember { mutableStateOf(false) }
 
     val accountOptions = if (accounts.isNotEmpty()) accounts
     else listOf(Account(id = "cash", name = "Personal Cash", type = "Cash", balance = 0.0))
@@ -279,6 +280,8 @@ fun CollectPaymentDialog(
                     Spacer(Modifier.width(8.dp))
                     Button(
                         onClick = {
+                            if (submitting) return@Button
+                            submitting = true
                             val payment = Payment(
                                 id        = app.fynlo.logic.Ids.newId(),
                                 loanId    = borrower.id,
@@ -296,7 +299,7 @@ fun CollectPaymentDialog(
                             )
                             onConfirm(payment, selectedAccount.name)
                         },
-                        enabled = isValid,
+                        enabled = isValid && !submitting,
                         shape = RoundedCornerShape(14.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = app.fynlo.ui.theme.Emerald500)
                     ) { Text("Confirm ${CurrencyFormatter.detail(totalAmount, currencyCode, locale)}") }
@@ -336,6 +339,7 @@ fun PayDebtDialog(
     var date by remember { mutableStateOf(java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy"))) }
     var notes    by remember { mutableStateOf("") }
     var expanded by remember { mutableStateOf(false) }
+    var submitting by remember { mutableStateOf(false) }
 
     val accountOptions = if (accounts.isNotEmpty()) accounts
     else listOf(Account(id = "cash", name = "Personal Cash", type = "Cash", balance = 0.0))
@@ -500,6 +504,8 @@ fun PayDebtDialog(
                     Spacer(Modifier.width(8.dp))
                     Button(
                         onClick = {
+                            if (submitting) return@Button
+                            submitting = true
                             val payment = DebtPayment(
                                 id        = app.fynlo.logic.Ids.newId(),
                                 debtId    = debt.id,
@@ -517,7 +523,7 @@ fun PayDebtDialog(
                             )
                             onConfirm(payment, selectedAccount.name)
                         },
-                        enabled = isValid,
+                        enabled = isValid && !submitting,
                         shape   = RoundedCornerShape(14.dp),
                         colors  = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
                     ) { Text("Pay ${CurrencyFormatter.detail(totalAmount, currencyCode, locale)}") }

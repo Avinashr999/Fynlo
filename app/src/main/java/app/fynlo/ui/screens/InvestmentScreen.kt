@@ -191,6 +191,7 @@ val currentProject by viewModel.currentProject.collectAsState()
     }
 
     deletingInvest?.let { inv ->
+        var deleteInProgress by remember(inv.id) { mutableStateOf(false) }
         AlertDialog(
             onDismissRequest = { deletingInvest = null },
             title = { Text("Delete Investment") },
@@ -222,14 +223,30 @@ val currentProject by viewModel.currentProject.collectAsState()
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         when (inv.sourceType) {
                             "account" -> Button(
-                                onClick = { haptic.performHapticFeedback(HapticFeedbackType.LongPress); viewModel.deleteInvestmentAndReverseAccount(inv); deletingInvest = null },
+                                onClick = {
+                                    if (!deleteInProgress) {
+                                        deleteInProgress = true
+                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                        viewModel.deleteInvestmentAndReverseAccount(inv)
+                                        deletingInvest = null
+                                    }
+                                },
+                                enabled = !deleteInProgress,
                                 modifier = Modifier.fillMaxWidth(),
                                 shape = RoundedCornerShape(10.dp)
                             ) {
                                 Text("Delete + Restore ${CurrencyFormatter.detail(inv.invested, currencyCode)} to ${inv.fundingSource.take(14)}")
                             }
                             "new_loan" -> Button(
-                                onClick = { haptic.performHapticFeedback(HapticFeedbackType.LongPress); viewModel.deleteInvestmentAndLinkedLoan(inv); deletingInvest = null },
+                                onClick = {
+                                    if (!deleteInProgress) {
+                                        deleteInProgress = true
+                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                        viewModel.deleteInvestmentAndLinkedLoan(inv)
+                                        deletingInvest = null
+                                    }
+                                },
+                                enabled = !deleteInProgress,
                                 modifier = Modifier.fillMaxWidth(),
                                 shape = RoundedCornerShape(10.dp),
                                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
@@ -238,7 +255,15 @@ val currentProject by viewModel.currentProject.collectAsState()
                             }
                         }
                         OutlinedButton(
-                            onClick = { haptic.performHapticFeedback(HapticFeedbackType.LongPress); viewModel.deleteInvestment(inv); deletingInvest = null },
+                            onClick = {
+                                if (!deleteInProgress) {
+                                    deleteInProgress = true
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    viewModel.deleteInvestment(inv)
+                                    deletingInvest = null
+                                }
+                            },
+                            enabled = !deleteInProgress,
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(10.dp)
                         ) {

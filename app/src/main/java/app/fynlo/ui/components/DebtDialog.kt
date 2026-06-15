@@ -62,6 +62,7 @@ fun AddDebtDialog(
     var expandedIntType  by remember { mutableStateOf(false) }
     val interestTypes    = listOf("Simple Interest", "Reducing Balance", "Compound Interest", "Both")
     var selectedIntType  by remember { mutableStateOf(initialDebt?.intType ?: "Simple Interest") }
+    var submitting       by remember(initialDebt?.id) { mutableStateOf(false) }
 
     val lenderName = if (useCustomName) customLenderName else selectedPerson?.name ?: ""
     val isValid    = lenderName.isNotBlank() && amount.isNotEmpty()
@@ -214,6 +215,8 @@ fun AddDebtDialog(
                     Spacer(Modifier.width(8.dp))
                     Button(
                         onClick = {
+                            if (submitting) return@Button
+                            submitting = true
                             val debt = Debt(
                                 id      = initialDebt?.id?.takeIf { it.isNotBlank() } ?: app.fynlo.logic.Ids.newId(),
                                 name    = lenderName,
@@ -230,7 +233,7 @@ fun AddDebtDialog(
                             )
                             onConfirm(debt, selectedAccount.name)
                         },
-                        enabled = isValid
+                        enabled = isValid && !submitting
                     ) { Text("Save") }
                 }
                 // C17 (3.2.42) — disabled-button hint.

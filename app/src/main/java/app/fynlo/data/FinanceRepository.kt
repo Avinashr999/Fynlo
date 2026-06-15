@@ -340,79 +340,83 @@ class FinanceRepository(
     }
 
     suspend fun deleteTransaction(transaction: Transaction) {
+        var deleted: Transaction? = null
         db.withTransaction {
+            val current = dao.getTransactionById(transaction.id) ?: return@withTransaction
             // 3.2.72 — audit-log every reversal so a delete shows up in the
             // diagnostic timeline.
             val delTag = app.fynlo.logic.BalanceAuditLog.Source.DELETE_TXN
-            val delNote = "Delete ${transaction.type.lowercase()} \"${transaction.desc.take(28)}\""
+            val delNote = "Delete ${current.type.lowercase()} \"${current.desc.take(28)}\""
 
             // Guard: only reverse balance if account name is non-blank.
             // C03b Stage #1b-1: id-keyed (with name fallback for orphans).
-            when (transaction.type.lowercase()) {
-                "expense"  -> if (transaction.fromAcct.isNotBlank()) {
-                    applyAccountDelta(transaction.fromAcctId, transaction.fromAcct,  transaction.amount)
-                    app.fynlo.logic.BalanceAuditLog.record(delTag, transaction.fromAcct,  transaction.amount, delNote)
+            when (current.type.lowercase()) {
+                "expense"  -> if (current.fromAcct.isNotBlank()) {
+                    applyAccountDelta(current.fromAcctId, current.fromAcct,  current.amount)
+                    app.fynlo.logic.BalanceAuditLog.record(delTag, current.fromAcct,  current.amount, delNote)
                 }
-                "income"   -> if (transaction.toAcct.isNotBlank()) {
-                    applyAccountDelta(transaction.toAcctId, transaction.toAcct,   -transaction.amount)
-                    app.fynlo.logic.BalanceAuditLog.record(delTag, transaction.toAcct,   -transaction.amount, delNote)
+                "income"   -> if (current.toAcct.isNotBlank()) {
+                    applyAccountDelta(current.toAcctId, current.toAcct,   -current.amount)
+                    app.fynlo.logic.BalanceAuditLog.record(delTag, current.toAcct,   -current.amount, delNote)
                 }
                 "transfer" -> {
-                    if (transaction.fromAcct.isNotBlank()) {
-                        applyAccountDelta(transaction.fromAcctId, transaction.fromAcct,  transaction.amount)
-                        app.fynlo.logic.BalanceAuditLog.record(delTag, transaction.fromAcct,  transaction.amount, "$delNote (out)")
+                    if (current.fromAcct.isNotBlank()) {
+                        applyAccountDelta(current.fromAcctId, current.fromAcct,  current.amount)
+                        app.fynlo.logic.BalanceAuditLog.record(delTag, current.fromAcct,  current.amount, "$delNote (out)")
                     }
-                    if (transaction.toAcct.isNotBlank()) {
-                        applyAccountDelta(transaction.toAcctId, transaction.toAcct,   -transaction.amount)
-                        app.fynlo.logic.BalanceAuditLog.record(delTag, transaction.toAcct,   -transaction.amount, "$delNote (in)")
+                    if (current.toAcct.isNotBlank()) {
+                        applyAccountDelta(current.toAcctId, current.toAcct,   -current.amount)
+                        app.fynlo.logic.BalanceAuditLog.record(delTag, current.toAcct,   -current.amount, "$delNote (in)")
                     }
                 }
             }
             // Handle payment reversals if transaction belongs to a loan/debt.
             // IMPORTANT: also delete the Payment record from payments table so that
             // rebuildBorrowerPaidFromPayments() recalculates correctly on next startup.
-            if (transaction.category == "Loan Repayment" && transaction.ref.isNotBlank()) {
+            if (current.category == "Loan Repayment" && current.ref.isNotBlank()) {
                 // Find and delete the matching payment record (same loanId, amount, date).
                 // If no matching Payment exists, `paid` is left as-is to preserve
                 // the invariant paid == SUM(payments). (Pre-C01 this branch
                 // reversed `paid` directly via updateBorrowerPaidAmount, which
                 // broke the invariant — see decisions/2026-05-26-c01-fix-strategy.md
                 // Stage 2.)
-                val matchingPayment = dao.getPaymentsForLoanOnce(transaction.ref)
-                    .filter { it.amount == transaction.amount && it.date == transaction.date }
+                val matchingPayment = dao.getPaymentsForLoanOnce(current.ref)
+                    .filter { it.amount == current.amount && it.date == current.date }
                     .maxByOrNull { it.updatedAt }
                 if (matchingPayment != null) {
                     dao.deletePayment(matchingPayment)
                     sync { deletePayment(matchingPayment.id) }
                 }
                 dao.rebuildBorrowerPaidFromPayments()
-                val b = dao.getBorrowerById(transaction.ref)
+                val b = dao.getBorrowerById(current.ref)
                 sync { b?.let { setBorrower(it) } }
-            } else if (transaction.category == "Debt Repayment" && transaction.ref.isNotBlank()) {
-                val matchingPayment = dao.getDebtPaymentsForDebtOnce(transaction.ref)
-                    .filter { it.amount == transaction.amount && it.date == transaction.date }
+            } else if (current.category == "Debt Repayment" && current.ref.isNotBlank()) {
+                val matchingPayment = dao.getDebtPaymentsForDebtOnce(current.ref)
+                    .filter { it.amount == current.amount && it.date == current.date }
                     .maxByOrNull { it.updatedAt }
                 if (matchingPayment != null) {
                     dao.deleteDebtPayment(matchingPayment)
                     sync { deleteDebtPayment(matchingPayment.id) }
                 }
                 dao.rebuildDebtPaidFromDebtPayments()
-                val d = dao.getDebtById(transaction.ref)
+                val d = dao.getDebtById(current.ref)
                 sync { d?.let { setDebt(it) } }
             }
 
-            dao.deleteTransaction(transaction)
+            dao.deleteTransaction(current)
+            deleted = current
         }
+        val current = deleted ?: return
         // Sync reversed account balances AFTER withTransaction commits
-        when (transaction.type.lowercase()) {
-            "expense"  -> if (transaction.fromAcct.isNotBlank()) syncAccountByName(transaction.fromAcct)
-            "income"   -> if (transaction.toAcct.isNotBlank())   syncAccountByName(transaction.toAcct)
+        when (current.type.lowercase()) {
+            "expense"  -> if (current.fromAcct.isNotBlank()) syncAccountByName(current.fromAcct)
+            "income"   -> if (current.toAcct.isNotBlank())   syncAccountByName(current.toAcct)
             "transfer" -> {
-                if (transaction.fromAcct.isNotBlank()) syncAccountByName(transaction.fromAcct)
-                if (transaction.toAcct.isNotBlank())   syncAccountByName(transaction.toAcct)
+                if (current.fromAcct.isNotBlank()) syncAccountByName(current.fromAcct)
+                if (current.toAcct.isNotBlank())   syncAccountByName(current.toAcct)
             }
         }
-        sync { deleteTransaction(transaction.id) }
+        sync { deleteTransaction(current.id) }
     }
     suspend fun insertBorrower(borrower: Borrower) = insertBorrowerWithSource(borrower, "Personal Cash")
 
@@ -661,54 +665,66 @@ class FinanceRepository(
 
     // ─── Delete — record only, no balance reversal ─────────────────────────────
     suspend fun deleteInvestmentOnly(investment: Investment) {
+        var didDelete = false
         db.withTransaction {
+            val current = dao.getInvestmentById(investment.id) ?: return@withTransaction
             // Remove the investment transaction that moved money out of an account
-            val invTxn = dao.getTransactionsByRef(investment.id)
+            val invTxn = dao.getTransactionsByRef(current.id)
                 .firstOrNull { it.category == "Investment" }
             if (invTxn != null) {
                 dao.deleteTransaction(invTxn)
                 sync { deleteTransaction(invTxn.id) }
             }
-            dao.deleteInvestment(investment)
+            dao.deleteInvestment(current)
+            didDelete = true
         }
-        sync { deleteInvestment(investment.id) }
+        if (didDelete) sync { deleteInvestment(investment.id) }
     }
 
     // ─── Delete — record + reverse source account balance ─────────────────────
     suspend fun deleteInvestmentAndReverseAccount(investment: Investment) {
+        var didDelete = false
+        var fundingSourceToSync = ""
         db.withTransaction {
-            // Restore account balance
-            dao.updateAccountBalance(investment.fundingSource, investment.invested)
+            val current = dao.getInvestmentById(investment.id) ?: return@withTransaction
+            // Restore account balance only if this investment still exists.
+            dao.updateAccountBalance(current.fundingSource, current.invested)
+            fundingSourceToSync = current.fundingSource
             // Also delete the Investment expense transaction (find by ref or desc)
-            val invTxn = dao.getTransactionsByRef(investment.id)
+            val invTxn = dao.getTransactionsByRef(current.id)
                 .firstOrNull { it.category == "Investment" }
-                ?: dao.getTransactionsByDesc("Invested in ${investment.name}")
+                ?: dao.getTransactionsByDesc("Invested in ${current.name}")
                     .firstOrNull { it.category == "Investment" && it.ref.isBlank() }
             if (invTxn != null) {
                 dao.deleteTransaction(invTxn)
                 sync { deleteTransaction(invTxn.id) }
             }
-            dao.deleteInvestment(investment)
+            dao.deleteInvestment(current)
+            didDelete = true
         }
-        sync { deleteInvestment(investment.id) }
-        syncAccountByName(investment.fundingSource)
+        if (didDelete) {
+            sync { deleteInvestment(investment.id) }
+            syncAccountByName(fundingSourceToSync)
+        }
     }
 
     // ─── Delete — record + delete the linked loan that was auto-created ────────
     suspend fun deleteInvestmentAndLinkedLoan(investment: Investment) {
+        var deletedInvestment: Investment? = null
         db.withTransaction {
+            val current = dao.getInvestmentById(investment.id) ?: return@withTransaction
             // Delete the investment transaction
-            val invTxn = dao.getTransactionsByRef(investment.id)
+            val invTxn = dao.getTransactionsByRef(current.id)
                 .firstOrNull { it.category == "Investment" }
             if (invTxn != null) {
                 dao.deleteTransaction(invTxn)
                 sync { deleteTransaction(invTxn.id) }
             }
             // Delete the linked debt and its transactions
-            if (investment.linkedDebtId.isNotEmpty()) {
-                val linkedDebt = dao.getDebtById(investment.linkedDebtId)
+            if (current.linkedDebtId.isNotEmpty()) {
+                val linkedDebt = dao.getDebtById(current.linkedDebtId)
                 if (linkedDebt != null) {
-                    val debtTxn = dao.getTransactionsByRef(investment.linkedDebtId)
+                    val debtTxn = dao.getTransactionsByRef(current.linkedDebtId)
                         .firstOrNull { it.type.equals("Income", ignoreCase = true) }
                     if (debtTxn != null) {
                         // C03b Stage #1b-1: id-keyed reversal of the income txn
@@ -718,13 +734,15 @@ class FinanceRepository(
                         sync { deleteTransaction(debtTxn.id) }
                     }
                 }
-                dao.deleteDebtById(investment.linkedDebtId)
+                dao.deleteDebtById(current.linkedDebtId)
             }
-            dao.deleteInvestment(investment)
+            dao.deleteInvestment(current)
+            deletedInvestment = current
         }
+        val current = deletedInvestment ?: return
         sync {
-            if (investment.linkedDebtId.isNotEmpty()) deleteDebt(investment.linkedDebtId)
-            deleteInvestment(investment.id)
+            if (current.linkedDebtId.isNotEmpty()) deleteDebt(current.linkedDebtId)
+            deleteInvestment(current.id)
         }
     }
 
@@ -889,8 +907,11 @@ class FinanceRepository(
         syncAccountByName(destinationAccount)
     }
     suspend fun deleteDebt(debt: Debt) {
-        val linkedTxns = dao.getTransactionsByRef(debt.id)
+        var linkedTxns = emptyList<Transaction>()
+        var didDelete = false
         db.withTransaction {
+            val current = dao.getDebtById(debt.id) ?: return@withTransaction
+            linkedTxns = dao.getTransactionsByRef(current.id)
             linkedTxns.forEach { txn ->
                 // C03b Stage #1b-1: id-keyed reversal (orphans fall back to name).
                 when (txn.type.lowercase()) {
@@ -903,9 +924,11 @@ class FinanceRepository(
                 }
                 dao.deleteTransaction(txn)
             }
-            dao.getDebtPaymentsForDebtOnce(debt.id).forEach { p -> dao.deleteDebtPayment(p) }
-            dao.deleteDebt(debt)
+            dao.getDebtPaymentsForDebtOnce(current.id).forEach { p -> dao.deleteDebtPayment(p) }
+            dao.deleteDebt(current)
+            didDelete = true
         }
+        if (!didDelete) return
         linkedTxns.forEach { sync { deleteTransaction(it.id) } }
         sync { deleteDebt(debt.id) }
         linkedTxns.map { it.fromAcct }.filter { it.isNotBlank() }.distinct().forEach { syncAccountByName(it) }

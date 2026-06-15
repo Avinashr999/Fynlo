@@ -195,6 +195,9 @@ interface FynloDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertInvestment(investment: Investment)
 
+    @Query("SELECT * FROM investments WHERE id = :id LIMIT 1")
+    suspend fun getInvestmentById(id: String): Investment?
+
     @Delete
     suspend fun deleteInvestment(investment: Investment)
 

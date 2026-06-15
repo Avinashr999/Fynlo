@@ -90,6 +90,7 @@ fun AddTransactionDialog(
          else          app.fynlo.data.Categories.EXPENSE) + "Custom"
     }
     var selectedCategory by remember { mutableStateOf("") }
+    var submitting by remember { mutableStateOf(false) }
     // C04 (subsuming C05's reset, completed by Stage 2.5): on every toggle
     // flip — and on initial open — ask the recency layer for the user's
     // most-recently-used category for the new type. Three cases:
@@ -313,6 +314,8 @@ fun AddTransactionDialog(
                 // ── Save ──────────────────────────────────────────────────────
                 Button(
                     onClick = {
+                        if (submitting) return@Button
+                        submitting = true
                         val finalAccount = when (selectedSrc) {
                             "Cash" -> "Personal Cash"
                             "Custom" -> sourceDetailName
@@ -351,7 +354,8 @@ fun AddTransactionDialog(
                     enabled = run {
                         val amt = amount.toDoubleOrNull() ?: 0.0
                         amt > 0.0 && selectedCategory.isNotBlank() &&
-                            (selectedCategory != "Custom" || customCategory.isNotBlank())
+                            (selectedCategory != "Custom" || customCategory.isNotBlank()) &&
+                            !submitting
                     },
                     modifier = Modifier.fillMaxWidth().height(52.dp),
                     shape = RoundedCornerShape(16.dp),

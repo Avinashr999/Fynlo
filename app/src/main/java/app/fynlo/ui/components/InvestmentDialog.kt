@@ -66,6 +66,7 @@ fun AddInvestmentDialog(
     var date     by remember { mutableStateOf(initialInvestment?.date?.let { DateUtils.formatToDisplay(it) } ?: java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy"))) }
     var type     by remember { mutableStateOf(initialInvestment?.type     ?: "Stocks") }
     var notes    by remember { mutableStateOf(initialInvestment?.notes    ?: "") }
+    var submitting by remember(initialInvestment?.id) { mutableStateOf(false) }
 
     val investTypes = listOf("Stocks", "Mutual Funds", "Gold", "Fixed Deposit", "Business", "Real Estate", "Crypto", "Other")
     var typeExpanded by remember { mutableStateOf(false) }
@@ -76,7 +77,11 @@ fun AddInvestmentDialog(
     // Account picker
     val activeAccounts = accounts
     var selectedAccount by remember(activeAccounts) {
-        mutableStateOf(activeAccounts.firstOrNull())
+        mutableStateOf(
+            activeAccounts.firstOrNull { it.name.equals("Personal Cash", ignoreCase = true) }
+                ?: activeAccounts.firstOrNull { it.type.equals("Cash", ignoreCase = true) && !it.name.contains("petty", ignoreCase = true) }
+                ?: activeAccounts.firstOrNull()
+        )
     }
     var accountExpanded by remember { mutableStateOf(false) }
 
@@ -381,6 +386,8 @@ fun AddInvestmentDialog(
                     Spacer(Modifier.width(8.dp))
                     Button(
                         onClick = {
+                            if (submitting) return@Button
+                            submitting = true
                             val parsedDate = DateUtils.parseInput(date)
                             val investment = Investment(
                                 id         = initialInvestment?.id?.takeIf { it.isNotBlank() } ?: app.fynlo.logic.Ids.newId(),
@@ -427,7 +434,7 @@ fun AddInvestmentDialog(
                             }
                             onConfirm(req)
                         },
-                        enabled = canSave
+                        enabled = canSave && !submitting
                     ) {
                         Text(if (isNew) "Save Investment" else "Update")
                     }

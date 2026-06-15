@@ -92,6 +92,9 @@ val borrowers by viewModel.borrowers.collectAsState()
     var showWriteOffConfirm by remember { mutableStateOf(false) }
     var showEffectiveReturn by remember { mutableStateOf(false) }
     var showPaymentHistory by remember { mutableStateOf(false) }
+    var deleteInProgress by remember(borrower.id) { mutableStateOf(false) }
+    var defaultInProgress by remember(borrower.id) { mutableStateOf(false) }
+    var writeOffInProgress by remember(borrower.id) { mutableStateOf(false) }
 
     if (showEditDialog) {
         AddLendingDialog(
@@ -131,11 +134,15 @@ val borrowers by viewModel.borrowers.collectAsState()
             confirmButton = {
                 TextButton(
                     onClick = {
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        viewModel.deleteBorrower(borrower)
-                        showDeleteConfirm = false
-                        onNavigateBack()
+                        if (!deleteInProgress) {
+                            deleteInProgress = true
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            viewModel.deleteBorrower(borrower)
+                            showDeleteConfirm = false
+                            onNavigateBack()
+                        }
                     },
+                    enabled = !deleteInProgress,
                     colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
                 ) { Text("Delete") }
             },
@@ -290,11 +297,15 @@ val borrowers by viewModel.borrowers.collectAsState()
             confirmButton = {
                 Button(
                     onClick = {
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        if (isCurrentlyDefaulted) viewModel.restoreBorrowerToActive(borrower)
-                        else viewModel.markBorrowerDefaulted(borrower)
-                        showDefaultConfirm = false
+                        if (!defaultInProgress) {
+                            defaultInProgress = true
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            if (isCurrentlyDefaulted) viewModel.restoreBorrowerToActive(borrower)
+                            else viewModel.markBorrowerDefaulted(borrower)
+                            showDefaultConfirm = false
+                        }
                     },
+                    enabled = !defaultInProgress,
                     colors = ButtonDefaults.buttonColors(
                         containerColor = if (isCurrentlyDefaulted) Emerald500 else app.fynlo.ui.theme.SemanticAmber
                     )
@@ -319,11 +330,15 @@ val borrowers by viewModel.borrowers.collectAsState()
             confirmButton = {
                 Button(
                     onClick = {
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        viewModel.writeOffBorrower(borrower)
-                        showWriteOffConfirm = false
-                        onNavigateBack()
+                        if (!writeOffInProgress) {
+                            writeOffInProgress = true
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            viewModel.writeOffBorrower(borrower)
+                            showWriteOffConfirm = false
+                            onNavigateBack()
+                        }
                     },
+                    enabled = !writeOffInProgress,
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
                 ) { Text("Write Off") }
             },

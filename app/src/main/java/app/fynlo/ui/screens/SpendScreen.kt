@@ -355,6 +355,7 @@ private fun ExpenseRow(
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var showEditDialog    by remember { mutableStateOf(false) }
     var menuOpen          by remember { mutableStateOf(false) }
+    var deleteInProgress  by remember(txn.id) { mutableStateOf(false) }
 
     if (showDeleteConfirm) {
         AlertDialog(
@@ -362,7 +363,15 @@ private fun ExpenseRow(
             title = { Text("Delete Expense?") },
             text  = { Text("Delete ${CurrencyFormatter.detail(txn.amount, currencyCode, locale)} ${txn.category}? This will reverse the account balance.") },
             confirmButton = {
-                Button(onClick = { haptic.performHapticFeedback(HapticFeedbackType.LongPress); onDelete(); showDeleteConfirm = false },
+                Button(onClick = {
+                    if (!deleteInProgress) {
+                        deleteInProgress = true
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        onDelete()
+                        showDeleteConfirm = false
+                    }
+                },
+                    enabled = !deleteInProgress,
                     colors = ButtonDefaults.buttonColors(containerColor = SemanticRed)) { Text("Delete") }
             },
             dismissButton = { TextButton(onClick = { showDeleteConfirm = false }) { Text("Cancel") } }

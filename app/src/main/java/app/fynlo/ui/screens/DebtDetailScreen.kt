@@ -87,6 +87,7 @@ fun DebtDetailScreen(
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var showEffectiveRate by remember { mutableStateOf(false) }
     var showPaymentHistory by remember { mutableStateOf(false) }
+    var deleteInProgress  by remember(debt.id) { mutableStateOf(false) }
 
     if (showEditDialog) {
         AddDebtDialog(
@@ -116,11 +117,15 @@ fun DebtDetailScreen(
             confirmButton = {
                 TextButton(
                     onClick = {
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        viewModel.deleteDebt(debt)
-                        showDeleteConfirm = false
-                        onNavigateBack()
+                        if (!deleteInProgress) {
+                            deleteInProgress = true
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            viewModel.deleteDebt(debt)
+                            showDeleteConfirm = false
+                            onNavigateBack()
+                        }
                     },
+                    enabled = !deleteInProgress,
                     colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
                 ) { Text("Delete") }
             },

@@ -82,6 +82,7 @@ fun TransactionHistoryScreen(viewModel: FinanceViewModel) {
         fromDate.isNotBlank() ||
         toDate.isNotBlank()
     val hairline = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f)
+    var bulkDeleteInProgress by remember { mutableStateOf(false) }
 
     if (showBulkDeleteConfirm) {
         AlertDialog(
@@ -91,12 +92,16 @@ fun TransactionHistoryScreen(viewModel: FinanceViewModel) {
             confirmButton = {
                 Button(
                     onClick = {
+                        if (bulkDeleteInProgress) return@Button
+                        bulkDeleteInProgress = true
                         val toDelete = filteredHistory.filter { it.id in selectedIds }
                         haptic.performHapticFeedback(HapticFeedbackType.LongPress); viewModel.deleteTransactions(toDelete)
                         selectedIds = emptySet()
                         selectionMode = false
                         showBulkDeleteConfirm = false
+                        bulkDeleteInProgress = false
                     },
+                    enabled = !bulkDeleteInProgress,
                     colors = ButtonDefaults.buttonColors(containerColor = SemanticRed),
                     shape = RoundedCornerShape(14.dp)
                 ) { Text("Delete All") }
@@ -486,6 +491,7 @@ fun TransactionItem(
     val locale = LocalLocale.current.platformLocale
     var showEditDialog by remember { mutableStateOf(false) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
+    var deleteInProgress by remember(txn.id) { mutableStateOf(false) }
 
     if (showEditDialog) {
         app.fynlo.ui.components.EditTransactionDialog(
@@ -501,7 +507,14 @@ fun TransactionItem(
             title = { Text("Delete transaction?") },
             text  = { Text("Delete ${CurrencyFormatter.detail(txn.amount, currencyCode, locale)} ${txn.category}? This reverses the account balance.") },
             confirmButton = {
-                Button(onClick = { showDeleteConfirm = false; onDelete() },
+                Button(onClick = {
+                    if (!deleteInProgress) {
+                        deleteInProgress = true
+                        showDeleteConfirm = false
+                        onDelete()
+                    }
+                },
+                    enabled = !deleteInProgress,
                     colors = ButtonDefaults.buttonColors(containerColor = SemanticRed),
                     shape = RoundedCornerShape(14.dp)) { Text("Delete") }
             },
