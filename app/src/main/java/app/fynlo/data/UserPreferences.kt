@@ -48,6 +48,8 @@ object UserPreferences {
     private val DEFAULT_CURRENCY = stringPreferencesKey("default_currency")
     private val DATE_FORMAT = stringPreferencesKey("date_format")
     private val PRIVACY_MODE_ENABLED = booleanPreferencesKey("privacy_mode_enabled")
+    private val REVIEW_PROMPT_RATED = booleanPreferencesKey("review_prompt_rated")
+    private val REVIEW_PROMPT_LAST_SHOWN_AT = longPreferencesKey("review_prompt_last_shown_at")
 
     /** Last time recalculateAllBalances() ran (epoch millis). 0L = never.
      *  Used by C02 (UX_AUDIT §C02) for auto-recalc-on-launch debouncing and
@@ -105,6 +107,12 @@ object UserPreferences {
 
     fun privacyModeEnabled(context: Context): Flow<Boolean> =
         context.dataStore.data.map { it[PRIVACY_MODE_ENABLED] ?: false }
+
+    fun reviewPromptRated(context: Context): Flow<Boolean> =
+        context.dataStore.data.map { it[REVIEW_PROMPT_RATED] ?: false }
+
+    fun reviewPromptLastShownAt(context: Context): Flow<Long> =
+        context.dataStore.data.map { it[REVIEW_PROMPT_LAST_SHOWN_AT] ?: 0L }
 
     /** Last successful recalc time as epoch millis; `0L` until the first recalc. */
     fun lastRecalcAt(context: Context): Flow<Long> =
@@ -214,6 +222,17 @@ object UserPreferences {
 
     suspend fun setPrivacyModeEnabled(context: Context, enabled: Boolean) {
         context.dataStore.edit { it[PRIVACY_MODE_ENABLED] = enabled }
+    }
+
+    suspend fun markReviewPromptRated(context: Context) {
+        context.dataStore.edit {
+            it[REVIEW_PROMPT_RATED] = true
+            it[REVIEW_PROMPT_LAST_SHOWN_AT] = System.currentTimeMillis()
+        }
+    }
+
+    suspend fun remindReviewPromptLater(context: Context) {
+        context.dataStore.edit { it[REVIEW_PROMPT_LAST_SHOWN_AT] = System.currentTimeMillis() }
     }
 
     /** Stamps the recalc time (epoch millis). Only called from `RecalcCoordinator`. */

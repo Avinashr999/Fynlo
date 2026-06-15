@@ -27,6 +27,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.dp
@@ -103,6 +105,7 @@ fun MainNavigation(viewModel: FinanceViewModel) {
     var showDebtDialog by remember { mutableStateOf(false) }
     var showInvestmentDialog by remember { mutableStateOf(false) }
     val context = LocalContext.current
+    val haptic = LocalHapticFeedback.current
     val app = context.applicationContext as app.fynlo.FynloApplication
     var isLoggedIn by remember { mutableStateOf(app.authManager.isSignedInWithGoogle) }
     val pinManager = remember { PinManager(context) }
@@ -191,6 +194,38 @@ fun MainNavigation(viewModel: FinanceViewModel) {
     val isFullScreenRoute = currentRoute == Screen.GlobalSearch.route
 
     val syncStatus by viewModel.syncStatus.collectAsState()
+    val transactionsForReview by viewModel.transactions.collectAsState()
+    val hasRatedApp by UserPreferences.reviewPromptRated(context).collectAsState(initial = false)
+    val reviewLastShownAt by UserPreferences.reviewPromptLastShownAt(context).collectAsState(initial = 0L)
+    var showReviewPrompt by remember { mutableStateOf(false) }
+
+    LaunchedEffect(transactionsForReview.size, hasRatedApp, reviewLastShownAt) {
+        val now = System.currentTimeMillis()
+        val cooldownMs = 7L * 24L * 60L * 60L * 1000L
+        if (
+            !hasRatedApp &&
+            transactionsForReview.size >= 8 &&
+            now - reviewLastShownAt > cooldownMs
+        ) {
+            showReviewPrompt = true
+        }
+    }
+
+    if (showReviewPrompt) {
+        FynloReviewDialog(
+            onDismiss = {
+                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                showReviewPrompt = false
+                scope.launch { UserPreferences.remindReviewPromptLater(context) }
+            },
+            onRateNow = {
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                showReviewPrompt = false
+                scope.launch { UserPreferences.markReviewPromptRated(context) }
+                openPlayStore(context)
+            },
+        )
+    }
 
     if (!isLoggedIn) {
         LoginScreen(onSignedIn = { isLoggedIn = true })
@@ -460,6 +495,7 @@ fun MainNavigation(viewModel: FinanceViewModel) {
                             modifier = Modifier
                                 .clip(RoundedCornerShape(8.dp))
                                 .clickable {
+                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                     navController.navigate(Screen.Home.route) {
                                         popUpTo(Screen.Home.route) { saveState = true; inclusive = false }
                                         launchSingleTop = true
@@ -471,17 +507,24 @@ fun MainNavigation(viewModel: FinanceViewModel) {
                     },
                     actions = {
                         val isPrivacy by viewModel.isPrivacyMode.collectAsState()
-                        IconButton(onClick = { viewModel.togglePrivacyMode() }) {
+                        IconButton(onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            viewModel.togglePrivacyMode()
+                        }) {
                             Icon(
                                 if (isPrivacy) Icons.Default.VisibilityOff else Icons.Default.Visibility,
                                 contentDescription = "Toggle Privacy"
                             )
                         }
-                        IconButton(onClick = { navController.navigate(Screen.GlobalSearch.route) }) {
+                        IconButton(onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            navController.navigate(Screen.GlobalSearch.route)
+                        }) {
                             Icon(Icons.Default.Search, contentDescription = "Search")
                         }
                         // Cloud/sync icon — tap to see current sync status
                         IconButton(onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                             val msg = when (syncStatus) {
                                 is app.fynlo.data.SyncStatus.Synced       -> "All changes synced to cloud ✓"
                                 is app.fynlo.data.SyncStatus.Syncing      -> "Syncing…"
@@ -496,11 +539,17 @@ fun MainNavigation(viewModel: FinanceViewModel) {
                     },
                     navigationIcon = {
                         if (canNavigateBack) {
-                            IconButton(onClick = { navController.navigateUp() }) {
+                            IconButton(onClick = {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                navController.navigateUp()
+                            }) {
                                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                             }
                         } else {
-                            IconButton(onClick = { scope.launch { drawerState.open() } }) {
+                            IconButton(onClick = {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                scope.launch { drawerState.open() }
+                            }) {
                                 Icon(Icons.AutoMirrored.Filled.Segment, contentDescription = "Menu")
                             }
                         }
@@ -516,6 +565,7 @@ fun MainNavigation(viewModel: FinanceViewModel) {
                             label    = { Text(screen.label) },
                             selected = baseRoute == screen.route,
                             onClick  = {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                 if (baseRoute != screen.route) {
                                     val isHome = screen.route == Screen.Home.route
                                     navController.navigate(screen.route) {
@@ -540,7 +590,10 @@ fun MainNavigation(viewModel: FinanceViewModel) {
             floatingActionButton = {
                 if (showFab) {
                     FloatingActionButton(
-                        onClick = { showSheet = true },
+                        onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            showSheet = true
+                        },
                         containerColor = MaterialTheme.colorScheme.primary,
                         contentColor = MaterialTheme.colorScheme.onPrimary
                     ) {
@@ -583,9 +636,9 @@ fun MainNavigation(viewModel: FinanceViewModel) {
                         fadeIn(animationSpec = androidx.compose.animation.core.tween(220, easing = androidx.compose.animation.core.FastOutSlowInEasing))
                     else
                         slideInHorizontally(
-                            animationSpec = androidx.compose.animation.core.spring(
-                                dampingRatio = androidx.compose.animation.core.Spring.DampingRatioLowBouncy,
-                                stiffness    = androidx.compose.animation.core.Spring.StiffnessMedium
+                            animationSpec = androidx.compose.animation.core.tween(
+                                240,
+                                easing = androidx.compose.animation.core.FastOutSlowInEasing,
                             )
                         ) { (it * 0.25f).toInt() } + fadeIn(androidx.compose.animation.core.tween(250))
                 },
@@ -608,9 +661,9 @@ fun MainNavigation(viewModel: FinanceViewModel) {
                 },
                 popExitTransition = {
                     slideOutHorizontally(
-                        animationSpec = androidx.compose.animation.core.spring(
-                            dampingRatio = androidx.compose.animation.core.Spring.DampingRatioNoBouncy,
-                            stiffness    = androidx.compose.animation.core.Spring.StiffnessMedium
+                        animationSpec = androidx.compose.animation.core.tween(
+                            200,
+                            easing = androidx.compose.animation.core.FastOutSlowInEasing,
                         )
                     ) { (it * 0.25f).toInt() } + fadeOut(androidx.compose.animation.core.tween(180))
                 }
@@ -814,9 +867,13 @@ fun QuickActionMenu(navController: NavController, onActionClick: (String) -> Uni
 
 @Composable
 fun ActionItem(icon: ImageVector, label: String, color: Color, onClick: () -> Unit) {
+    val haptic = LocalHapticFeedback.current
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         FilledIconButton(
-            onClick = onClick,
+            onClick = {
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                onClick()
+            },
             modifier = Modifier.size(54.dp),
             shape = CircleShape,
             colors = IconButtonDefaults.filledIconButtonColors(
@@ -862,6 +919,7 @@ fun DrawerItem(
     accent: Boolean = false,
     onClick: () -> Unit,
 ) {
+    val haptic = LocalHapticFeedback.current
     val iconTint = when {
         selected -> Emerald500
         accent   -> Emerald500
@@ -890,7 +948,10 @@ fun DrawerItem(
             )
         },
         selected = selected,
-        onClick  = onClick,
+        onClick  = {
+            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+            onClick()
+        },
         colors   = NavigationDrawerItemDefaults.colors(
             selectedContainerColor   = Emerald500.copy(alpha = 0.12f),
             unselectedContainerColor = Color.Transparent
@@ -908,4 +969,71 @@ fun DrawerDivider() {
     )
 }
 
+@Composable
+private fun FynloReviewDialog(
+    onDismiss: () -> Unit,
+    onRateNow: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        icon = {
+            Box(
+                modifier = Modifier
+                    .size(54.dp)
+                    .clip(RoundedCornerShape(18.dp))
+                    .background(Emerald500.copy(alpha = 0.14f)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(Icons.Default.Star, contentDescription = null, tint = Emerald500)
+            }
+        },
+        title = {
+            Text(
+                "Enjoying Fynlo?",
+                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold),
+            )
+        },
+        text = {
+            Text(
+                "A quick Play Store review helps other people find Fynlo and tells us what to polish next.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        },
+        confirmButton = {
+            Button(
+                onClick = onRateNow,
+                shape = RoundedCornerShape(14.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Emerald500),
+            ) {
+                Icon(Icons.Default.Star, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text("Rate now")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Remind me later")
+            }
+        },
+        shape = RoundedCornerShape(24.dp),
+    )
+}
 
+private fun openPlayStore(context: android.content.Context) {
+    try {
+        context.startActivity(
+            android.content.Intent(
+                android.content.Intent.ACTION_VIEW,
+                android.net.Uri.parse("market://details?id=${context.packageName}"),
+            ).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+        )
+    } catch (_: Exception) {
+        context.startActivity(
+            android.content.Intent(
+                android.content.Intent.ACTION_VIEW,
+                android.net.Uri.parse("https://play.google.com/store/apps/details?id=${context.packageName}"),
+            ).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+        )
+    }
+}

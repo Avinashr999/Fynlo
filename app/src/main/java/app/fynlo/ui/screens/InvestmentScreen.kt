@@ -1,5 +1,6 @@
 package app.fynlo.ui.screens
 
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.background
 import androidx.compose.ui.draw.clip
@@ -655,13 +656,17 @@ private fun InvestmentExpandableSection(
     onToggle: () -> Unit,
     content: @Composable ColumnScope.() -> Unit,
 ) {
+    val haptic = LocalHapticFeedback.current
     Surface(
-        onClick = onToggle,
+        onClick = {
+            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+            onToggle()
+        },
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.32f),
     ) {
-        Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 9.dp)) {
+        Column(Modifier.fillMaxWidth().animateContentSize().padding(horizontal = 12.dp, vertical = 9.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text(title, style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold))
