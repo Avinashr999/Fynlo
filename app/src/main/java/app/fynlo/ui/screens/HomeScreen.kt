@@ -237,7 +237,7 @@ fun HomeScreen(viewModel: FinanceViewModel, onNavigateToScreen: (String) -> Unit
                         Text("·", color = Emerald200.copy(alpha = 0.4f),
                             style = MaterialTheme.typography.bodySmall)
                         Column {
-                            Text("Liabilities", style = MaterialTheme.typography.labelSmall,
+                            Text("Debt owed", style = MaterialTheme.typography.labelSmall,
                                 color = Emerald200.copy(alpha = 0.6f))
                             val debtsDisplay = if (isPrivacy) "••••" else CurrencyFormatter.hero(summary.totalDebtPrincipal + summary.totalDebtInterest, currencyCode, locale)
                             Text(debtsDisplay,
@@ -379,7 +379,13 @@ fun HomeScreen(viewModel: FinanceViewModel, onNavigateToScreen: (String) -> Unit
             MetricCard("Hand Loans", CurrencyFormatter.hero(summary.totalHandLoans, currencyCode, locale), Carbon500, Modifier.weight(1f)) { activeBreakdownType = BreakdownType.HAND_LOANS }
         }
         Spacer(Modifier.height(10.dp))
-        MetricCard("Total Owed", CurrencyFormatter.hero(summary.totalDebtPrincipal + summary.totalDebtInterest, currencyCode, locale), SemanticRed, Modifier.fillMaxWidth()) { onNavigateToScreen("debts") }
+        MetricCard(
+            "Debt outstanding",
+            CurrencyFormatter.hero(summary.totalDebtPrincipal + summary.totalDebtInterest, currencyCode, locale),
+            SemanticRed,
+            Modifier.fillMaxWidth(),
+            subValue = "Money you still owe",
+        ) { onNavigateToScreen("debts") }
 
         Spacer(Modifier.height(FabBottomPadding))
     }

@@ -1233,7 +1233,7 @@ fun SettingsScreen(
                 if (showSeedConfirm) AlertDialog(
                     onDismissRequest = { showSeedConfirm = false },
                     title = { Text("Load Test Data?") },
-                    text  = { Text("⚠️ This will DELETE all existing data and replace with QA test data.") },
+                    text  = { Text("Warning: this will delete all existing data and replace it with QA test data.") },
                     confirmButton = { Button(onClick = { viewModel.loadDummyData(); showSeedConfirm = false },
                         colors = ButtonDefaults.buttonColors(containerColor = Red)
                     ) { Text("Load") } },
@@ -1262,7 +1262,7 @@ fun SettingsScreen(
                 if (showWipeConfirm) AlertDialog(
                     onDismissRequest = { showWipeConfirm = false },
                     title = { Text("Wipe ALL Data?") },
-                    text  = { Text("⚠️ PERMANENT DESTRUCTION: This will delete everything from this phone AND Google Cloud. This cannot be undone.") },
+                    text  = { Text("Permanent destruction: this will delete everything from this phone and Google Cloud. This cannot be undone.") },
                     confirmButton = { Button(onClick = { viewModel.wipeAllData(); showWipeConfirm = false },
                         colors = ButtonDefaults.buttonColors(containerColor = Red)
                     ) { Text("WIPE EVERYTHING") } },
@@ -1952,7 +1952,7 @@ private fun CsvImportDialog(
                         val t = r.transaction
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(
-                                "${if (r.isDuplicate) "⚠ Dup" else "✓"} ${t.date} · ${t.category} · ${"%.2f".format(t.amount)}",
+                                "${if (r.isDuplicate) "Duplicate" else "Ready"} · ${t.date} · ${t.category} · ${"%.2f".format(t.amount)}",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = if (r.isDuplicate) SemanticAmber else MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -1960,7 +1960,7 @@ private fun CsvImportDialog(
                     }
                     is app.fynlo.logic.BankStatementImport.RowResult.Skip -> {
                         Text(
-                            "✗ Row ${r.rowIndex}: ${r.reason}",
+                            "Skipped row ${r.rowIndex}: ${r.reason}",
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.error,
                         )

@@ -773,10 +773,6 @@ fun UpdateInvestmentValueDialog(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        Text(
-                            if (deltaSinceLast >= 0) "🎉" else "⚠",
-                            style = MaterialTheme.typography.titleMedium,
-                        )
                         Column(Modifier.weight(1f)) {
                             Text(
                                 "$deltaStr since last update",

@@ -526,7 +526,7 @@ fun MainNavigation(viewModel: FinanceViewModel) {
                         IconButton(onClick = {
                             haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                             val msg = when (syncStatus) {
-                                is app.fynlo.data.SyncStatus.Synced       -> "All changes synced to cloud ✓"
+                                is app.fynlo.data.SyncStatus.Synced       -> "All changes synced to cloud"
                                 is app.fynlo.data.SyncStatus.Syncing      -> "Syncing…"
                                 is app.fynlo.data.SyncStatus.Offline      -> "Offline — changes sync when reconnected"
                                 is app.fynlo.data.SyncStatus.Initialising -> "Connecting to cloud…"

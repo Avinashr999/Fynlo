@@ -118,7 +118,7 @@ fun ReportBugDialog(
             }
             is SubmitState.Sent    -> {
                 Spacer(Modifier.height(8.dp))
-                Text("✓ Report sent. Reference ID: $reportId",
+                Text("Report sent. Reference ID: $reportId",
                     style = MaterialTheme.typography.labelSmall, color = Emerald500)
             }
             is SubmitState.Error   -> {
@@ -145,7 +145,7 @@ fun ReportBugDialog(
             colors = ButtonDefaults.buttonColors(containerColor = Emerald500),
         ) {
             Text(
-                if (submitState is SubmitState.Sent) "Sent ✓" else "Send report",
+                if (submitState is SubmitState.Sent) "Sent" else "Send report",
                 style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
             )
         }
