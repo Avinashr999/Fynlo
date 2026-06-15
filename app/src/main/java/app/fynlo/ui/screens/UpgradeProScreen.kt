@@ -131,21 +131,21 @@ fun UpgradeProScreen(onNavigateBack: () -> Unit = {}) {
             } else {
                 PlanCard(
                     title = "Annual",
-                    price = "Rs 499 / year",
+                    price = "Rs 999 / year",
                     note = "Best value - 7-day free trial",
                     highlighted = true,
                 ) { activity?.let { BillingManager.launchSubscription(it, ProProducts.BASE_PLAN_ANNUAL) } }
                 Spacer(Modifier.height(12.dp))
                 PlanCard(
                     title = "Monthly",
-                    price = "Rs 99 / month",
+                    price = "Rs 149 / month",
                     note = null,
                 ) { activity?.let { BillingManager.launchSubscription(it, ProProducts.BASE_PLAN_MONTHLY) } }
                 Spacer(Modifier.height(12.dp))
                 PlanCard(
-                    title = "Lifetime",
-                    price = "Rs 1,299 once",
-                    note = "Pay once, yours forever",
+                    title = "Founding Lifetime",
+                    price = "Rs 2,799 once",
+                    note = "Limited to the first 100 users",
                 ) { activity?.let { BillingManager.launchLifetime(it) } }
 
                 Spacer(Modifier.height(16.dp))

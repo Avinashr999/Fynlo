@@ -16,5 +16,5 @@ object ProProducts {
     const val SUBSCRIPTION_ID   = "fynlo_pro"      // subscription
     const val BASE_PLAN_MONTHLY = "monthly"        // base plan within fynlo_pro
     const val BASE_PLAN_ANNUAL  = "annual"         // base plan within fynlo_pro
-    const val LIFETIME_ID       = "fynlo_lifetime" // one-time (non-consumable)
+    const val LIFETIME_ID       = "fynlo_lifetime" // hidden founding offer; remove after first 100 users
 }

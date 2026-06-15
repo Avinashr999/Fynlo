@@ -1,21 +1,21 @@
-# Fynlo Legal Protocol
+﻿# Fynlo Legal Protocol
 
-**Version:** 1.0 — REQUIRES LAWYER REVIEW BEFORE PUBLISHING USER-FACING DOCS
+**Version:** 1.0 - REQUIRES LAWYER REVIEW BEFORE PUBLISHING USER-FACING DOCS
 **Last updated:** 2026-05-25
 **Audience:** Avinash (developer), future co-developers, AI agents working on legal-touching changes
 **Status:** Filled-in template. Lawyer must still review before monetization or first paid user.
 
 ---
 
-## ⚠️ Critical disclaimer
+## Warning: Critical disclaimer
 
 This document is a **filled-in template** produced by an AI assistant. It is NOT legal advice. It is NOT a final legal document.
 
 Before relying on any clause, before publishing the linked `PRIVACY_POLICY.md` or `TERMS_AND_CONDITIONS.md` at their hosted URLs, and before charging any user or showing any advertisement in Fynlo:
 
 1. **Consult a qualified Indian tech/SaaS lawyer.** Areas: Consumer Protection Act 2019, Digital Personal Data Protection Act 2023 (DPDP), Information Technology Act 2000, GST law, Andhra Pradesh-specific consumer rules.
-2. **Budget ₹10,000-30,000 for initial legal setup.** Covers OPC registration consultation, ToS/Privacy Policy review, DPDP compliance check.
-3. **Document the lawyer's name, contact, and review date** in §13.
+2. **Budget Rs 10,000-30,000 for initial legal setup.** Covers OPC registration consultation, ToS/Privacy Policy review, DPDP compliance check.
+3. **Document the lawyer's name, contact, and review date** in Section 13.
 
 Operating Fynlo as a paid app without lawyer-reviewed documents exposes Avinash personally to claims significantly larger than the lawyer's fee.
 
@@ -27,7 +27,7 @@ Operating Fynlo as a paid app without lawyer-reviewed documents exposes Avinash 
 
 **This document governs how Fynlo handles money, user data, legal obligations, and the user relationship.**
 
-Without an entity, Avinash carries personal liability for the app's failures. Without ToS, default consumer law applies — often unfavorably. Without a Privacy Policy, Fynlo is in violation of DPDP and Play Store policies. Without a shutdown protocol, stopping Fynlo invites consumer court claims. Without retained records, defending any future claim becomes nearly impossible.
+Without an entity, Avinash carries personal liability for the app's failures. Without ToS, default consumer law applies - often unfavorably. Without a Privacy Policy, Fynlo is in violation of DPDP and Play Store policies. Without a shutdown protocol, stopping Fynlo invites consumer court claims. Without retained records, defending any future claim becomes nearly impossible.
 
 ---
 
@@ -39,16 +39,16 @@ Without an entity, Avinash carries personal liability for the app's failures. Wi
 |---|---|---|
 | Operator name | Avinash Reddy Karri | Sole proprietor / personal capacity (until OPC registered) |
 | Business entity | NOT YET REGISTERED | OPC registration is a pre-monetization requirement |
-| GST registration | N/A | Required if revenue exceeds ₹20 lakh/year |
+| GST registration | N/A | Required if revenue exceeds Rs 20 lakh/year |
 | Bank account in entity name | N/A | Use personal account until entity exists |
-| ToS published | DRAFT — `TERMS_AND_CONDITIONS.md` | Will be hosted at `https://avinashr999.github.io/Fynlo/terms/` once GitHub Pages enabled |
-| Privacy Policy published | DRAFT — `PRIVACY_POLICY.md` | Will be hosted at `https://avinashr999.github.io/Fynlo/privacy/` |
+| ToS published | DRAFT - `TERMS_AND_CONDITIONS.md` | Will be hosted at `https://avinashr999.github.io/Fynlo/terms/` once GitHub Pages enabled |
+| Privacy Policy published | DRAFT - `PRIVACY_POLICY.md` | Will be hosted at `https://avinashr999.github.io/Fynlo/privacy/` |
 | Lawyer consulted | NOT YET | Required before monetization |
 | Play Store listing | INTERNAL TESTING | Production rollout blocked by C01 + legal review |
-| Monetization | NONE | Free, no ads, no subscriptions |
+| Monetization | DORMANT IN CODE | Billing UI/prices prepared; FeatureFlags.BILLING_ENABLED remains false for this AAB |
 | Paid users | ZERO | App used by developer only |
-| Pricing (when launched) | ₹1,299 lifetime / ₹999 per year | Subject to lawyer review |
-| Liability cap | ₹999 | Per §11 of T&C; subject to lawyer review |
+| Pricing (when launched) | Rs 149/month, Rs 999/year with 7-day trial, hidden founding lifetime Rs 2,799 for first 100 users | Subject to lawyer review |
+| Liability cap | Rs 999 | Per Section 11 of T&C; subject to lawyer review |
 
 ---
 
@@ -58,14 +58,14 @@ Without an entity, Avinash carries personal liability for the app's failures. Wi
 
 - [ ] OPC (One Person Company) registered with Ministry of Corporate Affairs
 - [ ] PAN obtained for the OPC
-- [ ] GST registered (mandatory above ₹20 lakh annual revenue; recommended earlier for OPC operating SaaS)
+- [ ] GST registered (mandatory above Rs 20 lakh annual revenue; recommended earlier for OPC operating SaaS)
 - [ ] Business bank account opened in OPC's name
 - [ ] Lawyer consulted at least once on monetization plan
 - [ ] `TERMS_AND_CONDITIONS.md` reviewed by lawyer and published at the stable URL
 - [ ] `PRIVACY_POLICY.md` reviewed by lawyer and published at the stable URL
 - [ ] Refund policy reviewed against Google Play Developer Distribution Agreement
 - [ ] In-app links to ToS + Privacy Policy from About screen AND from any payment screen
-- [ ] Acceptance flow — user explicitly accepts ToS + Privacy Policy at sign-up
+- [ ] Acceptance flow - user explicitly accepts ToS + Privacy Policy at sign-up
 - [ ] DPDP compliance audit done (data inventory, retention, deletion mechanism, grievance officer)
 - [ ] If ads: Privacy Policy specifically discloses all ad networks
 - [ ] If subscription: Google Play Billing integrated correctly, restore-purchases tested
@@ -82,18 +82,18 @@ Without an entity, Avinash carries personal liability for the app's failures. Wi
 
 | Type | Setup cost | Annual compliance | When |
 |---|---|---|---|
-| Sole Proprietorship + GST | ~₹2,000 | ~₹5,000/year | Avoid for monetized app — unlimited personal liability |
-| **One Person Company (OPC)** | **~₹6,000-10,000** | **~₹15,000/year** | **Recommended for Fynlo** |
-| Private Limited (Pvt Ltd) | ~₹15,000 | ~₹25,000+ | Only if planning co-founders / funding |
-| LLP | ~₹10,000 | ~₹15,000/year | Requires 2+ partners — skip |
+| Sole Proprietorship + GST | ~Rs 2,000 | ~Rs 5,000/year | Avoid for monetized app - unlimited personal liability |
+| **One Person Company (OPC)** | **~Rs 6,000-10,000** | **~Rs 15,000/year** | **Recommended for Fynlo** |
+| Private Limited (Pvt Ltd) | ~Rs 15,000 | ~Rs 25,000+ | Only if planning co-founders / funding |
+| LLP | ~Rs 10,000 | ~Rs 15,000/year | Requires 2+ partners - skip |
 
 **Registration path:**
-- Use ClearTax, IndiaFilings, or VakilSearch (~₹6,000-10,000 service fee + government fees)
+- Use ClearTax, IndiaFilings, or VakilSearch (~Rs 6,000-10,000 service fee + government fees)
 - OR file directly via MCA portal if comfortable with the paperwork
 - Timeline: 10-15 working days
 - You'll receive Certificate of Incorporation, PAN, TAN
 
-Once registered, update §1 of this document AND amend all references in `LEGAL_PROTOCOL.md`, `PRIVACY_POLICY.md`, `TERMS_AND_CONDITIONS.md` from "Avinash Reddy Karri" to "Fynlo [OPC name] (OPC) Private Limited."
+Once registered, update Section 1 of this document AND amend all references in `LEGAL_PROTOCOL.md`, `PRIVACY_POLICY.md`, `TERMS_AND_CONDITIONS.md` from "Avinash Reddy Karri" to "Fynlo [OPC name] (OPC) Private Limited."
 
 ---
 
@@ -101,20 +101,20 @@ Once registered, update §1 of this document AND amend all references in `LEGAL_
 
 (India-specific. CA to confirm based on actual revenue.)
 
-- **GST registration threshold:** ₹20 lakh annual revenue (state-specific variations apply). Recommended to register earlier if OPC is operational, regardless of revenue.
+- **GST registration threshold:** Rs 20 lakh annual revenue (state-specific variations apply). Recommended to register earlier if OPC is operational, regardless of revenue.
 - **GST on app subscriptions:** 18% (SaaS classification). You collect from user, remit to government.
-- **GST on app sales (lifetime purchases):** Same 18%.
+- **GST on app sales (founding lifetime purchases):** Same 18%.
 - **TDS on Google Play payouts:** Google deducts TDS before remitting your revenue. Keep all Google payout statements.
-- **Income tax:** Net profits taxable as business income; OPC rate ~25% on income up to ₹400 crore.
+- **Income tax:** Net profits taxable as business income; OPC rate ~25% on income up to Rs 400 crore.
 - **Yearly compliance:** GST returns (monthly/quarterly), income tax returns, ROC filings (for OPC).
 
-**Hire a CA before first paid user.** Budget ₹5,000-15,000/year for compliance. Cheaper than penalties.
+**Hire a CA before first paid user.** Budget Rs 5,000-15,000/year for compliance. Cheaper than penalties.
 
 ---
 
 ## 5. User data handling (DPDP compliance)
 
-DPDP Act 2023 applies to Fynlo NOW — even before monetization — because the app processes personal data of Indian users.
+DPDP Act 2023 applies to Fynlo NOW - even before monetization - because the app processes personal data of Indian users.
 
 ### 5.1 Data inventory (current state)
 
@@ -134,11 +134,11 @@ Update this table every time Fynlo adds a new data collection point or third-par
 
 Indian users have these rights under DPDP Act 2023:
 
-- **Right to access** — Settings → Backup & Export → Export JSON Backup
-- **Right to correction** — User edits in-app
-- **Right to erasure** — Settings → Profile & Security → Delete my account & all data (must wipe both local + Firestore + Crashlytics + Analytics)
-- **Right to nominate** — TBD (currently unsupported; flag in app's About → Privacy notice)
-- **Right to grievance redressal** — Avinash Reddy Karri is Grievance Officer; contact: avinash999.reddy@gmail.com (subject line: "Fynlo Grievance")
+- **Right to access** - Settings > Backup & Export > Export JSON Backup
+- **Right to correction** - User edits in-app
+- **Right to erasure** - Settings > Profile & Security > Delete my account & all data (must wipe both local + Firestore + Crashlytics + Analytics)
+- **Right to nominate** - TBD (currently unsupported; flag in app's About > Privacy notice)
+- **Right to grievance redressal** - Avinash Reddy Karri is Grievance Officer; contact: avinash999.reddy@gmail.com (subject line: "Fynlo Grievance")
 
 ### 5.3 Required design changes for DPDP compliance
 
@@ -169,9 +169,10 @@ Draft breach notification email template to be stored in `LEGAL_PROTOCOL_ASSETS/
 
 | Tier | Price | Includes |
 |---|---|---|
-| Lifetime | ₹1,299 | All current and future features, perpetual access |
-| Annual subscription | ₹999/year | All features, auto-renews unless cancelled |
-| Free | ₹0 | Defined in Terms §10 (free tier feature scope) |
+| Monthly subscription | Rs 149/month | Pro features, auto-renews unless cancelled |
+| Annual subscription | Rs 999/year | Pro features, auto-renews unless cancelled; 7-day trial when offered |
+| Founding Lifetime | Rs 2,799 one-time | Hidden launch offer for first 100 eligible users |
+| Free | Rs 0 | Defined in Terms Section 10 (free tier feature scope) |
 
 ### 6.2 Subscription rules
 
@@ -183,18 +184,18 @@ Draft breach notification email template to be stored in `LEGAL_PROTOCOL_ASSETS/
 - Restore purchases flow must work
 - Subscription cancellation must link to Play Store subscription management
 
-### 6.3 Lifetime purchase rules
+### 6.3 Founding Lifetime purchase rules
 
 - One-time payment via Google Play Billing
-- Definition: "lifetime" = lifetime of the Fynlo service while operated by Avinash Reddy Karri or successor entities; ends per discontinuation procedure in §8
-- Refunds on discontinuation per §8.3
-- Lifetime users retain access if subscription tier is discontinued, provided lifetime tier is also continued (avoid breaking lifetime purchasers' access)
+- Definition: "lifetime" = lifetime of the Fynlo service while operated by Avinash Reddy Karri or successor entities; ends per discontinuation procedure in Section 8
+- Refunds on discontinuation per Section 8.3
+- Founding Lifetime users retain access if the subscription tier is discontinued, provided the founding lifetime tier is also continued (avoid breaking founding lifetime purchasers' access)
 
 ### 6.4 Ads (if implemented)
 
 - Use only Google AdMob (no other ad networks without amending this document)
 - Privacy Policy must list AdMob explicitly
-- Don't show ads to anyone explicitly identified as under 18 (defensive — Fynlo is 18+)
+- Don't show ads to anyone explicitly identified as under 18 (defensive - Fynlo is 18+)
 - Don't show financial-product ads adjacent to user's loan/debt data (deceptive practice risk)
 - Frequency caps: max 1 interstitial per 5 user actions
 
@@ -236,13 +237,13 @@ Fynlo may be discontinued if:
 - Security incident makes user safety unmanageable
 - Acquisition or transfer to another entity
 
-This right is exercised under Terms §14.
+This right is exercised under Terms Section 14.
 
 ### 8.2 Notice period
 
 - **Free users:** 60 days minimum notice before service ceases
 - **Paid annual subscribers:** 90 days minimum notice, OR end of current billing period (whichever is longer)
-- **Lifetime users:** 90 days minimum notice + refund per §8.3
+- **Founding Lifetime users:** 90 days minimum notice + refund per Section 8.3
 
 Notice channels:
 1. In-app banner on every launch (dismissible after acknowledgement)
@@ -259,14 +260,14 @@ Notice channels:
 | Cancelled within 48 hours of first purchase | Full (per Google Play default) |
 | Fynlo discontinued mid-billing-period | Pro-rata refund for unused days |
 
-**Lifetime purchases (₹1,299):**
+**Founding Lifetime purchases (Rs 2,799):**
+
 | Time since purchase | Refund |
 |---|---|
-| Within 30 days | ₹1,299 (full, per Play Store policy) |
-| Within 1 year | ₹1,299 (full) |
-| 1-2 years | ₹650 (≈50%) |
-| 2+ years | Discretionary case-by-case; recommend ₹300-500 goodwill |
-
+| Within 30 days | Rs 2,799 (full, subject to Google Play policy) |
+| Within 1 year | Rs 2,799 (full) |
+| 1-2 years | Rs 1,400 (approximately 50%) |
+| 2+ years | Discretionary goodwill refund, typically Rs 500-750 |
 Refunds via Google Play developer-initiated refund flow. Document each refund.
 
 ### 8.4 Data preservation timeline
@@ -302,15 +303,15 @@ Hi [Name],
 I'm writing to share difficult news: Fynlo will be discontinued on [DATE].
 
 What this means for you:
-• Until [DATE], the app continues to work normally.
-• Between [DATE] and [DATE + 90], the app works locally but cloud sync is disabled.
-• Until [DATE + 365], you can export your data anytime.
-• After [DATE + 365], all data on our servers will be permanently deleted.
+- Until [DATE], the app continues to work normally.
+- Between [DATE] and [DATE + 90], the app works locally but cloud sync is disabled.
+- Until [DATE + 365], you can export your data anytime.
+- After [DATE + 365], all data on our servers will be permanently deleted.
 
 What you should do now:
-1. Export your data: Settings → Backup & Export → Export JSON Backup
+1. Export your data: Settings > Backup & Export > Export JSON Backup
 2. Save the file somewhere safe (computer, Google Drive, etc.)
-3. If you're a paid user, your refund of ₹[AMOUNT] will be processed within 14 days.
+3. If you're a paid user, your refund of Rs [AMOUNT] will be processed within 14 days.
 
 Why this is happening:
 [Brief honest reason]
@@ -339,17 +340,17 @@ This follows Google's app ownership transfer process on Play Store.
 
 ### 9.1 Severity levels
 
-- **P0 — Data breach / data loss affecting users:** Respond within hours. Notify users + DPB India.
-- **P1 — Privacy violation:** 24-48 hours response.
-- **P2 — Service outage > 24 hours:** Communicate via status page + Play Store listing.
-- **P3 — User complaint with legal escalation hint:** Respond within 7 days. Never ignore.
+- **P0 - Data breach / data loss affecting users:** Respond within hours. Notify users + DPB India.
+- **P1 - Privacy violation:** 24-48 hours response.
+- **P2 - Service outage > 24 hours:** Communicate via status page + Play Store listing.
+- **P3 - User complaint with legal escalation hint:** Respond within 7 days. Never ignore.
 
 ### 9.2 C01 (Recalculate destruction) legal status
 
-The C01 bug destroys ₹54K of payment history per tap in test data. Until Sprint 1 ships the fix:
+The C01 bug destroys Rs 54K of payment history per tap in test data. Until Sprint 1 ships the fix:
 
-- No external users → C01 is a P0 engineering issue, not yet a P0 legal incident
-- After monetization without C01 fix → C01 becomes catastrophic legal exposure (data loss + paying users)
+- No external users > C01 is a P0 engineering issue, not yet a P0 legal incident
+- After monetization without C01 fix > C01 becomes catastrophic legal exposure (data loss + paying users)
 
 **Hard rule: Do not promote to Play Store production until C01 is verified fixed.**
 
@@ -366,49 +367,49 @@ If any external user reports affected data BEFORE Sprint 1 ships:
 
 ### 10.1 Liability cap
 
-**Liability cap: ₹999 (Indian Rupees nine hundred ninety-nine only).**
+**Liability cap: Rs 999 (Indian Rupees nine hundred ninety-nine only).**
 
-Set deliberately below the lifetime purchase price (₹1,299) so the clause is clearly a limitation, not a disguised full-refund. Defensibility considerations:
+Set deliberately below the founding lifetime purchase price (Rs 2,799) so the clause is clearly a limitation, not a disguised full-refund. Defensibility considerations:
 
-- ₹999 is approximately 77% of lifetime price (₹1,299) and 100% of annual price — practitioner-defensible range
-- Cap applies "in aggregate to all claims" — not per claim, not per incident
-- Cap does NOT shield against statutory liabilities (Consumer Protection Act, DPDP Act, fraud, gross negligence) — these are excluded from the cap by §11.2 of T&C
+- Rs 999 is below the founding lifetime price and approximately one annual subscription cycle; lawyer review required before paid launch
+- Cap applies "in aggregate to all claims" - not per claim, not per incident
+- Cap does NOT shield against statutory liabilities (Consumer Protection Act, DPDP Act, fraud, gross negligence) - these are excluded from the cap by Section 11.2 of T&C
 
-Final wording is in `TERMS_AND_CONDITIONS.md` §11.2. **Lawyer must specifically review this clause before publication.**
+Final wording is in `TERMS_AND_CONDITIONS.md` Section 11.2. **Lawyer must specifically review this clause before publication.**
 
 ### 10.2 What the cap CANNOT shield against
 
 Indian law does not allow contracts to exclude:
 - Consumer Protection Act 2019 compensation orders (district forum can award independent of contract)
-- DPDP Act penalties (paid to government, up to ₹250 crore)
+- DPDP Act penalties (paid to government, up to Rs 250 crore)
 - Liability for fraud or fraudulent misrepresentation
 - Liability for gross negligence
 - Death or personal injury
 - Other liabilities specified by Indian law
 
 Realistic worst-case scenario for a single user dispute under Consumer Protection Act:
-- Full refund of price paid: ₹1,299
-- "Mental agony" compensation: ₹5,000-25,000
-- Legal costs: ₹2,000-10,000
-- **Total: ₹10,000-40,000 despite ₹999 cap**
+- Full refund of price paid: Rs 2,799
+- "Mental agony" compensation: Rs 5,000-25,000
+- Legal costs: Rs 2,000-10,000
+- **Total: Rs 10,000-40,000 despite Rs 999 cap**
 
 The cap reduces routine claims significantly but does not eliminate consumer-court exposure.
 
 ### 10.3 Insurance
 
-For solo developers, professional liability + cyber liability insurance starts around ₹15,000-30,000/year.
+For solo developers, professional liability + cyber liability insurance starts around Rs 15,000-30,000/year.
 
-**Skip until paid revenue exceeds ₹2 lakh/month.** Below that, policy cost outweighs probable claims.
+**Skip until paid revenue exceeds Rs 2 lakh/month.** Below that, policy cost outweighs probable claims.
 
 ---
 
 ## 11. Dispute resolution
 
-ToS specifies (per `TERMS_AND_CONDITIONS.md` §16):
+ToS specifies (per `TERMS_AND_CONDITIONS.md` Section 16):
 - **Jurisdiction:** Courts of Kakinada, Andhra Pradesh, India
 - **Governing law:** Laws of India
 - **Initial dispute resolution:** Email to avinash999.reddy@gmail.com (subject "Fynlo Dispute"), 30 days for response before formal action
-- **Consumer Protection Act forum** — users retain statutory right to file with district/state consumer forum independent of §16
+- **Consumer Protection Act forum** - users retain statutory right to file with district/state consumer forum independent of Section 16
 
 ### 11.1 If sued
 
@@ -420,9 +421,9 @@ If a legal notice or court summons arrives:
 
 ### 11.2 Consumer forum
 
-Most likely venue for small user disputes. Filing fee nominal (₹100-500). User doesn't need a lawyer; you do.
+Most likely venue for small user disputes. Filing fee nominal (Rs 100-500). User doesn't need a lawyer; you do.
 
-Have lawyer's contact ready (§13).
+Have lawyer's contact ready (Section 13).
 
 ---
 
@@ -445,13 +446,13 @@ Set calendar reminders.
 
 | Role | Name | Contact | Last Updated |
 |---|---|---|---|
-| Lawyer (tech/SaaS) | TBD | TBD | — |
-| CA (chartered accountant) | TBD | TBD | — |
-| Company secretary (if OPC) | TBD | TBD | — |
-| Insurance agent | N/A | — | — |
-| Google Play developer support | Via Play Console | — | — |
-| Firebase support | Via Firebase Console | — | — |
-| DPB India (grievance escalation) | TBD per DPDP rules | — | — |
+| Lawyer (tech/SaaS) | TBD | TBD | - |
+| CA (chartered accountant) | TBD | TBD | - |
+| Company secretary (if OPC) | TBD | TBD | - |
+| Insurance agent | N/A | - | - |
+| Google Play developer support | Via Play Console | - | - |
+| Firebase support | Via Firebase Console | - | - |
+| DPB India (grievance escalation) | TBD per DPDP rules | - | - |
 | Fynlo Grievance Officer | Avinash Reddy Karri | avinash999.reddy@gmail.com | 2026-05-25 |
 
 Fill in lawyer/CA contacts when engaged. Backup all contact info per `BACKUP_PROTOCOL.md`.
@@ -460,14 +461,14 @@ Fill in lawyer/CA contacts when engaged. Backup all contact info per `BACKUP_PRO
 
 ## 14. Acceptance flow specification
 
-For implementation in Fynlo (add to UX_AUDIT as new cluster, P0 priority — blocks monetization):
+For implementation in Fynlo (add to UX_AUDIT as new cluster, P0 priority - blocks monetization):
 
 On user's first sign-in (or first launch after acceptance flow ships):
 
 1. Show ToS + Privacy Policy summary screen
 2. Two scroll-to-accept checkboxes:
-   - "I accept the Terms & Conditions" — link to full document at the GitHub Pages URL
-   - "I accept the Privacy Policy" — link to full document
+   - "I accept the Terms & Conditions" - link to full document at the GitHub Pages URL
+   - "I accept the Privacy Policy" - link to full document
 3. "Continue" button enabled only when both checkboxes are checked
 4. Record acceptance event in Firestore with: userId, document version (T&C v1.0, Privacy v1.0), timestamp, app version
 5. Re-prompt on any material change to either document (when version bumps to v2.0+)
@@ -491,17 +492,17 @@ This creates the legal record that the user agreed.
 }
 ```
 
-Records exported to JSON backup with each user backup, AND retained on server even after account deletion (per §7 retention rules).
+Records exported to JSON backup with each user backup, AND retained on server even after account deletion (per Section 7 retention rules).
 
 ---
 
 ## 15. Cross-references
 
-- **`PRIVACY_POLICY.md`** — user-facing privacy disclosures (hosted at `https://avinashr999.github.io/Fynlo/privacy/`)
-- **`TERMS_AND_CONDITIONS.md`** — user-facing service terms (hosted at `https://avinashr999.github.io/Fynlo/terms/`)
-- **`BACKUP_PROTOCOL.md`** — keystore, business records, contact info redundancy (to be written)
-- **`INCIDENT_PROTOCOL.md`** — operational incident response (to be written)
-- **`UX_AUDIT_2026-05-25.md`** — add new cluster C23 for "Legal acceptance flow + DPDP UI changes" before monetization
+- **`PRIVACY_POLICY.md`** - user-facing privacy disclosures (hosted at `https://avinashr999.github.io/Fynlo/privacy/`)
+- **`TERMS_AND_CONDITIONS.md`** - user-facing service terms (hosted at `https://avinashr999.github.io/Fynlo/terms/`)
+- **`BACKUP_PROTOCOL.md`** - keystore, business records, contact info redundancy (to be written)
+- **`INCIDENT_PROTOCOL.md`** - operational incident response (to be written)
+- **`UX_AUDIT_2026-05-25.md`** - add new cluster C23 for "Legal acceptance flow + DPDP UI changes" before monetization
 
 ---
 
@@ -515,7 +516,7 @@ Any change involving:
 - New jurisdiction (e.g., users outside India)
 - Major service-scope change
 
-…requires updating this document AND `PRIVACY_POLICY.md` AND `TERMS_AND_CONDITIONS.md`, AND lawyer review before going live.
+...requires updating this document AND `PRIVACY_POLICY.md` AND `TERMS_AND_CONDITIONS.md`, AND lawyer review before going live.
 
 Track changes via Git commits. Tag each commit affecting legal posture with `[legal]` prefix.
 
@@ -523,10 +524,17 @@ Track changes via Git commits. Tag each commit affecting legal posture with `[le
 
 ## 17. The one paragraph that matters
 
-**Operating Fynlo as a paid app without a registered OPC, lawyer-reviewed ToS + Privacy Policy, DPDP compliance, and proper recordkeeping exposes Avinash personally to consumer-court claims, DPDP penalties, tax non-compliance, and Play Store takedown. First-year setup cost: ₹20,000-40,000. Skip-it cost in claims, penalties, and lost business: ₹50,000-25,00,000. Don't skip.**
+**Operating Fynlo as a paid app without a registered OPC, lawyer-reviewed ToS + Privacy Policy, DPDP compliance, and proper recordkeeping exposes Avinash personally to consumer-court claims, DPDP penalties, tax non-compliance, and Play Store takedown. First-year setup cost: Rs 20,000-40,000. Skip-it cost in claims, penalties, and lost business: Rs 50,000-25,00,000. Don't skip.**
 
 ---
 
 **End of LEGAL_PROTOCOL.md v1.0**
 
 **Next step:** Schedule lawyer consultation. Bring this document, `PRIVACY_POLICY.md`, and `TERMS_AND_CONDITIONS.md`. Ask the lawyer to mark up all three.
+
+
+
+
+
+
+

@@ -1,4 +1,4 @@
-# Fynlo — Terms & Conditions
+﻿# Fynlo - Terms & Conditions
 
 **Document version:** 1.0
 **Effective date:** [TO BE SET on first publication]
@@ -7,26 +7,26 @@
 
 ---
 
-## ⚠️ Notice to developer (delete before publishing)
+## Warning: Notice to developer (delete before publishing)
 
 > This document is filled with reasonable defaults but **still requires lawyer review** before publishing or showing to any user.
 >
 > Before going live:
 >
-> 1. Have an Indian tech lawyer review the entire document, with special attention to §11 (liability cap) and §14 (discontinuation/refunds)
+> 1. Have an Indian tech lawyer review the entire document, with special attention to Section 11 (liability cap) and Section 14 (discontinuation/refunds)
 > 2. Verify all factual claims match actual app behavior
 > 3. Set the effective date
 > 4. Once OPC is registered, replace "Avinash Reddy Karri" with the OPC name throughout
-> 5. Confirm pricing in §10 is final (currently ₹1,299 lifetime, ₹999/year)
-> 6. Confirm the ₹999 liability cap with lawyer — verify defensibility for your jurisdiction
+> 5. Confirm pricing in Section 10 is final (currently Rs 149/month, Rs 999/year, limited founding lifetime Rs 2,799)
+> 6. Confirm the Rs 999 liability cap with lawyer - verify defensibility for your jurisdiction
 > 7. Delete this notice block before publishing
 >
 > Specific items to ask lawyer about:
-> - Is the ₹999 liability cap clause in §11.2 enforceable? Defensible against unconscionability challenge?
-> - Is the "courts of Kakinada" jurisdiction in §16.2 the right choice? (Where you reside, but lawyer may suggest alternatives)
-> - Is the class-action waiver in §16.5 enforceable in India for consumer disputes?
-> - Is the lifetime refund schedule in §14.4 reasonable?
-> - Should §6 (Acceptable Use) include AI/automation prohibitions if you ever offer Fynlo's data via API?
+> - Is the Rs 999 liability cap clause in Section 11.2 enforceable? Defensible against unconscionability challenge?
+> - Is the "courts of Kakinada" jurisdiction in Section 16.2 the right choice? (Where you reside, but lawyer may suggest alternatives)
+> - Is the class-action waiver in Section 16.5 enforceable in India for consumer disputes?
+> - Is the Founding Lifetime refund schedule in Section 14.4 reasonable?
+> - Should Section 6 (Acceptable Use) include AI/automation prohibitions if you ever offer Fynlo's data via API?
 
 ---
 
@@ -56,7 +56,7 @@ By using Fynlo, you confirm you meet these requirements.
 
 ---
 
-## 3. What Fynlo is — and is not
+## 3. What Fynlo is - and is not
 
 ### 3.1 What Fynlo IS
 
@@ -114,9 +114,9 @@ Each Fynlo account is for individual personal use. You may not share your accoun
 
 You may delete your account at any time:
 
-- In-app: Settings → Profile & Security → Delete my account & all data
+- In-app: Settings > Profile & Security > Delete my account & all data
 
-This is irreversible. We will delete your data from our systems within 30 days, subject to retention requirements detailed in our Privacy Policy §7.
+This is irreversible. We will delete your data from our systems within 30 days, subject to retention requirements detailed in our Privacy Policy Section 7.
 
 ### 4.5 Account termination by us
 
@@ -126,7 +126,7 @@ We may suspend or terminate your account if:
 - We're legally required to
 - We reasonably believe your account is being used for fraud, abuse, or illegal activity
 - You haven't used Fynlo for 24+ months (inactive account cleanup, with prior email notice)
-- Fynlo is discontinued (per §14)
+- Fynlo is discontinued (per Section 14)
 
 Where practical, we'll notify you before termination and allow you to export your data.
 
@@ -156,7 +156,7 @@ We make reasonable efforts to maintain your data on our servers, but **you are r
 - Use Fynlo's in-app JSON or XLSX export regularly
 - Store backups somewhere safe (Google Drive, your computer, etc.)
 
-We are not liable for data loss in excess of what you can recover from your own backups. See §11 (Liability).
+We are not liable for data loss in excess of what you can recover from your own backups. See Section 11 (Liability).
 
 ### 5.4 Accuracy
 
@@ -190,11 +190,11 @@ Violation of this section may result in immediate account termination without re
 
 The Fynlo app, its design, logo, brand name, source code, documentation, and content (other than your data) are owned by the Operator or licensed to us. They are protected by copyright, trademark, and other intellectual property laws.
 
-Use of Fynlo does not transfer any IP rights to you. You receive only a limited license to use the App as described in §8.
+Use of Fynlo does not transfer any IP rights to you. You receive only a limited license to use the App as described in Section 8.
 
 ### 7.2 Your IP
 
-You retain all rights to the data you enter into Fynlo. See §5.
+You retain all rights to the data you enter into Fynlo. See Section 5.
 
 ### 7.3 Feedback
 
@@ -226,7 +226,7 @@ We strive to keep Fynlo available, but we do not guarantee uninterrupted service
 - Bugs and defects we are actively fixing
 - Updates and version migrations
 
-We are not liable for losses arising from temporary unavailability. For prolonged unavailability that materially impacts paid users, see §10 (Payments) and §14 (Discontinuation).
+We are not liable for losses arising from temporary unavailability. For prolonged unavailability that materially impacts paid users, see Section 10 (Payments) and Section 14 (Discontinuation).
 
 ---
 
@@ -238,30 +238,33 @@ Fynlo offers the following purchase options:
 
 | Plan | Price (INR) | What you get |
 |---|---|---|
-| Free | ₹0 | Core features as defined in the App at the time of use |
-| Annual subscription | ₹999 per year | All current features; auto-renews unless cancelled |
-| Lifetime | ₹1,299 one-time | All current and future features; access for the lifetime of the Service per §14 |
+| Free | Rs 0 | Core viewing/export features as defined in the App at the time of use |
+| Monthly subscription | Rs 149 per month | Pro features; auto-renews unless cancelled |
+| Annual subscription | Rs 999 per year | Pro features; auto-renews unless cancelled; 7-day free trial when offered by Google Play |
+| Founding Lifetime | Rs 2,799 one-time | Limited launch offer for the first 100 eligible users; access for the lifetime of the Service per Section 14 |
 
-All prices include applicable GST.
+All prices include applicable GST unless Google Play displays otherwise for your region.
 
-We may modify pricing for new purchases at any time. Existing subscribers and lifetime purchasers retain their current pricing until renewal or per §10.5.
+We may modify pricing for new purchases at any time. Existing subscribers and founding lifetime purchasers retain their current pricing until renewal or per Section 10.5.
 
 ### 10.2 Billing
 
 - All payments are processed via **Google Play Billing**. We do not see or store your card details.
 - Subscriptions auto-renew at the end of each billing period unless cancelled before the renewal date.
-- You can cancel anytime via Google Play Store → Subscriptions.
+- You can cancel anytime via Google Play Store > Subscriptions.
 - Cancellation takes effect at the end of your current billing period; no immediate refund unless required by Google Play policy.
 
 ### 10.3 Free tier
 
 The free tier provides access to core features as defined in the App. We may change the scope of free vs. paid features over time, with at least 30 days notice for existing users before any reduction in free-tier features.
 
-### 10.4 Lifetime purchase definition
+If a free trial expires or a subscription is cancelled, Fynlo will not automatically delete your existing data. Existing records may remain visible, and backup/export access may remain available so you can keep a copy of your records. Certain actions may be limited after trial expiry or cancellation, including adding or editing records, cloud sync, imports, advanced reports, multi-project features, and other Pro features.
 
-"Lifetime" means the lifetime of the Fynlo Service while operated by Avinash Reddy Karri or any successor entity. Lifetime access ends per the discontinuation procedure in §14, in which case refunds apply per §14.4.
+### 10.4 Founding Lifetime purchase definition
 
-Lifetime purchases include all features available at the time of purchase AND all future features added during the Service's lifetime. We will not retroactively remove features for lifetime purchasers.
+"Founding Lifetime" means the lifetime of the Fynlo Service while operated by Avinash Reddy Karri or any successor entity. Lifetime access ends per the discontinuation procedure in Section 14, in which case refunds apply per Section 14.4.
+
+Founding Lifetime purchases include Pro features available at the time of purchase and future Pro features added during the Service's lifetime, except third-party paid services, human services, custom business setup, or separately priced add-ons that are clearly sold outside the core Pro plan.
 
 ### 10.5 Price changes
 
@@ -271,13 +274,13 @@ If we change subscription pricing:
 - New pricing applies to the next renewal after the notice period
 - You can cancel before the new pricing takes effect
 
-Lifetime pricing can change for new buyers; existing lifetime purchasers are unaffected.
+Founding Lifetime pricing can change for new buyers; existing founding lifetime purchasers are unaffected. The Founding Lifetime offer may be hidden, capped, or removed after the launch window or after the first 100 eligible users.
 
 ### 10.6 Refunds (general)
 
 - **Google Play first-time-buyer refund window:** Per Google Play policy, refunds for first-time subscription purchases within 48 hours of purchase are handled automatically through Google Play.
 - **Discretionary refunds:** Other refund requests are evaluated case-by-case. We are not obligated to provide refunds outside Google Play's standard policies.
-- **Refunds on discontinuation:** See §14.4.
+- **Refunds on discontinuation:** See Section 14.4.
 - **Refund process:** All refunds are processed via Google Play Billing. We cannot refund outside that system.
 
 ### 10.7 Taxes
@@ -302,13 +305,13 @@ We do not warrant that:
 - Defects will be corrected immediately
 - Fynlo will meet your specific requirements
 - Calculations (interest, payoff projections, growth metrics) are correct for tax, legal, or financial-planning purposes
-- Data will never be lost (you are responsible for backups; see §5.3)
+- Data will never be lost (you are responsible for backups; see Section 5.3)
 
 ### 11.2 Limitation of liability
 
 To the fullest extent permitted by law:
 
-**Our total cumulative liability to you under or relating to these Terms or your use of Fynlo, regardless of the form of action and whether in contract, tort, statute, or otherwise, is limited to ₹999 (Indian Rupees Nine Hundred Ninety-Nine Only).**
+**Our total cumulative liability to you under or relating to these Terms or your use of Fynlo, regardless of the form of action and whether in contract, tort, statute, or otherwise, is limited to Rs 999 (Indian Rupees Nine Hundred Ninety-Nine Only).**
 
 This limitation applies in aggregate to all claims arising under or relating to these Terms, not per claim or per incident.
 
@@ -336,7 +339,7 @@ To the fullest extent permitted by law, WE ARE NOT LIABLE FOR:
 
 ### 11.4 Indian Consumer Protection Act
 
-Nothing in §11 limits or excludes your rights as a consumer under the Consumer Protection Act 2019. You retain all statutory rights to seek compensation through consumer forums (district, state, or national) independent of these Terms.
+Nothing in Section 11 limits or excludes your rights as a consumer under the Consumer Protection Act 2019. You retain all statutory rights to seek compensation through consumer forums (district, state, or national) independent of these Terms.
 
 ---
 
@@ -362,7 +365,7 @@ If you don't agree to material changes, you can stop using Fynlo and delete your
 
 Version history:
 
-- v1.0 — Initial Terms & Conditions (effective [DATE])
+- v1.0 - Initial Terms & Conditions (effective [DATE])
 
 ---
 
@@ -378,7 +381,7 @@ We may discontinue Fynlo (in whole or in part) at any time, for any reason, incl
 - Technical infrastructure becoming unavailable
 - Acquisition or transfer to another entity
 
-This right is not unlimited; refund obligations under §14.4 apply.
+This right is not unlimited; refund obligations under Section 14.4 apply.
 
 ### 14.2 Notice of discontinuation
 
@@ -386,7 +389,7 @@ If we decide to discontinue Fynlo, we will provide:
 
 - **For free users:** At least 60 days notice before service ceases
 - **For active annual subscribers:** At least 90 days notice OR through the end of the current billing period (whichever is longer)
-- **For lifetime purchasers:** At least 90 days notice, plus refund per §14.4
+- **For founding lifetime purchasers:** At least 90 days notice, plus refund per Section 14.4
 
 Notice will be provided via:
 
@@ -420,15 +423,14 @@ If we discontinue Fynlo:
 | Cancelled before paid period ends | No additional refund (you keep access through end of paid period) |
 | Trial period | Per Google Play default policy |
 
-**Lifetime purchases (₹1,299):**
+**Founding Lifetime purchases (Rs 2,799):**
 
 | Time since purchase | Refund |
 |---|---|
-| Within 30 days | ₹1,299 (full, per Google Play policy) |
-| 30 days - 1 year | ₹1,299 (full) |
-| 1-2 years | ₹650 (approximately 50%) |
-| 2+ years | Discretionary, case-by-case (typical goodwill refund: ₹300-500) |
-
+| Within 30 days | Rs 2,799 (full, subject to Google Play policy) |
+| 30 days - 1 year | Rs 2,799 (full) |
+| 1-2 years | Rs 1,400 (approximately 50%) |
+| 2+ years | Discretionary, case-by-case (typical goodwill refund: Rs 500-750) |
 Refunds processed via Google Play Billing within 14 days of the discontinuation announcement (or earlier if you cancel during the notice period).
 
 ### 14.5 Acquisition or transfer
@@ -445,9 +447,9 @@ If Fynlo is acquired by or transferred to another entity:
 Upon termination (by you, by us, or by discontinuation):
 
 - Your license to use Fynlo ends
-- Your data will be deleted per the timeline in §14.3 (or sooner on your request)
+- Your data will be deleted per the timeline in Section 14.3 (or sooner on your request)
 - Provisions that by their nature should survive (IP, Liability, Indemnification, Dispute Resolution) survive termination
-- Outstanding refunds, if any, are processed per §14.4
+- Outstanding refunds, if any, are processed per Section 14.4
 
 ---
 
@@ -467,7 +469,7 @@ These Terms are governed by the laws of India, without regard to conflict-of-law
 
 ### 16.2 Jurisdiction
 
-Subject to §16.3 and §16.4, the courts of **Kakinada, Andhra Pradesh, India** have exclusive jurisdiction over any disputes arising from these Terms.
+Subject to Section 16.3 and Section 16.4, the courts of **Kakinada, Andhra Pradesh, India** have exclusive jurisdiction over any disputes arising from these Terms.
 
 ### 16.3 Initial dispute resolution
 
@@ -480,7 +482,7 @@ If we cannot resolve the matter within 30 days, you may proceed with formal lega
 
 ### 16.4 Consumer Protection Act
 
-Nothing in §16 restricts your rights under the Consumer Protection Act 2019. You may file a complaint with the appropriate consumer forum (district, state, or national) within the limits set by that Act, instead of following §16.2 and §16.3, if you choose.
+Nothing in Section 16 restricts your rights under the Consumer Protection Act 2019. You may file a complaint with the appropriate consumer forum (district, state, or national) within the limits set by that Act, instead of following Section 16.2 and Section 16.3, if you choose.
 
 ### 16.5 No class actions
 
@@ -506,7 +508,7 @@ Our failure to enforce any provision is not a waiver of our right to enforce it 
 
 ### 17.4 Assignment
 
-You may not assign these Terms without our written consent. We may assign these Terms to a successor in connection with a merger, acquisition, or transfer of Fynlo (per §14.5).
+You may not assign these Terms without our written consent. We may assign these Terms to a successor in connection with a merger, acquisition, or transfer of Fynlo (per Section 14.5).
 
 ### 17.5 Notices
 
@@ -530,7 +532,7 @@ For questions about these Terms:
   - Subject "Fynlo Legal" for legal questions
   - Subject "Fynlo Dispute" for formal disputes
   - Subject "Fynlo Refund" for refund requests
-- **Postal:** [TO BE ADDED — Avinash's business address in Kakinada]
+- **Postal:** [TO BE ADDED - Avinash's business address in Kakinada]
 
 For privacy or grievance matters, see the Privacy Policy.
 
@@ -542,7 +544,7 @@ By using Fynlo, you confirm that:
 
 - You have read and understood these Terms
 - You agree to be bound by them
-- You meet the eligibility requirements in §2
+- You meet the eligibility requirements in Section 2
 - You are accepting on your own behalf, not on behalf of another person or entity
 
 In-app, you will be asked to explicitly accept these Terms before first use and before any paid feature. Your acceptance is logged with timestamp for our records.
@@ -552,3 +554,13 @@ In-app, you will be asked to explicitly accept these Terms before first use and 
 **Document version 1.0**
 **Effective date:** [TO BE SET]
 **URL:** https://avinashr999.github.io/Fynlo/terms/
+
+
+
+
+
+
+
+
+
+

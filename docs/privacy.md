@@ -1,4 +1,4 @@
-# Fynlo — Privacy Policy
+﻿# Fynlo - Privacy Policy
 
 **Document version:** 1.0
 **Effective date:** [TO BE SET on first publication]
@@ -7,24 +7,24 @@
 
 ---
 
-## ⚠️ Notice to developer (delete before publishing)
+## Warning: Notice to developer (delete before publishing)
 
 > This document is filled with reasonable defaults but **still requires lawyer review** before publishing or showing to any user.
 >
 > Before going live:
 >
 > 1. Have an Indian tech lawyer review the entire document (DPDP Act 2023, IT Act 2000, Consumer Protection Act 2019)
-> 2. Verify all factual claims match what Fynlo actually does (data inventory in §3, third-party SDKs in §5)
+> 2. Verify all factual claims match what Fynlo actually does (data inventory in Section 3, third-party SDKs in Section 5)
 > 3. Set the effective date
 > 4. Once OPC is registered, replace "Avinash Reddy Karri" with the OPC name throughout
-> 5. Confirm the Firestore region in §6 (should be `asia-south1` / Mumbai — verify in Firebase Console)
+> 5. Confirm the Firestore region in Section 6 (should be `asia-south1` / Mumbai - verify in Firebase Console)
 > 6. Delete this notice block
 >
 > Specific items to ask the lawyer about:
-> - Are the DPDP user rights in §8 worded correctly?
-> - Should there be additional disclosure for ad-supported tier in §5.3 (currently only AdMob mentioned)?
-> - Is the data retention in §7 defensible? (Esp. 7-year acceptance records vs DPDP minimum)
-> - Is the children's privacy clause in §10 sufficient? (Fynlo is 18+ only)
+> - Are the DPDP user rights in Section 8 worded correctly?
+> - Should there be additional disclosure for ad-supported tier in Section 5.3 (currently only AdMob mentioned)?
+> - Is the data retention in Section 7 defensible? (Esp. 7-year acceptance records vs DPDP minimum)
+> - Is the children's privacy clause in Section 10 sufficient? (Fynlo is 18+ only)
 > - Should the policy state Crashlytics is opt-in by default vs current opt-out plan?
 
 ---
@@ -40,8 +40,8 @@ Fynlo is operated by **Avinash Reddy Karri** (the "Operator"), based in Kakinada
 Contact for privacy matters:
 
 - **Email:** avinash999.reddy@gmail.com (subject: "Fynlo Privacy")
-- **Postal address:** [TO BE ADDED — Avinash's business address in Kakinada]
-- **Grievance Officer:** Avinash Reddy Karri — avinash999.reddy@gmail.com (subject: "Fynlo Grievance") — per DPDP Act 2023 §10
+- **Postal address:** [TO BE ADDED - Avinash's business address in Kakinada]
+- **Grievance Officer:** Avinash Reddy Karri - avinash999.reddy@gmail.com (subject: "Fynlo Grievance") - per DPDP Act 2023 Section 10
 
 ---
 
@@ -109,7 +109,7 @@ We use your data for these purposes:
 | Send you optional notifications (loan reminders, budget alerts) | Consent | Loan + budget data |
 | Comply with legal obligations | Legal requirement | As required by law |
 | Defend legal claims | Legal requirement | As needed for the specific claim |
-| Process subscription payments (when monetization is active) | Contract performance | Payment data (via Google Play; we don't see your card) |
+| Process subscriptions, trials, and Pro entitlements (when monetization is active) | Contract performance | Purchase status and entitlement data via Google Play; we don't see your card |
 | Serve ads (when ad-supported tier is active) | Consent | Limited usage data per ad-network requirements |
 
 We do NOT use your data to:
@@ -118,6 +118,7 @@ We do NOT use your data to:
 - Train AI models
 - Profile you for commercial decisions outside Fynlo
 - Share with marketing partners
+- Delete your existing data automatically just because a free trial expired
 
 ---
 
@@ -127,12 +128,12 @@ Fynlo uses these third-party services, each with their own privacy policies:
 
 ### 5.1 Google services
 
-- **Google Sign-In** — for authentication. [Google Privacy Policy](https://policies.google.com/privacy)
-- **Firebase Firestore** — for cloud data sync. [Firebase Privacy](https://firebase.google.com/support/privacy)
-- **Firebase Authentication** — for managing your account. [Same as Firebase]
-- **Firebase Crashlytics** — for crash reporting. [Same as Firebase]
-- **Firebase Analytics** — for usage analytics. [Same as Firebase]
-- **Google Play Store** — for app distribution and (when monetization is active) subscription billing. [Google Play Privacy](https://play.google.com/intl/en/about/privacy/)
+- **Google Sign-In** - for authentication. [Google Privacy Policy](https://policies.google.com/privacy)
+- **Firebase Firestore** - for cloud data sync. [Firebase Privacy](https://firebase.google.com/support/privacy)
+- **Firebase Authentication** - for managing your account. [Same as Firebase]
+- **Firebase Crashlytics** - for crash reporting. [Same as Firebase]
+- **Firebase Analytics** - for usage analytics. [Same as Firebase]
+- **Google Play Store** - for app distribution and (when monetization is active) subscription billing. [Google Play Privacy](https://play.google.com/intl/en/about/privacy/)
 
 Firestore data is stored in the `asia-south1` (Mumbai) region.
 
@@ -140,19 +141,19 @@ Firestore data is stored in the `asia-south1` (Mumbai) region.
 
 Fynlo links to (but does not embed):
 
-- **WhatsApp** — when you tap "Send WhatsApp reminder" on a loan, Fynlo opens WhatsApp with a pre-filled message. We don't transmit anything to WhatsApp ourselves.
-- **SMS** — same as above; Fynlo opens your default SMS app.
-- **Google Play Store** — when you tap "Rate on Play Store" in Settings.
+- **WhatsApp** - when you tap "Send WhatsApp reminder" on a loan, Fynlo opens WhatsApp with a pre-filled message. We don't transmit anything to WhatsApp ourselves.
+- **SMS** - same as above; Fynlo opens your default SMS app.
+- **Google Play Store** - when you tap "Rate on Play Store" in Settings.
 
 ### 5.3 Advertising partners
 
 Currently no ads are shown. If Fynlo introduces an ad-supported tier in the future:
 
-- **Google AdMob** — for serving ads. AdMob may collect device identifiers (Google Advertising ID), approximate location (via IP), and ad interaction data. [AdMob privacy](https://support.google.com/admob/answer/6128543)
+- **Google AdMob** - for serving ads. AdMob may collect device identifiers (Google Advertising ID), approximate location (via IP), and ad interaction data. [AdMob privacy](https://support.google.com/admob/answer/6128543)
 
-We do NOT share any of your financial data with ad networks. Ad targeting is based only on AdMob's own profile of your device — not on your loans, transactions, or balances within Fynlo.
+We do NOT share any of your financial data with ad networks. Ad targeting is based only on AdMob's own profile of your device - not on your loans, transactions, or balances within Fynlo.
 
-You can opt out of personalized ads in your device's Settings → Google → Ads → Opt out of Ads Personalization.
+You can opt out of personalized ads in your device's Settings > Google > Ads > Opt out of Ads Personalization.
 
 This Privacy Policy will be updated to disclose any new ad networks before they are integrated, with 30 days notice to existing users for material changes.
 
@@ -195,7 +196,7 @@ Under the Digital Personal Data Protection Act 2023 (India), you have these righ
 
 You can request a copy of all personal data we hold about you.
 
-**How to exercise:** Settings → Backup & Export → Export JSON Backup. This gives you a complete copy of your data in a machine-readable format.
+**How to exercise:** Settings > Backup & Export > Export JSON Backup. This gives you a complete copy of your data in a machine-readable format.
 
 For data beyond what the in-app export covers (e.g., your analytics or crash reports), email avinash999.reddy@gmail.com (subject: "Fynlo Data Access").
 
@@ -209,9 +210,9 @@ You can correct any inaccurate or incomplete data.
 
 You can request that we delete all your data.
 
-**How to exercise:** Settings → Profile & Security → Delete my account & all data. This permanently deletes your data from your device AND from our servers within 30 days.
+**How to exercise:** Settings > Profile & Security > Delete my account & all data. This permanently deletes your data from your device AND from our servers within 30 days.
 
-Some data may be retained longer where legally required (e.g., payment records for tax purposes, acceptance records for legal defense, per §7).
+Some data may be retained longer where legally required (e.g., payment records for tax purposes, acceptance records for legal defense, per Section 7).
 
 ### 8.4 Right to grievance redressal
 
@@ -219,7 +220,7 @@ If you have a complaint about how we handle your data, contact our Grievance Off
 
 - **Name:** Avinash Reddy Karri
 - **Email:** avinash999.reddy@gmail.com (subject: "Fynlo Grievance")
-- **Postal:** [TO BE ADDED — Kakinada business address]
+- **Postal:** [TO BE ADDED - Kakinada business address]
 
 We will respond within 7 days. If you're not satisfied with our response, you may escalate to the **Data Protection Board of India** per DPDP Act 2023.
 
@@ -235,9 +236,9 @@ You can withdraw consent for any specific processing.
 
 **How to exercise:**
 
-- For analytics & crash reporting: Settings → Privacy → Diagnostics & Usage (planned in upcoming release)
-- For optional notifications: Settings → Notifications
-- For all processing: Delete your account (see §8.3)
+- For analytics & crash reporting: Settings > Privacy > Diagnostics & Usage (planned in upcoming release)
+- For optional notifications: Settings > Notifications
+- For all processing: Delete your account (see Section 8.3)
 
 Withdrawing consent does not affect processing already done lawfully before the withdrawal.
 
@@ -295,7 +296,7 @@ If you don't agree to material changes, you can delete your account before the c
 
 Material change history:
 
-- v1.0 — Initial Privacy Policy (effective [DATE])
+- v1.0 - Initial Privacy Policy (effective [DATE])
 
 ---
 
@@ -327,7 +328,7 @@ If you want your data deleted immediately rather than waiting through this sched
 
 ### 13.4 Refunds for paid users
 
-If you have an active subscription or recent lifetime purchase when Fynlo is discontinued, refunds are provided per the schedule in our Terms & Conditions §14.4. Refunds are processed through Google Play Billing within 14 days.
+If you have an active subscription or recent founding lifetime purchase when Fynlo is discontinued, refunds are provided per the schedule in our Terms & Conditions Section 14.4. Refunds are processed through Google Play Billing within 14 days.
 
 ### 13.5 Acquisition or transfer
 
@@ -352,7 +353,7 @@ For any questions about this Privacy Policy or how we handle your data:
   - Subject "Fynlo Privacy" for privacy questions
   - Subject "Fynlo Grievance" for formal grievances
   - Subject "Fynlo Data Access" for access requests
-- **Postal:** [TO BE ADDED — Avinash's business address in Kakinada]
+- **Postal:** [TO BE ADDED - Avinash's business address in Kakinada]
 - **Grievance Officer:** Avinash Reddy Karri (contact as above)
 
 We aim to respond within 7 days. For DPDP-related grievances, we will respond within the timelines mandated by the DPDP Act.
@@ -377,3 +378,9 @@ For users outside India, additional local laws may apply where mandated.
 **Document version 1.0**
 **Effective date:** [TO BE SET]
 **URL:** https://avinashr999.github.io/Fynlo/privacy/
+
+
+
+
+
+

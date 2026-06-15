@@ -1,37 +1,58 @@
 FYNLO PRIVACY POLICY
-Effective Date: June 13, 2026
+Effective Date: June 15, 2026
 
 1. Introduction and Core Architecture
-Fynlo is a personal finance application that utilizes cloud-synchronization to securely maintain and update your financial ledgers across devices. To provide this functionality, Fynlo utilizes Google Sign-In for authentication and Firebase Firestore for database management and real-time synchronization.
+Fynlo is a local-first personal finance application with optional cloud synchronization. The app stores your financial records on your device and may use Google Sign-In and Firebase Firestore to sync and back up your data when cloud features are enabled.
 
 2. Data Collection and Processing
-To provide the core utility of the application, we collect and process the following information:
+To provide the app, we may collect and process:
 
-Account Information: Authentication tokens and profile identifiers provided via Google Sign-In. We do not process or store your Google account password.
+Account Information: Authentication tokens and profile identifiers provided through Google Sign-In. We do not process or store your Google account password.
 
-Financial Data: The transaction amounts, ledger balances, and custom categories you manually input into the application. This data is synced to Firebase Firestore to prevent data loss and enable cross-device access.
+Financial Data: Transaction amounts, account balances, loans, debts, investments, projects, categories, notes, and other records you manually enter into Fynlo. This data is stored locally and may be synced to Firebase Firestore when cloud sync is enabled.
 
-Service-Inferred Approximate Geographic Region: We do not track precise GPS coordinates. To comply with regional pricing, taxation, and Play Store localization requirements, we process your approximate geographic region derived from your device's IP address.
+Device and Diagnostic Data: Crash logs, app version, device model, operating-system version, and diagnostic events used to fix bugs and improve reliability.
 
-3. What We Explicitly DO NOT Do
+Approximate Region: We may process approximate geographic region, such as region inferred by Google Play or network services, for pricing, taxation, localization, fraud prevention, and legal compliance. We do not track precise GPS location for this purpose.
 
-No Data Brokering: We do not sell, rent, or trade your personal or financial data to third parties, advertisers, or credit bureaus.
+Billing Entitlement Data: When monetization is active, we may receive purchase status, subscription entitlement status, product ID, purchase token, and renewal/cancellation state from Google Play Billing. We do not collect or store your credit card number, bank account details, UPI ID, or full payment credentials.
 
-No Hidden Trackers: We do not use third-party advertising trackers to monitor the specific financial values you enter into your ledgers.
+3. What We Explicitly Do Not Do
+No Data Brokering: We do not sell, rent, or trade your personal or financial data to third parties, advertisers, credit bureaus, or lenders.
 
-4. Google Play Billing and Subscriptions
-Fynlo operates exclusively on a recurring subscription model (₹999/year). All transactions, payment processing, and subscription renewals are handled directly through Google Play Billing. Fynlo does not collect, process, or store your credit card information, bank account details, or UPI IDs.
+No Hidden Financial Profiling: We do not use the financial values you enter to make credit decisions, lending decisions, or insurance decisions.
+
+No Ad Targeting From Ledger Data: We do not share your loans, transactions, balances, categories, or investments with ad networks.
+
+4. Google Play Billing, Trials, and Pro Access
+Fynlo may offer monthly subscriptions, annual subscriptions, free trials, and limited founding offers through Google Play Billing.
+
+Planned Pro pricing:
+- Monthly subscription: Rs 149/month.
+- Annual subscription: Rs 999/year, with a 7-day free trial when offered by Google Play.
+- Founding Lifetime offer: Rs 2,799 one-time, limited to the first 100 eligible users.
+
+Google Play handles payment processing, cancellation, renewal, trial conversion, and refund flows. Fynlo receives only the entitlement information needed to unlock or limit Pro features.
+
+If your trial expires or subscription is cancelled, Fynlo will not automatically delete your existing data. Some features may become read-only or limited, but we will aim to keep data viewing and backup/export access available so you can retain your records.
 
 5. User Rights and DPDP Compliance
-In accordance with applicable data protection frameworks, including the Digital Personal Data Protection Act (DPDP), you maintain the right to:
+In accordance with applicable data-protection frameworks, including the Digital Personal Data Protection Act (DPDP), you may:
 
 Access and Portability: Request a copy of the financial data stored in your Fynlo account.
 
-Correction: Edit or update any inaccurate ledger entries directly within the application.
+Correction: Edit or update inaccurate ledger entries directly within the application.
 
-Erasure: Delete your account and explicitly request the purging of your financial data from our Firebase Firestore databases.
+Erasure: Delete your account and request deletion of your financial data from Firebase Firestore databases, subject to lawful retention requirements.
 
-Breach Notification: In the event of a confirmed security incident compromising Firebase infrastructure or your financial data, we will notify affected users within the legally mandated timeframes.
+Consent Withdrawal: Withdraw consent for optional features such as cloud sync or notifications where supported by the app.
 
-6. Contact Us
-For data deletion requests, privacy inquiries, or support, please contact us at: fynloapp.support@gmail.com
+Breach Notification: In the event of a confirmed security incident compromising Firebase infrastructure or your financial data, we will notify affected users within legally required timelines.
+
+6. Data Retention
+Local data remains on your device until you delete it, uninstall the app, reset app data, or use an in-app deletion feature. Cloud data remains until you delete your account, request deletion, or the service is discontinued under the published shutdown process.
+
+7. Contact Us
+For data deletion requests, privacy inquiries, or support, contact us at: fynloapp.support@gmail.com
+
+Note: This Privacy Policy is prepared for product planning and publication readiness. It should be reviewed by a qualified Indian technology lawyer before paid monetization is enabled in production.
