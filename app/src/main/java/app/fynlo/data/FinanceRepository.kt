@@ -151,6 +151,7 @@ class FinanceRepository(
         val sanitized = TransactionValidator.sanitize(transaction).withResolvedAccountIds()
         val affectedAccounts = mutableListOf<String>()
         db.withTransaction {
+            if (dao.getTransactionById(sanitized.id) != null) return@withTransaction
             val now = System.currentTimeMillis()
             val t = sanitized.copy(updatedAt = now, createdAt = if (sanitized.createdAt == 0L) now else sanitized.createdAt)
             dao.insertTransaction(t)
@@ -469,6 +470,7 @@ class FinanceRepository(
 
     suspend fun insertBorrowerWithSource(borrower: Borrower, sourceAccount: String, projectId: String = borrower.projectId) {
         db.withTransaction {
+            if (dao.getBorrowerById(borrower.id) != null) return@withTransaction
             val now = System.currentTimeMillis()
             // C03b Stage #3: resolve peopleId at write time so subsequent
             // loans to the same phone aggregate under one Person record.
@@ -904,6 +906,7 @@ class FinanceRepository(
     }
     suspend fun insertDebtWithDestination(debt: Debt, destinationAccount: String, projectId: String = debt.projectId) {
         db.withTransaction {
+            if (dao.getDebtById(debt.id) != null) return@withTransaction
             val now = System.currentTimeMillis()
             // C03b Stage #3: resolve peopleId for the lender, same dedup
             // spine borrowers use. Empty-phone debts (e.g. credit cards
@@ -956,6 +959,7 @@ class FinanceRepository(
     }
     suspend fun insertPaymentWithDest(payment: Payment, destinationAccount: String, projectId: String = payment.projectId) {
         db.withTransaction {
+            if (dao.getPaymentById(payment.id) != null) return@withTransaction
             val now = System.currentTimeMillis()
             val p = payment.copy(projectId = projectId, updatedAt = now, createdAt = if (payment.createdAt == 0L) now else payment.createdAt)
             dao.insertPayment(p)
@@ -999,6 +1003,7 @@ class FinanceRepository(
     }
     suspend fun insertDebtPaymentWithSource(payment: DebtPayment, sourceAccount: String, projectId: String = payment.projectId) {
         db.withTransaction {
+            if (dao.getDebtPaymentById(payment.id) != null) return@withTransaction
             val now = System.currentTimeMillis()
             val p = payment.copy(projectId = projectId, updatedAt = now, createdAt = if (payment.createdAt == 0L) now else payment.createdAt)
             dao.insertDebtPayment(p)

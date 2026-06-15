@@ -5,7 +5,11 @@ import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import app.fynlo.data.local.FynloDatabase
 import app.fynlo.data.model.Account
+import app.fynlo.data.model.Borrower
+import app.fynlo.data.model.Debt
+import app.fynlo.data.model.DebtPayment
 import app.fynlo.data.model.Investment
+import app.fynlo.data.model.Payment
 import app.fynlo.data.model.Transaction
 import app.fynlo.data.remote.FirestoreRepository
 import app.fynlo.data.remote.SyncManager
@@ -93,6 +97,102 @@ class MoneyActionIdempotencyDataIntegrityTest {
         val fundingTransaction = db.dao().getTransactionsByRef("inv-1").single()
         assertEquals(900.0, db.dao().getAccountById("acc-1")!!.balance, 0.0001)
         assertEquals("acc-1", fundingTransaction.fromAcctId)
+    }
+
+    @Test
+    fun `retrying same expense transaction does not debit account twice`() = runBlocking {
+        db.dao().insertAccount(Account(id = "acc-1", name = "Personal Cash", type = "Cash", balance = 1000.0))
+        val transaction = Transaction(
+            id = "txn-1",
+            date = "2026-06-15",
+            type = "Expense",
+            amount = 100.0,
+            fromAcct = "Personal Cash",
+            fromAcctId = "acc-1",
+            category = "Food",
+            desc = "Lunch",
+        )
+
+        repeat(2) { repository.insertTransaction(transaction) }
+
+        assertEquals(900.0, db.dao().getAccountById("acc-1")!!.balance, 0.0001)
+        assertEquals(transaction.id, db.dao().getTransactionById("txn-1")!!.id)
+    }
+
+    @Test
+    fun `retrying same borrower disbursal does not debit source account twice`() = runBlocking {
+        db.dao().insertAccount(Account(id = "acc-1", name = "Personal Cash", type = "Cash", balance = 1000.0))
+        val borrower = Borrower(
+            id = "loan-1",
+            name = "Ravi",
+            amount = 100.0,
+            rate = 0.0,
+            date = "2026-06-15",
+        )
+
+        repeat(2) { repository.insertBorrowerWithSource(borrower, "Personal Cash", "personal") }
+
+        assertEquals(900.0, db.dao().getAccountById("acc-1")!!.balance, 0.0001)
+        assertEquals(1, db.dao().getTransactionsByRef("loan-1").count { it.category == "Lending" })
+    }
+
+    @Test
+    fun `retrying same debt received does not credit destination account twice`() = runBlocking {
+        db.dao().insertAccount(Account(id = "acc-1", name = "Personal Cash", type = "Cash", balance = 1000.0))
+        val debt = Debt(
+            id = "debt-1",
+            name = "Lender",
+            amount = 100.0,
+            rate = 0.0,
+            date = "2026-06-15",
+        )
+
+        repeat(2) { repository.insertDebtWithDestination(debt, "Personal Cash", "personal") }
+
+        assertEquals(1100.0, db.dao().getAccountById("acc-1")!!.balance, 0.0001)
+        assertEquals(1, db.dao().getTransactionsByRef("debt-1").count { it.category == "Debt Received" })
+    }
+
+    @Test
+    fun `retrying same loan repayment does not credit destination account twice`() = runBlocking {
+        db.dao().insertAccount(Account(id = "acc-1", name = "Personal Cash", type = "Cash", balance = 1000.0))
+        db.dao().insertBorrower(Borrower(id = "loan-1", name = "Ravi", amount = 100.0, rate = 0.0, date = "2026-06-15"))
+        val payment = Payment(
+            id = "pay-1",
+            loanId = "loan-1",
+            name = "Ravi",
+            date = "2026-06-15",
+            type = "Both",
+            amount = 100.0,
+            principal = 100.0,
+        )
+
+        repeat(2) { repository.insertPaymentWithDest(payment, "Personal Cash", "personal") }
+
+        assertEquals(1100.0, db.dao().getAccountById("acc-1")!!.balance, 0.0001)
+        assertEquals(1, db.dao().getPaymentsForLoanOnce("loan-1").size)
+        assertEquals(1, db.dao().getTransactionsByRef("loan-1").count { it.category == "Loan Repayment" })
+    }
+
+    @Test
+    fun `retrying same debt repayment does not debit source account twice`() = runBlocking {
+        db.dao().insertAccount(Account(id = "acc-1", name = "Personal Cash", type = "Cash", balance = 1000.0))
+        db.dao().insertDebt(Debt(id = "debt-1", name = "Lender", amount = 100.0, rate = 0.0, date = "2026-06-15"))
+        val payment = DebtPayment(
+            id = "debt-pay-1",
+            debtId = "debt-1",
+            name = "Lender",
+            date = "2026-06-15",
+            type = "Both",
+            amount = 100.0,
+            principal = 100.0,
+        )
+
+        repeat(2) { repository.insertDebtPaymentWithSource(payment, "Personal Cash", "personal") }
+
+        assertEquals(900.0, db.dao().getAccountById("acc-1")!!.balance, 0.0001)
+        assertEquals(1, db.dao().getDebtPaymentsForDebtOnce("debt-1").size)
+        assertEquals(1, db.dao().getTransactionsByRef("debt-1").count { it.category == "Debt Repayment" })
     }
 
     @Test

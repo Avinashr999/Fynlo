@@ -105,6 +105,9 @@ interface FynloDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertPayment(payment: Payment)
 
+    @Query("SELECT * FROM payments WHERE id = :id LIMIT 1")
+    suspend fun getPaymentById(id: String): Payment?
+
     // ─── Debt Payments ────────────────────────────────────────────────────────
 
     @Query("SELECT * FROM debt_payments WHERE debtId = :debtId")
@@ -115,6 +118,9 @@ interface FynloDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertDebtPayment(payment: DebtPayment)
+
+    @Query("SELECT * FROM debt_payments WHERE id = :id LIMIT 1")
+    suspend fun getDebtPaymentById(id: String): DebtPayment?
 
     @Delete
     suspend fun deletePayment(payment: Payment)
