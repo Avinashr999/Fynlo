@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import app.fynlo.data.model.Transaction
+import app.fynlo.logic.CurrencyUtils
 import app.fynlo.logic.DateUtils
 import app.fynlo.ui.theme.Emerald500
 import app.fynlo.ui.theme.SemanticRed
@@ -62,6 +63,7 @@ fun AddTransactionDialog(
     // RecurringTransaction template (day-of-month derived from the txn
     // date). Default no-op for tests / call sites that haven't wired it.
     onRepeatMonthly: (Transaction) -> Unit = { _ -> },
+    currencyCode: String = "INR",
 ) {
     var isIncome by remember { mutableStateOf(initialIsIncome) }
     var amount by remember { mutableStateOf("") }
@@ -176,7 +178,9 @@ fun AddTransactionDialog(
 
                 // ── Big amount input (hero) ───────────────────────────────────
                 Box(Modifier.fillMaxWidth(), Alignment.Center) {
-                    BasicAmountField(amount, accent) { amount = it.filter { c -> c.isDigit() || c == '.' } }
+                    BasicAmountField(amount, accent, CurrencyUtils.symbolFor(currencyCode)) {
+                        amount = it.filter { c -> c.isDigit() || c == '.' }
+                    }
                 }
 
                 Spacer(Modifier.height(24.dp))
@@ -372,9 +376,14 @@ fun AddTransactionDialog(
 }
 
 @Composable
-private fun BasicAmountField(value: String, accent: androidx.compose.ui.graphics.Color, onChange: (String) -> Unit) {
+private fun BasicAmountField(
+    value: String,
+    accent: androidx.compose.ui.graphics.Color,
+    currencySymbol: String,
+    onChange: (String) -> Unit,
+) {
     Row(verticalAlignment = Alignment.CenterVertically) {
-        Text("₹", fontSize = 32.sp, fontWeight = FontWeight.Bold,
+        Text(currencySymbol, fontSize = 32.sp, fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(Modifier.width(6.dp))
         BasicTextFieldAmount(value, accent, onChange)
@@ -445,7 +454,7 @@ private fun SourceDropdown(
         SoftField(selected, label, onPick)
         Spacer(Modifier.height(6.dp))
         TextButton(onClick = { createMode = false; if (options.isNotEmpty()) onPick(options.first()) }) {
-            Text("← Pick from existing", style = MaterialTheme.typography.labelSmall)
+            Text("Pick from existing", style = MaterialTheme.typography.labelSmall)
         }
     } else {
         ExposedDropdownMenuBox(

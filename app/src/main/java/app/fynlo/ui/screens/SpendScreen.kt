@@ -111,6 +111,7 @@ val transactions by viewModel.transactions.collectAsState()
             // also create a RecurringTransaction template alongside the
             // one-time insert.
             onRepeatMonthly = { txn -> viewModel.addRecurringTransaction(toRecurringTemplate(txn)) },
+            currencyCode    = currencyCode,
             bankAccounts    = allAccounts.map { it.name },
             investmentNames = allInvestments.map { it.name },
             debtNames       = allDebts.map { it.name },

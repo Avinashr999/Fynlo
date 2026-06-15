@@ -241,13 +241,16 @@ fun MainNavigation(viewModel: FinanceViewModel) {
         return
     }
 
+    val navAccounts by viewModel.accounts.collectAsState()
+    val navDebts    by viewModel.debts.collectAsState()
+    val navProject  by viewModel.currentProject.collectAsState()
+    val navCurrencyCode = navProject?.currency ?: "INR"
+
     // Dialog Triggering
     if (showExpenseDialog) {
         // 3.2.59 — wire real account / investment / debt names so the
         // source picker is a dropdown of existing entities (orphan fix).
-        val allAccounts by viewModel.accounts.collectAsState()
         val allInvestments by viewModel.investments.collectAsState()
-        val allDebts by viewModel.debts.collectAsState()
         AddTransactionDialog(
             onDismiss = { showExpenseDialog = false },
             onConfirm = { txn ->
@@ -260,9 +263,10 @@ fun MainNavigation(viewModel: FinanceViewModel) {
             // 3.2.81 (C13 #5) — "Repeat monthly?" → also create a recurring template.
             // `_root_ide_package_.app.fynlo.logic.…` not needed; use the import alias via toRecurringTemplate.
             onRepeatMonthly = { txn -> viewModel.addRecurringTransaction(toRecurringTemplate(txn)) },
-            bankAccounts    = allAccounts.map { it.name },
+            currencyCode    = navCurrencyCode,
+            bankAccounts    = navAccounts.map { it.name },
             investmentNames = allInvestments.map { it.name },
-            debtNames       = allDebts.map { it.name },
+            debtNames       = navDebts.map { it.name },
         )
     }
     
@@ -287,11 +291,6 @@ fun MainNavigation(viewModel: FinanceViewModel) {
             }
         )
     }
-
-    val navAccounts by viewModel.accounts.collectAsState()
-    val navDebts    by viewModel.debts.collectAsState()
-    val navProject  by viewModel.currentProject.collectAsState()
-    val navCurrencyCode = navProject?.currency ?: "INR"
 
     // Auto-log recurring transactions once on each app session start
     androidx.compose.runtime.LaunchedEffect(Unit) {

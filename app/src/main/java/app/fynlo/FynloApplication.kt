@@ -138,7 +138,6 @@ class FynloApplication : Application() {
             try {
                 try {
                     repository.pushAllLocalToFirestore()
-                    Log.d("FynloApp", "Local\u2192Firestore push completed on sign-in")
                 } catch (e: Exception) {
                     Log.e("FynloApp", "pushAllLocal failed (non-fatal): ${e.message}")
                 }

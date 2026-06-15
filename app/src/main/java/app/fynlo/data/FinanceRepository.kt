@@ -368,10 +368,6 @@ class FinanceRepository(
                     }
                 }
             }
-            android.util.Log.d("FynloDelete", "deleteTransaction: type=${transaction.type} " +
-                "from='${transaction.fromAcct}' to='${transaction.toAcct}' " +
-                "cat=${transaction.category} amount=${transaction.amount}")
-
             // Handle payment reversals if transaction belongs to a loan/debt.
             // IMPORTANT: also delete the Payment record from payments table so that
             // rebuildBorrowerPaidFromPayments() recalculates correctly on next startup.
@@ -646,9 +642,11 @@ class FinanceRepository(
             dao.insertDebt(d)
             val i = investment.copy(sourceType = "new_loan", fundingSource = d.name, linkedDebtId = d.id, projectId = projectId, updatedAt = System.currentTimeMillis(), createdAt = if (investment.createdAt == 0L) System.currentTimeMillis() else investment.createdAt)
             dao.insertInvestment(i)
+            val projectCurrency = dao.getProjectById(projectId)?.currency ?: "INR"
+            val investedText = app.fynlo.logic.CurrencyFormatter.detail(investment.invested, projectCurrency)
             val t = Transaction(app.fynlo.logic.Ids.newId(), investment.date, "Transfer", investment.invested,
                 fromAcct = d.name, toAcct = investment.name, category = "Investment",
-                desc = "Invested ₹${investment.invested.toInt()} in ${investment.name} via ${d.name} loan",
+                desc = "Invested $investedText in ${investment.name} via ${d.name} loan",
                 notes = investment.notes, projectId = projectId, updatedAt = System.currentTimeMillis())
             dao.insertTransaction(t)
             sync { setDebt(d); setInvestment(i); setTransaction(t) }
@@ -1203,8 +1201,6 @@ class FinanceRepository(
         val uid = syncManager.userId
         if (uid.isEmpty()) return
         val fs = firestore
-        android.util.Log.d("FynloSync", "Starting full local→Firestore push for user $uid")
-
         var pushed = 0
         var failed = 0
 
@@ -1231,7 +1227,6 @@ class FinanceRepository(
         dao.getAllRecurringTransactionsOnce().forEach { push("recurring:${it.id}") { fs.setRecurring(it) } }
         dao.getAllValuationsOnce().forEach       { push("valuation:${it.id}")   { fs.setValuation(it) } }
 
-        android.util.Log.d("FynloSync", "Full push complete: $pushed succeeded, $failed failed")
         if (failed == 0) syncManager.setSynced() else syncManager.setSyncing()
     }
 

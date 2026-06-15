@@ -120,7 +120,7 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
         else      -> activeLoans
     }
 
-    if (showEmiCalc) { EmiCalculatorDialog(onDismiss = { showEmiCalc = false }) }
+    if (showEmiCalc) { EmiCalculatorDialog(currencyCode = currencyCode, onDismiss = { showEmiCalc = false }) }
     if (showAddDialog) {
         AddLendingDialog(
             viewModel = viewModel,
@@ -387,7 +387,7 @@ fun EmptyLendingState(onAdd: () -> Unit = {}) {
 // ── EMI Calculator Dialog ─────────────────────────────────────────────────────
 
 @Composable
-fun EmiCalculatorDialog(onDismiss: () -> Unit) {
+fun EmiCalculatorDialog(currencyCode: String, onDismiss: () -> Unit) {
     var principal  by remember { mutableStateOf("") }
     var rate       by remember { mutableStateOf("") }
     var tenure     by remember { mutableStateOf("") }
@@ -454,7 +454,7 @@ fun EmiCalculatorDialog(onDismiss: () -> Unit) {
             cursorColor             = Emerald500
         )
 
-        app.fynlo.ui.components.FormSectionLabel("Principal amount (₹)")
+        app.fynlo.ui.components.FormSectionLabel("Principal amount (${app.fynlo.logic.CurrencyUtils.symbolFor(currencyCode)})")
         Spacer(Modifier.height(6.dp))
         OutlinedTextField(
             value = principal, onValueChange = { principal = it },
@@ -539,6 +539,8 @@ fun EmiCalculatorDialog(onDismiss: () -> Unit) {
         }
 
         if (emi != null) {
+            val totalAmount = total ?: 0.0
+            val totalInterest = interest ?: 0.0
             Spacer(Modifier.height(16.dp))
             HorizontalDivider()
             Spacer(Modifier.height(12.dp))
@@ -551,17 +553,17 @@ fun EmiCalculatorDialog(onDismiss: () -> Unit) {
             ) {
                 Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
                     Text("Monthly EMI", style = MaterialTheme.typography.bodyMedium)
-                    Text("₹ ${String.format(locale, "%,.2f", emi)}",
+                    Text(CurrencyFormatter.detail(emi, currencyCode, locale),
                         style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                         color = MaterialTheme.colorScheme.primary)
                 }
                 Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
                     Text("Total Amount", style = MaterialTheme.typography.bodyMedium)
-                    Text("₹ ${String.format(locale, "%,.2f", total!!)}", style = MaterialTheme.typography.bodyMedium)
+                    Text(CurrencyFormatter.detail(totalAmount, currencyCode, locale), style = MaterialTheme.typography.bodyMedium)
                 }
                 Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
                     Text("Total Interest", style = MaterialTheme.typography.bodyMedium)
-                    Text("₹ ${String.format(locale, "%,.2f", interest!!)}",
+                    Text(CurrencyFormatter.detail(totalInterest, currencyCode, locale),
                         style = MaterialTheme.typography.bodyMedium, color = SemanticRed)
                 }
             }
@@ -578,7 +580,6 @@ fun EmiCalculatorDialog(onDismiss: () -> Unit) {
         }
     }
     }
-
 
 
 

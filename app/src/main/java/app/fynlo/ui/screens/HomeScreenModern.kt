@@ -147,6 +147,7 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
             onRecordCategory = { isIncome, cat -> viewModel.recordTransactionCategory(isIncome, cat) },
             // 3.2.81 (C13 #5) — "Repeat monthly?" → also create a recurring template.
             onRepeatMonthly = { txn -> viewModel.addRecurringTransaction(app.fynlo.logic.toRecurringTemplate(txn)) },
+            currencyCode    = currencyCode,
             initialIsIncome = addTxnIncome,
             bankAccounts    = activeAccountNames,
             investmentNames = allInvestmentsHome.map { it.name },

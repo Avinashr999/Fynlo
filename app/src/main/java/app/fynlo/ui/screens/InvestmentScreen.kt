@@ -90,9 +90,9 @@ val currentProject by viewModel.currentProject.collectAsState()
     }
 
     // ── Update value dialog ────────────────────────────────────────────────────
-    if (updatingInvest != null) {
+    updatingInvest?.let { invest ->
         UpdateInvestmentValueDialog(
-            investment = updatingInvest!!,
+            investment = invest,
             currencySymbol = currencySymbol,
             currencyCode = currencyCode,
             onDismiss  = { updatingInvest = null },
@@ -100,7 +100,7 @@ val currentProject by viewModel.currentProject.collectAsState()
                 viewModel.addValuation(
                     app.fynlo.data.model.InvestmentValuation(
                         id = app.fynlo.logic.Ids.newId(),
-                        investmentId = updatingInvest!!.id,
+                        investmentId = invest.id,
                         date = DateUtils.parseInput(date),
                         value = newVal,
                         notes = notes
@@ -114,8 +114,7 @@ val currentProject by viewModel.currentProject.collectAsState()
 
     // ── Smart delete confirmation — shows options based on sourceType ──────────
     // ── Withdraw Dialog ─────────────────────────────────────────────────────
-    if (withdrawingInvest != null) {
-        val inv = withdrawingInvest!!
+    withdrawingInvest?.let { inv ->
         var withdrawAmt by remember { mutableStateOf("") }
         var withdrawExpanded by remember { mutableStateOf(false) }
         val withdrawAccountOptions = if (accounts.isNotEmpty()) accounts
@@ -191,8 +190,7 @@ val currentProject by viewModel.currentProject.collectAsState()
         }
     }
 
-    if (deletingInvest != null) {
-        val inv = deletingInvest!!
+    deletingInvest?.let { inv ->
         AlertDialog(
             onDismissRequest = { deletingInvest = null },
             title = { Text("Delete Investment") },
@@ -260,11 +258,11 @@ val currentProject by viewModel.currentProject.collectAsState()
         )
     }
 
-    if (viewingHistory != null) {
+    viewingHistory?.let { invest ->
         ValuationHistoryDialog(
-            investment = viewingHistory!!,
+            investment = invest,
             currencyCode = currencyCode,
-            valuations = viewModel.getValuationsForInvestment(viewingHistory!!.id).collectAsState(initial = emptyList()).value,
+            valuations = viewModel.getValuationsForInvestment(invest.id).collectAsState(initial = emptyList()).value,
             onDismiss = { viewingHistory = null }
         )
     }
