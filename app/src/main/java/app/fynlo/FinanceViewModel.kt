@@ -41,6 +41,13 @@ class FinanceViewModel @Inject constructor(
     private val _uiState = MutableStateFlow<UiState>(UiState.Initial)
     val uiState: StateFlow<UiState> = _uiState.asStateFlow()
 
+    private val _feedbackEvents = MutableSharedFlow<String>(extraBufferCapacity = 8)
+    val feedbackEvents: SharedFlow<String> = _feedbackEvents.asSharedFlow()
+
+    fun showFeedback(message: String) {
+        _feedbackEvents.tryEmit(message)
+    }
+
     val syncStatus: StateFlow<SyncStatus>
         get() = repository.syncStatus
 
@@ -575,8 +582,8 @@ class FinanceViewModel @Inject constructor(
     }
 
     // ─── Add investment — pick the right repository function by source type ─────
-    fun addInvestmentFundedByAccount(investment: Investment, accountName: String) {
-        viewModelScope.launch(Dispatchers.IO) { repository.insertInvestmentFundedByAccount(investment.copy(projectId = pid), accountName, pid) }
+    fun addInvestmentFundedByAccount(investment: Investment, accountName: String, accountId: String = "") {
+        viewModelScope.launch(Dispatchers.IO) { repository.insertInvestmentFundedByAccount(investment.copy(projectId = pid), accountName, pid, accountId) }
     }
     fun addInvestmentFundedByExistingDebt(investment: Investment, debt: app.fynlo.data.model.Debt) {
         viewModelScope.launch(Dispatchers.IO) { repository.insertInvestmentFundedByExistingDebt(investment.copy(projectId = pid), debt, pid) }

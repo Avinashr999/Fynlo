@@ -36,6 +36,7 @@ data class InvestmentSaveRequest(
     val investment: Investment,
     val sourceType: String,        // "account" | "existing_debt" | "new_loan"
     val sourceAccountName: String = "",
+    val sourceAccountId: String = "",
     val sourceDebt: Debt? = null,  // existing debt selected
     val newLoan: Debt? = null      // auto-created if sourceType = "new_loan"
 )
@@ -408,7 +409,8 @@ fun AddInvestmentDialog(
                                 SOURCE_ACCOUNT -> InvestmentSaveRequest(
                                     investment = investment,
                                     sourceType = SOURCE_ACCOUNT,
-                                    sourceAccountName = selectedAccount?.name ?: "Cash"
+                                    sourceAccountName = selectedAccount?.name ?: "Cash",
+                                    sourceAccountId = selectedAccount?.id ?: ""
                                 )
                                 SOURCE_EXISTING_DEBT -> InvestmentSaveRequest(
                                     investment = investment,

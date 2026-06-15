@@ -123,6 +123,12 @@ class FinanceRepository(
         }
     }
 
+    private suspend fun tombstoneRemoteDoc(collection: String, id: String) {
+        if (id.isNotBlank()) {
+            dao.insertDeletedRemoteDoc(DeletedRemoteDoc(collection, id))
+        }
+    }
+
     private suspend fun Transaction.withResolvedAccountIds(): Transaction {
         // Resolve up front so the lookup closure passed to the pure helper
         // is synchronous (DAO calls are suspend; the helper is not).
@@ -404,6 +410,7 @@ class FinanceRepository(
             }
 
             dao.deleteTransaction(current)
+            tombstoneRemoteDoc("transactions", current.id)
             deleted = current
         }
         val current = deleted ?: return
@@ -608,13 +615,15 @@ class FinanceRepository(
         dao.insertAccount(a); sync { setAccount(a) }
     }
     // ─── Investment — funded by own account ────────────────────────────────────
-    suspend fun insertInvestmentFundedByAccount(investment: Investment, accountName: String, projectId: String = investment.projectId) {
+    suspend fun insertInvestmentFundedByAccount(investment: Investment, accountName: String, projectId: String = investment.projectId, accountId: String = "") {
         db.withTransaction {
+            if (dao.getInvestmentById(investment.id) != null) return@withTransaction
+            val resolvedAccountId = accountId.ifBlank { dao.getAccountByName(accountName)?.id ?: "" }
             val i = investment.copy(sourceType = "account", fundingSource = accountName, projectId = projectId, updatedAt = System.currentTimeMillis(), createdAt = if (investment.createdAt == 0L) System.currentTimeMillis() else investment.createdAt)
             dao.insertInvestment(i)
-            dao.updateAccountBalance(accountName, -investment.invested)
+            applyAccountDelta(resolvedAccountId, accountName, -investment.invested)
             val t = Transaction(app.fynlo.logic.Ids.newId(), investment.date, "Expense", investment.invested,
-                fromAcct = accountName, category = "Investment",
+                fromAcct = accountName, fromAcctId = resolvedAccountId, category = "Investment",
                 desc = "Invested in ${investment.name}", ref = i.id,
                 notes = investment.notes, projectId = projectId, updatedAt = System.currentTimeMillis())
             dao.insertTransaction(t)
@@ -627,6 +636,7 @@ class FinanceRepository(
     // ─── Investment — funded by existing recorded debt ──────────────────────────
     suspend fun insertInvestmentFundedByExistingDebt(investment: Investment, debt: app.fynlo.data.model.Debt, projectId: String = investment.projectId) {
         db.withTransaction {
+            if (dao.getInvestmentById(investment.id) != null) return@withTransaction
             val i = investment.copy(sourceType = "existing_debt", fundingSource = debt.name, linkedDebtId = debt.id, projectId = projectId, updatedAt = System.currentTimeMillis(), createdAt = if (investment.createdAt == 0L) System.currentTimeMillis() else investment.createdAt)
             dao.insertInvestment(i)
             val t = Transaction(app.fynlo.logic.Ids.newId(), investment.date, "Transfer", investment.invested,
@@ -642,6 +652,7 @@ class FinanceRepository(
     // ─── Investment — auto-create new loan + link to investment ─────────────────
     suspend fun insertInvestmentFundedByNewLoan(investment: Investment, newDebt: app.fynlo.data.model.Debt, projectId: String = investment.projectId) {
         db.withTransaction {
+            if (dao.getInvestmentById(investment.id) != null) return@withTransaction
             val d = newDebt.copy(projectId = projectId, updatedAt = System.currentTimeMillis())
             dao.insertDebt(d)
             val i = investment.copy(sourceType = "new_loan", fundingSource = d.name, linkedDebtId = d.id, projectId = projectId, updatedAt = System.currentTimeMillis(), createdAt = if (investment.createdAt == 0L) System.currentTimeMillis() else investment.createdAt)
@@ -673,9 +684,11 @@ class FinanceRepository(
                 .firstOrNull { it.category == "Investment" }
             if (invTxn != null) {
                 dao.deleteTransaction(invTxn)
+                tombstoneRemoteDoc("transactions", invTxn.id)
                 sync { deleteTransaction(invTxn.id) }
             }
             dao.deleteInvestment(current)
+            tombstoneRemoteDoc("investments", current.id)
             didDelete = true
         }
         if (didDelete) sync { deleteInvestment(investment.id) }
@@ -687,24 +700,28 @@ class FinanceRepository(
         var fundingSourceToSync = ""
         db.withTransaction {
             val current = dao.getInvestmentById(investment.id) ?: return@withTransaction
-            // Restore account balance only if this investment still exists.
-            dao.updateAccountBalance(current.fundingSource, current.invested)
-            fundingSourceToSync = current.fundingSource
             // Also delete the Investment expense transaction (find by ref or desc)
-            val invTxn = dao.getTransactionsByRef(current.id)
-                .firstOrNull { it.category == "Investment" }
-                ?: dao.getTransactionsByDesc("Invested in ${current.name}")
-                    .firstOrNull { it.category == "Investment" && it.ref.isBlank() }
-            if (invTxn != null) {
+            val invTxns = dao.getTransactionsByRef(current.id)
+                .filter { it.category == "Investment" }
+                .ifEmpty {
+                    dao.getTransactionsByDesc("Invested in ${current.name}")
+                        .filter { it.category == "Investment" && it.ref.isBlank() }
+                        .take(1)
+                }
+            invTxns.forEach { invTxn ->
+                applyAccountDelta(invTxn.fromAcctId, invTxn.fromAcct, invTxn.amount)
+                fundingSourceToSync = invTxn.fromAcct
                 dao.deleteTransaction(invTxn)
+                tombstoneRemoteDoc("transactions", invTxn.id)
                 sync { deleteTransaction(invTxn.id) }
             }
             dao.deleteInvestment(current)
+            tombstoneRemoteDoc("investments", current.id)
             didDelete = true
         }
         if (didDelete) {
             sync { deleteInvestment(investment.id) }
-            syncAccountByName(fundingSourceToSync)
+            if (fundingSourceToSync.isNotBlank()) syncAccountByName(fundingSourceToSync)
         }
     }
 
@@ -718,6 +735,7 @@ class FinanceRepository(
                 .firstOrNull { it.category == "Investment" }
             if (invTxn != null) {
                 dao.deleteTransaction(invTxn)
+                tombstoneRemoteDoc("transactions", invTxn.id)
                 sync { deleteTransaction(invTxn.id) }
             }
             // Delete the linked debt and its transactions
@@ -731,12 +749,14 @@ class FinanceRepository(
                         // that originally credited the destination account.
                         applyAccountDelta(debtTxn.toAcctId, debtTxn.toAcct, -linkedDebt.amount)
                         dao.deleteTransaction(debtTxn)
+                        tombstoneRemoteDoc("transactions", debtTxn.id)
                         sync { deleteTransaction(debtTxn.id) }
                     }
                 }
                 dao.deleteDebtById(current.linkedDebtId)
             }
             dao.deleteInvestment(current)
+            tombstoneRemoteDoc("investments", current.id)
             deletedInvestment = current
         }
         val current = deletedInvestment ?: return

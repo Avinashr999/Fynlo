@@ -109,6 +109,13 @@ fun MainNavigation(viewModel: FinanceViewModel) {
     val app = context.applicationContext as app.fynlo.FynloApplication
     var isLoggedIn by remember { mutableStateOf(app.authManager.isSignedInWithGoogle) }
     val pinManager = remember { PinManager(context) }
+
+    LaunchedEffect(Unit) {
+        viewModel.feedbackEvents.collect { message ->
+            android.widget.Toast.makeText(context, message, android.widget.Toast.LENGTH_SHORT).show()
+        }
+    }
+
     // Start locked if PIN is set
     var isPinUnlocked by remember { mutableStateOf(!pinManager.isPinSet) }
 
@@ -306,11 +313,12 @@ fun MainNavigation(viewModel: FinanceViewModel) {
             onDismiss = { showInvestmentDialog = false },
             onConfirm = { req: InvestmentSaveRequest ->
                 when (req.sourceType) {
-                    "account"       -> viewModel.addInvestmentFundedByAccount(req.investment, req.sourceAccountName)
+                    "account"       -> viewModel.addInvestmentFundedByAccount(req.investment, req.sourceAccountName, req.sourceAccountId)
                     "existing_debt" -> req.sourceDebt?.let { viewModel.addInvestmentFundedByExistingDebt(req.investment, it) }
                     "new_loan"      -> req.newLoan?.let { viewModel.addInvestmentFundedByNewLoan(req.investment, it) }
                     else            -> viewModel.addInvestmentWithSource(req.investment, req.sourceAccountName)
                 }
+                viewModel.showFeedback("Investment added")
                 showInvestmentDialog = false
             }
         )

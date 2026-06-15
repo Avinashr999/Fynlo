@@ -23,13 +23,27 @@ import app.fynlo.data.model.FlowTemplate
         FlowTemplate::class, // new in v2.0 Phase 4
         RecurringTransaction::class,
         NetWorthSnapshot::class,
-        InvestmentValuation::class
+        InvestmentValuation::class,
+        DeletedRemoteDoc::class
     ],
-    version = 25,
+    version = 26,
     exportSchema = true
 )
 abstract class FynloDatabase : RoomDatabase() {
     abstract fun dao(): FynloDao
+}
+
+val MIGRATION_25_26 = object : Migration(25, 26) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("""
+            CREATE TABLE IF NOT EXISTS `deleted_remote_docs` (
+                `collection` TEXT NOT NULL,
+                `id` TEXT NOT NULL,
+                `deletedAt` INTEGER NOT NULL,
+                PRIMARY KEY(`collection`, `id`)
+            )
+        """.trimIndent())
+    }
 }
 
 // C03b Stage #3 (3.2.90) — additive `peopleId` on borrowers + debts.

@@ -122,6 +122,7 @@ class SyncManager(
                             dao.deleteTransactionById(doc.id)
                             return@runCatching
                         }
+                        if (dao.isRemoteDocDeleted("transactions", doc.id)) return@runCatching
                         val remote = Transaction(
                             id        = doc.id,
                             date      = doc.str("date"),
@@ -212,7 +213,12 @@ class SyncManager(
                 snap.documentChanges.forEach { change ->
                     runCatching {
                         val doc = change.document
-                        dao.insertInvestment(Investment(
+                        if (change.type == DocumentChange.Type.REMOVED) {
+                            dao.deleteInvestmentById(doc.id)
+                            return@runCatching
+                        }
+                        if (dao.isRemoteDocDeleted("investments", doc.id)) return@runCatching
+                        val remote = Investment(
                             id           = doc.id,
                             name         = doc.str("name"),
                             type         = doc.str("type"),
@@ -231,7 +237,11 @@ class SyncManager(
                             sourceType    = doc.str("sourceType"),
                             linkedDebtId  = doc.str("linkedDebtId"),
                             createdAt     = doc.lng("createdAt")
-                        ))
+                        )
+                        val local = dao.getInvestmentById(remote.id)
+                        if (local == null || remote.updatedAt >= local.updatedAt) {
+                            dao.insertInvestment(remote)
+                        }
                     }
                 }
                 _status.value = SyncStatus.Synced

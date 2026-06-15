@@ -64,6 +64,8 @@ val currentProject by viewModel.currentProject.collectAsState()
     var deletingInvest  by remember { mutableStateOf<Investment?>(null) }
     var withdrawingInvest by remember { mutableStateOf<Investment?>(null) }
     var viewingHistory by remember { mutableStateOf<Investment?>(null) }
+    var pendingDeleteIds by remember { mutableStateOf(emptySet<String>()) }
+    val visibleInvestments = investments.filterNot { it.id in pendingDeleteIds }
 
     // ── Edit dialog ────────────────────────────────────────────────────────────
     if (editingInvest != null) {
@@ -75,13 +77,15 @@ val currentProject by viewModel.currentProject.collectAsState()
             onConfirm = { req: InvestmentSaveRequest ->
                 if (editingInvest?.id?.isNotBlank() == true) {
                     viewModel.updateInvestment(req.investment)
+                    viewModel.showFeedback("Investment updated")
                 } else {
                     when (req.sourceType) {
-                        "account"       -> { haptic.performHapticFeedback(HapticFeedbackType.LongPress); viewModel.addInvestmentFundedByAccount(req.investment, req.sourceAccountName) }
+                        "account"       -> { haptic.performHapticFeedback(HapticFeedbackType.LongPress); viewModel.addInvestmentFundedByAccount(req.investment, req.sourceAccountName, req.sourceAccountId) }
                         "existing_debt" -> { haptic.performHapticFeedback(HapticFeedbackType.LongPress); req.sourceDebt?.let { viewModel.addInvestmentFundedByExistingDebt(req.investment, it) } }
                         "new_loan"      -> { haptic.performHapticFeedback(HapticFeedbackType.LongPress); req.newLoan?.let { viewModel.addInvestmentFundedByNewLoan(req.investment, it) } }
                         else            -> { haptic.performHapticFeedback(HapticFeedbackType.LongPress); viewModel.addInvestmentWithSource(req.investment, req.sourceAccountName) }
                     }
+                    viewModel.showFeedback("Investment added")
                 }
                 editingInvest = null
             },
@@ -106,6 +110,7 @@ val currentProject by viewModel.currentProject.collectAsState()
                         notes = notes
                     )
                 )
+                viewModel.showFeedback("Valuation updated")
                 updatingInvest = null
             }
         )
@@ -179,6 +184,7 @@ val currentProject by viewModel.currentProject.collectAsState()
                                 if (amt > 0) {
                                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                     viewModel.withdrawFromInvestment(inv, amt, withdrawAccount.name)
+                                    viewModel.showFeedback("Withdrawal recorded")
                                     withdrawingInvest = null
                                 }
                             },
@@ -226,8 +232,10 @@ val currentProject by viewModel.currentProject.collectAsState()
                                 onClick = {
                                     if (!deleteInProgress) {
                                         deleteInProgress = true
+                                        pendingDeleteIds = pendingDeleteIds + inv.id
                                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                         viewModel.deleteInvestmentAndReverseAccount(inv)
+                                        viewModel.showFeedback("Investment deleted and amount restored")
                                         deletingInvest = null
                                     }
                                 },
@@ -241,8 +249,10 @@ val currentProject by viewModel.currentProject.collectAsState()
                                 onClick = {
                                     if (!deleteInProgress) {
                                         deleteInProgress = true
+                                        pendingDeleteIds = pendingDeleteIds + inv.id
                                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                         viewModel.deleteInvestmentAndLinkedLoan(inv)
+                                        viewModel.showFeedback("Investment and linked loan deleted")
                                         deletingInvest = null
                                     }
                                 },
@@ -258,8 +268,10 @@ val currentProject by viewModel.currentProject.collectAsState()
                             onClick = {
                                 if (!deleteInProgress) {
                                     deleteInProgress = true
+                                    pendingDeleteIds = pendingDeleteIds + inv.id
                                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                     viewModel.deleteInvestment(inv)
+                                    viewModel.showFeedback("Investment deleted")
                                     deletingInvest = null
                                 }
                             },
@@ -298,13 +310,13 @@ val currentProject by viewModel.currentProject.collectAsState()
     // withdrawn (the user's money still in the market) — that's the
     // right denominator for "growth %" since pulled-out money doesn't
     // need to grow to break even.
-    val portfolioValue   = investments.sumOf { it.currentVal }
-    val netInvested      = investments.sumOf { it.invested - it.withdrawn }
+    val portfolioValue   = visibleInvestments.sumOf { it.currentVal }
+    val netInvested      = visibleInvestments.sumOf { it.invested - it.withdrawn }
     val portfolioGrowth  = portfolioValue - netInvested
     val growthPct        = if (netInvested > 0) (portfolioGrowth / netInvested) * 100 else 0.0
     val isPortfolioUp    = portfolioGrowth >= 0
     // Allocation by type (Stocks / Gold / FD / etc.) for the stacked bar.
-    val allocation = investments
+    val allocation = visibleInvestments
         .groupBy { it.type.ifBlank { "Other" } }
         .mapValues { e -> e.value.sumOf { it.currentVal } }
         .entries.sortedByDescending { it.value }
@@ -317,7 +329,7 @@ val currentProject by viewModel.currentProject.collectAsState()
         PremiumScreenHeader("My Investments", "Portfolio & returns tracker")
 
         Box(modifier = Modifier.weight(1f)) {
-        if (investments.isEmpty()) {
+        if (visibleInvestments.isEmpty()) {
             EmptyInvestState(onAdd = { editingInvest = Investment(id = "", name = "", type = "", invested = 0.0, currentVal = 0.0, date = "", notes = "", projectId = "") })
         } else {
             app.fynlo.ui.components.PullRefresh(viewModel) {
@@ -365,7 +377,7 @@ val currentProject by viewModel.currentProject.collectAsState()
                                 }
                             }
                             Text(
-                                "${if (isPrivacy) "Hidden" else CurrencyFormatter.detail(netInvested, currencyCode, locale)} invested - ${app.fynlo.logic.pluralize(investments.size, "holding")}",
+                                "${if (isPrivacy) "Hidden" else CurrencyFormatter.detail(netInvested, currencyCode, locale)} invested - ${app.fynlo.logic.pluralize(visibleInvestments.size, "holding")}",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.padding(top = 2.dp),
@@ -398,7 +410,7 @@ val currentProject by viewModel.currentProject.collectAsState()
                                 }
                             }
                         } else {
-                            Text(app.fynlo.logic.pluralize(investments.size, "holding"),
+                            Text(app.fynlo.logic.pluralize(visibleInvestments.size, "holding"),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
@@ -477,7 +489,7 @@ val currentProject by viewModel.currentProject.collectAsState()
                         modifier = Modifier.padding(top = 4.dp, bottom = 8.dp))
                 }
 
-                itemsIndexed(investments, key = { _, i -> i.id }) { index, invest ->
+                itemsIndexed(visibleInvestments, key = { _, i -> i.id }) { index, invest ->
                     InvestmentCard(
                         invest   = invest,
                         currencyCode = currencyCode,
@@ -488,7 +500,7 @@ val currentProject by viewModel.currentProject.collectAsState()
                         onUpdate = { updatingInvest = invest },
                         onViewHistory = { viewingHistory = invest }
                     )
-                    if (index < investments.lastIndex) {
+                    if (index < visibleInvestments.lastIndex) {
                         HorizontalDivider(thickness = 0.5.dp,
                             color = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f))
                     }

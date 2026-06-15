@@ -11,6 +11,7 @@ import app.fynlo.data.model.Borrower
 import app.fynlo.data.model.Budget
 import app.fynlo.data.model.Debt
 import app.fynlo.data.model.DebtPayment
+import app.fynlo.data.model.DeletedRemoteDoc
 import app.fynlo.data.model.Goal
 import app.fynlo.data.model.Investment
 import app.fynlo.data.model.Payment
@@ -187,6 +188,12 @@ interface FynloDao {
     @Query("DELETE FROM transactions WHERE id = :id")
     suspend fun deleteTransactionById(id: String)
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertDeletedRemoteDoc(doc: DeletedRemoteDoc)
+
+    @Query("SELECT EXISTS(SELECT 1 FROM deleted_remote_docs WHERE collection = :collection AND id = :id)")
+    suspend fun isRemoteDocDeleted(collection: String, id: String): Boolean
+
     // ─── Investments ──────────────────────────────────────────────────────────
 
     @Query("SELECT * FROM investments")
@@ -200,6 +207,9 @@ interface FynloDao {
 
     @Delete
     suspend fun deleteInvestment(investment: Investment)
+
+    @Query("DELETE FROM investments WHERE id = :id")
+    suspend fun deleteInvestmentById(id: String)
 
     // ─── Debts ────────────────────────────────────────────────────────────────
 
