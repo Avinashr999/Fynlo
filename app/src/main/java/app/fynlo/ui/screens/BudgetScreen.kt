@@ -1,5 +1,6 @@
 package app.fynlo.ui.screens
 
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.imePadding
@@ -63,6 +64,7 @@ fun BudgetScreen(viewModel: FinanceViewModel) {
             rememberLastCategory = { viewModel.rememberLastBudgetCategory() },
             onDismiss = { showAddDialog = false },
             onConfirm = { budget ->
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                 // Record the final pick on the recency layer so the
                 // fallback stays populated for the eventual case where
                 // every uncapped category gets a budget and the
@@ -135,7 +137,7 @@ fun BudgetScreen(viewModel: FinanceViewModel) {
                                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                     if (overBudget > 0) {
                                         Surface(shape = RoundedCornerShape(8.dp), color = SemanticRed.copy(alpha = 0.1f)) {
-                                            Text("⚠ $overBudget exceeded",
+                                            Text("$overBudget exceeded",
                                                 style = MaterialTheme.typography.labelSmall,
                                                 color = SemanticRed,
                                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
@@ -143,7 +145,7 @@ fun BudgetScreen(viewModel: FinanceViewModel) {
                                     }
                                     if (nearLimit > 0) {
                                         Surface(shape = RoundedCornerShape(8.dp), color = SemanticAmber.copy(alpha = 0.1f)) {
-                                            Text("⚡ $nearLimit near limit",
+                                            Text("$nearLimit near limit",
                                                 style = MaterialTheme.typography.labelSmall,
                                                 color = SemanticAmber,
                                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
@@ -180,11 +182,17 @@ fun BudgetScreen(viewModel: FinanceViewModel) {
                 title = "No budgets set yet",
                 subtitle = "Add a spending limit for any category",
                 actionLabel = "Add First Budget",
-                onAction = { showAddDialog = true },
+                onAction = {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    showAddDialog = true
+                },
             )
         } else {
             FloatingActionButton(
-                onClick = { showAddDialog = true },
+                onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    showAddDialog = true
+                },
                 modifier = Modifier.align(Alignment.BottomEnd).padding(24.dp),
                 containerColor = MaterialTheme.colorScheme.primary
             ) {
@@ -214,7 +222,11 @@ fun BudgetCard(
             title = { Text("Delete budget?") },
             text  = { Text("Remove the \"${budget.category}\" budget? This cannot be undone.") },
             confirmButton = {
-                TextButton(onClick = { onDelete(); showDeleteConfirm = false },
+                TextButton(onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onDelete()
+                    showDeleteConfirm = false
+                },
                     colors = ButtonDefaults.textButtonColors(contentColor = SemanticRed)) { Text("Delete") }
             },
             dismissButton = { TextButton(onClick = { showDeleteConfirm = false }) { Text("Cancel") } }
@@ -239,7 +251,7 @@ fun BudgetCard(
         else        -> MaterialTheme.colorScheme.primary
     }
 
-    Column(Modifier.fillMaxWidth().padding(vertical = 14.dp)) {
+    Column(Modifier.fillMaxWidth().animateContentSize().padding(vertical = 14.dp)) {
             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     if (isExceeded) {
@@ -249,7 +261,7 @@ fun BudgetCard(
                         }
                     } else if (isNearLimit) {
                         Surface(shape = RoundedCornerShape(8.dp), color = SemanticAmber.copy(alpha = 0.15f)) {
-                            Text("⚡ NEAR LIMIT", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                            Text("NEAR LIMIT", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
                                 color = SemanticAmber, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
                         }
                     }
@@ -302,7 +314,7 @@ fun BudgetCard(
 
             if (projectedEnd > budget.limitAmount && !isExceeded) {
                 Spacer(Modifier.height(4.dp))
-                Text("⚠ At this rate you'll exceed by ${CurrencyFormatter.detail(projectedEnd - budget.limitAmount, currencyCode, locale)} this month",
+                Text("At this rate you'll exceed by ${CurrencyFormatter.detail(projectedEnd - budget.limitAmount, currencyCode, locale)} this month",
                     style = MaterialTheme.typography.labelSmall, color = SemanticAmber)
             }
             // C22 (3.2.57) — surface the user's chosen warning threshold.

@@ -1,5 +1,7 @@
 package app.fynlo.ui.screens
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -38,6 +40,7 @@ fun ProjectsScreen(viewModel: FinanceViewModel, onNavigateToUpgrade: () -> Unit 
         AddProjectDialog(
             onDismiss = { showAddDialog = false },
             onConfirm = { project ->
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                 viewModel.createProject(project)
                 viewModel.switchProject(project.id)
                 showAddDialog = false
@@ -105,6 +108,7 @@ fun ProjectsScreen(viewModel: FinanceViewModel, onNavigateToUpgrade: () -> Unit 
             )
             FilledTonalButton(
                 onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                     if (isPro || projects.isEmpty()) showAddDialog = true else onNavigateToUpgrade()
                 },
                 colors = ButtonDefaults.filledTonalButtonColors(
@@ -146,10 +150,15 @@ private fun ProjectCard(
     onDuplicate: () -> Unit,
     onDelete: () -> Unit
 ) {
+        val haptic = LocalHapticFeedback.current
+        val cardColor by animateColorAsState(
+            targetValue = if (isActive) MaterialTheme.colorScheme.primary.copy(alpha = 0.08f) else MaterialTheme.colorScheme.surface,
+            label = "projectCardColor",
+        )
         Surface(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().animateContentSize(),
             shape = RoundedCornerShape(18.dp),
-            color = if (isActive) MaterialTheme.colorScheme.primary.copy(alpha = 0.08f) else MaterialTheme.colorScheme.surface,
+            color = cardColor,
             tonalElevation = 1.dp,
             border = androidx.compose.foundation.BorderStroke(
                 0.5.dp,
@@ -158,7 +167,10 @@ private fun ProjectCard(
             ),
         ) {
         Row(
-            modifier          = Modifier.fillMaxWidth().clickable(onClick = onSelect).padding(14.dp),
+            modifier          = Modifier.fillMaxWidth().clickable {
+                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                onSelect()
+            }.padding(14.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Color dot — now renders the user-picked icon (C22 3.2.56).
@@ -221,7 +233,10 @@ private fun ProjectCard(
             // C22 (3.2.56) — duplicate action. Available on every project
             // including "personal" — copying personal creates a new project
             // shell the user can rename to e.g. "Personal 2024 archive".
-            IconButton(onClick = onDuplicate) {
+            IconButton(onClick = {
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                onDuplicate()
+            }) {
                 Icon(
                     Icons.Default.ContentCopy,
                     contentDescription = "Duplicate project",
@@ -231,7 +246,10 @@ private fun ProjectCard(
 
             // Cannot delete the default personal project
             if (project.id != "personal") {
-                IconButton(onClick = onDelete) {
+                IconButton(onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onDelete()
+                }) {
                     Icon(
                         Icons.Default.DeleteOutline,
                         contentDescription = "Delete project",
@@ -397,8 +415,6 @@ private fun AddProjectDialog(
         )
     }
 }
-
-
 
 
 

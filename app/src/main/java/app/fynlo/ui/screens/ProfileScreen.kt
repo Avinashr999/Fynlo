@@ -1,5 +1,6 @@
 package app.fynlo.ui.screens
 
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
@@ -21,7 +22,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.fynlo.FynloApplication
@@ -38,6 +41,7 @@ fun ProfileScreen(
     viewModel: app.fynlo.FinanceViewModel? = null
 ) {
     val context = LocalContext.current
+    val haptic = LocalHapticFeedback.current
     val app     = context.applicationContext as FynloApplication
     val isPro by BillingManager.isPro.collectAsState()
     val pinManager = remember { PinManager(context) }
@@ -67,6 +71,7 @@ fun ProfileScreen(
             text  = { Text("The app will no longer be locked when you switch away. Biometric unlock will also be disabled.") },
             confirmButton = {
                 TextButton(onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                     pinManager.clearPin()
                     pinSet = false
                     biometricEnabled = false
@@ -108,7 +113,6 @@ fun ProfileScreen(
 
     val email    = app.authManager.userEmail
     val name     = app.authManager.userName
-    val uid      = app.authManager.userId
 
     Column(modifier = Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
         PremiumScreenHeader("Profile & Security", "Identity, sync, and app lock")
@@ -142,7 +146,6 @@ fun ProfileScreen(
                         if (isGoogle) {
                             Text(name,  style = MaterialTheme.typography.bodyMedium)
                             Text(email, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Text("UID: ${uid.take(12)}...", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         } else {
                             Text("Not signed in with Google", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
@@ -165,8 +168,8 @@ fun ProfileScreen(
                 Column {
                     Text("Cloud Sync", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold))
                     Text(
-                        if (isGoogle) "✓ Syncing across all your devices via Google account"
-                        else "⚠ Syncing to this device only — sign in with Google for cross-device sync",
+                        if (isGoogle) "Syncing across all your devices via Google account"
+                        else "Device-only sync. Sign in with Google for cross-device sync",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -189,25 +192,28 @@ fun ProfileScreen(
             tonalElevation = 1.dp,
             border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f)),
         ) {
-        Column {
+        Column(Modifier.animateContentSize()) {
             // PIN Lock — tap anywhere to toggle on/off
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable { if (pinSet) showRemovePinConfirm = true else showPinSetup = true }
+                    .clickable {
+                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        if (pinSet) showRemovePinConfirm = true else showPinSetup = true
+                    }
                     .padding(16.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(14.dp)
             ) {
                 Box(
                     Modifier.size(40.dp).clip(CircleShape).background(
-                        if (pinSet) MaterialTheme.colorScheme.primaryContainer
-                        else MaterialTheme.colorScheme.surfaceVariant
+                        if (pinSet) MaterialTheme.colorScheme.primary.copy(alpha = 0.16f)
+                        else MaterialTheme.colorScheme.error.copy(alpha = 0.10f)
                     ), Alignment.Center
                 ) {
                     Icon(Icons.Default.Lock, null, Modifier.size(20.dp),
                         tint = if (pinSet) MaterialTheme.colorScheme.primary
-                               else MaterialTheme.colorScheme.onSurfaceVariant)
+                               else MaterialTheme.colorScheme.error)
                 }
                 Column(Modifier.weight(1f)) {
                     Text("PIN Lock",
@@ -224,7 +230,10 @@ fun ProfileScreen(
                     onCheckedChange = null,
                     colors = SwitchDefaults.colors(
                         checkedThumbColor = MaterialTheme.colorScheme.primary,
-                        checkedTrackColor = MaterialTheme.colorScheme.primaryContainer
+                        checkedTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.42f),
+                        uncheckedThumbColor = MaterialTheme.colorScheme.error,
+                        uncheckedTrackColor = MaterialTheme.colorScheme.error.copy(alpha = 0.22f),
+                        uncheckedBorderColor = MaterialTheme.colorScheme.error.copy(alpha = 0.55f),
                     )
                 )
             }
@@ -232,7 +241,10 @@ fun ProfileScreen(
             if (pinSet) {
                 HorizontalDivider(Modifier.padding(horizontal = 16.dp))
                 TextButton(
-                    onClick = { showPinSetup = true },
+                    onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        showPinSetup = true
+                    },
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp)
                 ) {
                     Icon(Icons.Default.Edit, null, Modifier.size(16.dp))
@@ -246,7 +258,10 @@ fun ProfileScreen(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { onToggleBiometric() }
+                        .clickable {
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            onToggleBiometric()
+                        }
                         .padding(16.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(14.dp)
@@ -297,6 +312,7 @@ fun ProfileScreen(
         if (isGoogle) {
             OutlinedButton(
                 onClick  = {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                     app.authManager.signOut()
                     onSignOut()
                 },
@@ -312,7 +328,10 @@ fun ProfileScreen(
 
         // ── Lock app ──────────────────────────────────────────────────────────
         Button(
-            onClick  = onLogout,
+            onClick  = {
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                onLogout()
+            },
             modifier = Modifier.fillMaxWidth().height(56.dp),
             shape    = RoundedCornerShape(16.dp),
             colors   = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
@@ -326,7 +345,10 @@ fun ProfileScreen(
         if (isGoogle && viewModel != null) {
             Spacer(Modifier.height(24.dp))
             TextButton(
-                onClick = { showDeleteConfirm = true },
+                onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    showDeleteConfirm = true
+                },
                 enabled = !deleting,
                 modifier = Modifier.fillMaxWidth()
             ) {
@@ -345,6 +367,7 @@ fun ProfileScreen(
                 confirmButton = {
                     TextButton(
                         onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                             showDeleteConfirm = false
                             deleting = true
                             viewModel.deleteAccountPermanently(app.authManager) { fullyDeleted ->

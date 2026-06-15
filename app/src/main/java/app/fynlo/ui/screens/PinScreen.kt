@@ -9,6 +9,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Backspace
 import androidx.compose.material.icons.filled.Fingerprint
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -125,6 +126,10 @@ fun PinScreen(
         shakeOffset.animateTo(0f,  tween(50))
     }
 
+    LaunchedEffect(error) {
+        if (error.isNotBlank()) shake()
+    }
+
     fun onKey(key: String) {
         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
         if (pin.length >= 4) return
@@ -177,97 +182,150 @@ fun PinScreen(
     }
 
     Box(
-        modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background),
-        contentAlignment = Alignment.Center
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+            .padding(horizontal = 22.dp, vertical = 28.dp),
+        contentAlignment = Alignment.Center,
     ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(24.dp),
-            modifier = Modifier.padding(32.dp)
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(28.dp),
+            color = MaterialTheme.colorScheme.surface,
+            tonalElevation = 2.dp,
+            shadowElevation = 0.dp,
+            border = androidx.compose.foundation.BorderStroke(
+                0.5.dp,
+                MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.7f),
+            ),
         ) {
-            Icon(Icons.Default.LockOpen, contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(48.dp))
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(22.dp),
+                modifier = Modifier.padding(horizontal = 22.dp, vertical = 26.dp),
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(64.dp)
+                        .clip(RoundedCornerShape(22.dp))
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        if (currentMode == PinMode.ENTER) Icons.Default.LockOpen else Icons.Default.Lock,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(32.dp),
+                    )
+                }
 
-            Text(title, style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold))
-            Text(subtitle, style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        title,
+                        style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.ExtraBold),
+                    )
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        subtitle,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
 
-            // PIN dots with shake animation
-            AnimatedContent(targetState = shakeOffset.value, label = "dots") { _ ->
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    modifier = Modifier.offset(x = shakeOffset.value.dp)
+                    horizontalArrangement = Arrangement.spacedBy(14.dp),
+                    modifier = Modifier.offset(x = shakeOffset.value.dp),
                 ) {
                     repeat(4) { i ->
                         Box(
-                            modifier = Modifier.size(16.dp).clip(CircleShape).background(
-                                if (i < pin.length) MaterialTheme.colorScheme.primary
-                                else MaterialTheme.colorScheme.outlineVariant
-                            )
+                            modifier = Modifier
+                                .size(width = 30.dp, height = 10.dp)
+                                .clip(RoundedCornerShape(50))
+                                .background(
+                                    if (i < pin.length) MaterialTheme.colorScheme.primary
+                                    else MaterialTheme.colorScheme.surfaceContainerHighest
+                                )
                         )
                     }
                 }
-            }
 
-            AnimatedVisibility(visible = error.isNotBlank()) {
-                Text(error, color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodySmall)
-            }
+                Box(Modifier.height(24.dp), contentAlignment = Alignment.Center) {
+                    if (error.isNotBlank()) {
+                        Text(
+                            error,
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                        )
+                    }
+                }
 
-            // Number pad
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                listOf(
-                    listOf("1", "2", "3"),
-                    listOf("4", "5", "6"),
-                    listOf("7", "8", "9"),
-                    listOf("bio", "0", "<")
-                ).forEach { row ->
-                    Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                        row.forEach { key ->
-                            when (key) {
-                                "bio" -> if (canUseBiometric) {
-                                    FilledTonalIconButton(
-                                        onClick  = { triggerBiometric() },
-                                        modifier = Modifier.size(72.dp),
-                                        shape    = RoundedCornerShape(16.dp)
-                                    ) {
-                                        Icon(Icons.Default.Fingerprint, "Use biometric",
-                                            Modifier.size(32.dp), tint = MaterialTheme.colorScheme.primary)
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    listOf(
+                        listOf("1", "2", "3"),
+                        listOf("4", "5", "6"),
+                        listOf("7", "8", "9"),
+                        listOf("bio", "0", "<")
+                    ).forEach { row ->
+                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            row.forEach { key ->
+                                when (key) {
+                                    "bio" -> if (canUseBiometric) {
+                                        FilledTonalIconButton(
+                                            onClick  = {
+                                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                                triggerBiometric()
+                                            },
+                                            modifier = Modifier.size(68.dp),
+                                            shape    = RoundedCornerShape(20.dp),
+                                            colors = IconButtonDefaults.filledTonalIconButtonColors(
+                                                containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.14f),
+                                                contentColor = MaterialTheme.colorScheme.primary,
+                                            ),
+                                        ) {
+                                            Icon(Icons.Default.Fingerprint, "Use biometric", Modifier.size(30.dp))
+                                        }
+                                    } else {
+                                        Box(Modifier.size(68.dp))
                                     }
-                                } else {
-                                    Box(Modifier.size(72.dp))   // empty cell if biometric disabled
-                                }
-                                "<" -> FilledTonalIconButton(
-                                    onClick  = {
-                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                        if (pin.isNotEmpty()) pin = pin.dropLast(1)
-                                    },
-                                    modifier = Modifier.size(72.dp),
-                                    shape    = RoundedCornerShape(16.dp)
-                                ) {
-                                    Icon(Icons.AutoMirrored.Filled.Backspace, "Delete")
-                                }
-                                else -> Button(
-                                    onClick  = { onKey(key) },
-                                    modifier = Modifier.size(72.dp),
-                                    shape    = RoundedCornerShape(16.dp),
-                                    contentPadding = PaddingValues(0.dp),
-                                    colors   = ButtonDefaults.buttonColors(
-                                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                                        contentColor   = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                ) {
-                                    Text(key, fontSize = 22.sp, fontWeight = FontWeight.SemiBold)
+                                    "<" -> FilledTonalIconButton(
+                                        onClick  = {
+                                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                            if (pin.isNotEmpty()) pin = pin.dropLast(1)
+                                        },
+                                        modifier = Modifier.size(68.dp),
+                                        shape    = RoundedCornerShape(20.dp),
+                                        colors = IconButtonDefaults.filledTonalIconButtonColors(
+                                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                            contentColor = MaterialTheme.colorScheme.onSurface,
+                                        ),
+                                    ) {
+                                        Icon(Icons.AutoMirrored.Filled.Backspace, "Delete")
+                                    }
+                                    else -> Button(
+                                        onClick  = { onKey(key) },
+                                        modifier = Modifier.size(68.dp),
+                                        shape    = RoundedCornerShape(20.dp),
+                                        contentPadding = PaddingValues(0.dp),
+                                        colors   = ButtonDefaults.buttonColors(
+                                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                            contentColor   = MaterialTheme.colorScheme.onSurface,
+                                        )
+                                    ) {
+                                        Text(key, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                                    }
                                 }
                             }
                         }
                     }
                 }
-            }
 
-            if (onSkip != null) {
-                TextButton(onClick = onSkip) {
-                    Text("Skip for now", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                if (onSkip != null) {
+                    TextButton(onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        onSkip()
+                    }) {
+                        Text("Skip for now", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
                 }
             }
         }

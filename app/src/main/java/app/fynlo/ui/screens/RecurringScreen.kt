@@ -1,5 +1,6 @@
 package app.fynlo.ui.screens
 
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -41,6 +42,7 @@ fun RecurringScreen(viewModel: FinanceViewModel) {
         AddRecurringDialog(
             onDismiss = { showAddDialog = false },
             onConfirm = { r ->
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                 // C04 Stage 3: record recency BEFORE handing the txn over to
                 // the VM so the next dialog open prefills with this category.
                 // Records the FINAL resolved category (custom string when
@@ -94,7 +96,10 @@ fun RecurringScreen(viewModel: FinanceViewModel) {
                         // container behind a properly-tinted icon, so it stays
                         // legible in both light and dark themes without needing a
                         // hardcoded colour.
-                        FilledTonalIconButton(onClick = { showAddDialog = true }) {
+                        FilledTonalIconButton(onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            showAddDialog = true
+                        }) {
                             Icon(Icons.Default.Add, "Add recurring transaction")
                         }
                     }
@@ -111,7 +116,10 @@ fun RecurringScreen(viewModel: FinanceViewModel) {
                 title = "No recurring transactions",
                 subtitle = "Add salary, rent, EMIs to auto-log",
                 actionLabel = "Add First Recurring",
-                onAction = { showAddDialog = true },
+                onAction = {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    showAddDialog = true
+                },
             )
         } else {
             LazyColumn(
@@ -140,7 +148,10 @@ fun RecurringScreen(viewModel: FinanceViewModel) {
                                     }
                                 }
                                 FilledTonalButton(
-                                    onClick = { viewModel.triggerDueRecurring() },
+                                    onClick = {
+                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                        viewModel.triggerDueRecurring()
+                                    },
                                     shape = RoundedCornerShape(10.dp),
                                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
                                 ) { Text("Run Now", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold)) }
@@ -167,7 +178,10 @@ fun RecurringScreen(viewModel: FinanceViewModel) {
             // EmptyState CTA (no FAB) so the audit C07 "no triple entry
             // point" rule still holds.
             FloatingActionButton(
-                onClick = { showAddDialog = true },
+                onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    showAddDialog = true
+                },
                 modifier = Modifier.align(Alignment.BottomEnd).padding(24.dp),
                 containerColor = MaterialTheme.colorScheme.primary
             ) {
@@ -188,13 +202,17 @@ private fun RecurringCard(r: RecurringTransaction, isDue: Boolean = false, daysU
             title = { Text("Delete recurring entry?") },
             text  = { Text("Stop auto-logging \"${r.name}\"? Past transactions it created are kept. This cannot be undone.") },
             confirmButton = {
-                TextButton(onClick = { onDelete(); showDeleteConfirm = false },
+                TextButton(onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onDelete()
+                    showDeleteConfirm = false
+                },
                     colors = ButtonDefaults.textButtonColors(contentColor = SemanticRed)) { Text("Delete") }
             },
             dismissButton = { TextButton(onClick = { showDeleteConfirm = false }) { Text("Cancel") } }
         )
     }
-        Row(Modifier.fillMaxWidth().padding(vertical = 14.dp), Arrangement.SpaceBetween, Alignment.CenterVertically) {
+        Row(Modifier.fillMaxWidth().animateContentSize().padding(vertical = 14.dp), Arrangement.SpaceBetween, Alignment.CenterVertically) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Surface(Modifier.size(44.dp), RoundedCornerShape(12.dp),
                     color = if (r.type == "Income") Emerald500.copy(0.1f) else SemanticRed.copy(0.1f)) {
@@ -495,9 +513,6 @@ private fun AddRecurringDialog(
         )
     }
 }
-
-
-
 
 
 

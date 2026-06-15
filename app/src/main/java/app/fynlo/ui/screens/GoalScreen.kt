@@ -1,5 +1,6 @@
 package app.fynlo.ui.screens
 
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
@@ -45,6 +46,7 @@ fun GoalScreen(viewModel: FinanceViewModel) {
             accounts = accounts.map { it.name },
             onDismiss = { showAddDialog = false },
             onConfirm = { goal ->
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                 viewModel.addGoal(goal)
                 showAddDialog = false
             }
@@ -64,7 +66,10 @@ fun GoalScreen(viewModel: FinanceViewModel) {
                     title = "No savings goals yet",
                     subtitle = "Set targets for big purchases or milestones",
                     actionLabel = "Add First Goal",
-                    onAction = { showAddDialog = true },
+                    onAction = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        showAddDialog = true
+                    },
                 )
             } else {
                 LazyColumn(
@@ -89,7 +94,10 @@ fun GoalScreen(viewModel: FinanceViewModel) {
                     }
                 }
                 FloatingActionButton(
-                    onClick = { showAddDialog = true },
+                    onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        showAddDialog = true
+                    },
                     modifier = Modifier.align(Alignment.BottomEnd).padding(24.dp),
                     containerColor = MaterialTheme.colorScheme.primary
                 ) {
@@ -110,7 +118,11 @@ fun GoalCard(goal: Goal, currencyCode: String, locale: Locale, onDelete: () -> U
             title = { Text("Delete goal?") },
             text  = { Text("Remove the \"${goal.name}\" savings goal? This cannot be undone.") },
             confirmButton = {
-                TextButton(onClick = { onDelete(); showDeleteConfirm = false },
+                TextButton(onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onDelete()
+                    showDeleteConfirm = false
+                },
                     colors = ButtonDefaults.textButtonColors(contentColor = SemanticRed)) { Text("Delete") }
             },
             dismissButton = { TextButton(onClick = { showDeleteConfirm = false }) { Text("Cancel") } }
@@ -121,7 +133,7 @@ fun GoalCard(goal: Goal, currencyCode: String, locale: Locale, onDelete: () -> U
     val isComplete  = pct >= 100
     val accentColor = if (isComplete) Emerald500 else MaterialTheme.colorScheme.primary
 
-    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 14.dp)) {
+    Column(modifier = Modifier.fillMaxWidth().animateContentSize().padding(vertical = 14.dp)) {
             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
                 Row(verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(10.dp)) {
