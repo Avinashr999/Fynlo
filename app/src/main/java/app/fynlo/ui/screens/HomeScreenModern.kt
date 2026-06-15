@@ -472,7 +472,7 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
                 Text(fmt(summary.totalAssets), style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold))
             }
             Column(Modifier.clip(RoundedCornerShape(10.dp)).clickable { onNavigateToScreen("loans_hub?tab=1") }.padding(vertical = 2.dp, horizontal = 2.dp)) {
-                Text("Liabilities", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("Debt owed", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text(fmt(summary.totalDebtPrincipal + summary.totalDebtInterest),
                     style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold))
             }
@@ -572,7 +572,12 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
         HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f))
         NeoInsightRow("Hand Loans", fmt(summary.totalHandLoans), Carbon500) { activeBreakdownType = BreakdownType.HAND_LOANS }
         HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f))
-        NeoInsightRow("Total Owed", fmt(summary.totalDebtPrincipal + summary.totalDebtInterest), SemanticRed) { onNavigateToScreen("loans_hub?tab=1") }
+        NeoInsightRow(
+            label = "Debt outstanding",
+            value = fmt(summary.totalDebtPrincipal + summary.totalDebtInterest),
+            color = SemanticRed,
+            subtitle = "Money you still owe",
+        ) { onNavigateToScreen("loans_hub?tab=1") }
 
         Spacer(Modifier.height(120.dp))
     }
@@ -1040,7 +1045,13 @@ private fun AccountTransferDialog(
 }
 
 @Composable
-private fun NeoInsightRow(label: String, value: String, color: Color, onClick: () -> Unit) {
+private fun NeoInsightRow(
+    label: String,
+    value: String,
+    color: Color,
+    subtitle: String? = null,
+    onClick: () -> Unit,
+) {
     Row(
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 14.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -1048,7 +1059,16 @@ private fun NeoInsightRow(label: String, value: String, color: Color, onClick: (
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Box(Modifier.size(10.dp).clip(CircleShape).background(color))
-            Text(label, style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium))
+            Column {
+                Text(label, style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium))
+                if (subtitle != null) {
+                    Text(
+                        subtitle,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
         }
         Text(value, style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold))
     }
