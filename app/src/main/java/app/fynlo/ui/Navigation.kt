@@ -187,14 +187,10 @@ fun MainNavigation(viewModel: FinanceViewModel) {
     // FAB + an `+` icon in the header) competing for the same intent.
     // Added in 3.2.12: Budgets, Goals, Recurring — each owns its own
     // "Add Budget" / "Add Goal" / "Add Recurring" entry point.
-    val showFab = when (baseRoute) {
-        Screen.Settings.route, Screen.About.route, Screen.People.route,
-        Screen.Profile.route, Screen.Lending.route, Screen.Debts.route,
-        Screen.Loans.route, Screen.Invest.route,
-        Screen.Reports.route, Screen.GlobalSearch.route,
-        Screen.Budgets.route, Screen.Goals.route, Screen.Recurring.route -> false
-        else -> drawerState.isClosed
-    }
+    val showFab = drawerState.isClosed && baseRoute in setOf(
+        Screen.Home.route,
+        Screen.Spend.route,
+    )
 
     // Routes that provide their own full-screen chrome (own top bar) — the outer
     // app bar/bottom bar must hide to avoid duplicate back arrows.

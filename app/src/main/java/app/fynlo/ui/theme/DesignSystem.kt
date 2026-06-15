@@ -210,7 +210,7 @@ fun PremiumSectionDivider(modifier: Modifier = Modifier) {
 // Apply at the call site as either:
 //   LazyColumn(contentPadding = PaddingValues(bottom = FabBottomPadding))
 //   Spacer(Modifier.height(FabBottomPadding))   // inside verticalScroll Column
-val FabBottomPadding = 120.dp
+val FabBottomPadding = 160.dp
 
 // ── C07: shared empty-state — single CTA, no duplicate FAB ────────────────────
 // Audit (UX_AUDIT §C07) fix point #1: "Empty state shows ONLY the 'Add First X'
