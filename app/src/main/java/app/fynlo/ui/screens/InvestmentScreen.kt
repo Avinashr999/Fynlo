@@ -360,82 +360,51 @@ val currentProject by viewModel.currentProject.collectAsState()
                 // gives context for the growth denominator so the percentage
                 // isn't ambiguous about "of what."
                 item {
-                    Surface(
-                        modifier = Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 16.dp),
-                        shape = RoundedCornerShape(22.dp),
-                        color = Emerald700,
-                        tonalElevation = 2.dp,
+                    LedgerHeroPanel(
+                        label = "Portfolio value",
+                        value = if (isPrivacy) "Hidden" else CurrencyFormatter.detail(portfolioValue, currencyCode, locale),
+                        subtitle = "${if (isPrivacy) "Hidden" else CurrencyFormatter.detail(netInvested, currencyCode, locale)} invested - ${app.fynlo.logic.pluralize(visibleInvestments.size, "holding")}",
+                        containerColor = Emerald700,
+                        modifier = Modifier.padding(top = 12.dp, bottom = 14.dp),
                     ) {
-                        Column(Modifier.fillMaxWidth().padding(18.dp)) {
-                            Text("Portfolio Value",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = Color.White.copy(alpha = 0.72f))
-                            Text(if (isPrivacy) "Hidden" else CurrencyFormatter.detail(portfolioValue, currencyCode, locale),
-                                style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.ExtraBold),
-                                color = Color.White)
-                            if (netInvested > 0) {
+                        if (netInvested > 0) {
+                            val portfolioCagr = summary.investmentCagr
+                            val portfolioXirr = summary.investmentXirr
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                PortfolioMiniMetric(
+                                    label = "Gain",
+                                    value = if (isPrivacy) "Hidden" else if (isPortfolioUp) "+${CurrencyFormatter.detail(portfolioGrowth, currencyCode, locale)}" else CurrencyFormatter.negative(portfolioGrowth, currencyCode, locale),
+                                    modifier = Modifier.weight(1f),
+                                )
+                                PortfolioMiniMetric(
+                                    label = "Return",
+                                    value = if (isPrivacy) "Hidden" else "${if (isPortfolioUp) "+" else ""}${String.format(locale, "%.1f", growthPct)}%",
+                                    modifier = Modifier.weight(1f),
+                                )
+                                PortfolioMiniMetric(
+                                    label = "Holdings",
+                                    value = visibleInvestments.size.toString(),
+                                    modifier = Modifier.weight(1f),
+                                )
+                            }
+                            if (!portfolioCagr.isNaN()) {
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                    modifier = Modifier.padding(top = 4.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp),
                                 ) {
                                     Text(
-                                        if (isPortfolioUp) "Up" else "Down",
-                                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
-                                        color = if (isPortfolioUp) Emerald100 else SemanticRed.copy(alpha = 0.95f),
+                                        "CAGR ${app.fynlo.logic.CagrCalculator.format(portfolioCagr)}",
+                                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                        color = if (portfolioCagr >= 0) Emerald100 else Color(0xFFFFD8D8),
                                     )
-                                    Text(
-                                        if (isPrivacy) "Hidden"
-                                        else if (isPortfolioUp) "+${CurrencyFormatter.detail(portfolioGrowth, currencyCode, locale)}"
-                                        else               CurrencyFormatter.negative(portfolioGrowth, currencyCode, locale),
-                                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
-                                        color = if (isPortfolioUp) Emerald100 else SemanticRed.copy(alpha = 0.95f),
-                                    )
-                                    if (!isPrivacy) {
+                                    if (!portfolioXirr.isNaN()) {
                                         Text(
-                                            "(${if (isPortfolioUp) "+" else ""}${String.format(locale, "%.1f", growthPct)}%)",
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            color = if (isPortfolioUp) Emerald100 else SemanticRed.copy(alpha = 0.95f),
+                                            "XIRR ${app.fynlo.logic.XirrCalculator.format(portfolioXirr)}",
+                                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                            color = if (portfolioXirr >= 0) Emerald100 else Color(0xFFFFD8D8),
                                         )
                                     }
                                 }
-                                Text(
-                                    "${if (isPrivacy) "Hidden" else CurrencyFormatter.detail(netInvested, currencyCode, locale)} invested - ${app.fynlo.logic.pluralize(visibleInvestments.size, "holding")}",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = Color.White.copy(alpha = 0.72f),
-                                    modifier = Modifier.padding(top = 2.dp),
-                                )
-                                // C14 #5 (3.2.82) — portfolio-level CAGR. Weighted
-                                // by invested principal × duration. NaN when there
-                                // isn't enough time elapsed (same-day) or all
-                                // holdings are zero-value — rendered as "—".
-                                val portfolioCagr = summary.investmentCagr
-                                val portfolioXirr = summary.investmentXirr
-
-                                if (!portfolioCagr.isNaN()) {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                                        modifier = Modifier.padding(top = 2.dp)
-                                    ) {
-                                        Text(
-                                            "CAGR: ${app.fynlo.logic.CagrCalculator.format(portfolioCagr)}",
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = if (portfolioCagr >= 0) Emerald100 else SemanticRed.copy(alpha = 0.95f),
-                                        )
-                                        if (!portfolioXirr.isNaN()) {
-                                            Text(
-                                                "XIRR: ${app.fynlo.logic.XirrCalculator.format(portfolioXirr)}",
-                                                style = MaterialTheme.typography.labelSmall,
-                                                color = if (portfolioXirr >= 0) Emerald100 else SemanticRed.copy(alpha = 0.95f),
-                                            )
-                                        }
-                                    }
-                                }
-                            } else {
-                                Text(app.fynlo.logic.pluralize(visibleInvestments.size, "holding"),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = Color.White.copy(alpha = 0.72f))
                             }
                         }
                     }
@@ -449,10 +418,8 @@ val currentProject by viewModel.currentProject.collectAsState()
                 if (allocation.size >= 2 && portfolioValue > 0) {
                     item {
                         LedgerPanel(Modifier.padding(bottom = 16.dp)) {
-                            Text("Allocation",
-                                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                                color = MaterialTheme.colorScheme.onSurface,
-                                modifier = Modifier.padding(bottom = 8.dp))
+                            LedgerSectionTitle("Allocation", "${allocation.size} types")
+                            Spacer(Modifier.height(10.dp))
                             // Stacked bar
                             Row(
                                 Modifier.fillMaxWidth()
@@ -532,6 +499,37 @@ val currentProject by viewModel.currentProject.collectAsState()
             }
             }
         }
+        }
+    }
+}
+
+@Composable
+private fun PortfolioMiniMetric(
+    label: String,
+    value: String,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        modifier = modifier.heightIn(min = 58.dp),
+        shape = RoundedCornerShape(14.dp),
+        color = Color.White.copy(alpha = 0.13f),
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 9.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Text(
+                label,
+                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.ExtraBold),
+                color = Color.White.copy(alpha = 0.66f),
+                maxLines = 1,
+            )
+            Text(
+                value,
+                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.ExtraBold),
+                color = Color.White,
+                maxLines = 1,
+            )
         }
     }
 }

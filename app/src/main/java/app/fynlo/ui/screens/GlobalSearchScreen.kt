@@ -146,14 +146,40 @@ fun GlobalSearchScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
+            Surface(
+                modifier = Modifier.fillMaxWidth().statusBarsPadding().height(76.dp),
+                color = MaterialTheme.colorScheme.surface,
+                tonalElevation = 0.dp,
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    Surface(
+                        onClick = onNavigateBack,
+                        modifier = Modifier.size(42.dp),
+                        shape = RoundedCornerShape(13.dp),
+                        color = MaterialTheme.colorScheme.surface,
+                        tonalElevation = 1.dp,
+                        shadowElevation = 4.dp,
+                        border = androidx.compose.foundation.BorderStroke(
+                            0.5.dp,
+                            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f),
+                        ),
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, null, Modifier.size(21.dp))
+                        }
+                    }
                     OutlinedTextField(
                         value         = query,
                         onValueChange = { query = it },
                         placeholder   = { Text("Search loans, debts, transactions") },
                         singleLine    = true,
-                        modifier      = Modifier.fillMaxWidth().focusRequester(focusRequester),
+                        modifier      = Modifier.weight(1f).focusRequester(focusRequester),
                         shape         = RoundedCornerShape(16.dp),
                         leadingIcon   = { Icon(Icons.Default.Search, null, tint = Emerald500) },
                         trailingIcon  = {
@@ -171,13 +197,8 @@ fun GlobalSearchScreen(
                             cursorColor             = Emerald500
                         )
                     )
-                },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, null)
-                    }
                 }
-            )
+            }
         }
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {

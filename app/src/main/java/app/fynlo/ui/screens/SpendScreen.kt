@@ -156,7 +156,7 @@ val transactions by viewModel.transactions.collectAsState()
                     label = "Spent in ${selectedMonth.format(monthFmt)}",
                     value = CurrencyFormatter.detail(total, currencyCode, locale),
                     subtitle = app.fynlo.logic.pluralize(expenses.size, "transaction"),
-                    containerColor = SemanticRed,
+                    containerColor = Carbon700,
                     modifier = Modifier.padding(top = 4.dp),
                 ) {
                     if (previousMonthTotal > 0) {
@@ -169,7 +169,7 @@ val transactions by viewModel.transactions.collectAsState()
                         Text(
                             if (delta == 0.0) label else "${CurrencyFormatter.detail(kotlin.math.abs(delta), currencyCode, locale)} $label",
                             style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
-                            color = Color.White.copy(alpha = 0.82f),
+                            color = if (delta > 0) Color(0xFFFFD8D8) else Emerald100,
                         )
                     }
                     if (topCategory != null) {
@@ -177,7 +177,7 @@ val transactions by viewModel.transactions.collectAsState()
                         Text(
                             "Mostly on $cat - ${CurrencyFormatter.detail(amt, currencyCode, locale)} (${(share * 100).toInt()}%)",
                             style = MaterialTheme.typography.bodySmall,
-                            color = Color.White.copy(alpha = 0.78f),
+                            color = Color.White.copy(alpha = 0.76f),
                         )
                     }
                 }
@@ -187,7 +187,7 @@ val transactions by viewModel.transactions.collectAsState()
                 // Category breakdown with FIXED budget %
                 if (byCat.isNotEmpty()) {
                     LedgerPanel {
-                        Text("Category Breakdown", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
+                        LedgerSectionTitle("Category Breakdown", byCat.size.toString())
                         Spacer(Modifier.height(12.dp))
                         Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                             byCat.forEachIndexed { i, (cat, amt) ->

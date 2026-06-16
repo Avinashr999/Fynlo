@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import app.fynlo.FinanceViewModel
 import app.fynlo.logic.CurrencyFormatter
 import app.fynlo.ui.theme.Carbon700
+import app.fynlo.ui.theme.Emerald700
 import app.fynlo.ui.theme.Emerald500
 import app.fynlo.ui.theme.LedgerHeroPanel
 import app.fynlo.ui.theme.SemanticRed
@@ -110,7 +111,7 @@ fun LoansHubScreen(
                 label = if (tab == 0) "Money Lent" else "Debt Owed",
                 value = if (isPrivacy) "Hidden" else CurrencyFormatter.detail(heroAmount, currencyCode, locale),
                 subtitle = "Across $countNoun",
-                containerColor = if (tab == 0) Emerald500 else Carbon700,
+                containerColor = if (tab == 0) Emerald700 else Carbon700,
                 modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
             )
             Spacer(Modifier.height(4.dp))

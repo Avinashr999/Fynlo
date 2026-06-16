@@ -347,41 +347,37 @@ fun MainNavigation(viewModel: FinanceViewModel) {
                     val drawerUserName  = authForDrawer.userName.ifBlank { "Signed in" }
                     val drawerUserEmail = authForDrawer.userEmail.ifBlank { "Tap Profile to sign in" }
 
-                    Row(
+                    Surface(
                         modifier = Modifier.fillMaxWidth()
-                            .padding(start = 16.dp, end = 16.dp, top = 36.dp, bottom = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            .padding(start = 14.dp, end = 14.dp, top = 28.dp, bottom = 12.dp),
+                        shape = RoundedCornerShape(20.dp),
+                        color = Emerald50.copy(alpha = 0.9f),
+                        border = androidx.compose.foundation.BorderStroke(
+                            0.5.dp,
+                            Emerald100.copy(alpha = 0.9f),
+                        ),
                     ) {
-                        // Avatar — emerald-circle Person icon. Firebase photoUrl
-                        // is exposed by AuthManager.userPhoto but rendering it
-                        // would require an image-loading dep (Coil); not part
-                        // of audit C20 spec, so keep the icon for now.
-                        Box(
-                            modifier = Modifier.size(40.dp).clip(CircleShape)
-                                .background(Emerald500.copy(alpha = 0.12f)),
-                            contentAlignment = Alignment.Center
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(14.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-                            Icon(
-                                Icons.Default.Person, null,
-                                modifier = Modifier.size(22.dp),
-                                tint = Emerald500
-                            )
-                        }
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                drawerUserName,
-                                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
-                                maxLines = 1,
-                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-                            )
-                            Text(
-                                drawerUserEmail,
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                maxLines = 1,
-                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-                            )
+                            FynloBrandMark(size = 42.dp)
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    drawerUserName,
+                                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.ExtraBold),
+                                    maxLines = 1,
+                                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                                )
+                                Text(
+                                    drawerUserEmail,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 1,
+                                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                                )
+                            }
                         }
                     }
 
