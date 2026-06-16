@@ -5,7 +5,13 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledIconButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
@@ -15,13 +21,19 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.unit.dp
 import app.fynlo.FinanceViewModel
 import app.fynlo.logic.CurrencyFormatter
+import app.fynlo.ui.components.AddDebtDialog
+import app.fynlo.ui.components.AddLendingDialog
 import app.fynlo.ui.theme.Emerald500
 import app.fynlo.ui.theme.LedgerMetric
 import app.fynlo.ui.theme.LedgerMetricBand
@@ -56,7 +68,10 @@ fun LoansHubScreen(
     onNavigateToPayoffPlan: () -> Unit = {},
     initialTab: Int = 0
 ) {
+    val haptic = LocalHapticFeedback.current
     var tab by remember { mutableIntStateOf(initialTab) }
+    var showAddLoanDialog by remember { mutableStateOf(false) }
+    var showAddDebtDialog by remember { mutableStateOf(false) }
     val summary by viewModel.financialSummary.collectAsState()
     val isPrivacy by viewModel.isPrivacyMode.collectAsState()
     val borrowers by viewModel.borrowers.collectAsState()
@@ -86,10 +101,56 @@ fun LoansHubScreen(
     val heroAmount = if (tab == 0) summary.totalReceivables
                      else (summary.totalDebtPrincipal + summary.totalDebtInterest)
     val heroCount  = if (tab == 0) activeLentCount else activeOwedCount
+
+    if (showAddLoanDialog) {
+        AddLendingDialog(
+            viewModel = viewModel,
+            onDismiss = { showAddLoanDialog = false },
+            onConfirm = { borrower, source ->
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                viewModel.addBorrowerWithSource(borrower, source)
+                viewModel.showFeedback("Loan added")
+                showAddLoanDialog = false
+            },
+            initialBorrower = null,
+        )
+    }
+
+    if (showAddDebtDialog) {
+        AddDebtDialog(
+            viewModel = viewModel,
+            onDismiss = { showAddDebtDialog = false },
+            onConfirm = { debt, destination ->
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                viewModel.addDebtWithDestination(debt, destination)
+                viewModel.showFeedback("Debt added")
+                showAddDebtDialog = false
+            },
+            initialDebt = null,
+        )
+    }
+
     Column(Modifier.fillMaxSize()) {
         PremiumScreenHeader(
             title = "Loans",
-            subtitle = if (tab == 0) "Money you've lent out" else "Money you owe"
+            subtitle = if (tab == 0) "Money you've lent out" else "Money you owe",
+            action = {
+                FilledIconButton(
+                    onClick = {
+                        if (tab == 0) showAddLoanDialog = true else showAddDebtDialog = true
+                    },
+                    shape = RoundedCornerShape(14.dp),
+                    colors = IconButtonDefaults.filledIconButtonColors(
+                        containerColor = if (tab == 0) Emerald500 else SemanticRed,
+                        contentColor = Color.White,
+                    ),
+                ) {
+                    Icon(
+                        Icons.Default.Add,
+                        contentDescription = if (tab == 0) "Add Loan" else "Add Debt",
+                    )
+                }
+            },
         )
 
         // C12 Stage 1 hero block — Total Outstanding for the active tab,

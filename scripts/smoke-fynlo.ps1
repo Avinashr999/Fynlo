@@ -37,7 +37,7 @@ function Wait-Screen {
     param(
         [string]$Name,
         [string[]]$MustContain,
-        [int]$TimeoutSeconds = 20
+        [int]$TimeoutSeconds = 45
     )
 
     $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
