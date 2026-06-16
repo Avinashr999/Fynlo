@@ -61,18 +61,37 @@ fun AddLendingDialog(
     var submitting by remember(initialBorrower?.id) { mutableStateOf(false) }
 
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        Surface(
-            modifier = Modifier.fillMaxWidth(0.94f).padding(vertical = 20.dp).imePadding(),
-            shape = androidx.compose.foundation.shape.RoundedCornerShape(28.dp),
-            color = MaterialTheme.colorScheme.surface,
-            tonalElevation = 4.dp
+        Box(
+            modifier = Modifier.fillMaxSize().imePadding(),
+            contentAlignment = Alignment.BottomCenter,
         ) {
-            Column(Modifier.padding(20.dp).verticalScroll(rememberScrollState())) {
-                Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
-                    Text(if (isEdit) "Edit Loan" else "New Loan",
-                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold))
-                    IconButton(onClick = onDismiss) { Icon(Icons.Default.Close, "Close") }
-                }
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .fillMaxHeight(0.92f),
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+                color = MaterialTheme.colorScheme.surfaceContainerLowest,
+                tonalElevation = 6.dp
+            ) {
+                Column(
+                    Modifier
+                        .fillMaxSize()
+                        .padding(20.dp)
+                        .verticalScroll(rememberScrollState())
+                ) {
+                    Surface(
+                        modifier = Modifier
+                            .size(width = 44.dp, height = 5.dp)
+                            .align(Alignment.CenterHorizontally),
+                        shape = androidx.compose.foundation.shape.RoundedCornerShape(99.dp),
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f),
+                    ) {}
+                    Spacer(Modifier.height(10.dp))
+                    Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
+                        Text(if (isEdit) "Edit Loan" else "New Loan",
+                            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold))
+                        IconButton(onClick = onDismiss) { Icon(Icons.Default.Close, "Close") }
+                    }
                 Spacer(Modifier.height(16.dp))
 
                 // ── Amount hero ───────────────────────────────────────────────
@@ -253,6 +272,8 @@ fun AddLendingDialog(
             }
         }
     }
+}
+
 }
 
 @Composable

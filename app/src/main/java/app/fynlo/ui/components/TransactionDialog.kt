@@ -13,6 +13,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -133,19 +134,36 @@ fun AddTransactionDialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
-        Surface(
-            modifier = Modifier.fillMaxWidth(0.94f).padding(vertical = 20.dp).imePadding(),
-            shape = RoundedCornerShape(28.dp),
-            color = MaterialTheme.colorScheme.surface,
-            tonalElevation = 4.dp
+        Box(
+            modifier = Modifier.fillMaxSize().imePadding(),
+            contentAlignment = Alignment.BottomCenter,
         ) {
-            Column(
-                modifier = Modifier.padding(20.dp).verticalScroll(rememberScrollState())
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .fillMaxHeight(0.92f),
+                shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+                color = MaterialTheme.colorScheme.surfaceContainerLowest,
+                tonalElevation = 6.dp
             ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(20.dp)
+                        .verticalScroll(rememberScrollState())
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(width = 44.dp, height = 5.dp)
+                            .clip(RoundedCornerShape(99.dp))
+                            .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f))
+                            .align(Alignment.CenterHorizontally)
+                    )
+                    Spacer(Modifier.height(10.dp))
                 // ── Header ────────────────────────────────────────────────────
                 Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
                     Text("Add Transaction",
-                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold))
+                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold))
                     IconButton(onClick = onDismiss) { Icon(Icons.Default.Close, "Close") }
                 }
                 Spacer(Modifier.height(16.dp))
@@ -377,6 +395,7 @@ fun AddTransactionDialog(
             }
         }
     }
+}
 }
 
 @Composable

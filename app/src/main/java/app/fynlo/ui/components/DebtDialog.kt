@@ -6,6 +6,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountBalance
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.MonetizationOn
 import androidx.compose.material.icons.filled.Wallet
 import androidx.compose.material3.*
@@ -68,16 +69,38 @@ fun AddDebtDialog(
     val isValid    = lenderName.isNotBlank() && amount.isNotEmpty()
 
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        Surface(
-            modifier = Modifier.fillMaxWidth(0.95f).padding(vertical = 24.dp).imePadding(),
-            shape    = MaterialTheme.shapes.extraLarge,
-            color    = MaterialTheme.colorScheme.surface,
-            tonalElevation = 6.dp
+        Box(
+            modifier = Modifier.fillMaxSize().imePadding(),
+            contentAlignment = Alignment.BottomCenter,
         ) {
-            Column(modifier = Modifier.padding(24.dp).verticalScroll(rememberScrollState())) {
-                Text(if (initialDebt == null) "Add New Debt" else "Edit Debt",
-                    style = MaterialTheme.typography.headlineSmall)
-                Spacer(Modifier.height(16.dp))
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .fillMaxHeight(0.92f),
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+                color = MaterialTheme.colorScheme.surfaceContainerLowest,
+                tonalElevation = 6.dp
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(20.dp)
+                        .verticalScroll(rememberScrollState())
+                ) {
+                    Surface(
+                        modifier = Modifier
+                            .size(width = 44.dp, height = 5.dp)
+                            .align(Alignment.CenterHorizontally),
+                        shape = androidx.compose.foundation.shape.RoundedCornerShape(99.dp),
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f),
+                    ) {}
+                    Spacer(Modifier.height(10.dp))
+                    Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
+                        Text(if (initialDebt == null) "Add Debt" else "Edit Debt",
+                            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold))
+                        IconButton(onClick = onDismiss) { Icon(Icons.Default.Close, "Close") }
+                    }
+                    Spacer(Modifier.height(16.dp))
 
                 // ── Lender selection ─────────────────────────────────────
                 if (!useCustomName) {
@@ -246,4 +269,5 @@ fun AddDebtDialog(
             }
         }
     }
+}
 }
