@@ -371,7 +371,7 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
             }
         }
 
-        Spacer(Modifier.height(20.dp))
+        Spacer(Modifier.height(14.dp))
 
         // ── Hero: big net worth number — tap to open Net Worth History ────────
         if (isFreshBook) {
@@ -388,7 +388,7 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
                 },
                 onCreateProject = { onNavigateToScreen("projects") },
             )
-            Spacer(Modifier.height(20.dp))
+            Spacer(Modifier.height(16.dp))
         }
 
         val nwText = if (isPrivacy) "••••" else CurrencyFormatter.hero(summary.netWorth, currencyCode, locale)
@@ -424,17 +424,17 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
             }
         }
 
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(16.dp))
 
         // ── Net-worth trend chart card (tap → full history) ───────────────────
         NetWorthTrendCard(netWorthSnapshots.sortedBy { it.date }, cs, locale, isPrivacy) { onNavigateToScreen("net_worth_hist") }
 
-        Spacer(Modifier.height(28.dp))
+        Spacer(Modifier.height(18.dp))
 
         // ── Quick actions ─────────────────────────────────────────────────────
         LedgerPanel {
             LedgerSectionTitle("Quick actions")
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(10.dp))
             Row(Modifier.fillMaxWidth(), Arrangement.spacedBy(10.dp)) {
                 NeoAction("Expense", Icons.Default.Remove, SemanticRed, Modifier.weight(1f)) { addTxnIncome = false; showAddTxn = true }
                 NeoAction("Income", Icons.Default.Add, Emerald500, Modifier.weight(1f)) { addTxnIncome = true; showAddTxn = true }
@@ -443,7 +443,7 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
             }
         }
 
-        Spacer(Modifier.height(18.dp))
+        Spacer(Modifier.height(12.dp))
 
         if (!isFreshBook) {
             DashboardNudges(
@@ -455,12 +455,12 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
                     showAddTxn = true
                 },
             )
-            Spacer(Modifier.height(22.dp))
+            Spacer(Modifier.height(12.dp))
         } else {
             Spacer(Modifier.height(10.dp))
         }
 
-        Spacer(Modifier.height(28.dp))
+        Spacer(Modifier.height(8.dp))
 
         // ── Accounts ──────────────────────────────────────────────────────────
         val activeAccountByName = activeAccounts.associateBy { it.name }
@@ -511,7 +511,7 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
             }
         }
 
-        Spacer(Modifier.height(18.dp))
+        Spacer(Modifier.height(14.dp))
 
         // ── Insights ──────────────────────────────────────────────────────────
         LedgerPanel {
@@ -533,7 +533,7 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
             ) { onNavigateToScreen("loans_hub?tab=1") }
         }
 
-        Spacer(Modifier.height(120.dp))
+        Spacer(Modifier.height(96.dp))
     }
     }
 }
@@ -1049,9 +1049,9 @@ private fun NetWorthTrendCard(
         tonalElevation = 1.dp,
         border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)),
     ) {
-        Column(Modifier.padding(18.dp)) {
+        Column(Modifier.padding(16.dp)) {
             LedgerSectionTitle("Net worth trend", if (snaps.size >= 2) "30d" else null)
-            Spacer(Modifier.height(14.dp))
+            Spacer(Modifier.height(10.dp))
             if (snaps.size < 2) {
                 Box(Modifier.fillMaxWidth().height(80.dp), Alignment.Center) {
                     Text("Your trend appears as your balances change over time",
@@ -1065,7 +1065,7 @@ private fun NetWorthTrendCard(
                 val range = (maxV - minV).takeIf { it > 0f } ?: 1f
                 val up = pts.last().netWorth >= pts.first().netWorth
                 val lineColor = if (up) Emerald500 else SemanticRed
-                Canvas(Modifier.fillMaxWidth().height(90.dp)) {
+                Canvas(Modifier.fillMaxWidth().height(82.dp)) {
                     val offs = pts.mapIndexed { i, s ->
                         val x = i * size.width / (pts.size - 1)
                         val y = size.height - ((s.netWorth.toFloat() - minV) / range) * size.height * 0.9f - size.height * 0.05f
