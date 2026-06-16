@@ -485,79 +485,49 @@ fun MainNavigation(viewModel: FinanceViewModel) {
     ) {
         Scaffold(
             topBar = {
-                if (!isFullScreenRoute)
-                CenterAlignedTopAppBar(
-                    title = {
-                        // Brand wordmark — tap from any screen to jump to Dashboard
-                        Text(
-                            "Fynlo",
-                            color = Emerald500,
-                            fontWeight = FontWeight.ExtraBold,
-                            fontSize = 22.sp,
-                            letterSpacing = 0.5.sp,
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(8.dp))
-                                .clickable {
-                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                    navController.navigate(Screen.Home.route) {
-                                        popUpTo(Screen.Home.route) { saveState = true; inclusive = false }
-                                        launchSingleTop = true
-                                        restoreState = true
-                                    }
-                                }
-                                .padding(horizontal = 8.dp, vertical = 2.dp)
-                        )
-                    },
-                    actions = {
-                        val isPrivacy by viewModel.isPrivacyMode.collectAsState()
-                        IconButton(onClick = {
+                if (!isFullScreenRoute) {
+                    val isPrivacy by viewModel.isPrivacyMode.collectAsState()
+                    LedgerAppTopBar(
+                        canNavigateBack = canNavigateBack,
+                        isPrivacy = isPrivacy,
+                        syncStatus = syncStatus,
+                        onBack = {
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            navController.navigateUp()
+                        },
+                        onMenu = {
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            scope.launch { drawerState.open() }
+                        },
+                        onHome = {
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            navController.navigate(Screen.Home.route) {
+                                popUpTo(Screen.Home.route) { saveState = true; inclusive = false }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+                        },
+                        onTogglePrivacy = {
                             haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                             viewModel.togglePrivacyMode()
-                        }) {
-                            Icon(
-                                if (isPrivacy) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                                contentDescription = "Toggle Privacy"
-                            )
-                        }
-                        IconButton(onClick = {
+                        },
+                        onSearch = {
                             haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                             navController.navigate(Screen.GlobalSearch.route)
-                        }) {
-                            Icon(Icons.Default.Search, contentDescription = "Search")
-                        }
-                        // Cloud/sync icon — tap to see current sync status
-                        IconButton(onClick = {
+                        },
+                        onSyncClick = {
                             haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                             val msg = when (syncStatus) {
                                 is app.fynlo.data.SyncStatus.Synced       -> "All changes synced to cloud"
-                                is app.fynlo.data.SyncStatus.Syncing      -> "Syncing…"
-                                is app.fynlo.data.SyncStatus.Offline      -> "Offline — changes sync when reconnected"
-                                is app.fynlo.data.SyncStatus.Initialising -> "Connecting to cloud…"
-                                is app.fynlo.data.SyncStatus.Error        -> "Sync error — sign in again to retry"
+                                is app.fynlo.data.SyncStatus.Syncing      -> "Syncing..."
+                                is app.fynlo.data.SyncStatus.Offline      -> "Offline - changes sync when reconnected"
+                                is app.fynlo.data.SyncStatus.Initialising -> "Connecting to cloud..."
+                                is app.fynlo.data.SyncStatus.Error        -> "Sync error - sign in again to retry"
                             }
                             android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_SHORT).show()
-                        }) {
-                            SyncStatusBadge(status = syncStatus)
-                        }
-                    },
-                    navigationIcon = {
-                        if (canNavigateBack) {
-                            IconButton(onClick = {
-                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                navController.navigateUp()
-                            }) {
-                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                            }
-                        } else {
-                            IconButton(onClick = {
-                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                scope.launch { drawerState.open() }
-                            }) {
-                                Icon(Icons.AutoMirrored.Filled.Segment, contentDescription = "Menu")
-                            }
-                        }
-                    }
-                )
+                        },
+                    )
+                }
             },
             bottomBar = {
                 if (!isFullScreenRoute)
@@ -592,12 +562,12 @@ fun MainNavigation(viewModel: FinanceViewModel) {
                             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                             showSheet = true
                         },
-                        modifier = Modifier.size(68.dp),
-                        shape = RoundedCornerShape(18.dp),
+                        modifier = Modifier.size(58.dp),
+                        shape = RoundedCornerShape(16.dp),
                         containerColor = MaterialTheme.colorScheme.primary,
                         contentColor = MaterialTheme.colorScheme.onPrimary
                     ) {
-                        Icon(Icons.Default.Add, contentDescription = "Quick Add", modifier = Modifier.size(34.dp))
+                        Icon(Icons.Default.Add, contentDescription = "Quick Add", modifier = Modifier.size(30.dp))
                     }
                 }
             },
@@ -891,6 +861,115 @@ fun ActionItem(icon: ImageVector, label: String, color: Color, onClick: () -> Un
 // ── Drawer helper composables ────────────────────────────────────────
 
 @Composable
+private fun LedgerAppTopBar(
+    canNavigateBack: Boolean,
+    isPrivacy: Boolean,
+    syncStatus: SyncStatus,
+    onBack: () -> Unit,
+    onMenu: () -> Unit,
+    onHome: () -> Unit,
+    onTogglePrivacy: () -> Unit,
+    onSearch: () -> Unit,
+    onSyncClick: () -> Unit,
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 0.dp,
+        shadowElevation = 0.dp,
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .statusBarsPadding()
+                .height(58.dp)
+                .padding(horizontal = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            LedgerShellButton(
+                icon = if (canNavigateBack) Icons.AutoMirrored.Filled.ArrowBack else Icons.AutoMirrored.Filled.Segment,
+                contentDescription = if (canNavigateBack) "Back" else "Menu",
+                onClick = if (canNavigateBack) onBack else onMenu,
+            )
+            Row(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(14.dp))
+                    .clickable(onClick = onHome)
+                    .padding(horizontal = 2.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                FynloBrandMark(size = 30.dp)
+                Text(
+                    "Fynlo",
+                    style = MaterialTheme.typography.titleLarge.copy(
+                        fontWeight = FontWeight.ExtraBold,
+                        color = Emerald700,
+                    ),
+                )
+            }
+            LedgerShellButton(
+                icon = if (isPrivacy) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                contentDescription = "Toggle Privacy",
+                onClick = onTogglePrivacy,
+            )
+            LedgerShellButton(
+                icon = Icons.Default.Search,
+                contentDescription = "Search",
+                onClick = onSearch,
+            )
+            Surface(
+                onClick = onSyncClick,
+                modifier = Modifier.size(38.dp),
+                shape = RoundedCornerShape(12.dp),
+                color = MaterialTheme.colorScheme.surface,
+                tonalElevation = 1.dp,
+                shadowElevation = 4.dp,
+                border = androidx.compose.foundation.BorderStroke(
+                    0.5.dp,
+                    MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f),
+                ),
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    SyncStatusBadge(status = syncStatus)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun LedgerShellButton(
+    icon: ImageVector,
+    contentDescription: String,
+    onClick: () -> Unit,
+) {
+    Surface(
+        onClick = onClick,
+        modifier = Modifier.size(38.dp),
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 1.dp,
+        shadowElevation = 4.dp,
+        border = androidx.compose.foundation.BorderStroke(
+            0.5.dp,
+            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f),
+        ),
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Icon(
+                imageVector = icon,
+                contentDescription = contentDescription,
+                modifier = Modifier.size(20.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+@Composable
 private fun LedgerBottomNav(
     items: List<Screen>,
     selectedRoute: String?,
@@ -901,22 +980,22 @@ private fun LedgerBottomNav(
             .fillMaxWidth()
             .height(92.dp)
             .navigationBarsPadding()
-            .padding(horizontal = 16.dp, vertical = 10.dp),
+            .padding(start = 16.dp, end = 16.dp, top = 6.dp, bottom = 12.dp),
         contentAlignment = Alignment.Center,
     ) {
         Surface(
             modifier = Modifier.fillMaxWidth().height(66.dp),
-            shape = RoundedCornerShape(22.dp),
+            shape = RoundedCornerShape(20.dp),
             color = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f),
             tonalElevation = 4.dp,
-            shadowElevation = 14.dp,
+            shadowElevation = 12.dp,
             border = androidx.compose.foundation.BorderStroke(
                 0.5.dp,
                 MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f),
             ),
         ) {
             Row(
-                modifier = Modifier.fillMaxSize().padding(horizontal = 8.dp),
+                modifier = Modifier.fillMaxSize().padding(horizontal = 6.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
@@ -928,14 +1007,14 @@ private fun LedgerBottomNav(
                             .fillMaxHeight()
                             .clip(RoundedCornerShape(18.dp))
                             .clickable { onSelect(screen) }
-                            .padding(vertical = 7.dp),
+                            .padding(top = 6.dp, bottom = 7.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Center,
                     ) {
                         Box(
                             modifier = Modifier
                                 .height(30.dp)
-                                .width(if (selected) 58.dp else 42.dp)
+                                .width(if (selected) 54.dp else 38.dp)
                                 .clip(RoundedCornerShape(18.dp))
                                 .background(
                                     if (selected) Emerald100.copy(alpha = 0.92f)
@@ -946,7 +1025,7 @@ private fun LedgerBottomNav(
                             Icon(
                                 imageVector = screen.icon,
                                 contentDescription = screen.label,
-                                modifier = Modifier.size(if (selected) 22.dp else 21.dp),
+                                modifier = Modifier.size(if (selected) 21.dp else 20.dp),
                                 tint = if (selected) Emerald700 else MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }

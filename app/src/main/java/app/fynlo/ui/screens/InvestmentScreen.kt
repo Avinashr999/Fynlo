@@ -549,162 +549,194 @@ fun InvestmentCard(invest: Investment, currencyCode: String = "INR", isPrivacy: 
 
     Surface(
         modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
-        shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.surface,
+        shape = RoundedCornerShape(18.dp),
+        color = Emerald50.copy(alpha = 0.78f),
         tonalElevation = 1.dp,
+        border = androidx.compose.foundation.BorderStroke(
+            0.5.dp,
+            Emerald100.copy(alpha = 0.9f),
+        ),
     ) {
-    Column(modifier = Modifier.fillMaxWidth().padding(14.dp)) {
-            // ── Header: name + type badge + action icons ──────────────────────
-            Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
-                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+        Column(modifier = Modifier.fillMaxWidth().padding(14.dp)) {
+            Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.Top) {
+                Row(verticalAlignment = Alignment.Top, modifier = Modifier.weight(1f)) {
                     Box(
-                        Modifier.size(36.dp).clip(RoundedCornerShape(10.dp))
-                            .background(Emerald500.copy(alpha = 0.1f)),
+                        Modifier.size(46.dp).clip(RoundedCornerShape(14.dp))
+                            .background(Emerald100.copy(alpha = 0.82f)),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(Icons.Default.TrendingUp, null, Modifier.size(18.dp), tint = Emerald500)
+                        Icon(Icons.Default.TrendingUp, null, Modifier.size(23.dp), tint = Emerald600)
                     }
-                    Spacer(Modifier.width(10.dp))
-                    Column {
-                        Text(invest.name, style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold))
-                        Text(invest.type, style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Spacer(Modifier.width(12.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            invest.name,
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.ExtraBold),
+                            color = MaterialTheme.colorScheme.onSurface,
+                            maxLines = 2,
+                        )
+                        Spacer(Modifier.height(5.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                            InvestmentMetaChip(invest.type.ifBlank { "Other" })
+                            InvestmentMetaChip("Since ${DateUtils.formatToDisplay(invest.date)}")
+                        }
                     }
                 }
-                Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                    // Growth badge
-                    Surface(
-                        shape = RoundedCornerShape(8.dp),
-                        color = if (isProfit) Emerald500.copy(alpha = 0.1f) else SemanticRed.copy(alpha = 0.1f)
-                    ) {
-                        val growthPctText = if (isPrivacy) "Hidden" else "${if (isProfit) "+" else ""}${String.format(LocalLocale.current.platformLocale, "%.1f", growthPercent)}%"
-                        Text(
-                            text = growthPctText,
-                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                            color = if (isProfit) Emerald500 else SemanticRed,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                        )
+                Box {
+                    IconButton(onClick = { menuOpen = true }, Modifier.size(34.dp)) {
+                        Icon(Icons.Default.MoreVert, "More", Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
-                    Spacer(Modifier.width(4.dp))
-                    Box {
-                        IconButton(onClick = { menuOpen = true }, Modifier.size(30.dp)) {
-                            Icon(Icons.Default.MoreVert, "More", Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                        DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                            DropdownMenuItem(text = { Text("Valuation History") }, onClick = { menuOpen = false; onViewHistory() })
-                            DropdownMenuItem(text = { Text("Edit") }, onClick = { menuOpen = false; onEdit() })
-                            DropdownMenuItem(text = { Text("Delete", color = SemanticRed) }, onClick = { menuOpen = false; onDelete() })
-                        }
+                    DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                        DropdownMenuItem(text = { Text("Valuation History") }, onClick = { menuOpen = false; onViewHistory() })
+                        DropdownMenuItem(text = { Text("Edit") }, onClick = { menuOpen = false; onEdit() })
+                        DropdownMenuItem(text = { Text("Delete", color = SemanticRed) }, onClick = { menuOpen = false; onDelete() })
                     }
                 }
             }
 
-            Spacer(Modifier.height(12.dp))
-            HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(14.dp))
 
-            // ── Key metrics row ──────────────────────────────────────────────
-            Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
-                Column {
-                    Text("Invested", style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text(if (isPrivacy) "Hidden" else CurrencyFormatter.detail(invest.invested, currencyCode),
-                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold))
-                    Text("Since ${DateUtils.formatToDisplay(invest.date)}",
-                        style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("Gain / Loss", style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    val gainLossText = if (isPrivacy) "Hidden"
-                                       else if (isProfit) "+${CurrencyFormatter.hero(growth, currencyCode)}"
-                                       else          CurrencyFormatter.negative(growth, currencyCode)
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                InvestmentValueTile(
+                    label = "Invested",
+                    value = if (isPrivacy) "Hidden" else CurrencyFormatter.detail(invest.invested, currencyCode),
+                    modifier = Modifier.weight(1f),
+                )
+                val gainLossText = if (isPrivacy) "Hidden"
+                                   else if (isProfit) "+${CurrencyFormatter.hero(growth, currencyCode)}"
+                                   else CurrencyFormatter.negative(growth, currencyCode)
+                InvestmentValueTile(
+                    label = "Gain / Loss",
+                    value = gainLossText,
+                    valueColor = if (isProfit) Emerald600 else SemanticRed,
+                    modifier = Modifier.weight(1f),
+                )
+                InvestmentValueTile(
+                    label = "Value",
+                    value = if (isPrivacy) "Hidden" else CurrencyFormatter.detail(invest.currentVal, currencyCode),
+                    valueColor = if (isProfit) Emerald600 else SemanticRed,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+
+            Spacer(Modifier.height(10.dp))
+            Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
+                Surface(
+                    shape = RoundedCornerShape(999.dp),
+                    color = if (isProfit) Emerald100.copy(alpha = 0.95f) else SemanticRed.copy(alpha = 0.12f),
+                ) {
+                    val growthPctText = if (isPrivacy) "Hidden" else "${if (isProfit) "+" else ""}${String.format(LocalLocale.current.platformLocale, "%.1f", growthPercent)}%"
                     Text(
-                        text = gainLossText,
-                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
-                        color = if (isProfit) Emerald500 else SemanticRed
+                        growthPctText,
+                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.ExtraBold),
+                        color = if (isProfit) Emerald700 else SemanticRed,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
                     )
                 }
-                Column(horizontalAlignment = Alignment.End) {
-                    Text("Current Value", style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text(if (isPrivacy) "Hidden" else CurrencyFormatter.detail(invest.currentVal, currencyCode),
-                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold,
-                            color = if (isProfit) Emerald500 else SemanticRed))
+                if (!cagr.isNaN()) {
+                    Text(
+                        if (isPrivacy) "CAGR hidden" else "CAGR ${app.fynlo.logic.CagrCalculator.format(cagr)}",
+                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                        color = if (cagr >= 0) Emerald700 else SemanticRed,
+                    )
                 }
             }
 
-            if (!cagr.isNaN()) {
-                Spacer(Modifier.height(10.dp))
-                InvestmentExpandableSection(
-                    title = "Return details",
-                    subtitle = "CAGR since ${DateUtils.formatToDisplay(invest.date)}",
-                    expanded = showReturnDetails,
-                    onToggle = { showReturnDetails = !showReturnDetails },
-                ) {
-                    Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
-                        Text(
-                            "Annualised return",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        Text(
-                            if (isPrivacy) "Hidden" else app.fynlo.logic.CagrCalculator.format(cagr),
-                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
-                            color = if (cagr >= 0) Emerald500 else SemanticRed,
-                        )
+            if (invest.withdrawn > 0 || invest.notes.isNotEmpty()) {
+                Spacer(Modifier.height(8.dp))
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    if (invest.withdrawn > 0) {
+                        Text("Withdrawn: ${if (isPrivacy) "Hidden" else CurrencyFormatter.detail(invest.withdrawn, currencyCode)}",
+                            style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    if (invest.notes.isNotEmpty()) {
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.AutoMirrored.Filled.Notes, null, Modifier.size(13.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Spacer(Modifier.width(6.dp))
+                            Text(invest.notes, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
                     }
                 }
             }
 
-            if (invest.withdrawn > 0) {
-                Spacer(Modifier.height(6.dp))
-                Text("Withdrawn: ${if (isPrivacy) "Hidden" else CurrencyFormatter.detail(invest.withdrawn, currencyCode)}",
-                    style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-
-            if (invest.notes.isNotEmpty()) {
-                Spacer(Modifier.height(8.dp))
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.AutoMirrored.Filled.Notes, null, Modifier.size(13.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Spacer(Modifier.width(6.dp))
-                    Text(invest.notes, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
-
-            // ── Action buttons row ───────────────────────────────────────────
-            // C14 (3.2.24) — audit fix #4: button hierarchy was INVERTED.
-            // Was: Update Value as OutlinedButton (secondary), Withdraw as
-            // filled Emerald Button (primary). Update Value is the more
-            // frequent action (markets update daily; withdrawals are rare),
-            // so it gets the primary filled treatment now. Withdraw drops to
-            // OutlinedButton — still discoverable, but visually steps aside.
             Spacer(Modifier.height(12.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(
                     onClick = onUpdate,
-                    modifier = Modifier.weight(1f).height(36.dp),
-                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier.weight(1f).height(40.dp),
+                    shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Emerald500),
-                    contentPadding = PaddingValues(horizontal = 8.dp)
+                    contentPadding = PaddingValues(horizontal = 10.dp)
                 ) {
-                    Icon(Icons.Default.Update, null, Modifier.size(14.dp))
-                    Spacer(Modifier.width(4.dp))
-                    Text("Update Value", style = MaterialTheme.typography.labelSmall)
+                    Icon(Icons.Default.Update, null, Modifier.size(15.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("Update", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold))
                 }
                 if (invest.currentVal > 0) {
                     OutlinedButton(
                         onClick = onWithdraw,
-                        modifier = Modifier.weight(1f).height(36.dp),
-                        shape = RoundedCornerShape(10.dp),
-                        contentPadding = PaddingValues(horizontal = 8.dp)
+                        modifier = Modifier.weight(1f).height(40.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        contentPadding = PaddingValues(horizontal = 10.dp)
                     ) {
-                        Icon(Icons.Default.CallMade, null, Modifier.size(14.dp))
-                        Spacer(Modifier.width(4.dp))
-                        Text("Withdraw", style = MaterialTheme.typography.labelSmall)
+                        Icon(Icons.Default.CallMade, null, Modifier.size(15.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text("Withdraw", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold))
                     }
                 }
             }
+    }
+}
+}
+
+@Composable
+private fun InvestmentMetaChip(text: String) {
+    Surface(
+        shape = RoundedCornerShape(999.dp),
+        color = Color.White.copy(alpha = 0.72f),
+        border = androidx.compose.foundation.BorderStroke(
+            0.5.dp,
+            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f),
+        ),
+    ) {
+        Text(
+            text,
+            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+            maxLines = 1,
+        )
+    }
+}
+
+@Composable
+private fun InvestmentValueTile(
+    label: String,
+    value: String,
+    modifier: Modifier = Modifier,
+    valueColor: Color = MaterialTheme.colorScheme.onSurface,
+) {
+    Surface(
+        modifier = modifier.heightIn(min = 68.dp),
+        shape = RoundedCornerShape(14.dp),
+        color = Color.White.copy(alpha = 0.7f),
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 9.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Text(
+                label,
+                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+            )
+            Text(
+                value,
+                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.ExtraBold),
+                color = valueColor,
+                maxLines = 1,
+            )
         }
     }
 }
