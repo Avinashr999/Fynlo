@@ -3,7 +3,6 @@
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -24,7 +23,6 @@ import androidx.compose.material.icons.filled.MonetizationOn
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Event
 import androidx.compose.material.icons.filled.Message
 import androidx.compose.material.icons.filled.Call
@@ -145,9 +143,9 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
         Box(modifier = Modifier.weight(1f)) {
         app.fynlo.ui.components.PullRefresh(viewModel) {
         LazyColumn(
-            modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp).imePadding(),
+            modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
-            contentPadding = PaddingValues(bottom = FabBottomPadding)
+            contentPadding = PaddingValues(bottom = 96.dp)
         ) {
             // C12 Stage 2 — top toolbar row: EMI calculator + Calendar shortcut.
             // The stats line ("X interest · Y hand · Z settled") is gone — the
@@ -575,5 +573,3 @@ fun EmiCalculatorDialog(currencyCode: String, onDismiss: () -> Unit) {
         }
     }
     }
-
-

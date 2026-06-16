@@ -94,6 +94,20 @@ fun LoansHubScreen(
     val activeOwedCount = remember(debts) {
         debts.count { it.paid < it.amount }
     }
+    val todayKey = remember {
+        java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd"))
+    }
+    val overdueLentCount = remember(borrowers, todayKey) {
+        borrowers.count { b ->
+            b.status !in listOf("Settled", "WrittenOff") &&
+                b.due.isNotBlank() &&
+                b.due < todayKey &&
+                (if (b.rate <= 0) b.paid < b.amount else b.paidPrincipal < b.amount)
+        }
+    }
+    val overdueOwedCount = remember(debts, todayKey) {
+        debts.count { it.paid < it.amount && it.due.isNotBlank() && it.due < todayKey }
+    }
 
     // Pick the hero metrics based on which tab is active. financialSummary's
     // totalReceivables already excludes written-off borrowers; debt total is
@@ -169,9 +183,10 @@ fun LoansHubScreen(
                     valueColor = MaterialTheme.colorScheme.onSurface,
                 ),
                 LedgerMetric(
-                    label = "Type",
-                    value = if (tab == 0) "Lent" else "Owed",
-                    valueColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    label = "Overdue",
+                    value = (if (tab == 0) overdueLentCount else overdueOwedCount).toString(),
+                    valueColor = if ((if (tab == 0) overdueLentCount else overdueOwedCount) > 0) SemanticRed
+                                 else MaterialTheme.colorScheme.onSurfaceVariant,
                 ),
             ),
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),

@@ -3,7 +3,6 @@ package app.fynlo.ui.screens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.lazy.LazyColumn
@@ -110,8 +109,8 @@ val debts by viewModel.debts.collectAsState()
         Box(modifier = Modifier.weight(1f)) {
         app.fynlo.ui.components.PullRefresh(viewModel) {
         LazyColumn(
-            modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp).imePadding(),
-            contentPadding = PaddingValues(bottom = FabBottomPadding)
+            modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
+            contentPadding = PaddingValues(bottom = 96.dp)
         ) {
         item {
         if (showHeader) {
@@ -374,7 +373,5 @@ fun EmptyDebtState(onAdd: () -> Unit = {}) {
         actionLabel = "Add First Debt"
     )
 }
-
-
 
 
