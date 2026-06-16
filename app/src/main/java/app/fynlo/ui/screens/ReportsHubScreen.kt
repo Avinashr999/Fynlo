@@ -225,12 +225,6 @@ fun ReportsHubScreen(
                 )
             }
 
-            // Tile grid — every tile is the same shape (ReportTileCard). The
-            // preview value is the load-bearing bit; without it the tiles would
-            // be just icons + labels, which doesn't tell the user anything.
-            //
-            // Layout: 3 tiles per row. Eight tiles total → 3 + 3 + 2 with one
-            // spacer to keep the last row's spacing identical to the rows above.
             val plPrev      = (if (agg.plNet >= 0) "+" else "") + preview(agg.plNet)
             val plPrevColor = if (agg.plNet >= 0) green else red
             val nwPrev      = preview(summary.netWorth)
@@ -241,134 +235,104 @@ fun ReportsHubScreen(
             val dpPrev      = if (totalDebt > 0) preview(totalDebt) else "Debt free"
             val dpPrevColor = if (totalDebt > 0) red else green
 
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                ReportTileCard(
-                    label = "P&L Statement",
-                    icon  = Icons.AutoMirrored.Filled.List,
-                    tint  = green,
-                    preview = plPrev,
-                    previewColor = plPrevColor,
-                    modifier = Modifier.weight(1f),
+            LedgerMetricBand(
+                metrics = listOf(
+                    LedgerMetric("Net Worth", nwPrev, if (summary.netWorth >= 0) green else red),
+                    LedgerMetric("P&L", plPrev, plPrevColor),
+                    LedgerMetric("Flow", mfPrev, MaterialTheme.colorScheme.onSurface),
+                ),
+                modifier = Modifier.padding(bottom = 18.dp),
+            )
+
+            ReportGroup(title = "Business health", count = "2") {
+                LedgerRow(
+                    icon = Icons.AutoMirrored.Filled.List,
+                    title = "P&L Statement",
+                    subtitle = "Income, expenses, and net profit for the selected period.",
+                    value = plPrev,
+                    iconTint = green,
+                    valueColor = plPrevColor,
                     onClick = onNavigateToPL,
                 )
-                ReportTileCard(
-                    label = "Net Worth",
-                    icon  = Icons.AutoMirrored.Filled.TrendingUp,
-                    tint  = blue,
-                    preview = nwPrev,
-                    previewColor = if (summary.netWorth >= 0) green else red,
-                    modifier = Modifier.weight(1f),
+                LedgerRow(
+                    icon = Icons.Default.DateRange,
+                    title = "Monthly Summary",
+                    subtitle = "High-level movement by category for this month.",
+                    value = msPrev,
+                    iconTint = blue,
+                    valueColor = msPrevColor,
+                    onClick = onNavigateToMonthly,
+                )
+            }
+
+            ReportGroup(title = "Wealth", count = "2") {
+                LedgerRow(
+                    icon = Icons.AutoMirrored.Filled.TrendingUp,
+                    title = "Net Worth",
+                    subtitle = "Assets, debts, investments, and trend history.",
+                    value = nwPrev,
+                    iconTint = blue,
+                    valueColor = if (summary.netWorth >= 0) green else red,
                     onClick = onNavigateToNetWorth,
                 )
-                ReportTileCard(
-                    label = "Money Flow",
-                    icon  = Icons.Default.SwapHoriz,
-                    tint  = Carbon500,
-                    preview = mfPrev,
-                    previewColor = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.weight(1f),
+                LedgerRow(
+                    icon = Icons.Default.AccountBalance,
+                    title = "Interest Income",
+                    subtitle = "Collected interest from lending and finance activity.",
+                    value = intPrev,
+                    iconTint = green,
+                    valueColor = green,
+                    onClick = onNavigateToInterest,
+                )
+            }
+
+            ReportGroup(title = "Cash movement", count = "1") {
+                LedgerRow(
+                    icon = Icons.Default.SwapHoriz,
+                    title = "Money Flow",
+                    subtitle = "Inflow, outflow, and transfer activity.",
+                    value = mfPrev,
+                    iconTint = Carbon500,
+                    valueColor = MaterialTheme.colorScheme.onSurface,
                     onClick = onNavigateToMoneyFlow,
                 )
             }
-            Spacer(Modifier.height(10.dp))
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                ReportTileCard(
-                    label = "Interest Income",
-                    icon  = Icons.Default.AccountBalance,
-                    tint  = green,
-                    preview = intPrev,
-                    previewColor = green,
-                    modifier = Modifier.weight(1f),
-                    onClick = onNavigateToInterest,
-                )
-                ReportTileCard(
-                    label = "Monthly Summary",
-                    icon  = Icons.Default.DateRange,
-                    tint  = blue,
-                    preview = msPrev,
-                    previewColor = msPrevColor,
-                    modifier = Modifier.weight(1f),
-                    onClick = onNavigateToMonthly,
-                )
-                ReportTileCard(
-                    label = "Debt Payoff",
-                    icon  = Icons.Default.Schedule,
-                    tint  = red,
-                    preview = dpPrev,
-                    previewColor = dpPrevColor,
-                    modifier = Modifier.weight(1f),
+
+            ReportGroup(title = "Loans and debt", count = "2") {
+                LedgerRow(
+                    icon = Icons.Default.Schedule,
+                    title = "Debt Payoff",
+                    subtitle = "Outstanding debt and payoff planning.",
+                    value = dpPrev,
+                    iconTint = red,
+                    valueColor = dpPrevColor,
                     onClick = onNavigateToDebtPayoff,
                 )
-            }
-            Spacer(Modifier.height(10.dp))
-            // 3.2.17 — EMI Calculator tile (it's a calculator tool, no data
-            // preview makes sense). Paired with one Spacer placeholder so the
-            // last row's tile width matches the rows above.
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                ReportTileCard(
-                    label = "EMI Calculator",
-                    icon  = Icons.Default.Calculate,
-                    tint  = Carbon500,
-                    preview = "Calculator",
-                    previewColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.weight(1f),
+                LedgerRow(
+                    icon = Icons.Default.Calculate,
+                    title = "EMI Calculator",
+                    subtitle = "Estimate EMI, interest, and repayment schedule.",
+                    value = "Calculator",
+                    iconTint = Carbon500,
+                    valueColor = MaterialTheme.colorScheme.onSurfaceVariant,
                     onClick = onNavigateToLoanCalc,
                 )
-                Spacer(Modifier.weight(1f))
-                Spacer(Modifier.weight(1f))
             }
+
 
             Spacer(Modifier.height(100.dp))
         }
     }
 }
 
-/**
- * Standard tile shape per audit fix #2 ("Standardize tile sizing and labels").
- * Every grid tile uses this — same height, same icon-circle size, same label
- * typography, same preview-value row underneath the label.
- *
- * Replaces the old `ReportLinkCard`, which was label-only.
- */
 @Composable
-fun ReportTileCard(
-    label: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    tint: Color,
-    preview: String,
-    previewColor: Color,
-    modifier: Modifier = Modifier,
-    onClick: () -> Unit,
+private fun ReportGroup(
+    title: String,
+    count: String,
+    content: @Composable ColumnScope.() -> Unit,
 ) {
-    Column(
-        modifier
-            .clip(RoundedCornerShape(16.dp))
-            .background(tint.copy(alpha = 0.08f))
-            .clickable(onClick = onClick)
-            .padding(vertical = 16.dp, horizontal = 12.dp)
-            .heightIn(min = 116.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(6.dp)
-    ) {
-        Box(
-            Modifier.size(36.dp).clip(CircleShape).background(tint.copy(alpha = 0.15f)),
-            Alignment.Center
-        ) {
-            Icon(icon, null, Modifier.size(18.dp), tint = tint)
-        }
-        Text(
-            label,
-            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
-            color = tint,
-            textAlign = TextAlign.Center,
-            maxLines = 2,
-        )
-        Text(
-            preview,
-            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-            color = previewColor,
-            textAlign = TextAlign.Center,
-            maxLines = 1,
-        )
+    Column(Modifier.fillMaxWidth().padding(bottom = 18.dp)) {
+        LedgerSectionTitle(title = title, count = count, modifier = Modifier.padding(bottom = 8.dp))
+        Column(verticalArrangement = Arrangement.spacedBy(9.dp), content = content)
     }
 }

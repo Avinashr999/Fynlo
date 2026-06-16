@@ -1,0 +1,847 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Fynlo Ledger Pro Visual Template</title>
+  <style>
+    :root {
+      --bg: #edf2ef;
+      --ink: #14211b;
+      --muted: #64736b;
+      --soft: #f7faf8;
+      --line: #dbe5df;
+      --line-strong: #c7d4cd;
+      --primary: #07845f;
+      --primary-dark: #075c47;
+      --primary-soft: #dff5ec;
+      --red: #c4413b;
+      --red-soft: #fde7e4;
+      --amber: #9b6a12;
+      --amber-soft: #fff0c9;
+      --blue: #2f6f9f;
+      --blue-soft: #e2f0f8;
+      --shadow: 0 22px 55px rgba(34, 48, 41, .16);
+      font-family: "Aptos", "Segoe UI", sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        linear-gradient(90deg, rgba(255,255,255,.55) 1px, transparent 1px),
+        linear-gradient(0deg, rgba(255,255,255,.55) 1px, transparent 1px),
+        var(--bg);
+      background-size: 34px 34px;
+    }
+
+    .page {
+      max-width: 1380px;
+      margin: 0 auto;
+      padding: 34px 26px 48px;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 22px;
+      margin-bottom: 28px;
+    }
+
+    .eyebrow {
+      margin: 0 0 8px;
+      color: var(--primary-dark);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(30px, 4vw, 54px);
+      line-height: 1;
+      letter-spacing: 0;
+    }
+
+    .summary {
+      max-width: 560px;
+      margin: 10px 0 0;
+      color: var(--muted);
+      font-size: 16px;
+      line-height: 1.55;
+    }
+
+    .badge {
+      flex: 0 0 auto;
+      border: 1px solid var(--line-strong);
+      border-radius: 999px;
+      padding: 10px 14px;
+      background: rgba(255,255,255,.7);
+      color: var(--primary-dark);
+      font-size: 13px;
+      font-weight: 800;
+      box-shadow: 0 10px 24px rgba(34, 48, 41, .08);
+    }
+
+    .screens {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(300px, 1fr));
+      gap: 24px;
+      align-items: start;
+    }
+
+    .screen-wrap {
+      display: grid;
+      gap: 12px;
+    }
+
+    .label {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .phone {
+      width: min(100%, 390px);
+      min-height: 780px;
+      margin: 0 auto;
+      border: 8px solid #1b2922;
+      border-radius: 34px;
+      background: var(--soft);
+      overflow: hidden;
+      box-shadow: var(--shadow);
+      position: relative;
+    }
+
+    .status {
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 22px;
+      font-size: 12px;
+      font-weight: 800;
+      color: #233329;
+      background: #fbfdfb;
+    }
+
+    .app {
+      padding: 18px 18px 96px;
+    }
+
+    .app-head {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    .app h2 {
+      margin: 0;
+      font-size: 28px;
+      line-height: 1.05;
+      letter-spacing: 0;
+    }
+
+    .sub {
+      margin: 6px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.35;
+    }
+
+    .icon-btn,
+    .round-btn {
+      width: 40px;
+      height: 40px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #fff;
+      color: var(--ink);
+      display: grid;
+      place-items: center;
+      font-weight: 900;
+      box-shadow: 0 8px 18px rgba(33, 47, 40, .07);
+    }
+
+    .chips {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+      overflow: hidden;
+    }
+
+    .chip {
+      padding: 8px 11px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: #fff;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .chip.active {
+      border-color: var(--primary);
+      background: var(--primary);
+      color: #fff;
+    }
+
+    .metric-band {
+      display: grid;
+      grid-template-columns: 1.3fr 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 18px;
+    }
+
+    .metric {
+      min-width: 0;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: #fff;
+      padding: 12px;
+    }
+
+    .metric small,
+    .mini small {
+      display: block;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 800;
+      margin-bottom: 6px;
+    }
+
+    .metric strong {
+      display: block;
+      font-size: 15px;
+      line-height: 1.05;
+    }
+
+    .metric .good,
+    .good {
+      color: var(--primary);
+    }
+
+    .bad {
+      color: var(--red);
+    }
+
+    .group {
+      margin-top: 18px;
+    }
+
+    .group-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin: 0 0 9px;
+      color: #314239;
+      font-size: 12px;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+    }
+
+    .report-row,
+    .holding-row,
+    .field-row {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: #fff;
+      padding: 12px;
+      margin-bottom: 9px;
+    }
+
+    .report-row {
+      display: grid;
+      grid-template-columns: 34px 1fr auto;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .tile-icon {
+      width: 34px;
+      height: 34px;
+      border-radius: 11px;
+      display: grid;
+      place-items: center;
+      color: var(--primary-dark);
+      background: var(--primary-soft);
+      font-size: 17px;
+      font-weight: 900;
+    }
+
+    .blue-icon {
+      color: var(--blue);
+      background: var(--blue-soft);
+    }
+
+    .amber-icon {
+      color: var(--amber);
+      background: var(--amber-soft);
+    }
+
+    .row-title {
+      margin: 0;
+      font-size: 14px;
+      font-weight: 900;
+    }
+
+    .row-copy {
+      margin: 3px 0 0;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.25;
+    }
+
+    .preview {
+      text-align: right;
+      font-size: 12px;
+      font-weight: 900;
+    }
+
+    .chev {
+      color: var(--muted);
+      font-size: 20px;
+      line-height: 1;
+    }
+
+    .hero {
+      border-radius: 22px;
+      padding: 18px;
+      color: #fff;
+      background:
+        linear-gradient(135deg, rgba(255,255,255,.14), transparent 34%),
+        #0a6a50;
+      box-shadow: 0 18px 34px rgba(7, 92, 71, .22);
+      margin-bottom: 16px;
+    }
+
+    .hero small {
+      display: block;
+      color: rgba(255,255,255,.72);
+      font-size: 12px;
+      font-weight: 800;
+      margin-bottom: 8px;
+    }
+
+    .hero-value {
+      font-size: 34px;
+      line-height: 1;
+      font-weight: 900;
+      margin-bottom: 12px;
+    }
+
+    .hero-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+
+    .hero-mini {
+      border: 1px solid rgba(255,255,255,.2);
+      border-radius: 12px;
+      padding: 9px;
+      background: rgba(255,255,255,.1);
+    }
+
+    .hero-mini span {
+      display: block;
+      color: rgba(255,255,255,.65);
+      font-size: 10px;
+      font-weight: 800;
+    }
+
+    .hero-mini b {
+      display: block;
+      margin-top: 4px;
+      font-size: 12px;
+    }
+
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: #fff;
+      padding: 14px;
+      margin-bottom: 14px;
+    }
+
+    .panel-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .panel-title {
+      margin: 0;
+      font-size: 14px;
+      font-weight: 900;
+    }
+
+    .segbar {
+      height: 12px;
+      display: flex;
+      overflow: hidden;
+      border-radius: 999px;
+      margin-bottom: 12px;
+      background: var(--line);
+    }
+
+    .segbar span:nth-child(1) {
+      width: 44%;
+      background: var(--primary);
+    }
+
+    .segbar span:nth-child(2) {
+      width: 28%;
+      background: var(--blue);
+    }
+
+    .segbar span:nth-child(3) {
+      width: 18%;
+      background: var(--amber);
+    }
+
+    .segbar span:nth-child(4) {
+      width: 10%;
+      background: #87928c;
+    }
+
+    .allocation-row,
+    .holding-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-top: 8px;
+    }
+
+    .dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      display: inline-block;
+      margin-right: 8px;
+      background: var(--primary);
+    }
+
+    .dot.blue {
+      background: var(--blue);
+    }
+
+    .dot.amber {
+      background: var(--amber);
+    }
+
+    .holding-row {
+      display: grid;
+      gap: 9px;
+    }
+
+    .holding-meta {
+      display: flex;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    .actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr 42px;
+      gap: 8px;
+    }
+
+    .button {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 10px 8px;
+      background: #fff;
+      color: var(--ink);
+      font-size: 12px;
+      font-weight: 900;
+      text-align: center;
+    }
+
+    .button.primary {
+      border-color: var(--primary);
+      background: var(--primary);
+      color: #fff;
+    }
+
+    .bottom-nav {
+      position: absolute;
+      left: 16px;
+      right: 16px;
+      bottom: 14px;
+      height: 62px;
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      background: rgba(255,255,255,.94);
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      align-items: center;
+      box-shadow: 0 14px 28px rgba(34, 48, 41, .12);
+    }
+
+    .nav-item {
+      text-align: center;
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 800;
+    }
+
+    .nav-item b {
+      display: block;
+      color: var(--primary);
+      font-size: 17px;
+      line-height: 1.1;
+    }
+
+    .sheet-demo {
+      background:
+        linear-gradient(rgba(20,33,27,.12), rgba(20,33,27,.12)),
+        var(--soft);
+    }
+
+    .ghost-content {
+      opacity: .6;
+      filter: blur(.2px);
+    }
+
+    .sheet {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: 690px;
+      border-radius: 28px 28px 0 0;
+      background: #fff;
+      box-shadow: 0 -22px 50px rgba(34, 48, 41, .2);
+      padding: 12px 18px 20px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .grabber {
+      width: 44px;
+      height: 5px;
+      border-radius: 999px;
+      background: var(--line-strong);
+      margin: 0 auto 15px;
+    }
+
+    .sheet-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: start;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .sheet h2 {
+      font-size: 25px;
+    }
+
+    .section-label {
+      margin: 18px 0 8px;
+      color: var(--primary-dark);
+      font-size: 12px;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+    }
+
+    .field-row {
+      margin-bottom: 8px;
+      padding: 11px 12px;
+    }
+
+    .field-row label {
+      display: block;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 900;
+      margin-bottom: 5px;
+    }
+
+    .field-value {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 15px;
+      font-weight: 900;
+    }
+
+    .helper {
+      margin: 7px 0 0;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.3;
+    }
+
+    .sheet-actions {
+      margin-top: auto;
+      padding-top: 14px;
+      display: grid;
+      grid-template-columns: 1fr 1.4fr;
+      gap: 10px;
+      border-top: 1px solid var(--line);
+    }
+
+    .toast {
+      position: absolute;
+      left: 24px;
+      right: 24px;
+      bottom: 88px;
+      border-radius: 14px;
+      background: #14211b;
+      color: #fff;
+      padding: 12px 14px;
+      font-size: 13px;
+      font-weight: 800;
+      box-shadow: 0 16px 32px rgba(20, 33, 27, .28);
+    }
+
+    @media (max-width: 1080px) {
+      .screens {
+        grid-template-columns: 1fr;
+      }
+
+      .phone {
+        width: min(100%, 420px);
+      }
+
+      .topbar {
+        align-items: start;
+        flex-direction: column;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">Fynlo Ledger Pro</p>
+        <h1>Visual template for the redesign pass</h1>
+        <p class="summary">A docs-only mockup for checking the direction before Android implementation: tighter report groups, calmer portfolio hierarchy, and modern full-height forms.</p>
+      </div>
+      <div class="badge">Preview only · no app code changed</div>
+    </header>
+
+    <section class="screens">
+      <div class="screen-wrap">
+        <div class="label"><span>Reports Hub</span><span>grouped + metric driven</span></div>
+        <article class="phone">
+          <div class="status"><span>9:41</span><span>● ● ●</span></div>
+          <div class="app">
+            <header class="app-head">
+              <div>
+                <h2>Reports</h2>
+                <p class="sub">Financial views for this month and your full portfolio.</p>
+              </div>
+              <button class="icon-btn" aria-label="Filter">⌕</button>
+            </header>
+            <div class="chips">
+              <span class="chip active">Month</span>
+              <span class="chip">Quarter</span>
+              <span class="chip">Year</span>
+              <span class="chip">All</span>
+            </div>
+            <div class="metric-band">
+              <div class="metric"><small>NET WORTH</small><strong>₹3.48L</strong></div>
+              <div class="metric"><small>P&amp;L</small><strong class="good">+₹18.4K</strong></div>
+              <div class="metric"><small>FLOW</small><strong class="bad">-₹5.2K</strong></div>
+            </div>
+
+            <section class="group">
+              <p class="group-title">Business health <span>2</span></p>
+              <div class="report-row">
+                <div class="tile-icon">₹</div>
+                <div><p class="row-title">P&amp;L Statement</p><p class="row-copy">Income, expenses, and net profit.</p></div>
+                <div class="preview"><span class="good">+₹12.8K</span><div class="chev">›</div></div>
+              </div>
+              <div class="report-row">
+                <div class="tile-icon blue-icon">▦</div>
+                <div><p class="row-title">Monthly Summary</p><p class="row-copy">High-level movement by category.</p></div>
+                <div class="preview">14 items<div class="chev">›</div></div>
+              </div>
+            </section>
+
+            <section class="group">
+              <p class="group-title">Wealth <span>3</span></p>
+              <div class="report-row">
+                <div class="tile-icon">◈</div>
+                <div><p class="row-title">Net Worth</p><p class="row-copy">Assets, debts, and investments.</p></div>
+                <div class="preview">₹3.48L<div class="chev">›</div></div>
+              </div>
+              <div class="report-row">
+                <div class="tile-icon amber-icon">%</div>
+                <div><p class="row-title">Interest Income</p><p class="row-copy">Lending return and collected interest.</p></div>
+                <div class="preview good">₹4.6K<div class="chev">›</div></div>
+              </div>
+            </section>
+
+            <section class="group">
+              <p class="group-title">Cash movement <span>1</span></p>
+              <div class="report-row">
+                <div class="tile-icon blue-icon">↕</div>
+                <div><p class="row-title">Money Flow</p><p class="row-copy">Inflow, outflow, and transfer activity.</p></div>
+                <div class="preview bad">-₹5.2K<div class="chev">›</div></div>
+              </div>
+            </section>
+          </div>
+          <nav class="bottom-nav">
+            <div class="nav-item"><b>⌂</b>Home</div>
+            <div class="nav-item"><b>◇</b>Loans</div>
+            <div class="nav-item"><b>▥</b>Invest</div>
+            <div class="nav-item"><b>☰</b>More</div>
+          </nav>
+        </article>
+      </div>
+
+      <div class="screen-wrap">
+        <div class="label"><span>Investment</span><span>portfolio first, details second</span></div>
+        <article class="phone">
+          <div class="status"><span>9:41</span><span>● ● ●</span></div>
+          <div class="app">
+            <header class="app-head">
+              <div>
+                <h2>Invest</h2>
+                <p class="sub">Track value, allocation, and returns without crowding the screen.</p>
+              </div>
+              <button class="round-btn" aria-label="Add investment">+</button>
+            </header>
+
+            <section class="hero">
+              <small>PORTFOLIO VALUE</small>
+              <div class="hero-value">₹1,35,000</div>
+              <div class="hero-grid">
+                <div class="hero-mini"><span>GAIN</span><b>+₹10,000</b></div>
+                <div class="hero-mini"><span>RETURN</span><b>+8.0%</b></div>
+                <div class="hero-mini"><span>HOLDINGS</span><b>4</b></div>
+              </div>
+            </section>
+
+            <section class="panel">
+              <div class="panel-head"><p class="panel-title">Allocation</p><span class="row-copy">Top 3 shown</span></div>
+              <div class="segbar"><span></span><span></span><span></span><span></span></div>
+              <div class="allocation-row"><span><i class="dot"></i>Equity</span><b>44%</b></div>
+              <div class="allocation-row"><span><i class="dot blue"></i>Gold</span><b>28%</b></div>
+              <div class="allocation-row"><span><i class="dot amber"></i>FD / Debt</span><b>18%</b></div>
+            </section>
+
+            <section class="group">
+              <p class="group-title">Holdings <span>4</span></p>
+              <div class="holding-row">
+                <div class="holding-top">
+                  <div><p class="row-title">Nifty Index Fund</p><div class="holding-meta"><span>Equity</span><span>Monthly SIP</span></div></div>
+                  <div class="preview">₹54,000<br><span class="good">+₹4,800</span></div>
+                </div>
+                <div class="actions">
+                  <div class="button primary">Update</div>
+                  <div class="button">Withdraw</div>
+                  <div class="button">⋯</div>
+                </div>
+              </div>
+              <div class="holding-row">
+                <div class="holding-top">
+                  <div><p class="row-title">Gold Savings</p><div class="holding-meta"><span>Gold</span><span>Long term</span></div></div>
+                  <div class="preview">₹36,000<br><span class="good">+₹2,200</span></div>
+                </div>
+              </div>
+              <div class="holding-row">
+                <div class="holding-top">
+                  <div><p class="row-title">Corporate FD</p><div class="holding-meta"><span>Debt</span><span>8.2% p.a.</span></div></div>
+                  <div class="preview">₹22,000<br><span class="good">+₹980</span></div>
+                </div>
+              </div>
+            </section>
+          </div>
+          <nav class="bottom-nav">
+            <div class="nav-item"><b>⌂</b>Home</div>
+            <div class="nav-item"><b>◇</b>Loans</div>
+            <div class="nav-item"><b>▥</b>Invest</div>
+            <div class="nav-item"><b>☰</b>More</div>
+          </nav>
+        </article>
+      </div>
+
+      <div class="screen-wrap">
+        <div class="label"><span>Add/Edit Sheet</span><span>modern form surface</span></div>
+        <article class="phone sheet-demo">
+          <div class="status"><span>9:41</span><span>● ● ●</span></div>
+          <div class="app ghost-content">
+            <header class="app-head">
+              <div>
+                <h2>Invest</h2>
+                <p class="sub">Portfolio overview stays behind the sheet.</p>
+              </div>
+              <button class="round-btn">+</button>
+            </header>
+            <section class="hero"><small>PORTFOLIO VALUE</small><div class="hero-value">₹1,35,000</div></section>
+            <section class="panel"><p class="panel-title">Holdings</p><div class="holding-row"></div><div class="holding-row"></div></section>
+          </div>
+
+          <section class="sheet">
+            <div class="grabber"></div>
+            <header class="sheet-head">
+              <div>
+                <h2>Add investment</h2>
+                <p class="sub">Choose where money comes from so net worth stays correct.</p>
+              </div>
+              <button class="icon-btn" aria-label="Close">×</button>
+            </header>
+
+            <p class="section-label">Basic details</p>
+            <div class="field-row">
+              <label>Name</label>
+              <div class="field-value">Gold Savings <span>⌄</span></div>
+            </div>
+            <div class="field-row">
+              <label>Investment type</label>
+              <div class="field-value">Gold <span>⌄</span></div>
+            </div>
+
+            <p class="section-label">Money source</p>
+            <div class="field-row">
+              <label>Amount invested</label>
+              <div class="field-value">₹25,000</div>
+            </div>
+            <div class="field-row">
+              <label>Fund from account</label>
+              <div class="field-value">Personal Cash <span>⌄</span></div>
+              <p class="helper">The selected account is deducted immediately and linked to this investment.</p>
+            </div>
+
+            <p class="section-label">Current value</p>
+            <div class="field-row">
+              <label>Today’s value</label>
+              <div class="field-value">₹26,200</div>
+            </div>
+
+            <div class="sheet-actions">
+              <div class="button">Cancel</div>
+              <div class="button primary">Save investment</div>
+            </div>
+          </section>
+          <div class="toast">Investment saved · Personal Cash updated</div>
+        </article>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

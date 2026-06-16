@@ -122,28 +122,19 @@ fun AddInvestmentDialog(
     }
     val canSave = disabledReason == null
 
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false)
+    FormDialog(
+        title = if (isNew) "Add Investment" else "Edit Investment",
+        onDismiss = onDismiss,
     ) {
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth(0.96f)
-                .padding(vertical = 16.dp)
-                .imePadding(),
-            shape = MaterialTheme.shapes.extraLarge,
-            color = MaterialTheme.colorScheme.surface,
-            tonalElevation = 6.dp
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Column(
-                modifier = Modifier
-                    .padding(24.dp)
-                    .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
                 Text(
-                    if (isNew) "Add Investment" else "Edit Investment",
-                    style = MaterialTheme.typography.headlineSmall
+                    if (isNew) "Choose the asset and funding source. The selected account is linked to the investment."
+                    else "Update the tracked details for this investment.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
                 // Asset name
@@ -442,7 +433,6 @@ fun AddInvestmentDialog(
                     }
                 }
                 DisabledButtonHint(disabledReason)
-            }
         }
     }
 }
