@@ -106,13 +106,18 @@ fun MainNavigation(viewModel: FinanceViewModel) {
     var showInvestmentDialog by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val haptic = LocalHapticFeedback.current
+    val snackbarHostState = remember { SnackbarHostState() }
     val app = context.applicationContext as app.fynlo.FynloApplication
     var isLoggedIn by remember { mutableStateOf(app.authManager.isSignedInWithGoogle) }
     val pinManager = remember { PinManager(context) }
 
     LaunchedEffect(Unit) {
         viewModel.feedbackEvents.collect { message ->
-            android.widget.Toast.makeText(context, message, android.widget.Toast.LENGTH_SHORT).show()
+            snackbarHostState.showSnackbar(
+                message = message,
+                withDismissAction = false,
+                duration = SnackbarDuration.Short,
+            )
         }
     }
 
@@ -187,10 +192,7 @@ fun MainNavigation(viewModel: FinanceViewModel) {
     // FAB + an `+` icon in the header) competing for the same intent.
     // Added in 3.2.12: Budgets, Goals, Recurring — each owns its own
     // "Add Budget" / "Add Goal" / "Add Recurring" entry point.
-    val showFab = drawerState.isClosed && baseRoute in setOf(
-        Screen.Home.route,
-        Screen.Spend.route,
-    )
+    val showFab = false
 
     // Routes that provide their own full-screen chrome (own top bar) — the outer
     // app bar/bottom bar must hide to avoid duplicate back arrows.
@@ -544,8 +546,18 @@ fun MainNavigation(viewModel: FinanceViewModel) {
                                 is app.fynlo.data.SyncStatus.Initialising -> "Connecting to cloud..."
                                 is app.fynlo.data.SyncStatus.Error        -> "Sync error - sign in again to retry"
                             }
-                            android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_SHORT).show()
+                            viewModel.showFeedback(msg)
                         },
+                    )
+                }
+            },
+            snackbarHost = {
+                SnackbarHost(hostState = snackbarHostState) { data ->
+                    Snackbar(
+                        snackbarData = data,
+                        shape = RoundedCornerShape(16.dp),
+                        containerColor = MaterialTheme.colorScheme.inverseSurface,
+                        contentColor = MaterialTheme.colorScheme.inverseOnSurface,
                     )
                 }
             },
