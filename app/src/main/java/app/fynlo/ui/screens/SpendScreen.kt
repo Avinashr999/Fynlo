@@ -124,7 +124,22 @@ val transactions by viewModel.transactions.collectAsState()
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        PremiumScreenHeader("Expenses", "Track where your money goes")
+        PremiumScreenHeader(
+            title = "Expenses",
+            subtitle = "Track where your money goes",
+            action = {
+                FilledIconButton(
+                    onClick = { showDialog = true },
+                    shape = RoundedCornerShape(14.dp),
+                    colors = IconButtonDefaults.filledIconButtonColors(
+                        containerColor = SemanticRed,
+                        contentColor = Color.White,
+                    ),
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = "Add Expense")
+                }
+            },
+        )
         Column(
         modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp)
     ) {

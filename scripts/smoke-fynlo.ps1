@@ -76,7 +76,7 @@ Wait-Screen "dashboard" @("Total net worth", "Dashboard", "Loans", "Invest", "Re
 
 Invoke-Adb @("shell", "input", "tap", "98", "227") | Out-Null
 Start-Sleep -Seconds 1
-Dump-Screen "drawer" @("Settings", "Profile &amp; Security", "Budgeting", "Savings Goals", "Contact Book", "EMI Calculator")
+Wait-Screen "drawer" @("Settings", "Profile &amp; Security", "Budgeting", "Savings Goals", "Contact Book", "EMI Calculator")
 Invoke-Adb @("shell", "input", "tap", "1030", "220") | Out-Null
 Start-Sleep -Milliseconds 600
 
