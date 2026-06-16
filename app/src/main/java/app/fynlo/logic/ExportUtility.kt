@@ -148,6 +148,8 @@ object ExportUtility {
             if (y + needed > PAGE_H - MARGIN) { finishPage(); startPage() }
         }
 
+        fun keepTogether(needed: Float) = checkBreak(needed)
+
         fun canvas() = canvas!!
 
         fun text(text: String, x: Float, paint: Paint) {
@@ -199,8 +201,8 @@ object ExportUtility {
             val avail = widths[i] - 8f   // 4-dp padding on each side
             wrapText(text, paint, avail) to paint
         }
-        val maxLines = (perCell.maxOfOrNull { it.first.size } ?: 1).coerceAtLeast(1)
-        val rowH = LINE_H * maxLines + 8f
+        val tableLineH = 12f
+        val rowH = tableLineH * (perCell.maxOfOrNull { it.first.size } ?: 1).coerceAtLeast(1) + 7f
         checkBreak(rowH + 6f)
 
         val bgColor = when {
@@ -213,7 +215,7 @@ object ExportUtility {
         var xPos = MARGIN + 4f
         perCell.forEachIndexed { i, (lines, paint) ->
             lines.forEachIndexed { lineIdx, line ->
-                canvas().drawText(line, xPos, y + 2f + lineIdx * LINE_H, paint)
+                canvas().drawText(line, xPos, y + 2f + lineIdx * tableLineH, paint)
             }
             xPos += widths[i]
         }
@@ -454,7 +456,7 @@ object ExportUtility {
         currencyCode: String,
     ) {
         val sorted = snapshots.sortedBy { it.date }
-        checkBreak(118f)
+        checkBreak(88f)
         canvas().drawText("Net Worth Trend", MARGIN, y, bodyPaint(COLOR_PRIMARY, 12f, true))
         y += CHART_PANEL_TITLE_H
 
@@ -470,7 +472,7 @@ object ExportUtility {
         val chartLeft   = MARGIN + 48f
         val chartRight  = (PAGE_W - MARGIN).toFloat()
         val chartTop    = y
-        val chartH      = 70f
+        val chartH      = 48f
         val chartBottom = chartTop + chartH
         val chartW      = chartRight - chartLeft
 
@@ -520,8 +522,8 @@ object ExportUtility {
         val lastPaint = bodyPaint(COLOR_GRAY, 7f).apply { textAlign = Align.RIGHT }
         canvas().drawText(lastLabel, chartRight, chartBottom + 12f, lastPaint)
 
-        y = chartBottom + 18f
-        nl(4f)
+        y = chartBottom + 14f
+        nl(2f)
     }
 
     // ── Section header ─────────────────────────────────────────────────────────
@@ -671,6 +673,7 @@ object ExportUtility {
 
         // 1. Accounts
         if (summary.accountBreakdown.isNotEmpty()) {
+            b.keepTogether(40f + LINE_H * 5)
             b.sectionHeader("1. Account Balances")
             val aw = listOf((PAGE_W - MARGIN * 2) * 0.6f, (PAGE_W - MARGIN * 2) * 0.4f)
             b.drawTableRow(listOf("Account", "Balance"), aw, isHeader = true)
@@ -683,6 +686,7 @@ object ExportUtility {
         //   read raw from the stored field which can lag reality.
         val today = LocalDate.now().toString()
         if (borrowers.isNotEmpty()) {
+            b.keepTogether(40f + LINE_H * 6)
             b.sectionHeader("2. Lending & Receivables")
             val usable = PAGE_W - MARGIN * 2
             val lw = listOf(
@@ -721,6 +725,7 @@ object ExportUtility {
         // liabilities" view). Same shape as the Lending table for visual
         // parity; Status computed dynamically per audit #5.
         if (debts.isNotEmpty()) {
+            b.keepTogether(40f + LINE_H * 5)
             b.sectionHeader("3. Liabilities & Debts")
             val usable = PAGE_W - MARGIN * 2
             val dw = listOf(
@@ -756,6 +761,7 @@ object ExportUtility {
 
         // 4. Investments
         if (investments.isNotEmpty()) {
+            b.keepTogether(40f + LINE_H * minOf(investments.size + 1, 5))
             b.sectionHeader("4. Investment Portfolio")
             val usable = PAGE_W - MARGIN * 2
             val iw = listOf(usable*.26f, usable*.13f, usable*.16f, usable*.16f, usable*.14f, usable*.15f)
@@ -781,6 +787,7 @@ object ExportUtility {
                 "5. All Transactions (${transactions.size})"
             else
                 "5. Most Recent 50 of ${transactions.size} Transactions"
+            b.keepTogether(40f + LINE_H * minOf(recent.size + 1, 6))
             b.sectionHeader(title)
             val usable = PAGE_W - MARGIN * 2
             val tw = listOf(usable*.13f, usable*.12f, usable*.17f, usable*.26f, usable*.15f, usable*.17f)

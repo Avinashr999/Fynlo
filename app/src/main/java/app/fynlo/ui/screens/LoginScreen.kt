@@ -4,7 +4,6 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.*
 import app.fynlo.data.Analytics
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -17,14 +16,13 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.fynlo.FynloApplication
-import app.fynlo.R
 import app.fynlo.data.GoogleSignInHelper
+import app.fynlo.ui.components.FynloBrandMark
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInStatusCodes
 import com.google.android.gms.common.api.ApiException
@@ -115,21 +113,7 @@ fun LoginScreen(onSignedIn: () -> Unit) {
             horizontalAlignment   = Alignment.CenterHorizontally,
             verticalArrangement   = Arrangement.Center
         ) {
-            // App icon — white icon on solid Emerald surface
-            Box(
-                modifier         = Modifier
-                    .size(96.dp)
-                    .clip(RoundedCornerShape(24.dp))
-                    .background(Emerald600),
-                contentAlignment = Alignment.Center
-            ) {
-                Image(
-                    painter            = painterResource(id = R.drawable.ic_launcher_foreground),
-                    contentDescription = "Fynlo",
-                    modifier           = Modifier.size(80.dp),
-                    colorFilter        = androidx.compose.ui.graphics.ColorFilter.tint(Color.White)
-                )
-            }
+            FynloBrandMark(size = 96.dp)
 
             Spacer(Modifier.height(24.dp))
 
