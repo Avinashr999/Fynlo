@@ -123,6 +123,7 @@ fun LoansHubScreen(
                 selected = tab == 0,
                 onClick = { tab = 0 },
                 shape = SegmentedButtonDefaults.itemShape(0, 2),
+                icon = {},
                 colors = SegmentedButtonDefaults.colors(
                     activeContainerColor = Emerald500.copy(alpha = 0.14f),
                     activeContentColor = Emerald500
@@ -132,6 +133,7 @@ fun LoansHubScreen(
                 selected = tab == 1,
                 onClick = { tab = 1 },
                 shape = SegmentedButtonDefaults.itemShape(1, 2),
+                icon = {},
                 colors = SegmentedButtonDefaults.colors(
                     activeContainerColor = SemanticRed.copy(alpha = 0.14f),
                     activeContentColor = SemanticRed

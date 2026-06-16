@@ -26,6 +26,7 @@ import app.fynlo.FynloApplication
 import app.fynlo.R
 import app.fynlo.data.GoogleSignInHelper
 import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInStatusCodes
 import com.google.android.gms.common.api.ApiException
 import kotlinx.coroutines.launch
 import app.fynlo.ui.theme.*
@@ -55,14 +56,11 @@ fun LoginScreen(onSignedIn: () -> Unit) {
                     app.onGoogleSignInComplete(app.authManager.userId)
                     onSignedIn()
                 } else {
-                    error = signInResult.exceptionOrNull()?.message ?: "Sign-in failed"
+                    error = signInResult.exceptionOrNull()?.let(::friendlyGoogleSignInError)
+                        ?: "Google sign-in failed. Please try again."
                 }
             }.onFailure { ex ->
-                error = when {
-                    ex.message?.startsWith("10") == true -> "Sign-in setup error. Please ensure SHA-1 is added in Firebase console."
-                    ex.message?.contains("cancel", ignoreCase = true) == true -> ""
-                    else -> ex.message ?: "Sign-in failed. Please try again."
-                }
+                error = friendlyGoogleSignInError(ex)
             }
             loading = false
         }
@@ -141,7 +139,7 @@ fun LoginScreen(onSignedIn: () -> Unit) {
                 fontSize   = 40.sp,
                 fontWeight = FontWeight.ExtraBold,
                 color      = Color.White,
-                letterSpacing = (-0.5).sp
+                letterSpacing = 0.sp
             )
 
             Spacer(Modifier.height(8.dp))
@@ -252,6 +250,24 @@ fun LoginScreen(onSignedIn: () -> Unit) {
                 textAlign = TextAlign.Center,
                 lineHeight = 16.sp
             )
+        }
+    }
+}
+
+private fun friendlyGoogleSignInError(error: Throwable): String {
+    val api = error as? ApiException
+    return when (api?.statusCode) {
+        GoogleSignInStatusCodes.SIGN_IN_CANCELLED -> ""
+        GoogleSignInStatusCodes.SIGN_IN_CURRENTLY_IN_PROGRESS ->
+            "Google sign-in is already in progress."
+        GoogleSignInStatusCodes.SIGN_IN_FAILED ->
+            "Google sign-in failed. Please try again."
+        10 -> "Google sign-in is not available in this build. Continue without signing in for now."
+        else -> when {
+            error.message?.contains("cancel", ignoreCase = true) == true -> ""
+            error.message?.startsWith("10") == true ->
+                "Google sign-in is not available in this build. Continue without signing in for now."
+            else -> "Google sign-in failed. Please try again."
         }
     }
 }

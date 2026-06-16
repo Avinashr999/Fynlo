@@ -175,6 +175,11 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
                         }
                     }
                     Row(verticalAlignment = Alignment.CenterVertically) {
+                        FilledTonalButton(onClick = { showAddDialog = true }, shape = RoundedCornerShape(14.dp),
+                            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 10.dp)) {
+                            Icon(Icons.Default.Add, contentDescription = "Add Loan", Modifier.size(18.dp))
+                        }
+                        Spacer(Modifier.width(8.dp))
                         FilledTonalButton(onClick = { showEmiCalc = true }, shape = RoundedCornerShape(14.dp),
                             contentPadding = PaddingValues(horizontal = 18.dp, vertical = 10.dp)) {
                             Text("EMI", style = MaterialTheme.typography.labelMedium)
@@ -267,12 +272,6 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
             }
         }
         }
-        // FAB (inside Box for BoxScope.align)
-        androidx.compose.material3.FloatingActionButton(
-            onClick = { showAddDialog = true },
-            modifier = Modifier.align(Alignment.BottomEnd).padding(24.dp),
-            containerColor = MaterialTheme.colorScheme.primary
-        ) { Icon(Icons.Default.Add, null) }
     }
         }
 }
@@ -581,8 +580,6 @@ fun EmiCalculatorDialog(currencyCode: String, onDismiss: () -> Unit) {
         }
     }
     }
-
-
 
 
 
