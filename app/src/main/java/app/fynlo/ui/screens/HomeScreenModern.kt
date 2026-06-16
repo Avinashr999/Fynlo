@@ -406,41 +406,6 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
             containerColor = Emerald700,
             modifier = Modifier.clickable { onNavigateToScreen("net_worth_hist") },
         ) {
-            if (netWorthSnapshots.size >= 2) {
-                val recent = netWorthSnapshots.sortedBy { it.date }.takeLast(7)
-                val minV = recent.minOf { it.netWorth }.toFloat()
-                val maxV = recent.maxOf { it.netWorth }.toFloat()
-                val range = (maxV - minV).takeIf { it > 0f } ?: 1f
-                val trend = recent.last().netWorth - recent.first().netWorth
-                val up = trend >= 0
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Surface(shape = RoundedCornerShape(20.dp), color = Color.White.copy(alpha = 0.14f)) {
-                        Row(Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
-                            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
-                            Icon(if (up) Icons.Default.ArrowUpward else Icons.Default.ArrowDownward,
-                                null, Modifier.size(13.dp), tint = Color.White)
-                            val trendText = if (isPrivacy) "••••"
-                                            else (if (up) "+" else "") + CurrencyFormatter.hero(trend, currencyCode, locale)
-                            Text(
-                                text = trendText,
-                                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold), color = Color.White)
-                        }
-                    }
-                    Canvas(Modifier.weight(1f).height(32.dp)) {
-                        val pts = recent.mapIndexed { i, s ->
-                            val x = if (recent.size == 1) size.width / 2 else i * size.width / (recent.size - 1)
-                            val y = size.height - ((s.netWorth.toFloat() - minV) / range) * size.height
-                            Offset(x, y)
-                        }
-                        for (i in 0 until pts.size - 1) {
-                            drawLine(Color.White.copy(alpha = 0.62f), pts[i], pts[i + 1],
-                                strokeWidth = 2.5.dp.toPx(), cap = StrokeCap.Round)
-                        }
-                        if (pts.isNotEmpty()) drawCircle(Color.White, radius = 3.5.dp.toPx(), center = pts.last())
-                    }
-                    Text("7d", style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.72f))
-                }
-            }
             Row(Modifier.fillMaxWidth(), Arrangement.spacedBy(8.dp)) {
                 Column(Modifier.weight(1f).clip(RoundedCornerShape(12.dp)).clickable { onNavigateToScreen("reports_hub") }.background(Color.White.copy(alpha = 0.12f)).padding(10.dp)) {
                     Text("Assets", style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.72f))
@@ -1075,11 +1040,12 @@ private fun NetWorthTrendCard(
     Surface(
         modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).clickable(onClick = onClick),
         shape = RoundedCornerShape(20.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
+        color = MaterialTheme.colorScheme.surfaceContainerLowest,
+        tonalElevation = 1.dp,
+        border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)),
     ) {
         Column(Modifier.padding(18.dp)) {
-            Text("Net worth trend", style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant)
+            LedgerSectionTitle("Net worth trend", if (snaps.size >= 2) "30d" else null)
             Spacer(Modifier.height(14.dp))
             if (snaps.size < 2) {
                 Box(Modifier.fillMaxWidth().height(80.dp), Alignment.Center) {
