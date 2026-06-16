@@ -993,14 +993,14 @@ private fun LedgerBottomNav(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(92.dp)
+            .height(104.dp)
             .navigationBarsPadding()
-            .padding(start = 16.dp, end = 16.dp, top = 6.dp, bottom = 12.dp),
+            .padding(start = 12.dp, end = 12.dp, top = 6.dp, bottom = 12.dp),
         contentAlignment = Alignment.Center,
     ) {
         Surface(
-            modifier = Modifier.fillMaxWidth().height(66.dp),
-            shape = RoundedCornerShape(20.dp),
+            modifier = Modifier.fillMaxWidth().height(78.dp),
+            shape = RoundedCornerShape(22.dp),
             color = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f),
             tonalElevation = 4.dp,
             shadowElevation = 12.dp,
@@ -1020,17 +1020,17 @@ private fun LedgerBottomNav(
                         modifier = Modifier
                             .weight(1f)
                             .fillMaxHeight()
-                            .clip(RoundedCornerShape(18.dp))
+                            .clip(RoundedCornerShape(20.dp))
                             .clickable { onSelect(screen) }
-                            .padding(top = 6.dp, bottom = 7.dp),
+                            .padding(top = 8.dp, bottom = 8.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Center,
                     ) {
                         Box(
                             modifier = Modifier
-                                .height(30.dp)
-                                .width(if (selected) 54.dp else 38.dp)
-                                .clip(RoundedCornerShape(18.dp))
+                                .height(34.dp)
+                                .width(if (selected) 62.dp else 44.dp)
+                                .clip(RoundedCornerShape(20.dp))
                                 .background(
                                     if (selected) Emerald100.copy(alpha = 0.92f)
                                     else Color.Transparent
@@ -1040,14 +1040,14 @@ private fun LedgerBottomNav(
                             Icon(
                                 imageVector = screen.icon,
                                 contentDescription = screen.label,
-                                modifier = Modifier.size(if (selected) 21.dp else 20.dp),
+                                modifier = Modifier.size(if (selected) 24.dp else 22.dp),
                                 tint = if (selected) Emerald700 else MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
-                        Spacer(Modifier.height(2.dp))
+                        Spacer(Modifier.height(3.dp))
                         Text(
                             screen.label,
-                            style = MaterialTheme.typography.labelSmall.copy(
+                            style = MaterialTheme.typography.labelMedium.copy(
                                 fontWeight = if (selected) FontWeight.ExtraBold else FontWeight.SemiBold,
                             ),
                             color = if (selected) Emerald700 else MaterialTheme.colorScheme.onSurfaceVariant,

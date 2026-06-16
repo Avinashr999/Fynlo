@@ -2,10 +2,8 @@ package app.fynlo.ui.screens
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
@@ -19,17 +17,14 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalLocale
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.fynlo.FinanceViewModel
 import app.fynlo.logic.CurrencyFormatter
-import app.fynlo.ui.theme.Carbon700
-import app.fynlo.ui.theme.Emerald700
 import app.fynlo.ui.theme.Emerald500
-import app.fynlo.ui.theme.LedgerHeroPanel
+import app.fynlo.ui.theme.LedgerMetric
+import app.fynlo.ui.theme.LedgerMetricBand
 import app.fynlo.ui.theme.SemanticRed
 import app.fynlo.ui.theme.PremiumScreenHeader
 
@@ -91,12 +86,6 @@ fun LoansHubScreen(
     val heroAmount = if (tab == 0) summary.totalReceivables
                      else (summary.totalDebtPrincipal + summary.totalDebtInterest)
     val heroCount  = if (tab == 0) activeLentCount else activeOwedCount
-    val countNoun  = if (tab == 0) {
-        if (heroCount == 1) "1 loan" else "$heroCount loans"
-    } else {
-        if (heroCount == 1) "1 debt" else "$heroCount debts"
-    }
-
     Column(Modifier.fillMaxSize()) {
         PremiumScreenHeader(
             title = "Loans",
@@ -106,19 +95,29 @@ fun LoansHubScreen(
         // C12 Stage 1 hero block — Total Outstanding for the active tab,
         // hidden when the tab has zero entries (the Lent/Owed segmented +
         // empty-state messaging in the child screen handles that case).
-        if (heroCount > 0 || heroAmount > 0) {
-            LedgerHeroPanel(
-                label = if (tab == 0) "Money Lent" else "Debt Owed",
-                value = if (isPrivacy) "Hidden" else CurrencyFormatter.detail(heroAmount, currencyCode, locale),
-                subtitle = "Across $countNoun",
-                containerColor = if (tab == 0) Emerald700 else Carbon700,
-                modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
-            )
-            Spacer(Modifier.height(4.dp))
-        }
+        LedgerMetricBand(
+            metrics = listOf(
+                LedgerMetric(
+                    label = if (tab == 0) "Lent" else "Owed",
+                    value = if (isPrivacy) "Hidden" else CurrencyFormatter.detail(heroAmount, currencyCode, locale),
+                    valueColor = if (tab == 0) Emerald500 else SemanticRed,
+                ),
+                LedgerMetric(
+                    label = "Active",
+                    value = heroCount.toString(),
+                    valueColor = MaterialTheme.colorScheme.onSurface,
+                ),
+                LedgerMetric(
+                    label = "Type",
+                    value = if (tab == 0) "Lent" else "Owed",
+                    valueColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                ),
+            ),
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+        )
 
         SingleChoiceSegmentedButtonRow(
-            Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 4.dp)
+            Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)
         ) {
             SegmentedButton(
                 selected = tab == 0,

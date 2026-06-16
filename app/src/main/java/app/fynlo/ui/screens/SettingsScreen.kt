@@ -469,7 +469,7 @@ fun SettingsScreen(
             title = "Personalization",
             subtitle = "Theme and display name",
             icon = Icons.Default.Palette,
-            color = Amber,
+            color = Emerald500,
             expanded = showPersonalization,
             onToggle = { showPersonalization = !showPersonalization },
         ) {
@@ -500,7 +500,7 @@ fun SettingsScreen(
                 Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                SettingsIconBubble(Icons.Default.PhoneAndroid, Amber)
+                SettingsIconBubble(Icons.Default.PhoneAndroid, Emerald500)
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
                     Text("Follow system theme",
@@ -571,14 +571,7 @@ fun SettingsScreen(
                 label         = { Text("Your Name") },
                 placeholder   = { Text("Optional — used for greetings") },
                 singleLine    = true,
-                trailingIcon  = if (displayName.isNotBlank()) {
-                    { IconButton(onClick = {
-                        scope.launch {
-                            UserPreferences.setUserDisplayName(context, displayName.trim())
-                            viewModel.showFeedback("Name saved")
-                        }
-                    }) { Icon(Icons.Default.Check, "Save") } }
-                } else null,
+                trailingIcon  = null,
                 modifier      = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
                 colors        = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor   = Emerald500,
@@ -598,8 +591,6 @@ fun SettingsScreen(
                         .padding(top = 10.dp, end = 4.dp),
                     shape = RoundedCornerShape(12.dp),
                 ) {
-                    Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(8.dp))
                     Text("Save name")
                 }
             }
