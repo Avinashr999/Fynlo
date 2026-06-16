@@ -318,14 +318,14 @@ object ExportUtility {
         val total = slices.sumOf { it.second }
         if (total <= 0.0) return
 
-        checkBreak(160f)
+        checkBreak(128f)
         canvas().drawText("Asset Allocation", MARGIN, y, bodyPaint(COLOR_PRIMARY, 12f, true))
         y += CHART_PANEL_TITLE_H
 
         val panelTop = y
-        val cx = MARGIN + 60f
-        val cy = panelTop + 60f
-        val r  = 50f
+        val cx = MARGIN + 52f
+        val cy = panelTop + 52f
+        val r  = 42f
         val rect = android.graphics.RectF(cx - r, cy - r, cx + r, cy + r)
 
         var startAngle = -90f
@@ -385,14 +385,14 @@ object ExportUtility {
         val maxVal = months.flatMap { listOf(it.second, it.third) }.maxOrNull()?.takeIf { it > 0 } ?: 0.0
         if (maxVal <= 0.0) return  // no activity → skip the chart
 
-        checkBreak(180f)
+        checkBreak(142f)
         canvas().drawText("Monthly Income vs Expense (last 12 months)", MARGIN, y, bodyPaint(COLOR_PRIMARY, 12f, true))
         y += CHART_PANEL_TITLE_H
 
         val chartLeft   = MARGIN + 48f  // leave 48dp for y-axis labels
         val chartRight  = (PAGE_W - MARGIN).toFloat()
         val chartTop    = y
-        val chartH      = 110f
+        val chartH      = 82f
         val chartBottom = chartTop + chartH
         val chartW      = chartRight - chartLeft
 
@@ -454,7 +454,7 @@ object ExportUtility {
         currencyCode: String,
     ) {
         val sorted = snapshots.sortedBy { it.date }
-        checkBreak(150f)
+        checkBreak(118f)
         canvas().drawText("Net Worth Trend", MARGIN, y, bodyPaint(COLOR_PRIMARY, 12f, true))
         y += CHART_PANEL_TITLE_H
 
@@ -470,7 +470,7 @@ object ExportUtility {
         val chartLeft   = MARGIN + 48f
         val chartRight  = (PAGE_W - MARGIN).toFloat()
         val chartTop    = y
-        val chartH      = 90f
+        val chartH      = 70f
         val chartBottom = chartTop + chartH
         val chartW      = chartRight - chartLeft
 
@@ -527,12 +527,12 @@ object ExportUtility {
     // ── Section header ─────────────────────────────────────────────────────────
     private fun PdfBuilder.sectionHeader(title: String) {
         checkBreak(40f)
-        nl(8f)
+        nl(4f)
         canvas().drawText(title, MARGIN, y, bodyPaint(COLOR_PRIMARY, 13f, true))
         y += 4f
         val p = Paint().apply { color = COLOR_PRIMARY; strokeWidth = 1f }
         canvas().drawLine(MARGIN, y, (PAGE_W - MARGIN).toFloat(), y, p)
-        nl(10f)
+        nl(8f)
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
@@ -686,8 +686,8 @@ object ExportUtility {
             b.sectionHeader("2. Lending & Receivables")
             val usable = PAGE_W - MARGIN * 2
             val lw = listOf(
-                usable*.20f, usable*.13f, usable*.13f, usable*.08f,
-                usable*.12f, usable*.10f, usable*.10f, usable*.14f,
+                usable*.20f, usable*.13f, usable*.11f, usable*.07f,
+                usable*.13f, usable*.13f, usable*.09f, usable*.14f,
             )
             b.drawTableRow(
                 listOf("Person","Principal","Paid","Rate","Lent On","Due","Status","Notes"),
@@ -724,8 +724,8 @@ object ExportUtility {
             b.sectionHeader("3. Liabilities & Debts")
             val usable = PAGE_W - MARGIN * 2
             val dw = listOf(
-                usable*.22f, usable*.14f, usable*.14f, usable*.08f,
-                usable*.12f, usable*.10f, usable*.10f, usable*.10f,
+                usable*.21f, usable*.13f, usable*.10f, usable*.07f,
+                usable*.13f, usable*.13f, usable*.09f, usable*.14f,
             )
             b.drawTableRow(
                 listOf("Creditor","Principal","Paid","Rate","Borrowed","Due","Status","Type"),
@@ -758,7 +758,7 @@ object ExportUtility {
         if (investments.isNotEmpty()) {
             b.sectionHeader("4. Investment Portfolio")
             val usable = PAGE_W - MARGIN * 2
-            val iw = listOf(usable*.28f, usable*.15f, usable*.17f, usable*.17f, usable*.13f, usable*.10f)
+            val iw = listOf(usable*.26f, usable*.13f, usable*.16f, usable*.16f, usable*.14f, usable*.15f)
             b.drawTableRow(listOf("Asset","Type","Invested","Current","Growth","Date"), iw, isHeader = true)
             investments.forEachIndexed { i, inv ->
                 val growth = inv.currentVal - inv.invested
