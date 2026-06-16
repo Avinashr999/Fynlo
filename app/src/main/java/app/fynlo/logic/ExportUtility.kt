@@ -150,6 +150,8 @@ object ExportUtility {
 
         fun keepTogether(needed: Float) = checkBreak(needed)
 
+        fun keepSectionStartTogether() = checkBreak(72f)
+
         fun canvas() = canvas!!
 
         fun text(text: String, x: Float, paint: Paint) {
@@ -442,8 +444,8 @@ object ExportUtility {
         canvas().drawRect(chartLeft + 60f, labelY + 8f, chartLeft + 68f, labelY + 16f, fillPaint(COLOR_RED))
         canvas().drawText("Expense", chartLeft + 72f, labelY + 15f, bodyPaint(COLOR_RED, 8f))
 
-        y = labelY + 24f
-        nl(4f)
+        y = labelY + 34f
+        nl(6f)
     }
 
     /**
@@ -529,7 +531,7 @@ object ExportUtility {
     // ── Section header ─────────────────────────────────────────────────────────
     private fun PdfBuilder.sectionHeader(title: String) {
         checkBreak(40f)
-        nl(4f)
+        nl(8f)
         canvas().drawText(title, MARGIN, y, bodyPaint(COLOR_PRIMARY, 13f, true))
         y += 4f
         val p = Paint().apply { color = COLOR_PRIMARY; strokeWidth = 1f }
@@ -673,7 +675,7 @@ object ExportUtility {
 
         // 1. Accounts
         if (summary.accountBreakdown.isNotEmpty()) {
-            b.keepTogether(40f + LINE_H * 5)
+            b.keepSectionStartTogether()
             b.sectionHeader("1. Account Balances")
             val aw = listOf((PAGE_W - MARGIN * 2) * 0.6f, (PAGE_W - MARGIN * 2) * 0.4f)
             b.drawTableRow(listOf("Account", "Balance"), aw, isHeader = true)
@@ -686,7 +688,7 @@ object ExportUtility {
         //   read raw from the stored field which can lag reality.
         val today = LocalDate.now().toString()
         if (borrowers.isNotEmpty()) {
-            b.keepTogether(40f + LINE_H * 6)
+            b.keepSectionStartTogether()
             b.sectionHeader("2. Lending & Receivables")
             val usable = PAGE_W - MARGIN * 2
             val lw = listOf(
@@ -725,7 +727,7 @@ object ExportUtility {
         // liabilities" view). Same shape as the Lending table for visual
         // parity; Status computed dynamically per audit #5.
         if (debts.isNotEmpty()) {
-            b.keepTogether(40f + LINE_H * 5)
+            b.keepSectionStartTogether()
             b.sectionHeader("3. Liabilities & Debts")
             val usable = PAGE_W - MARGIN * 2
             val dw = listOf(
@@ -761,7 +763,7 @@ object ExportUtility {
 
         // 4. Investments
         if (investments.isNotEmpty()) {
-            b.keepTogether(40f + LINE_H * minOf(investments.size + 1, 5))
+            b.keepSectionStartTogether()
             b.sectionHeader("4. Investment Portfolio")
             val usable = PAGE_W - MARGIN * 2
             val iw = listOf(usable*.26f, usable*.13f, usable*.16f, usable*.16f, usable*.14f, usable*.15f)
@@ -787,7 +789,7 @@ object ExportUtility {
                 "5. All Transactions (${transactions.size})"
             else
                 "5. Most Recent 50 of ${transactions.size} Transactions"
-            b.keepTogether(40f + LINE_H * minOf(recent.size + 1, 6))
+            b.keepSectionStartTogether()
             b.sectionHeader(title)
             val usable = PAGE_W - MARGIN * 2
             val tw = listOf(usable*.13f, usable*.12f, usable*.17f, usable*.26f, usable*.15f, usable*.17f)
