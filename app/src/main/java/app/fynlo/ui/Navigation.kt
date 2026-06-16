@@ -350,8 +350,13 @@ fun MainNavigation(viewModel: FinanceViewModel) {
                     // (audit: "Avinash's name/email exists per Profile but
                     // isn't surfaced here").
                     val authForDrawer = remember { AuthManager() }
-                    val drawerUserName  = authForDrawer.userName.ifBlank { "Signed in" }
-                    val drawerUserEmail = authForDrawer.userEmail.ifBlank { "Tap Profile to sign in" }
+                    val hasSignedInProfile = authForDrawer.userName.isNotBlank() || authForDrawer.userEmail.isNotBlank()
+                    val drawerUserName = authForDrawer.userName.ifBlank {
+                        if (hasSignedInProfile) "Signed in" else "Local mode"
+                    }
+                    val drawerUserEmail = authForDrawer.userEmail.ifBlank {
+                        if (hasSignedInProfile) "Google sync available" else "Sign in from Profile to sync"
+                    }
 
                     Surface(
                         modifier = Modifier.fillMaxWidth()
