@@ -516,6 +516,7 @@ fun SettingsScreen(
                         // so the screen doesn't flip; user keeps what they see.
                         ThemeController.darkModeOverride = if (useSystem) null else isCurrentlyDark
                         ThemeController.save(context)
+                        viewModel.showFeedback(if (useSystem) "Using system theme" else "Theme preference saved")
                     },
                     // 3.2.22 — added explicit uncheckedColors. M3 defaults
                     // were `outline` thumb on `surfaceContainerHighest` track,
@@ -554,6 +555,7 @@ fun SettingsScreen(
                         onCheckedChange = {
                             ThemeController.darkModeOverride = it
                             ThemeController.save(context)
+                            viewModel.showFeedback(if (it) "Dark mode saved" else "Light mode saved")
                         },
                         colors = SwitchDefaults.colors(
                             checkedThumbColor = Emerald500,
@@ -571,7 +573,10 @@ fun SettingsScreen(
                 singleLine    = true,
                 trailingIcon  = if (displayName.isNotBlank()) {
                     { IconButton(onClick = {
-                        scope.launch { UserPreferences.setUserDisplayName(context, displayName.trim()) }
+                        scope.launch {
+                            UserPreferences.setUserDisplayName(context, displayName.trim())
+                            viewModel.showFeedback("Name saved")
+                        }
                     }) { Icon(Icons.Default.Check, "Save") } }
                 } else null,
                 modifier      = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
@@ -580,6 +585,24 @@ fun SettingsScreen(
                     focusedLabelColor    = Emerald500
                 )
             )
+            if (displayName.isNotBlank()) {
+                FilledTonalButton(
+                    onClick = {
+                        scope.launch {
+                            UserPreferences.setUserDisplayName(context, displayName.trim())
+                            viewModel.showFeedback("Name saved")
+                        }
+                    },
+                    modifier = Modifier
+                        .align(Alignment.End)
+                        .padding(top = 10.dp, end = 4.dp),
+                    shape = RoundedCornerShape(12.dp),
+                ) {
+                    Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Save name")
+                }
+            }
         }
 
         Spacer(Modifier.height(16.dp))
@@ -929,7 +952,10 @@ fun SettingsScreen(
                 Switch(
                     checked         = loanRemindersEnabled,
                     onCheckedChange = {
-                        scope.launch { UserPreferences.setLoanRemindersEnabled(context, it) }
+                        scope.launch {
+                            UserPreferences.setLoanRemindersEnabled(context, it)
+                            viewModel.showFeedback(if (it) "Loan reminders on" else "Loan reminders off")
+                        }
                         // Re-schedule if either toggle goes ON; ReminderScheduler
                         // is idempotent (uses ExistingPeriodicWorkPolicy.KEEP).
                         if (it) app.fynlo.notifications.ReminderScheduler.schedule(context)
@@ -968,7 +994,10 @@ fun SettingsScreen(
                 Switch(
                     checked         = budgetAlertsEnabled,
                     onCheckedChange = {
-                        scope.launch { UserPreferences.setBudgetAlertsEnabled(context, it) }
+                        scope.launch {
+                            UserPreferences.setBudgetAlertsEnabled(context, it)
+                            viewModel.showFeedback(if (it) "Budget alerts on" else "Budget alerts off")
+                        }
                         if (it) app.fynlo.notifications.ReminderScheduler.schedule(context)
                     },
                     // 3.2.22 — added explicit uncheckedColors. M3 defaults
@@ -1048,7 +1077,10 @@ fun SettingsScreen(
                         recentCurrencies.forEach { code ->
                             DropdownMenuItem(text = { Text(currencyLabel(code)) }, onClick = {
                                 pickerCurrency = code
-                                scope.launch { UserPreferences.setDefaultCurrency(context, code) }
+                                scope.launch {
+                                    UserPreferences.setDefaultCurrency(context, code)
+                                    viewModel.showFeedback("Currency set to $code")
+                                }
                                 viewModel.recordCurrency(code)
                                 currencyExpanded = false
                             })
@@ -1063,7 +1095,10 @@ fun SettingsScreen(
                     fullCurrencies.forEach { code ->
                         DropdownMenuItem(text = { Text(currencyLabel(code)) }, onClick = {
                             pickerCurrency = code
-                            scope.launch { UserPreferences.setDefaultCurrency(context, code) }
+                            scope.launch {
+                                UserPreferences.setDefaultCurrency(context, code)
+                                viewModel.showFeedback("Currency set to $code")
+                            }
                             viewModel.recordCurrency(code)
                             currencyExpanded = false
                         })
@@ -1115,7 +1150,10 @@ fun SettingsScreen(
                         DropdownMenuItem(
                             text = { Text("$fmt   ($example)") },
                             onClick = {
-                                scope.launch { UserPreferences.setDateFormat(context, fmt) }
+                                scope.launch {
+                                    UserPreferences.setDateFormat(context, fmt)
+                                    viewModel.showFeedback("Date format saved")
+                                }
                                 dateFormatExpanded = false
                             },
                         )

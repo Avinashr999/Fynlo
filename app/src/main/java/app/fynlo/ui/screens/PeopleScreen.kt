@@ -159,8 +159,13 @@ fun PeopleScreen(viewModel: FinanceViewModel) {
             initial   = editingPerson,
             onDismiss = { showAddDialog = false; editingPerson = null },
             onConfirm = { person ->
-                if (editingPerson != null) viewModel.updatePerson(person)
-                else viewModel.addPerson(person)
+                if (editingPerson != null) {
+                    viewModel.updatePerson(person)
+                    viewModel.showFeedback("Contact updated")
+                } else {
+                    viewModel.addPerson(person)
+                    viewModel.showFeedback("Contact added")
+                }
                 showAddDialog = false; editingPerson = null
             }
         )
@@ -261,7 +266,10 @@ fun PeopleScreen(viewModel: FinanceViewModel) {
                     PersonCard(
                         person   = person,
                         onEdit   = { editingPerson = person },
-                        onDelete = { viewModel.deletePerson(person) }
+                        onDelete = {
+                            viewModel.deletePerson(person)
+                            viewModel.showFeedback("Contact deleted")
+                        }
                     )
                     if (index < filteredPeople.lastIndex) {
                         HorizontalDivider(thickness = 0.5.dp,

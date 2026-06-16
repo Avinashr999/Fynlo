@@ -48,6 +48,7 @@ fun GoalScreen(viewModel: FinanceViewModel) {
             onConfirm = { goal ->
                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                 viewModel.addGoal(goal)
+                viewModel.showFeedback("Goal added")
                 showAddDialog = false
             }
         )
@@ -86,7 +87,10 @@ fun GoalScreen(viewModel: FinanceViewModel) {
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     itemsIndexed(goals, key = { _, g -> g.id }) { index, goal ->
-                        GoalCard(goal, currencyCode, locale, onDelete = { viewModel.deleteGoal(goal) })
+                        GoalCard(goal, currencyCode, locale, onDelete = {
+                            viewModel.deleteGoal(goal)
+                            viewModel.showFeedback("Goal deleted")
+                        })
                         if (index < goals.lastIndex) {
                             HorizontalDivider(thickness = 0.5.dp,
                                 color = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f))

@@ -49,6 +49,7 @@ fun RecurringScreen(viewModel: FinanceViewModel) {
                 // "Custom" was picked, else the chip label).
                 viewModel.recordRecurringCategory(r.type == "Income", r.category)
                 viewModel.addRecurringTransaction(r)
+                viewModel.showFeedback("Recurring entry added")
                 showAddDialog = false
             },
             rememberLastCategory = { isIncome -> viewModel.rememberLastRecurringCategory(isIncome) },
@@ -151,6 +152,7 @@ fun RecurringScreen(viewModel: FinanceViewModel) {
                                     onClick = {
                                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                         viewModel.triggerDueRecurring()
+                                        viewModel.showFeedback("Due recurring entries processed")
                                     },
                                     shape = RoundedCornerShape(10.dp),
                                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
@@ -163,7 +165,10 @@ fun RecurringScreen(viewModel: FinanceViewModel) {
                     val isDue = !today.isBefore(nd)
                     val daysUntil = ChronoUnit.DAYS.between(today, nd)
                     RecurringCard(r, isDue = isDue, daysUntil = daysUntil,
-                        onDelete = { viewModel.deleteRecurringTransaction(r) })
+                        onDelete = {
+                            viewModel.deleteRecurringTransaction(r)
+                            viewModel.showFeedback("Recurring entry deleted")
+                        })
                     if (index < recurringList.lastIndex) {
                         HorizontalDivider(thickness = 0.5.dp,
                             color = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f))
@@ -513,7 +518,6 @@ private fun AddRecurringDialog(
         )
     }
 }
-
 
 
 

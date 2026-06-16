@@ -43,6 +43,7 @@ fun ProjectsScreen(viewModel: FinanceViewModel, onNavigateToUpgrade: () -> Unit 
                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                 viewModel.createProject(project)
                 viewModel.switchProject(project.id)
+                viewModel.showFeedback("Project created")
                 showAddDialog = false
             }
         )
@@ -68,6 +69,7 @@ fun ProjectsScreen(viewModel: FinanceViewModel, onNavigateToUpgrade: () -> Unit 
                             updatedAt = 0L,
                         )
                     )
+                    viewModel.showFeedback("Project duplicated")
                     duplicateTarget = null
                 }) { Text("Duplicate") }
             },
@@ -85,6 +87,7 @@ fun ProjectsScreen(viewModel: FinanceViewModel, onNavigateToUpgrade: () -> Unit 
             confirmButton = {
                 TextButton(onClick = {
                     haptic.performHapticFeedback(HapticFeedbackType.LongPress); viewModel.deleteProject(proj)
+                    viewModel.showFeedback("Project deleted")
                     deleteTarget = null
                 }) { Text("Delete", color = MaterialTheme.colorScheme.error) }
             },
@@ -415,7 +418,6 @@ private fun AddProjectDialog(
         )
     }
 }
-
 
 
 

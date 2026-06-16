@@ -71,6 +71,7 @@ fun BudgetScreen(viewModel: FinanceViewModel) {
                 // heuristic returns null.
                 viewModel.recordBudgetCategory(budget.category)
                 viewModel.addBudget(budget)
+                viewModel.showFeedback("Budget added")
                 showAddDialog = false
             }
         )
@@ -161,7 +162,10 @@ fun BudgetScreen(viewModel: FinanceViewModel) {
                 itemsIndexed(sorted, key = { _, b -> b.category }) { index, budget ->
                     val actualSpent = expenses[budget.category] ?: 0.0
                     BudgetCard(budget, actualSpent, daysRemaining, daysPassed, currencySymbol, currencyCode, locale,
-                        onDelete = { viewModel.deleteBudget(budget) })
+                        onDelete = {
+                            viewModel.deleteBudget(budget)
+                            viewModel.showFeedback("Budget deleted")
+                        })
                     if (index < sorted.lastIndex) {
                         HorizontalDivider(thickness = 0.5.dp,
                             color = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f))
