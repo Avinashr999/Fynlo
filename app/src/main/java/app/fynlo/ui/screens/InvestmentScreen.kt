@@ -326,7 +326,24 @@ val currentProject by viewModel.currentProject.collectAsState()
         modifier = Modifier
             .fillMaxSize()
     ) {
-        PremiumScreenHeader("My Investments", "Portfolio & returns tracker")
+        PremiumScreenHeader(
+            title = "Invest",
+            subtitle = "Track value, allocation, and returns without crowding the screen",
+            action = {
+                FilledIconButton(
+                    onClick = {
+                        editingInvest = Investment(id = "", name = "", type = "", invested = 0.0, currentVal = 0.0, date = "", notes = "", projectId = "")
+                    },
+                    shape = RoundedCornerShape(14.dp),
+                    colors = IconButtonDefaults.filledIconButtonColors(
+                        containerColor = Emerald500,
+                        contentColor = Color.White,
+                    ),
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = "Add Investment")
+                }
+            }
+        )
 
         Box(modifier = Modifier.weight(1f)) {
         if (visibleInvestments.isEmpty()) {
@@ -515,11 +532,6 @@ val currentProject by viewModel.currentProject.collectAsState()
             }
             }
         }
-        FloatingActionButton(
-            onClick = { editingInvest = Investment(id = "", name = "", type = "", invested = 0.0, currentVal = 0.0, date = "", notes = "", projectId = "") },
-            modifier = Modifier.align(Alignment.BottomEnd).padding(24.dp),
-            containerColor = MaterialTheme.colorScheme.primary
-        ) { Icon(Icons.Default.Add, contentDescription = "Add Investment") }
         }
     }
 }

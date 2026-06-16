@@ -561,13 +561,10 @@ fun MainNavigation(viewModel: FinanceViewModel) {
             },
             bottomBar = {
                 if (!isFullScreenRoute)
-                NavigationBar {
-                    bottomNavItems.forEach { screen ->
-                        NavigationBarItem(
-                            icon     = { Icon(screen.icon, contentDescription = screen.label) },
-                            label    = { Text(screen.label) },
-                            selected = baseRoute == screen.route,
-                            onClick  = {
+                LedgerBottomNav(
+                    items = bottomNavItems,
+                    selectedRoute = baseRoute,
+                    onSelect = { screen ->
                                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                 if (baseRoute != screen.route) {
                                     val isHome = screen.route == Screen.Home.route
@@ -585,10 +582,8 @@ fun MainNavigation(viewModel: FinanceViewModel) {
                                         restoreState    = !isHome
                                     }
                                 }
-                            }
-                        )
                     }
-                }
+                )
             },
             floatingActionButton = {
                 if (showFab) {
@@ -597,10 +592,12 @@ fun MainNavigation(viewModel: FinanceViewModel) {
                             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                             showSheet = true
                         },
+                        modifier = Modifier.size(68.dp),
+                        shape = RoundedCornerShape(18.dp),
                         containerColor = MaterialTheme.colorScheme.primary,
                         contentColor = MaterialTheme.colorScheme.onPrimary
                     ) {
-                        Icon(Icons.Default.Add, contentDescription = "Quick Add")
+                        Icon(Icons.Default.Add, contentDescription = "Quick Add", modifier = Modifier.size(34.dp))
                     }
                 }
             },
@@ -892,6 +889,82 @@ fun ActionItem(icon: ImageVector, label: String, color: Color, onClick: () -> Un
 }
 
 // ── Drawer helper composables ────────────────────────────────────────
+
+@Composable
+private fun LedgerBottomNav(
+    items: List<Screen>,
+    selectedRoute: String?,
+    onSelect: (Screen) -> Unit,
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(92.dp)
+            .navigationBarsPadding()
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Surface(
+            modifier = Modifier.fillMaxWidth().height(66.dp),
+            shape = RoundedCornerShape(22.dp),
+            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f),
+            tonalElevation = 4.dp,
+            shadowElevation = 14.dp,
+            border = androidx.compose.foundation.BorderStroke(
+                0.5.dp,
+                MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f),
+            ),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxSize().padding(horizontal = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                items.forEach { screen ->
+                    val selected = selectedRoute == screen.route
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                            .clip(RoundedCornerShape(18.dp))
+                            .clickable { onSelect(screen) }
+                            .padding(vertical = 7.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center,
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .height(30.dp)
+                                .width(if (selected) 58.dp else 42.dp)
+                                .clip(RoundedCornerShape(18.dp))
+                                .background(
+                                    if (selected) Emerald100.copy(alpha = 0.92f)
+                                    else Color.Transparent
+                                ),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(
+                                imageVector = screen.icon,
+                                contentDescription = screen.label,
+                                modifier = Modifier.size(if (selected) 22.dp else 21.dp),
+                                tint = if (selected) Emerald700 else MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        Spacer(Modifier.height(2.dp))
+                        Text(
+                            screen.label,
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontWeight = if (selected) FontWeight.ExtraBold else FontWeight.SemiBold,
+                            ),
+                            color = if (selected) Emerald700 else MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
 
 @Composable
 fun DrawerSectionLabel(title: String) {

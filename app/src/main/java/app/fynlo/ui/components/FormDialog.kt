@@ -69,7 +69,7 @@ fun FormDialog(
                     .fillMaxWidth()
                     .fillMaxHeight(0.9f),
                 shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
-                color = MaterialTheme.colorScheme.surface,
+                color = MaterialTheme.colorScheme.surfaceContainerLowest,
                 tonalElevation = 6.dp,
             ) {
                 Column(
