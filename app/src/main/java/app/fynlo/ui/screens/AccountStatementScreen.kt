@@ -99,8 +99,14 @@ fun AccountStatementScreen(
                         TransactionItem(
                             txn            = txn,
                             currencyCode   = currencyCode,
-                            onEdit         = { viewModel.editTransaction(txn, it) },
-                            onDelete       = { viewModel.deleteTransaction(txn) },
+                            onEdit         = {
+                                viewModel.editTransaction(txn, it)
+                                viewModel.showFeedback("Transaction updated")
+                            },
+                            onDelete       = {
+                                viewModel.deleteTransaction(txn)
+                                viewModel.showFeedback("Transaction deleted")
+                            },
                             // 3.2.81 — propagate account names so the edit
                             // dialog's new Account picker shows real options.
                             bankAccounts   = accounts.map { it.name },

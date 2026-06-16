@@ -98,6 +98,7 @@ val debts by viewModel.debts.collectAsState()
             onConfirm = { debt, dest ->
                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                 viewModel.addDebtWithDestination(debt, dest)
+                viewModel.showFeedback("Debt added")
                 showAddDialog = false
             },
             initialDebt = null
@@ -371,7 +372,6 @@ fun EmptyDebtState(onAdd: () -> Unit = {}) {
         actionLabel = "Add First Debt"
     )
 }
-
 
 
 

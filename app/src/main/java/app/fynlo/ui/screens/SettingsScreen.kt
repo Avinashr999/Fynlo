@@ -1555,26 +1555,27 @@ private fun SettingsSummaryPanel(
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(24.dp),
-        color = Emerald500.copy(alpha = 0.10f),
-        border = BorderStroke(0.5.dp, Emerald500.copy(alpha = 0.22f)),
+        color = Carbon700,
+        tonalElevation = 2.dp,
     ) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Box(
-                    Modifier.size(42.dp).clip(RoundedCornerShape(14.dp)).background(Emerald500.copy(alpha = 0.16f)),
+                    Modifier.size(42.dp).clip(RoundedCornerShape(14.dp)).background(Color.White.copy(alpha = 0.12f)),
                     Alignment.Center,
                 ) {
-                    Icon(Icons.Default.Tune, null, Modifier.size(22.dp), tint = Emerald500)
+                    Icon(Icons.Default.Tune, null, Modifier.size(22.dp), tint = Emerald100)
                 }
                 Column(Modifier.weight(1f)) {
                     Text(
                         "Preferences ready",
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                        color = Color.White,
                     )
                     Text(
                         "Currency, backups, alerts, and exports in one place",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = Color.White.copy(alpha = 0.72f),
                     )
                 }
             }

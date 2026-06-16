@@ -128,6 +128,7 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
             onConfirm = { borrower, source ->
                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                 viewModel.addBorrowerWithSource(borrower, source)
+                viewModel.showFeedback("Loan added")
                 showAddDialog = false
             },
             initialBorrower = null
@@ -580,7 +581,6 @@ fun EmiCalculatorDialog(currencyCode: String, onDismiss: () -> Unit) {
         }
     }
     }
-
 
 
 

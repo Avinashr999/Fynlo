@@ -261,6 +261,7 @@ fun MainNavigation(viewModel: FinanceViewModel) {
             onDismiss = { showExpenseDialog = false },
             onConfirm = { txn ->
                 viewModel.addTransaction(txn)
+                viewModel.showFeedback(if (txn.type.equals("income", ignoreCase = true)) "Income added" else "Expense added")
                 showExpenseDialog = false
             },
             initialIsIncome = addTxnIsIncome,
@@ -282,6 +283,7 @@ fun MainNavigation(viewModel: FinanceViewModel) {
             onDismiss = { showLendingDialog = false },
             onConfirm = { borrower, source ->
                 viewModel.addBorrowerWithSource(borrower, source)
+                viewModel.showFeedback("Loan added")
                 showLendingDialog = false
             }
         )
@@ -293,6 +295,7 @@ fun MainNavigation(viewModel: FinanceViewModel) {
             onDismiss = { showDebtDialog = false },
             onConfirm = { debt, destination ->
                 viewModel.addDebtWithDestination(debt, destination)
+                viewModel.showFeedback("Debt added")
                 showDebtDialog = false
             }
         )
@@ -353,15 +356,16 @@ fun MainNavigation(viewModel: FinanceViewModel) {
                     Surface(
                         modifier = Modifier.fillMaxWidth()
                             .padding(start = 14.dp, end = 14.dp, top = 28.dp, bottom = 12.dp),
-                        shape = RoundedCornerShape(20.dp),
-                        color = Emerald50.copy(alpha = 0.9f),
+                        shape = RoundedCornerShape(22.dp),
+                        color = MaterialTheme.colorScheme.surfaceContainerLowest,
+                        tonalElevation = 1.dp,
                         border = androidx.compose.foundation.BorderStroke(
                             0.5.dp,
-                            Emerald100.copy(alpha = 0.9f),
+                            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.32f),
                         ),
                     ) {
                         Row(
-                            modifier = Modifier.fillMaxWidth().padding(14.dp),
+                            modifier = Modifier.fillMaxWidth().padding(16.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
@@ -380,6 +384,18 @@ fun MainNavigation(viewModel: FinanceViewModel) {
                                     maxLines = 1,
                                     overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                                 )
+                                Spacer(Modifier.height(6.dp))
+                                Surface(
+                                    shape = RoundedCornerShape(999.dp),
+                                    color = Emerald500.copy(alpha = 0.10f),
+                                ) {
+                                    Text(
+                                        "Local ledger",
+                                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                        color = Emerald500,
+                                        modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.dp),
+                                    )
+                                }
                             }
                         }
                     }

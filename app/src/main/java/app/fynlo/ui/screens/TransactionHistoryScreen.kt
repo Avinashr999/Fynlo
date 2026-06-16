@@ -396,8 +396,14 @@ fun TransactionHistoryScreen(viewModel: FinanceViewModel) {
                                         selectedIds - transaction.id
                                     else selectedIds + transaction.id
                                 },
-                                onEdit   = { viewModel.editTransaction(transaction, it) },
-                                onDelete = { viewModel.deleteTransaction(transaction) },
+                                onEdit   = {
+                                    viewModel.editTransaction(transaction, it)
+                                    viewModel.showFeedback("Transaction updated")
+                                },
+                                onDelete = {
+                                    viewModel.deleteTransaction(transaction)
+                                    viewModel.showFeedback("Transaction deleted")
+                                },
                                 // 3.2.81 — accounts for the edit dialog's new Account picker.
                                 bankAccounts = allAccounts.map { it.name },
                                 // C03b Stage #1b-2 (3.2.88) — id → current name

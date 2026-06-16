@@ -104,7 +104,12 @@ val transactions by viewModel.transactions.collectAsState()
         val allDebts by viewModel.debts.collectAsState()
         AddTransactionDialog(
             onDismiss = { showDialog = false },
-            onConfirm = { txn -> haptic.performHapticFeedback(HapticFeedbackType.LongPress); viewModel.addTransaction(txn); showDialog = false },
+            onConfirm = { txn ->
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                viewModel.addTransaction(txn)
+                viewModel.showFeedback(if (txn.type.equals("income", ignoreCase = true)) "Income added" else "Expense added")
+                showDialog = false
+            },
             rememberLastCategory = { isIncome -> viewModel.rememberLastTransactionCategory(isIncome) },
             onRecordCategory = { isIncome, cat -> viewModel.recordTransactionCategory(isIncome, cat) },
             // 3.2.81 (C13 #5) — when user toggles "Repeat monthly?" ON,
@@ -292,8 +297,14 @@ val transactions by viewModel.transactions.collectAsState()
                         )
                         txns.forEach { txn ->
                             ExpenseRow(txn, currencyCode, locale,
-                                onDelete = { viewModel.deleteTransaction(txn) },
-                                onEdit   = { viewModel.editTransaction(txn, it) },
+                                onDelete = {
+                                    viewModel.deleteTransaction(txn)
+                                    viewModel.showFeedback("Expense deleted")
+                                },
+                                onEdit   = {
+                                    viewModel.editTransaction(txn, it)
+                                    viewModel.showFeedback("Expense updated")
+                                },
                                 // 3.2.81 — accounts list from the parent
                                 // composable; lets the edit dialog show a
                                 // real Account picker (#9).
@@ -302,14 +313,13 @@ val transactions by viewModel.transactions.collectAsState()
                                 // for rename-reflective sub-label.
                                 accountIdToName = allAccounts.associate { it.id to it.name },
                             )
-                            HorizontalDivider(Modifier.padding(vertical = 2.dp),
-                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
+                            Spacer(Modifier.height(8.dp))
                         }
                     }
                 } else {
                     app.fynlo.ui.components.EmptyStateIllustration(
                         type        = app.fynlo.ui.components.EmptyStateType.SPENDING,
-                        onAction    = if (isCurrentMonth) { { showDialog = true } } else null,
+                        onAction    = null,
                         actionLabel = "Add First Expense"
                     )
                 }
@@ -368,39 +378,51 @@ private fun ExpenseRow(
         )
     }
 
-    Row(
-        Modifier.fillMaxWidth().padding(vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 1.dp,
+        border = androidx.compose.foundation.BorderStroke(
+            0.5.dp,
+            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.28f),
+        ),
     ) {
-        Box(
-            Modifier.size(40.dp).clip(CircleShape).background(SemanticRed.copy(alpha = 0.15f)),
-            contentAlignment = Alignment.Center
+        Row(
+            Modifier.fillMaxWidth().padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Icon(getCategoryIcon(txn.category), null, tint = SemanticRed, modifier = Modifier.size(20.dp))
-        }
-        Column(Modifier.weight(1f)) {
-            Text(txn.category, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold))
-            // C03b Stage #1b-2: resolve via id; falls back to stored name.
-            Text(txn.desc.ifBlank { txn.displayFromAcct(accountIdToName) }.ifBlank { txn.date },
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-        Column(horizontalAlignment = Alignment.End) {
-            Text(CurrencyFormatter.negative(txn.amount, currencyCode, locale),
-                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
-                color = SemanticRed)
-            Text(txn.date, style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-        Box {
-            IconButton(onClick = { menuOpen = true }, modifier = Modifier.size(32.dp)) {
-                Icon(Icons.Default.MoreVert, "More", Modifier.size(18.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            Box(
+                Modifier.size(42.dp).clip(RoundedCornerShape(14.dp)).background(SemanticRed.copy(alpha = 0.13f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(getCategoryIcon(txn.category), null, tint = SemanticRed, modifier = Modifier.size(21.dp))
             }
-            DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                DropdownMenuItem(text = { Text("Edit") }, onClick = { menuOpen = false; showEditDialog = true })
-                DropdownMenuItem(text = { Text("Delete", color = SemanticRed) }, onClick = { menuOpen = false; showDeleteConfirm = true })
+            Column(Modifier.weight(1f)) {
+                Text(txn.category, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.ExtraBold))
+                // C03b Stage #1b-2: resolve via id; falls back to stored name.
+                Text(txn.desc.ifBlank { txn.displayFromAcct(accountIdToName) }.ifBlank { txn.date },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1)
+            }
+            Column(horizontalAlignment = Alignment.End) {
+                Text(CurrencyFormatter.negative(txn.amount, currencyCode, locale),
+                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.ExtraBold),
+                    color = SemanticRed)
+                Text(txn.date, style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            Box {
+                IconButton(onClick = { menuOpen = true }, modifier = Modifier.size(34.dp)) {
+                    Icon(Icons.Default.MoreVert, "More", Modifier.size(18.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                    DropdownMenuItem(text = { Text("Edit") }, onClick = { menuOpen = false; showEditDialog = true })
+                    DropdownMenuItem(text = { Text("Delete", color = SemanticRed) }, onClick = { menuOpen = false; showDeleteConfirm = true })
+                }
             }
         }
     }

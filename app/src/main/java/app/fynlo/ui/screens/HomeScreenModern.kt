@@ -142,7 +142,12 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
     if (showAddTxn) {
         AddTransactionDialog(
             onDismiss = { showAddTxn = false },
-            onConfirm = { txn -> haptic.performHapticFeedback(HapticFeedbackType.LongPress); viewModel.addTransaction(txn); showAddTxn = false },
+            onConfirm = { txn ->
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                viewModel.addTransaction(txn)
+                viewModel.showFeedback(if (txn.type.equals("income", ignoreCase = true)) "Income added" else "Expense added")
+                showAddTxn = false
+            },
             rememberLastCategory = { isIncome -> viewModel.rememberLastTransactionCategory(isIncome) },
             onRecordCategory = { isIncome, cat -> viewModel.recordTransactionCategory(isIncome, cat) },
             // 3.2.81 (C13 #5) — "Repeat monthly?" → also create a recurring template.

@@ -539,6 +539,7 @@ fun InvestmentCard(invest: Investment, currencyCode: String = "INR", isPrivacy: 
     val growth = invest.currentVal - (invest.invested - invest.withdrawn)
     val growthPercent = if (invest.invested > 0) (growth / invest.invested) * 100 else 0.0
     val isProfit = growth >= 0
+    val typeAccent = remember(invest.type) { investmentTypeAccent(invest.type) }
     var menuOpen by remember { mutableStateOf(false) }
     var showReturnDetails by remember { mutableStateOf(false) }
     val cagr = remember(invest) {
@@ -547,12 +548,12 @@ fun InvestmentCard(invest: Investment, currencyCode: String = "INR", isPrivacy: 
 
     Surface(
         modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
-        shape = RoundedCornerShape(18.dp),
-        color = Emerald50.copy(alpha = 0.78f),
+        shape = RoundedCornerShape(20.dp),
+        color = MaterialTheme.colorScheme.surface,
         tonalElevation = 1.dp,
         border = androidx.compose.foundation.BorderStroke(
             0.5.dp,
-            Emerald100.copy(alpha = 0.9f),
+            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.32f),
         ),
     ) {
         Column(modifier = Modifier.fillMaxWidth().padding(14.dp)) {
@@ -560,10 +561,10 @@ fun InvestmentCard(invest: Investment, currencyCode: String = "INR", isPrivacy: 
                 Row(verticalAlignment = Alignment.Top, modifier = Modifier.weight(1f)) {
                     Box(
                         Modifier.size(46.dp).clip(RoundedCornerShape(14.dp))
-                            .background(Emerald100.copy(alpha = 0.82f)),
+                            .background(typeAccent.copy(alpha = 0.14f)),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(Icons.Default.TrendingUp, null, Modifier.size(23.dp), tint = Emerald600)
+                        Icon(Icons.Default.TrendingUp, null, Modifier.size(23.dp), tint = typeAccent)
                     }
                     Spacer(Modifier.width(12.dp))
                     Column(Modifier.weight(1f)) {
@@ -621,7 +622,7 @@ fun InvestmentCard(invest: Investment, currencyCode: String = "INR", isPrivacy: 
             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
                 Surface(
                     shape = RoundedCornerShape(999.dp),
-                    color = if (isProfit) Emerald100.copy(alpha = 0.95f) else SemanticRed.copy(alpha = 0.12f),
+                    color = if (isProfit) Emerald500.copy(alpha = 0.12f) else SemanticRed.copy(alpha = 0.12f),
                 ) {
                     val growthPctText = if (isPrivacy) "Hidden" else "${if (isProfit) "+" else ""}${String.format(LocalLocale.current.platformLocale, "%.1f", growthPercent)}%"
                     Text(
@@ -663,7 +664,7 @@ fun InvestmentCard(invest: Investment, currencyCode: String = "INR", isPrivacy: 
                     onClick = onUpdate,
                     modifier = Modifier.weight(1f).height(40.dp),
                     shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Emerald500),
+                    colors = ButtonDefaults.buttonColors(containerColor = typeAccent),
                     contentPadding = PaddingValues(horizontal = 10.dp)
                 ) {
                     Icon(Icons.Default.Update, null, Modifier.size(15.dp))
@@ -687,11 +688,22 @@ fun InvestmentCard(invest: Investment, currencyCode: String = "INR", isPrivacy: 
 }
 }
 
+private fun investmentTypeAccent(type: String): Color = when (type.lowercase(Locale.getDefault())) {
+    "stocks" -> Emerald600
+    "mutual funds" -> SemanticBlue
+    "gold" -> SemanticAmber
+    "fixed deposit" -> Carbon500
+    "business" -> Color(0xFF7C3AED)
+    "real estate" -> Color(0xFF0F766E)
+    "crypto" -> Color(0xFFF97316)
+    else -> Emerald500
+}
+
 @Composable
 private fun InvestmentMetaChip(text: String) {
     Surface(
         shape = RoundedCornerShape(999.dp),
-        color = Color.White.copy(alpha = 0.72f),
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
         border = androidx.compose.foundation.BorderStroke(
             0.5.dp,
             MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f),
@@ -717,7 +729,11 @@ private fun InvestmentValueTile(
     Surface(
         modifier = modifier.heightIn(min = 68.dp),
         shape = RoundedCornerShape(14.dp),
-        color = Color.White.copy(alpha = 0.7f),
+        color = MaterialTheme.colorScheme.surfaceContainerLowest,
+        border = androidx.compose.foundation.BorderStroke(
+            0.5.dp,
+            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.26f),
+        ),
     ) {
         Column(
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 9.dp),
