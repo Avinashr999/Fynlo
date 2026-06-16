@@ -37,6 +37,7 @@ import app.fynlo.logic.InterestEngine
 import app.fynlo.ui.components.AddDebtDialog
 import app.fynlo.ui.components.PayDebtDialog
 import app.fynlo.ui.theme.Emerald500
+import app.fynlo.ui.theme.LedgerDetailTopBar
 import app.fynlo.ui.theme.SemanticAmber
 import app.fynlo.ui.theme.SemanticRed
 import java.util.Locale
@@ -135,26 +136,22 @@ fun DebtDetailScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text(debt.name) },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
-                actions = {
-                    IconButton(onClick = { showEditDialog = true }) {
-                        Icon(Icons.Default.Edit, contentDescription = "Edit")
-                    }
-                    IconButton(onClick = { showDeleteConfirm = true }) {
-                        Icon(
-                            Icons.Default.Delete,
-                            contentDescription = "Delete",
-                            tint = MaterialTheme.colorScheme.error
-                        )
-                    }
+            LedgerDetailTopBar(
+                title = debt.name,
+                subtitle = "Debt statement",
+                onNavigateBack = onNavigateBack,
+            ) {
+                IconButton(onClick = { showEditDialog = true }) {
+                    Icon(Icons.Default.Edit, contentDescription = "Edit")
                 }
-            )
+                IconButton(onClick = { showDeleteConfirm = true }) {
+                    Icon(
+                        Icons.Default.Delete,
+                        contentDescription = "Delete",
+                        tint = MaterialTheme.colorScheme.error
+                    )
+                }
+            }
         }
     ) { padding ->
         LazyColumn(

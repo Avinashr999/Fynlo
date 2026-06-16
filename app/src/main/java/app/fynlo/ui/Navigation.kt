@@ -194,7 +194,10 @@ fun MainNavigation(viewModel: FinanceViewModel) {
 
     // Routes that provide their own full-screen chrome (own top bar) — the outer
     // app bar/bottom bar must hide to avoid duplicate back arrows.
-    val isFullScreenRoute = currentRoute == Screen.GlobalSearch.route
+    val isFullScreenRoute = currentRoute == Screen.GlobalSearch.route ||
+        currentRoute?.startsWith("customer/") == true ||
+        currentRoute?.startsWith("debt/") == true ||
+        currentRoute?.startsWith("statement/") == true
 
     val syncStatus by viewModel.syncStatus.collectAsState()
     val transactionsForReview by viewModel.transactions.collectAsState()

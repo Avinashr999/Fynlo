@@ -348,18 +348,15 @@ val borrowers by viewModel.borrowers.collectAsState()
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text(borrower.name) },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
-                actions = {
-                    IconButton(onClick = { showEditDialog = true }) {
-                        Icon(Icons.Default.Edit, contentDescription = "Edit")
-                    }
-                    IconButton(onClick = {
+            LedgerDetailTopBar(
+                title = borrower.name,
+                subtitle = "Loan statement",
+                onNavigateBack = onNavigateBack,
+            ) {
+                IconButton(onClick = { showEditDialog = true }) {
+                    Icon(Icons.Default.Edit, contentDescription = "Edit")
+                }
+                IconButton(onClick = {
                         // C21 Stage 1 — standardized filename + identity row
                         // (project + signed-in email on the PDF cover).
                         val file = java.io.File(
@@ -385,18 +382,17 @@ val borrowers by viewModel.borrowers.collectAsState()
                                 addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
                             }, "Share Loan Statement"
                         ))
-                    }) {
-                        Icon(Icons.Default.PictureAsPdf, contentDescription = "Export PDF")
-                    }
-                    IconButton(onClick = { showDeleteConfirm = true }) {
-                        Icon(
-                            Icons.Default.Delete,
-                            contentDescription = "Delete",
-                            tint = MaterialTheme.colorScheme.error
-                        )
-                    }
+                }) {
+                    Icon(Icons.Default.PictureAsPdf, contentDescription = "Export PDF")
                 }
-            )
+                IconButton(onClick = { showDeleteConfirm = true }) {
+                    Icon(
+                        Icons.Default.Delete,
+                        contentDescription = "Delete",
+                        tint = MaterialTheme.colorScheme.error
+                    )
+                }
+            }
         }
     ) { padding ->
         LazyColumn(

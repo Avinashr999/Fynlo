@@ -61,22 +61,15 @@ fun AccountStatementScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("$accountName") },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                ),
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
-                actions = {
-                    IconButton(onClick = { showEditDialog = true }) {
-                        Icon(Icons.Default.Edit, contentDescription = "Edit Balance")
-                    }
+            LedgerDetailTopBar(
+                title = accountName,
+                subtitle = "Account statement",
+                onNavigateBack = onNavigateBack,
+            ) {
+                IconButton(onClick = { showEditDialog = true }) {
+                    Icon(Icons.Default.Edit, contentDescription = "Edit Balance")
                 }
-            )
+            }
         }
     ) { padding ->
         Column(modifier = Modifier.padding(padding).fillMaxSize().padding(16.dp)) {
