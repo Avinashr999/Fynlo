@@ -72,6 +72,13 @@ if ($loginDump -match "Continue without signing in") {
 }
 Invoke-Adb @("shell", "input", "tap", "170", "2625") | Out-Null
 Start-Sleep -Seconds 1
+# Dashboard restores its last scroll offset. Normalize to the top before
+# asserting hero labels so a prior manual bottom-section check does not fail
+# the smoke run.
+Invoke-Adb @("shell", "input", "swipe", "650", "720", "650", "2300", "600") | Out-Null
+Start-Sleep -Milliseconds 400
+Invoke-Adb @("shell", "input", "swipe", "650", "720", "650", "2300", "600") | Out-Null
+Start-Sleep -Milliseconds 400
 Wait-Screen "dashboard" @("Total net worth", "Dashboard", "Loans", "Invest", "Reports", "Expenses")
 
 Invoke-Adb @("shell", "input", "tap", "98", "227") | Out-Null

@@ -397,7 +397,7 @@ fun MoneyFlowScreen(viewModel: FinanceViewModel) {
                 }
             }
 
-            item { Spacer(Modifier.height(100.dp)) }
+            item { Spacer(Modifier.height(48.dp)) }
         }
     }
 }

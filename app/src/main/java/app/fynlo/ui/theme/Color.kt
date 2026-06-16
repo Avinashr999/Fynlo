@@ -28,11 +28,11 @@ val Carbon100  = Color(0xFFF4F4F5)  // surface light
 val Carbon50   = Color(0xFFFAFAFA)  // bg light
 
 // Semantic
-val SemanticRed    = Color(0xFFEF4444)
-val SemanticAmber  = Color(0xFFF59E0B)
-val SemanticBlue   = Color(0xFF3B82F6)
+val SemanticRed    = Color(0xFFDC2626)
+val SemanticAmber  = Color(0xFFD97706)
+val SemanticBlue   = Color(0xFF2563EB)
 val SemanticViolet = Color(0xFF6B7280)
-val SemanticTeal   = Color(0xFF0D9488)
+val SemanticTeal   = Color(0xFF0F766E)
 
 // Chart palette — brand-aligned, restrained (no neon)
 val ChartColors = listOf(

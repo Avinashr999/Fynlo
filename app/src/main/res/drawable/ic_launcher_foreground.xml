@@ -5,39 +5,27 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
 
-    <!-- Main wave -->
+    <!-- Primary Fynlo wave mark -->
     <path
-        android:pathData="M6,62 Q19,42 32,52 Q45,62 57,42 Q70,22 83,34 Q96,44 102,36"
+        android:pathData="M14,63 C25,47 36,48 47,58 C58,68 66,34 80,40 C89,44 94,52 100,46"
         android:strokeColor="#FFFFFF"
-        android:strokeWidth="6"
+        android:strokeWidth="7"
         android:strokeLineCap="round"
         android:strokeLineJoin="round"
         android:fillColor="@android:color/transparent"/>
 
-    <!-- Secondary wave -->
+    <!-- Secondary balance line -->
     <path
-        android:pathData="M6,72 Q19,55 32,63 Q45,72 57,54 Q70,36 83,46 Q96,56 102,48"
+        android:pathData="M14,75 C29,63 42,67 54,72 C68,78 77,56 94,58"
         android:strokeColor="#FFFFFF"
-        android:strokeWidth="3"
+        android:strokeWidth="4"
         android:strokeLineCap="round"
         android:strokeLineJoin="round"
-        android:fillAlpha="0.35"
+        android:strokeAlpha="0.45"
         android:fillColor="@android:color/transparent"/>
 
-    <!-- Accent dot on peak -->
+    <!-- Peak dot -->
     <path
-        android:pathData="M57,42m-5,0a5,5 0,1,0 10,0a5,5 0,1,0 -10,0"
-        android:fillColor="#FFFFFF"
-        android:fillAlpha="0.5"/>
-
-    <!-- Inner white dot -->
-    <path
-        android:pathData="M57,42m-3,0a3,3 0,1,0 6,0a3,3 0,1,0 -6,0"
+        android:pathData="M67,36m-5,0a5,5 0,1,0 10,0a5,5 0,1,0 -10,0"
         android:fillColor="#FFFFFF"/>
-
-    <!-- FYNLO text as path -->
-    <path
-        android:pathData="M20,92 L20,82 L24,82 L24,86 L27,86 L27,82 L31,82 L31,92 L27,92 L27,88 L24,88 L24,92 Z"
-        android:fillColor="#FFFFFF"
-        android:fillAlpha="0.9"/>
 </vector>

@@ -533,7 +533,7 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
             ) { onNavigateToScreen("loans_hub?tab=1") }
         }
 
-        Spacer(Modifier.height(96.dp))
+        Spacer(Modifier.height(32.dp))
     }
     }
 }

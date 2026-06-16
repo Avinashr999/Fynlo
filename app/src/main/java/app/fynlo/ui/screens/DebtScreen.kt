@@ -110,7 +110,7 @@ val debts by viewModel.debts.collectAsState()
         app.fynlo.ui.components.PullRefresh(viewModel) {
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
-            contentPadding = PaddingValues(bottom = 96.dp)
+            contentPadding = PaddingValues(bottom = FabBottomPadding)
         ) {
         item {
         if (showHeader) {
@@ -373,5 +373,4 @@ fun EmptyDebtState(onAdd: () -> Unit = {}) {
         actionLabel = "Add First Debt"
     )
 }
-
 

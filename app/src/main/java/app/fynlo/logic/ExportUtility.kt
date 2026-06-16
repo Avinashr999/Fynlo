@@ -105,12 +105,12 @@ object ExportUtility {
     private const val LINE_H = 16f
 
     // Fynlo emerald palette (Android Color ints)
-    private val COLOR_PRIMARY  = Color.rgb(5, 150, 105)   // Emerald500
-    private val COLOR_DARK     = Color.rgb(6, 95, 70)     // Emerald700
-    private val COLOR_LIGHT_BG = Color.rgb(209, 250, 229) // Emerald100
-    private val COLOR_RED      = Color.rgb(239, 68, 68)
-    private val COLOR_GREEN    = Color.rgb(16, 185, 129)
-    private val COLOR_GRAY     = Color.rgb(107, 114, 128)
+    private val COLOR_PRIMARY  = Color.rgb(4, 120, 87)    // Emerald600
+    private val COLOR_DARK     = Color.rgb(6, 78, 59)     // Emerald800
+    private val COLOR_LIGHT_BG = Color.rgb(236, 253, 245) // Emerald50
+    private val COLOR_RED      = Color.rgb(220, 38, 38)
+    private val COLOR_GREEN    = Color.rgb(5, 150, 105)
+    private val COLOR_GRAY     = Color.rgb(82, 82, 91)
     private val COLOR_WHITE    = Color.WHITE
     private val COLOR_BLACK    = Color.BLACK
 
@@ -201,10 +201,11 @@ object ExportUtility {
         }
         val maxLines = (perCell.maxOfOrNull { it.first.size } ?: 1).coerceAtLeast(1)
         val rowH = LINE_H * maxLines + 8f
+        checkBreak(rowH + 6f)
 
         val bgColor = when {
             isHeader -> COLOR_DARK
-            altBg    -> Color.rgb(243, 244, 246)
+            altBg    -> Color.rgb(250, 250, 250)
             else     -> COLOR_WHITE
         }
         rect(MARGIN, y - LINE_H + 2f, PAGE_W - MARGIN.toFloat(), y - LINE_H + 2f + rowH, bgColor)
@@ -637,7 +638,7 @@ object ExportUtility {
             Triple("TOTAL LENT OUT",  fmt(totalLentOut, currencyCode),   COLOR_PRIMARY),
         )
 
-        val cardW = (PAGE_W - MARGIN * 2) / 5f   // 5 cards across row 1
+        val cardW = (PAGE_W - MARGIN * 2) / 3f
         val cardH = 44f
         fun drawKpiRow(cards: List<Triple<String, String, Int>>, top: Float) {
             cards.forEachIndexed { i, (label, value, color) ->
@@ -648,11 +649,15 @@ object ExportUtility {
             }
         }
         val cardTop1 = b.y - LINE_H + 2f
-        drawKpiRow(row1, cardTop1)
+        drawKpiRow(row1.take(3), cardTop1)
         val cardTop2 = cardTop1 + cardH + 6f
-        drawKpiRow(row2, cardTop2)
-        // Advance past both card rows.
-        b.nl(cardH * 2 + 14f)
+        drawKpiRow(row1.drop(3), cardTop2)
+        val cardTop3 = cardTop2 + cardH + 6f
+        drawKpiRow(row2.take(3), cardTop3)
+        val cardTop4 = cardTop3 + cardH + 6f
+        drawKpiRow(row2.drop(3), cardTop4)
+        // Advance past all card rows.
+        b.nl(cardH * 4 + 26f)
 
         // ── Charts (audit C21 #10) — three panels stacked under KPIs:
         //   (1) Asset allocation donut       — breakdown of totalAssets
@@ -838,7 +843,7 @@ object ExportUtility {
         val net      = totalIn - totalOut
 
         // Summary cards
-        val cardW = (PAGE_W - MARGIN * 2) / 4f
+        val cardW = (PAGE_W - MARGIN * 2) / 2f
         val cards = listOf(
             Triple("TOTAL INFLOW",  fmt(totalIn, currencyCode),  COLOR_GREEN),
             Triple("TOTAL OUTFLOW", fmt(totalOut, currencyCode), COLOR_RED),
@@ -847,12 +852,13 @@ object ExportUtility {
         )
         val ct = b.y - LINE_H + 2f
         cards.forEachIndexed { i, (label, value, color) ->
-            val lx = MARGIN + cardW * i
-            b.rect(lx, ct, lx + cardW - 4f, ct + 44f, COLOR_LIGHT_BG)
-            b.canvas().drawText(label, lx + 6f, ct + 13f, bodyPaint(COLOR_GRAY, 8f))
-            b.canvas().drawText(value, lx + 6f, ct + 32f, bodyPaint(color, 11f, true))
+            val lx = MARGIN + cardW * (i % 2)
+            val top = ct + (i / 2) * 50f
+            b.rect(lx, top, lx + cardW - 4f, top + 44f, COLOR_LIGHT_BG)
+            b.canvas().drawText(label, lx + 6f, top + 13f, bodyPaint(COLOR_GRAY, 8f))
+            b.canvas().drawText(value, lx + 6f, top + 32f, bodyPaint(color, 11f, true))
         }
-        b.nl(50f)
+        b.nl(100f)
 
         b.sectionHeader("All Flows (${pluralize(flows.size, "entry", "entries")})")
         val usable = PAGE_W - MARGIN * 2

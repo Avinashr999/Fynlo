@@ -91,7 +91,7 @@ fun DebtPayoffScreen(viewModel: FinanceViewModel) {
     // and the per-debt cards on shorter screens.
     LazyColumn(
         modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
-        contentPadding = PaddingValues(top = 16.dp, bottom = 100.dp),
+        contentPadding = PaddingValues(top = 16.dp, bottom = FabBottomPadding),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         item("header") {

@@ -182,7 +182,7 @@ fun AboutScreen() {
                 color = MaterialTheme.colorScheme.outlineVariant)
         }
 
-        Spacer(Modifier.height(100.dp))
+        Spacer(Modifier.height(48.dp))
     }
 }
 

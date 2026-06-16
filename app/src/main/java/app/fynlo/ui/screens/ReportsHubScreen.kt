@@ -320,7 +320,7 @@ fun ReportsHubScreen(
             }
 
 
-            Spacer(Modifier.height(100.dp))
+            Spacer(Modifier.height(48.dp))
         }
     }
 }

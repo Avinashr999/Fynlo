@@ -483,19 +483,15 @@ fun LedgerRow(
 // Every scrollable container (LazyColumn `contentPadding.bottom`, or a trailing
 // Spacer inside a verticalScroll Column) that sits underneath a FAB should
 // reserve this much space at the bottom so the last list item doesn't render
-// under the FAB.
-//
-// Math: M3 FloatingActionButton is 56dp tall + 16dp of container margin =
-// 72dp minimum. We use 120dp to leave a comfortable ~48dp safety margin for
-// systems that add extra inset (gesture nav bar, predictive back hint) and
-// for visual breathing room on the last row. Per `DESIGN_SYSTEM.md §5.2`
-// (which prescribed 96dp); the survey of existing screens used 100dp and the
-// user still reported overlap, so 120dp is the floor.
+// Bottom scroll clearance for screens inside the main app chrome.
+// The global Quick Add FAB is removed, and the bottom nav lives outside the
+// scroll area, so this should prevent clipped last rows without creating a
+// large empty band at the bottom of every screen.
 //
 // Apply at the call site as either:
 //   LazyColumn(contentPadding = PaddingValues(bottom = FabBottomPadding))
 //   Spacer(Modifier.height(FabBottomPadding))   // inside verticalScroll Column
-val FabBottomPadding = 160.dp
+val FabBottomPadding = 72.dp
 
 // ── C07: shared empty-state — single CTA, no duplicate FAB ────────────────────
 // Audit (UX_AUDIT §C07) fix point #1: "Empty state shows ONLY the 'Add First X'

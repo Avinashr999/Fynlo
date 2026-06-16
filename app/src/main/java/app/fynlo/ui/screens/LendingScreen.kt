@@ -145,7 +145,7 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
-            contentPadding = PaddingValues(bottom = 96.dp)
+            contentPadding = PaddingValues(bottom = FabBottomPadding)
         ) {
             // C12 Stage 2 — top toolbar row: EMI calculator + Calendar shortcut.
             // The stats line ("X interest · Y hand · Z settled") is gone — the
