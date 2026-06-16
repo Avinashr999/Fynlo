@@ -444,8 +444,8 @@ object ExportUtility {
         canvas().drawRect(chartLeft + 60f, labelY + 8f, chartLeft + 68f, labelY + 16f, fillPaint(COLOR_RED))
         canvas().drawText("Expense", chartLeft + 72f, labelY + 15f, bodyPaint(COLOR_RED, 8f))
 
-        y = labelY + 34f
-        nl(6f)
+        y = labelY + 40f
+        nl(8f)
     }
 
     /**
@@ -524,8 +524,8 @@ object ExportUtility {
         val lastPaint = bodyPaint(COLOR_GRAY, 7f).apply { textAlign = Align.RIGHT }
         canvas().drawText(lastLabel, chartRight, chartBottom + 12f, lastPaint)
 
-        y = chartBottom + 14f
-        nl(2f)
+        y = chartBottom + 28f
+        nl(12f)
     }
 
     // ── Section header ─────────────────────────────────────────────────────────
