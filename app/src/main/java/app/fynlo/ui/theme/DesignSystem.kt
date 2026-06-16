@@ -296,6 +296,50 @@ fun LedgerMetricCard(
 }
 
 @Composable
+fun LedgerHeroPanel(
+    label: String,
+    value: String,
+    subtitle: String,
+    modifier: Modifier = Modifier,
+    containerColor: Color = Emerald700,
+    supporting: (@Composable ColumnScope.() -> Unit)? = null,
+) {
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(22.dp),
+        color = containerColor,
+        tonalElevation = 2.dp,
+    ) {
+        Column(Modifier.fillMaxWidth().padding(18.dp)) {
+            Text(
+                label,
+                style = MaterialTheme.typography.labelMedium,
+                color = Color.White.copy(alpha = 0.72f),
+            )
+            Text(
+                value,
+                style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.ExtraBold),
+                color = Color.White,
+                maxLines = 1,
+            )
+            Text(
+                subtitle,
+                style = MaterialTheme.typography.bodySmall,
+                color = Color.White.copy(alpha = 0.72f),
+                maxLines = 2,
+            )
+            if (supporting != null) {
+                Spacer(Modifier.height(8.dp))
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                    content = supporting,
+                )
+            }
+        }
+    }
+}
+
+@Composable
 fun LedgerIconTile(
     icon: ImageVector,
     tint: Color,

@@ -386,96 +386,71 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
             Spacer(Modifier.height(20.dp))
         }
 
-        Column(
-            modifier = Modifier
-                .clip(RoundedCornerShape(12.dp))
-                .clickable { onNavigateToScreen("net_worth_hist") }
-                .padding(vertical = 2.dp)
+        val nwText = if (isPrivacy) "••••" else CurrencyFormatter.hero(summary.netWorth, currencyCode, locale)
+        val lastUpdatedLabel = if (lastRecalcAt > 0L) {
+            "Last updated " + android.text.format.DateUtils
+                .getRelativeTimeSpanString(
+                    lastRecalcAt,
+                    System.currentTimeMillis(),
+                    android.text.format.DateUtils.MINUTE_IN_MILLIS,
+                )
+                .toString()
+                .replaceFirstChar { it.lowercase(locale) }
+        } else {
+            "Not recalculated yet"
+        }
+        LedgerHeroPanel(
+            label = "Total net worth",
+            value = nwText,
+            subtitle = lastUpdatedLabel,
+            containerColor = Emerald700,
+            modifier = Modifier.clickable { onNavigateToScreen("net_worth_hist") },
         ) {
-            Text("Total net worth", style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Spacer(Modifier.height(6.dp))
-            val nwText = if (isPrivacy) "••••" else CurrencyFormatter.hero(summary.netWorth, currencyCode, locale)
-            Text(
-                text = nwText,
-                fontSize = 42.sp,
-                fontWeight = FontWeight.ExtraBold,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-            // C02 step 3: "Last updated 2 min ago" subtitle. Uses Android's
-            // DateUtils.getRelativeTimeSpanString — returns "2 min ago",
-            // "Yesterday", "3 days ago" etc. with appropriate granularity.
-            Spacer(Modifier.height(4.dp))
-            val lastUpdatedLabel = if (lastRecalcAt > 0L) {
-                "Last updated " + android.text.format.DateUtils
-                    .getRelativeTimeSpanString(
-                        lastRecalcAt,
-                        System.currentTimeMillis(),
-                        android.text.format.DateUtils.MINUTE_IN_MILLIS,
-                    )
-                    .toString()
-                    .replaceFirstChar { it.lowercase(locale) }
-            } else {
-                "Not recalculated yet"
-            }
-            Text(
-                text  = lastUpdatedLabel,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        Spacer(Modifier.height(12.dp))
-
-        // Trend pill + sparkline
-        if (netWorthSnapshots.size >= 2) {
-            val recent = netWorthSnapshots.sortedBy { it.date }.takeLast(7)
-            val minV = recent.minOf { it.netWorth }.toFloat()
-            val maxV = recent.maxOf { it.netWorth }.toFloat()
-            val range = (maxV - minV).takeIf { it > 0f } ?: 1f
-            val trend = recent.last().netWorth - recent.first().netWorth
-            val up = trend >= 0
-            val trendColor = if (up) Emerald500 else SemanticRed
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Surface(shape = RoundedCornerShape(20.dp), color = trendColor.copy(alpha = 0.12f)) {
-                    Row(Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
-                        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
-                        Icon(if (up) Icons.Default.ArrowUpward else Icons.Default.ArrowDownward,
-                            null, Modifier.size(13.dp), tint = trendColor)
-                        val trendText = if (isPrivacy) "••••"
-                                        else (if (up) "+" else "") + CurrencyFormatter.hero(trend, currencyCode, locale)
-                        Text(
-                            text = trendText,
-                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold), color = trendColor)
+            if (netWorthSnapshots.size >= 2) {
+                val recent = netWorthSnapshots.sortedBy { it.date }.takeLast(7)
+                val minV = recent.minOf { it.netWorth }.toFloat()
+                val maxV = recent.maxOf { it.netWorth }.toFloat()
+                val range = (maxV - minV).takeIf { it > 0f } ?: 1f
+                val trend = recent.last().netWorth - recent.first().netWorth
+                val up = trend >= 0
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Surface(shape = RoundedCornerShape(20.dp), color = Color.White.copy(alpha = 0.14f)) {
+                        Row(Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+                            Icon(if (up) Icons.Default.ArrowUpward else Icons.Default.ArrowDownward,
+                                null, Modifier.size(13.dp), tint = Color.White)
+                            val trendText = if (isPrivacy) "••••"
+                                            else (if (up) "+" else "") + CurrencyFormatter.hero(trend, currencyCode, locale)
+                            Text(
+                                text = trendText,
+                                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold), color = Color.White)
+                        }
                     }
+                    Canvas(Modifier.weight(1f).height(32.dp)) {
+                        val pts = recent.mapIndexed { i, s ->
+                            val x = if (recent.size == 1) size.width / 2 else i * size.width / (recent.size - 1)
+                            val y = size.height - ((s.netWorth.toFloat() - minV) / range) * size.height
+                            Offset(x, y)
+                        }
+                        for (i in 0 until pts.size - 1) {
+                            drawLine(Color.White.copy(alpha = 0.62f), pts[i], pts[i + 1],
+                                strokeWidth = 2.5.dp.toPx(), cap = StrokeCap.Round)
+                        }
+                        if (pts.isNotEmpty()) drawCircle(Color.White, radius = 3.5.dp.toPx(), center = pts.last())
+                    }
+                    Text("7d", style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.72f))
                 }
-                Canvas(Modifier.weight(1f).height(32.dp)) {
-                    val pts = recent.mapIndexed { i, s ->
-                        val x = if (recent.size == 1) size.width / 2 else i * size.width / (recent.size - 1)
-                        val y = size.height - ((s.netWorth.toFloat() - minV) / range) * size.height
-                        Offset(x, y)
-                    }
-                    for (i in 0 until pts.size - 1) {
-                        drawLine(trendColor.copy(alpha = 0.6f), pts[i], pts[i + 1],
-                            strokeWidth = 2.5.dp.toPx(), cap = StrokeCap.Round)
-                    }
-                    if (pts.isNotEmpty()) drawCircle(trendColor, radius = 3.5.dp.toPx(), center = pts.last())
+            }
+            Row(Modifier.fillMaxWidth(), Arrangement.spacedBy(8.dp)) {
+                Column(Modifier.weight(1f).clip(RoundedCornerShape(12.dp)).clickable { onNavigateToScreen("reports_hub") }.background(Color.White.copy(alpha = 0.12f)).padding(10.dp)) {
+                    Text("Assets", style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.72f))
+                    Text(fmt(summary.totalAssets), style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold), color = Color.White)
                 }
-                Text("7d", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-        }
-
-        Spacer(Modifier.height(16.dp))
-
-        // Assets / Liabilities thin summary row (each tappable)
-        Row(Modifier.fillMaxWidth(), Arrangement.spacedBy(24.dp)) {
-            Column(Modifier.clip(RoundedCornerShape(10.dp)).clickable { onNavigateToScreen("reports_hub") }.padding(vertical = 2.dp, horizontal = 2.dp)) {
-                Text("Assets", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text(fmt(summary.totalAssets), style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold))
-            }
-            Column(Modifier.clip(RoundedCornerShape(10.dp)).clickable { onNavigateToScreen("loans_hub?tab=1") }.padding(vertical = 2.dp, horizontal = 2.dp)) {
-                Text("Debt owed", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text(fmt(summary.totalDebtPrincipal + summary.totalDebtInterest),
-                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold))
+                Column(Modifier.weight(1f).clip(RoundedCornerShape(12.dp)).clickable { onNavigateToScreen("loans_hub?tab=1") }.background(Color.White.copy(alpha = 0.12f)).padding(10.dp)) {
+                    Text("Debt owed", style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.72f))
+                    Text(fmt(summary.totalDebtPrincipal + summary.totalDebtInterest),
+                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold), color = Color.White)
+                }
             }
         }
 
@@ -487,11 +462,15 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
         Spacer(Modifier.height(28.dp))
 
         // ── Quick actions ─────────────────────────────────────────────────────
-        Row(Modifier.fillMaxWidth(), Arrangement.spacedBy(10.dp)) {
-            NeoAction("Expense", Icons.Default.Remove, SemanticRed, Modifier.weight(1f)) { addTxnIncome = false; showAddTxn = true }
-            NeoAction("Income", Icons.Default.Add, Emerald500, Modifier.weight(1f)) { addTxnIncome = true; showAddTxn = true }
-            NeoAction("Lend", Icons.Default.Handshake, SemanticBlue, Modifier.weight(1f)) { onNavigateToScreen("loans_hub") }
-            NeoAction("History", Icons.Default.History, Carbon500, Modifier.weight(1f)) { onNavigateToScreen("history") }
+        LedgerPanel {
+            LedgerSectionTitle("Quick actions")
+            Spacer(Modifier.height(12.dp))
+            Row(Modifier.fillMaxWidth(), Arrangement.spacedBy(10.dp)) {
+                NeoAction("Expense", Icons.Default.Remove, SemanticRed, Modifier.weight(1f)) { addTxnIncome = false; showAddTxn = true }
+                NeoAction("Income", Icons.Default.Add, Emerald500, Modifier.weight(1f)) { addTxnIncome = true; showAddTxn = true }
+                NeoAction("Lend", Icons.Default.Handshake, SemanticBlue, Modifier.weight(1f)) { onNavigateToScreen("loans_hub") }
+                NeoAction("History", Icons.Default.History, Carbon500, Modifier.weight(1f)) { onNavigateToScreen("history") }
+            }
         }
 
         Spacer(Modifier.height(18.dp))
@@ -514,71 +493,75 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
         Spacer(Modifier.height(28.dp))
 
         // ── Accounts ──────────────────────────────────────────────────────────
-        Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
-            SectionHeader("Accounts")
-            IconButton(onClick = {
-                accountDialogInitial = null
-                accountDialogDefaultType = "Bank"
-                showAccountDialog = true
-            }) {
-                Icon(Icons.Default.Add, contentDescription = "Add Account", tint = Emerald500)
-            }
-        }
-        Spacer(Modifier.height(4.dp))
         val activeAccountByName = activeAccounts.associateBy { it.name }
         val visibleAccountEntries = summary.accountBreakdown.entries.filter { activeAccountByName[it.key] != null }
-        if (visibleAccountEntries.isEmpty()) {
-            EmptyAccountsCard(
-                onAddAccount = {
+        LedgerPanel {
+            Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
+                LedgerSectionTitle("Accounts", visibleAccountEntries.size.takeIf { it > 0 }?.toString(), Modifier.weight(1f))
+                IconButton(onClick = {
                     accountDialogInitial = null
                     accountDialogDefaultType = "Bank"
                     showAccountDialog = true
-                },
-                onAddCash = {
-                    accountDialogInitial = null
-                    accountDialogDefaultType = "Cash"
-                    showAccountDialog = true
-                },
-            )
-        } else {
-            visibleAccountEntries.forEachIndexed { idx, entry ->
-                if (idx > 0) HorizontalDivider(thickness = 0.5.dp,
-                    color = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f))
-                val account = activeAccountByName[entry.key]
-                NeoAccountRow(
-                    name = entry.key,
-                    balance = fmt(entry.value),
-                    icon = iconFor(entry.key),
-                    onClick = { onNavigateToScreen("statement/${entry.key}") },
-                    onEdit = account?.let {
-                        {
-                            accountDialogInitial = it
-                            showAccountDialog = true
-                        }
+                }) {
+                    Icon(Icons.Default.Add, contentDescription = "Add Account", tint = Emerald500)
+                }
+            }
+            Spacer(Modifier.height(4.dp))
+            if (visibleAccountEntries.isEmpty()) {
+                EmptyAccountsCard(
+                    onAddAccount = {
+                        accountDialogInitial = null
+                        accountDialogDefaultType = "Bank"
+                        showAccountDialog = true
+                    },
+                    onAddCash = {
+                        accountDialogInitial = null
+                        accountDialogDefaultType = "Cash"
+                        showAccountDialog = true
                     },
                 )
+            } else {
+                visibleAccountEntries.forEachIndexed { idx, entry ->
+                    if (idx > 0) HorizontalDivider(thickness = 0.5.dp,
+                        color = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f))
+                    val account = activeAccountByName[entry.key]
+                    NeoAccountRow(
+                        name = entry.key,
+                        balance = fmt(entry.value),
+                        icon = iconFor(entry.key),
+                        onClick = { onNavigateToScreen("statement/${entry.key}") },
+                        onEdit = account?.let {
+                            {
+                                accountDialogInitial = it
+                                showAccountDialog = true
+                            }
+                        },
+                    )
+                }
             }
         }
 
         Spacer(Modifier.height(18.dp))
 
         // ── Insights ──────────────────────────────────────────────────────────
-        SectionHeader("Insights")
-        Spacer(Modifier.height(4.dp))
-        NeoInsightRow("Bank Cash", fmt(bankCashTotal), SemanticBlue) { activeBreakdownType = BreakdownType.BANK_CASH }
-        HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f))
-        NeoInsightRow("Cash in Hand", fmt(cashInHandTotal), Emerald500) { activeBreakdownType = BreakdownType.CASH_IN_HAND }
-        HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f))
-        NeoInsightRow("Growing Assets", fmt(summary.totalInvestments + summary.totalInterestLoans), SemanticAmber) { activeBreakdownType = BreakdownType.GROWING_ASSETS }
-        HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f))
-        NeoInsightRow("Hand Loans", fmt(summary.totalHandLoans), Carbon500) { activeBreakdownType = BreakdownType.HAND_LOANS }
-        HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f))
-        NeoInsightRow(
-            label = "Debt outstanding",
-            value = fmt(summary.totalDebtPrincipal + summary.totalDebtInterest),
-            color = SemanticRed,
-            subtitle = "Money you still owe",
-        ) { onNavigateToScreen("loans_hub?tab=1") }
+        LedgerPanel {
+            LedgerSectionTitle("Insights")
+            Spacer(Modifier.height(4.dp))
+            NeoInsightRow("Bank Cash", fmt(bankCashTotal), SemanticBlue) { activeBreakdownType = BreakdownType.BANK_CASH }
+            HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f))
+            NeoInsightRow("Cash in Hand", fmt(cashInHandTotal), Emerald500) { activeBreakdownType = BreakdownType.CASH_IN_HAND }
+            HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f))
+            NeoInsightRow("Growing Assets", fmt(summary.totalInvestments + summary.totalInterestLoans), SemanticAmber) { activeBreakdownType = BreakdownType.GROWING_ASSETS }
+            HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f))
+            NeoInsightRow("Hand Loans", fmt(summary.totalHandLoans), Carbon500) { activeBreakdownType = BreakdownType.HAND_LOANS }
+            HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f))
+            NeoInsightRow(
+                label = "Debt outstanding",
+                value = fmt(summary.totalDebtPrincipal + summary.totalDebtInterest),
+                color = SemanticRed,
+                subtitle = "Money you still owe",
+            ) { onNavigateToScreen("loans_hub?tab=1") }
+        }
 
         Spacer(Modifier.height(120.dp))
     }

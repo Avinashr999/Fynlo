@@ -152,63 +152,44 @@ val transactions by viewModel.transactions.collectAsState()
                 // callout. The delta line uses an arrow + colour to signal
                 // direction (↓ green = spent less / ↑ red = spent more). Hidden
                 // when previousMonthTotal == 0 (first month of usage).
-                Column(Modifier.fillMaxWidth().padding(top = 4.dp)) {
-                    Text("Spent in ${selectedMonth.format(monthFmt)}",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text(CurrencyFormatter.detail(total, currencyCode, locale),
-                        style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.ExtraBold),
-                        color = SemanticRed)
-                    // MoM delta line — only when we have a previous month's data
-                    // to compare against. "Spent less" is good news (green), so
-                    // the colour semantic is inverted from the absolute amount
-                    // colour (red for the total — that's the "this is an expense"
-                    // semantic, not a value-judgement on spending pace).
+                LedgerHeroPanel(
+                    label = "Spent in ${selectedMonth.format(monthFmt)}",
+                    value = CurrencyFormatter.detail(total, currencyCode, locale),
+                    subtitle = app.fynlo.logic.pluralize(expenses.size, "transaction"),
+                    containerColor = SemanticRed,
+                    modifier = Modifier.padding(top = 4.dp),
+                ) {
                     if (previousMonthTotal > 0) {
                         val delta = total - previousMonthTotal
-                        val (arrow, label, colour) = when {
-                            delta > 0 -> Triple("↑", "more than last month", SemanticRed)
-                            delta < 0 -> Triple("↓", "less than last month", Emerald500)
-                            else      -> Triple("→", "same as last month",   MaterialTheme.colorScheme.onSurfaceVariant)
+                        val label = when {
+                            delta > 0 -> "more than last month"
+                            delta < 0 -> "less than last month"
+                            else -> "same as last month"
                         }
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp),
-                            modifier = Modifier.padding(top = 4.dp),
-                        ) {
-                            Text(arrow, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold), color = colour)
-                            Text(
-                                if (delta == 0.0) label
-                                else "${CurrencyFormatter.detail(kotlin.math.abs(delta), currencyCode, locale)} $label",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = colour,
-                            )
-                        }
+                        Text(
+                            if (delta == 0.0) label else "${CurrencyFormatter.detail(kotlin.math.abs(delta), currencyCode, locale)} $label",
+                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                            color = Color.White.copy(alpha = 0.82f),
+                        )
                     }
-                    // Top-category callout — only when one category clearly
-                    // dominates (≥30% share). Surfaces the "mostly on Food"
-                    // insight the audit asked for.
                     if (topCategory != null) {
                         val (cat, amt, share) = topCategory
                         Text(
-                            "Mostly on $cat — ${CurrencyFormatter.detail(amt, currencyCode, locale)} (${(share * 100).toInt()}%)",
+                            "Mostly on $cat - ${CurrencyFormatter.detail(amt, currencyCode, locale)} (${(share * 100).toInt()}%)",
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(top = 2.dp),
+                            color = Color.White.copy(alpha = 0.78f),
                         )
                     }
-                    Text(app.fynlo.logic.pluralize(expenses.size, "transaction"), style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(top = 2.dp))
                 }
 
-                Spacer(Modifier.height(24.dp))
+                Spacer(Modifier.height(18.dp))
 
                 // Category breakdown with FIXED budget %
                 if (byCat.isNotEmpty()) {
-                    Text("Category Breakdown", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
-                    Spacer(Modifier.height(12.dp))
-                    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    LedgerPanel {
+                        Text("Category Breakdown", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
+                        Spacer(Modifier.height(12.dp))
+                        Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                             byCat.forEachIndexed { i, (cat, amt) ->
                                 val budget     = budgets.find { it.category.equals(cat, ignoreCase = true) }
                                 // Fix: use budget limit as max, not total spending
@@ -259,6 +240,7 @@ val transactions by viewModel.transactions.collectAsState()
                                     }
                                 }
                             }
+                        }
                     }
                     Spacer(Modifier.height(20.dp))
                 }

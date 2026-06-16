@@ -26,7 +26,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.fynlo.FinanceViewModel
 import app.fynlo.logic.CurrencyFormatter
+import app.fynlo.ui.theme.Carbon700
 import app.fynlo.ui.theme.Emerald500
+import app.fynlo.ui.theme.LedgerHeroPanel
 import app.fynlo.ui.theme.SemanticRed
 import app.fynlo.ui.theme.PremiumScreenHeader
 
@@ -88,7 +90,6 @@ fun LoansHubScreen(
     val heroAmount = if (tab == 0) summary.totalReceivables
                      else (summary.totalDebtPrincipal + summary.totalDebtInterest)
     val heroCount  = if (tab == 0) activeLentCount else activeOwedCount
-    val heroColour = if (tab == 0) Emerald500 else SemanticRed
     val countNoun  = if (tab == 0) {
         if (heroCount == 1) "1 loan" else "$heroCount loans"
     } else {
@@ -105,23 +106,13 @@ fun LoansHubScreen(
         // hidden when the tab has zero entries (the Lent/Owed segmented +
         // empty-state messaging in the child screen handles that case).
         if (heroCount > 0 || heroAmount > 0) {
-            Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp)) {
-                Text(
-                    "Total Outstanding",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Text(
-                    if (isPrivacy) "••••" else CurrencyFormatter.detail(heroAmount, currencyCode, locale),
-                    style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.ExtraBold),
-                    color = heroColour,
-                )
-                Text(
-                    "Across $countNoun",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
+            LedgerHeroPanel(
+                label = if (tab == 0) "Money Lent" else "Debt Owed",
+                value = if (isPrivacy) "Hidden" else CurrencyFormatter.detail(heroAmount, currencyCode, locale),
+                subtitle = "Across $countNoun",
+                containerColor = if (tab == 0) Emerald500 else Carbon700,
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+            )
             Spacer(Modifier.height(4.dp))
         }
 
