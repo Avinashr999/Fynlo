@@ -24,13 +24,37 @@ import app.fynlo.data.model.FlowTemplate
         RecurringTransaction::class,
         NetWorthSnapshot::class,
         InvestmentValuation::class,
-        DeletedRemoteDoc::class
+        DeletedRemoteDoc::class,
+        AuditEvent::class
     ],
-    version = 26,
+    version = 27,
     exportSchema = true
 )
 abstract class FynloDatabase : RoomDatabase() {
     abstract fun dao(): FynloDao
+}
+
+val MIGRATION_26_27 = object : Migration(26, 27) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("""
+            CREATE TABLE IF NOT EXISTS `audit_events` (
+                `id` TEXT NOT NULL,
+                `timestamp` INTEGER NOT NULL,
+                `action` TEXT NOT NULL,
+                `entityType` TEXT NOT NULL,
+                `entityId` TEXT NOT NULL,
+                `title` TEXT NOT NULL,
+                `beforeValue` TEXT NOT NULL,
+                `afterValue` TEXT NOT NULL,
+                `amountDelta` REAL NOT NULL,
+                `accountName` TEXT NOT NULL,
+                `projectId` TEXT NOT NULL,
+                `reason` TEXT NOT NULL,
+                `actor` TEXT NOT NULL,
+                PRIMARY KEY(`id`)
+            )
+        """.trimIndent())
+    }
 }
 
 val MIGRATION_25_26 = object : Migration(25, 26) {

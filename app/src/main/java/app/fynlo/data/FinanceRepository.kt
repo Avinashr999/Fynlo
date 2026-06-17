@@ -44,6 +44,7 @@ class FinanceRepository(
     val allGoals: Flow<List<Goal>>               = dao.getAllGoals()
     val allProjects: Flow<List<Project>>         = dao.getAllProjects()
     val allValuations: Flow<List<InvestmentValuation>> = dao.getAllValuations()
+    val allAuditEvents: Flow<List<AuditEvent>>   = dao.getAllAuditEvents()
     private val ioScope = CoroutineScope(Dispatchers.IO)
     fun sync(block: suspend FirestoreRepository.() -> Unit) {
         // Don't attempt Firestore writes without a real authenticated user
@@ -129,6 +130,39 @@ class FinanceRepository(
         }
     }
 
+    private suspend fun recordAudit(
+        action: String,
+        entityType: String,
+        entityId: String,
+        title: String,
+        beforeValue: String = "",
+        afterValue: String = "",
+        amountDelta: Double = 0.0,
+        accountName: String = "",
+        projectId: String = "personal",
+        reason: String = "",
+    ) {
+        dao.insertAuditEvent(
+            AuditEvent(
+                id = app.fynlo.logic.Ids.newId(),
+                timestamp = System.currentTimeMillis(),
+                action = action,
+                entityType = entityType,
+                entityId = entityId,
+                title = title.take(120),
+                beforeValue = beforeValue.take(600),
+                afterValue = afterValue.take(600),
+                amountDelta = amountDelta,
+                accountName = accountName.take(120),
+                projectId = projectId.ifBlank { "personal" },
+                reason = reason.take(300),
+            )
+        )
+    }
+
+    private fun Transaction.auditSummary(): String =
+        "${type}:${category}:${amount}:${fromAcct}->${toAcct}:${date}:${desc}"
+
     private suspend fun Transaction.withResolvedAccountIds(): Transaction {
         // Resolve up front so the lookup closure passed to the pure helper
         // is synchronous (DAO calls are suspend; the helper is not).
@@ -186,6 +220,20 @@ class FinanceRepository(
                     app.fynlo.logic.BalanceAuditLog.record(srcTag, t.toAcct,    t.amount, "$note (in)")
                 }
             }
+            recordAudit(
+                action = "CREATE",
+                entityType = "transaction",
+                entityId = t.id,
+                title = "Transaction added: ${t.category}",
+                afterValue = t.auditSummary(),
+                amountDelta = when (t.type.lowercase()) {
+                    "expense" -> -t.amount
+                    "income" -> t.amount
+                    else -> 0.0
+                },
+                accountName = listOf(t.fromAcct, t.toAcct).filter { it.isNotBlank() }.joinToString(" -> "),
+                projectId = t.projectId,
+            )
             sync { setTransaction(t) }
         }
         Analytics.transactionAdded(type = transaction.type, category = transaction.category)
@@ -335,6 +383,25 @@ class FinanceRepository(
             }
 
             dao.insertTransaction(new)
+            recordAudit(
+                action = "EDIT",
+                entityType = "transaction",
+                entityId = new.id,
+                title = "Transaction edited: ${new.category}",
+                beforeValue = old.auditSummary(),
+                afterValue = new.auditSummary(),
+                amountDelta = when (new.type.lowercase()) {
+                    "expense" -> -new.amount
+                    "income" -> new.amount
+                    else -> 0.0
+                } - when (old.type.lowercase()) {
+                    "expense" -> -old.amount
+                    "income" -> old.amount
+                    else -> 0.0
+                },
+                accountName = listOf(new.fromAcct, new.toAcct).filter { it.isNotBlank() }.joinToString(" -> "),
+                projectId = new.projectId,
+            )
             sync { setTransaction(new) }
         }
         // Sync affected accounts
@@ -412,6 +479,20 @@ class FinanceRepository(
 
             dao.deleteTransaction(current)
             tombstoneRemoteDoc("transactions", current.id)
+            recordAudit(
+                action = "DELETE",
+                entityType = "transaction",
+                entityId = current.id,
+                title = "Transaction deleted: ${current.category}",
+                beforeValue = current.auditSummary(),
+                amountDelta = when (current.type.lowercase()) {
+                    "expense" -> current.amount
+                    "income" -> -current.amount
+                    else -> 0.0
+                },
+                accountName = listOf(current.fromAcct, current.toAcct).filter { it.isNotBlank() }.joinToString(" -> "),
+                projectId = current.projectId,
+            )
             deleted = current
         }
         val current = deleted ?: return
@@ -429,14 +510,37 @@ class FinanceRepository(
     suspend fun insertBorrower(borrower: Borrower) = insertBorrowerWithSource(borrower, "Personal Cash")
 
     suspend fun updateBorrower(borrower: Borrower) {
+        val before = dao.getBorrowerById(borrower.id)
         val b = borrower.copy(updatedAt = System.currentTimeMillis())
         dao.insertBorrower(b)
+        recordAudit(
+            action = "EDIT",
+            entityType = "loan",
+            entityId = b.id,
+            title = "Loan edited: ${b.name}",
+            beforeValue = before?.let { "${it.name}:${it.amount}:paid=${it.paid}:source=${it.sourceAccount}:status=${it.status}" } ?: "",
+            afterValue = "${b.name}:${b.amount}:paid=${b.paid}:source=${b.sourceAccount}:status=${b.status}",
+            amountDelta = b.amount - (before?.amount ?: b.amount),
+            accountName = b.sourceAccount,
+            projectId = b.projectId,
+        )
         sync { setBorrower(b) }
     }
 
     suspend fun updateDebt(debt: Debt) {
+        val before = dao.getDebtById(debt.id)
         val d = debt.copy(updatedAt = System.currentTimeMillis())
         dao.insertDebt(d)
+        recordAudit(
+            action = "EDIT",
+            entityType = "debt",
+            entityId = d.id,
+            title = "Debt edited: ${d.name}",
+            beforeValue = before?.let { "${it.name}:${it.amount}:paid=${it.paid}:status=${it.status}" } ?: "",
+            afterValue = "${d.name}:${d.amount}:paid=${d.paid}:status=${d.status}",
+            amountDelta = d.amount - (before?.amount ?: d.amount),
+            projectId = d.projectId,
+        )
         sync { setDebt(d) }
     }
     /**
@@ -487,6 +591,16 @@ class FinanceRepository(
             dao.updateAccountBalance(sourceAccount, -borrower.amount)
             val t = Transaction(app.fynlo.logic.Ids.newId(), borrower.date, "Expense", borrower.amount, fromAcct = sourceAccount, category = "Lending", desc = "Lent to ${borrower.name}", ref = borrower.id, notes = borrower.notes, projectId = projectId, updatedAt = now, createdAt = now)
             dao.insertTransaction(t)
+            recordAudit(
+                action = "CREATE",
+                entityType = "loan",
+                entityId = b.id,
+                title = "Loan created: ${b.name}",
+                afterValue = "lent=${b.amount}:from=$sourceAccount:txn=${t.id}",
+                amountDelta = -b.amount,
+                accountName = sourceAccount,
+                projectId = projectId,
+            )
             sync { setBorrower(b); setTransaction(t) }
         }
         Analytics.loanCreated(hasInterest = borrower.rate > 0.0)
@@ -514,6 +628,16 @@ class FinanceRepository(
             }
             dao.getPaymentsForLoanOnce(borrower.id).forEach { p -> dao.deletePayment(p) }
             dao.deleteBorrower(borrower)
+            recordAudit(
+                action = "DELETE",
+                entityType = "loan",
+                entityId = borrower.id,
+                title = "Loan deleted: ${borrower.name}",
+                beforeValue = "lent=${borrower.amount}:paid=${borrower.paid}:source=${borrower.sourceAccount}",
+                amountDelta = borrower.amount,
+                accountName = borrower.sourceAccount,
+                projectId = borrower.projectId,
+            )
         }
         linkedTxns.forEach { sync { deleteTransaction(it.id) } }
         sync { deleteBorrower(borrower.id) }
@@ -563,6 +687,15 @@ class FinanceRepository(
                     delta   = delta,
                     note    = "Recalc rebuilt borrower.paid from payments ($oldPaid → $newPaid)",
                 )
+                recordAudit(
+                    action = "RECALC",
+                    entityType = "loan",
+                    entityId = id,
+                    title = "Loan paid total rebuilt: $name",
+                    beforeValue = oldPaid.toString(),
+                    afterValue = newPaid.toString(),
+                    amountDelta = delta,
+                )
             }
         }
         for ((id, namePaid) in debtsBefore) {
@@ -575,6 +708,15 @@ class FinanceRepository(
                     account = "Debt: $name",
                     delta   = delta,
                     note    = "Recalc rebuilt debt.paid from debt_payments ($oldPaid → $newPaid)",
+                )
+                recordAudit(
+                    action = "RECALC",
+                    entityType = "debt",
+                    entityId = id,
+                    title = "Debt paid total rebuilt: $name",
+                    beforeValue = oldPaid.toString(),
+                    afterValue = newPaid.toString(),
+                    amountDelta = delta,
                 )
             }
         }
@@ -605,6 +747,18 @@ class FinanceRepository(
                 updatedAt = System.currentTimeMillis()
             )
             dao.insertTransaction(t)
+            recordAudit(
+                action = "EDIT",
+                entityType = "account",
+                entityId = accountName,
+                title = "Account balance corrected: $accountName",
+                beforeValue = oldBalance.toString(),
+                afterValue = newBalance.toString(),
+                amountDelta = diff,
+                accountName = accountName,
+                projectId = t.projectId,
+                reason = "Manual balance correction",
+            )
             sync { setTransaction(t) }
         }
         // Push updated account
@@ -614,7 +768,18 @@ class FinanceRepository(
     suspend fun insertAccount(account: Account) {
         val now = System.currentTimeMillis()
         val a = account.copy(updatedAt = now, createdAt = if (account.createdAt == 0L) now else account.createdAt)
-        dao.insertAccount(a); sync { setAccount(a) }
+        dao.insertAccount(a)
+        recordAudit(
+            action = "CREATE",
+            entityType = "account",
+            entityId = a.id,
+            title = "Account created: ${a.name}",
+            afterValue = "${a.name}:${a.type}:${a.balance}",
+            amountDelta = a.balance,
+            accountName = a.name,
+            projectId = a.projectId,
+        )
+        sync { setAccount(a) }
     }
     // ─── Investment — funded by own account ────────────────────────────────────
     suspend fun insertInvestmentFundedByAccount(investment: Investment, accountName: String, projectId: String = investment.projectId, accountId: String = "") {
@@ -629,6 +794,16 @@ class FinanceRepository(
                 desc = "Invested in ${investment.name}", ref = i.id,
                 notes = investment.notes, projectId = projectId, updatedAt = System.currentTimeMillis())
             dao.insertTransaction(t)
+            recordAudit(
+                action = "CREATE",
+                entityType = "investment",
+                entityId = i.id,
+                title = "Investment created: ${i.name}",
+                afterValue = "invested=${i.invested}:current=${i.currentVal}:fundedBy=$accountName:txn=${t.id}",
+                amountDelta = -i.invested,
+                accountName = accountName,
+                projectId = projectId,
+            )
             sync { setInvestment(i); setTransaction(t) }
         }
         Analytics.investmentCreated(type = investment.type)
@@ -646,6 +821,16 @@ class FinanceRepository(
                 desc = "Invested in ${investment.name} using ${debt.name} loan funds",
                 notes = investment.notes, projectId = projectId, updatedAt = System.currentTimeMillis())
             dao.insertTransaction(t)
+            recordAudit(
+                action = "CREATE",
+                entityType = "investment",
+                entityId = i.id,
+                title = "Investment created from debt: ${i.name}",
+                afterValue = "invested=${i.invested}:debt=${debt.name}:debtId=${debt.id}:txn=${t.id}",
+                amountDelta = i.invested,
+                accountName = debt.name,
+                projectId = projectId,
+            )
             sync { setInvestment(i); setTransaction(t) }
         }
         Analytics.investmentCreated(type = investment.type)
@@ -666,6 +851,16 @@ class FinanceRepository(
                 desc = "Invested $investedText in ${investment.name} via ${d.name} loan",
                 notes = investment.notes, projectId = projectId, updatedAt = System.currentTimeMillis())
             dao.insertTransaction(t)
+            recordAudit(
+                action = "CREATE",
+                entityType = "investment",
+                entityId = i.id,
+                title = "Investment created from new loan: ${i.name}",
+                afterValue = "invested=${i.invested}:newDebt=${d.name}:debtId=${d.id}:txn=${t.id}",
+                amountDelta = i.invested,
+                accountName = d.name,
+                projectId = projectId,
+            )
             sync { setDebt(d); setInvestment(i); setTransaction(t) }
         }
         Analytics.investmentCreated(type = investment.type)
@@ -691,6 +886,17 @@ class FinanceRepository(
             }
             dao.deleteInvestment(current)
             tombstoneRemoteDoc("investments", current.id)
+            recordAudit(
+                action = "DELETE",
+                entityType = "investment",
+                entityId = current.id,
+                title = "Investment deleted: ${current.name}",
+                beforeValue = "invested=${current.invested}:current=${current.currentVal}:source=${current.fundingSource}",
+                amountDelta = -current.currentVal,
+                accountName = current.fundingSource,
+                projectId = current.projectId,
+                reason = "Delete investment only",
+            )
             didDelete = true
         }
         if (didDelete) sync { deleteInvestment(investment.id) }
@@ -719,6 +925,17 @@ class FinanceRepository(
             }
             dao.deleteInvestment(current)
             tombstoneRemoteDoc("investments", current.id)
+            recordAudit(
+                action = "DELETE",
+                entityType = "investment",
+                entityId = current.id,
+                title = "Investment deleted and funding reversed: ${current.name}",
+                beforeValue = "invested=${current.invested}:current=${current.currentVal}:source=${current.fundingSource}",
+                amountDelta = current.invested,
+                accountName = fundingSourceToSync.ifBlank { current.fundingSource },
+                projectId = current.projectId,
+                reason = "Investment funding reversed to source account",
+            )
             didDelete = true
         }
         if (didDelete) {
@@ -759,6 +976,17 @@ class FinanceRepository(
             }
             dao.deleteInvestment(current)
             tombstoneRemoteDoc("investments", current.id)
+            recordAudit(
+                action = "DELETE",
+                entityType = "investment",
+                entityId = current.id,
+                title = "Investment and linked loan deleted: ${current.name}",
+                beforeValue = "invested=${current.invested}:linkedDebt=${current.linkedDebtId}:source=${current.fundingSource}",
+                amountDelta = -current.currentVal,
+                accountName = current.fundingSource,
+                projectId = current.projectId,
+                reason = "Delete investment with linked debt",
+            )
             deletedInvestment = current
         }
         val current = deletedInvestment ?: return
@@ -769,12 +997,34 @@ class FinanceRepository(
     }
 
     suspend fun upsertAccount(account: Account) {
+        val before = dao.getAccountById(account.id)
         dao.insertAccount(account)
+        recordAudit(
+            action = if (before == null) "CREATE" else "EDIT",
+            entityType = "account",
+            entityId = account.id,
+            title = if (before == null) "Account created: ${account.name}" else "Account edited: ${account.name}",
+            beforeValue = before?.let { "${it.name}:${it.type}:${it.balance}" } ?: "",
+            afterValue = "${account.name}:${account.type}:${account.balance}",
+            amountDelta = account.balance - (before?.balance ?: 0.0),
+            accountName = account.name,
+            projectId = account.projectId,
+        )
         sync { setAccount(account) }
     }
 
     suspend fun deleteUnusedAccount(account: Account) {
         dao.deleteAccountById(account.id)
+        recordAudit(
+            action = "DELETE",
+            entityType = "account",
+            entityId = account.id,
+            title = "Account deleted: ${account.name}",
+            beforeValue = "${account.name}:${account.type}:${account.balance}",
+            amountDelta = -account.balance,
+            accountName = account.name,
+            projectId = account.projectId,
+        )
         sync { deleteAccount(account.id) }
     }
 
@@ -925,6 +1175,16 @@ class FinanceRepository(
             dao.updateAccountBalance(destinationAccount, debt.amount)
             val t = Transaction(app.fynlo.logic.Ids.newId(), debt.date, "Income", debt.amount, toAcct = destinationAccount, category = "Debt Received", desc = "Loan received from ${debt.name}", ref = d.id, notes = debt.notes, projectId = projectId, updatedAt = now, createdAt = now)
             dao.insertTransaction(t)
+            recordAudit(
+                action = "CREATE",
+                entityType = "debt",
+                entityId = d.id,
+                title = "Debt created: ${d.name}",
+                afterValue = "borrowed=${d.amount}:to=$destinationAccount:txn=${t.id}",
+                amountDelta = d.amount,
+                accountName = destinationAccount,
+                projectId = projectId,
+            )
             sync { setDebt(d); setTransaction(t) }
         }
         syncAccountByName(destinationAccount)
@@ -949,6 +1209,16 @@ class FinanceRepository(
             }
             dao.getDebtPaymentsForDebtOnce(current.id).forEach { p -> dao.deleteDebtPayment(p) }
             dao.deleteDebt(current)
+            recordAudit(
+                action = "DELETE",
+                entityType = "debt",
+                entityId = current.id,
+                title = "Debt deleted: ${current.name}",
+                beforeValue = "borrowed=${current.amount}:paid=${current.paid}",
+                amountDelta = -current.amount,
+                accountName = linkedTxns.firstOrNull { it.type.equals("Income", ignoreCase = true) }?.toAcct ?: "",
+                projectId = current.projectId,
+            )
             didDelete = true
         }
         if (!didDelete) return
@@ -993,6 +1263,16 @@ class FinanceRepository(
 
             // Sync the updated borrower too
             val updatedBorrower = dao.getBorrowerById(payment.loanId)
+            recordAudit(
+                action = "PAYMENT",
+                entityType = "loan",
+                entityId = payment.loanId,
+                title = "Loan payment received: ${payment.name}",
+                afterValue = "amount=${p.amount}:to=$destinationAccount:payment=${p.id}:txn=${t.id}",
+                amountDelta = p.amount,
+                accountName = destinationAccount,
+                projectId = projectId,
+            )
             sync {
                 setPayment(p)
                 setTransaction(t)
@@ -1067,6 +1347,16 @@ class FinanceRepository(
             }
 
             val updatedDebt = dao.getDebtById(payment.debtId)
+            recordAudit(
+                action = "PAYMENT",
+                entityType = "debt",
+                entityId = payment.debtId,
+                title = "Debt payment made: ${payment.name}",
+                afterValue = "amount=${p.amount}:from=$sourceAccount:payment=${p.id}:txn=${t.id}:interest=$interestPaid",
+                amountDelta = -p.amount,
+                accountName = sourceAccount,
+                projectId = projectId,
+            )
             sync {
                 setDebtPayment(p)
                 setTransaction(t)
@@ -1586,6 +1876,7 @@ class FinanceRepository(
             dao.deleteAllAccounts(); dao.deleteAllTransactions(); dao.deleteAllBorrowers()
             dao.deleteAllInvestments(); dao.deleteAllDebts(); dao.deleteAllPeople(); dao.deleteAllProjects()
             dao.deleteAllPayments(); dao.deleteAllDebtPayments(); dao.deleteAllBudgets(); dao.deleteAllGoals()
+            dao.deleteAllAuditEvents()
             data.accounts.forEach { dao.insertAccount(it) }; data.transactions.forEach { dao.insertTransaction(it) }
             data.borrowers.forEach { dao.insertBorrower(it) }; data.investments.forEach { dao.insertInvestment(it) }
             data.debts.forEach { dao.insertDebt(it) }; data.people.forEach { dao.insertPerson(it) }
@@ -1593,6 +1884,14 @@ class FinanceRepository(
             data.payments.forEach { dao.insertPayment(it) }; data.debtPayments.forEach { dao.insertDebtPayment(it) }
             data.budgets.forEach { dao.insertBudget(it) }; data.goals.forEach { dao.insertGoal(it) }
             data.recurringTransactions.forEach { dao.insertRecurringTransaction(it) }
+            recordAudit(
+                action = "RESTORE",
+                entityType = "backup",
+                entityId = "restore",
+                title = "Backup restored",
+                afterValue = "accounts=${data.accounts.size}:transactions=${data.transactions.size}:loans=${data.borrowers.size}:debts=${data.debts.size}:investments=${data.investments.size}",
+                projectId = data.projects.firstOrNull()?.id ?: "personal",
+            )
         }
     }
 

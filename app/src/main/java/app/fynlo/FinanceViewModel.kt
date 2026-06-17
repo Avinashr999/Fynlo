@@ -193,6 +193,35 @@ class FinanceViewModel @Inject constructor(
             ),
         )
 
+    val auditEvents: StateFlow<List<AuditEvent>> =
+        combine(repository.allAuditEvents, _currentProjectId) { list, pid ->
+            list.filter { ProjectScope.belongsToSelectedProject(it.projectId, pid) }
+        }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    fun exportAuditTrailCsv(): String {
+        fun csvCell(value: String): String = "\"${value.replace("\"", "\"\"")}\""
+        val dateFormat = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.US)
+        return buildString {
+            appendLine("Timestamp,Action,Entity Type,Entity Id,Title,Account,Amount Delta,Before,After,Reason")
+            auditEvents.value.forEach { event ->
+                appendLine(
+                    listOf(
+                        dateFormat.format(java.util.Date(event.timestamp)),
+                        event.action,
+                        event.entityType,
+                        event.entityId,
+                        event.title,
+                        event.accountName,
+                        event.amountDelta.toString(),
+                        event.beforeValue,
+                        event.afterValue,
+                        event.reason,
+                    ).joinToString(",") { csvCell(it) }
+                )
+            }
+        }
+    }
+
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
 

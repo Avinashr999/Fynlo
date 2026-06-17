@@ -7,6 +7,7 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
 import app.fynlo.data.model.Account
+import app.fynlo.data.model.AuditEvent
 import app.fynlo.data.model.Borrower
 import app.fynlo.data.model.Budget
 import app.fynlo.data.model.Debt
@@ -139,6 +140,13 @@ interface FynloDao {
 
     @Query("SELECT * FROM transactions WHERE desc = :desc")
     suspend fun getTransactionsByDesc(desc: String): List<Transaction>
+
+    // Audit trail
+    @Query("SELECT * FROM audit_events ORDER BY timestamp DESC")
+    fun getAllAuditEvents(): Flow<List<AuditEvent>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAuditEvent(event: AuditEvent)
 
     // ─── Accounts ─────────────────────────────────────────────────────────────
 
@@ -328,6 +336,9 @@ interface FynloDao {
 
     @Query("DELETE FROM goals")
     suspend fun deleteAllGoals()
+
+    @Query("DELETE FROM audit_events")
+    suspend fun deleteAllAuditEvents()
     // ─── Legacy projectId normalization ───────────────────────────────────────
     // Fixes records created before v2.0 (empty projectId) or with the
     // placeholder "personal" string — updates them to the real project UUID.

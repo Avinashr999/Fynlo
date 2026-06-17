@@ -115,6 +115,7 @@ fun SettingsScreen(
     var csvImportSummary by remember { mutableStateOf<String?>(null) }
     val allAccountsForImport by viewModel.accounts.collectAsState()
     val ledgerReport by viewModel.ledgerAccountabilityReport.collectAsState()
+    val auditEvents by viewModel.auditEvents.collectAsState()
     var showDataExportDialog by remember { mutableStateOf(false) }
     var selectedDataExportScope by remember { mutableStateOf(DataExportScope.WHOLE) }
     var selectedDataExportFormat by remember { mutableStateOf(DataExportFormat.PDF) }
@@ -235,6 +236,15 @@ fun SettingsScreen(
         ActivityResultContracts.CreateDocument("text/csv")
     ) { uri -> uri?.let { scope.launch(Dispatchers.IO) {
         val csv = viewModel.exportDataToCSV(selectedDataExportScope.id)
+        context.contentResolver.openOutputStream(it)?.use { os ->
+            os.write(csv.toByteArray(Charsets.UTF_8))
+        }
+    }}}
+
+    val auditExportLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("text/csv")
+    ) { uri -> uri?.let { scope.launch(Dispatchers.IO) {
+        val csv = viewModel.exportAuditTrailCsv()
         context.contentResolver.openOutputStream(it)?.use { os ->
             os.write(csv.toByteArray(Charsets.UTF_8))
         }
@@ -819,6 +829,26 @@ fun SettingsScreen(
                     LedgerHealthDialog(
                         report = ledgerReport,
                         onDismiss = { showLedgerHealth = false },
+                    )
+                }
+
+                SettingsDivider()
+
+                var showAuditTrail by remember { mutableStateOf(false) }
+                SettingsActionRow(
+                    icon = Icons.Default.Verified,
+                    color = Green,
+                    title = "Audit trail",
+                    subtitle = "${auditEvents.size} saved money-action events. Review or export accountability history."
+                ) { showAuditTrail = true }
+
+                if (showAuditTrail) {
+                    AuditTrailDialog(
+                        events = auditEvents,
+                        onDismiss = { showAuditTrail = false },
+                        onExport = {
+                            auditExportLauncher.launch("Fynlo_Audit_Trail_${System.currentTimeMillis()}.csv")
+                        },
                     )
                 }
 
@@ -1930,6 +1960,126 @@ private fun LedgerHealthDialog(
             Button(onClick = onDismiss) { Text("Done") }
         },
     )
+}
+
+@Composable
+private fun AuditTrailDialog(
+    events: List<app.fynlo.data.model.AuditEvent>,
+    onDismiss: () -> Unit,
+    onExport: () -> Unit,
+) {
+    val dateFormat = remember {
+        java.text.SimpleDateFormat("dd-MM-yyyy HH:mm", java.util.Locale.US)
+    }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Column {
+                Text("Audit trail")
+                Text(
+                    "${events.size} saved money-action events",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        },
+        text = {
+            LazyColumn(
+                modifier = Modifier.fillMaxWidth().heightIn(max = 520.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                if (events.isEmpty()) {
+                    item {
+                        Text(
+                            "No audit events yet. New adds, edits, deletes, restores, payments, and corrections will appear here.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                } else {
+                    items(events.take(30)) { event ->
+                        AuditEventRow(event, dateFormat)
+                    }
+                    if (events.size > 30) {
+                        item {
+                            Text(
+                                "+${events.size - 30} older events. Export CSV to review everything.",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Close") }
+        },
+        confirmButton = {
+            Button(onClick = onExport, enabled = events.isNotEmpty()) { Text("Export CSV") }
+        },
+    )
+}
+
+@Composable
+private fun AuditEventRow(
+    event: app.fynlo.data.model.AuditEvent,
+    dateFormat: java.text.SimpleDateFormat,
+) {
+    val color = when (event.action) {
+        "DELETE" -> Red
+        "PAYMENT" -> Blue
+        "RECALC" -> Amber
+        "RESTORE" -> Carbon500
+        else -> Green
+    }
+    Surface(
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.38f),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f)),
+    ) {
+        Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text(
+                    event.action,
+                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                    color = color,
+                )
+                Text(
+                    dateFormat.format(java.util.Date(event.timestamp)),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Text(
+                event.title,
+                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+            if (event.accountName.isNotBlank() || kotlin.math.abs(event.amountDelta) > 0.005) {
+                Text(
+                    listOfNotNull(
+                        event.accountName.takeIf { it.isNotBlank() },
+                        event.amountDelta.takeIf { kotlin.math.abs(it) > 0.005 }?.let { "Delta ${CurrencyFormatter.detail(it)}" },
+                    ).joinToString(" - "),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            if (event.afterValue.isNotBlank()) {
+                Text(
+                    event.afterValue,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+    }
 }
 
 @Composable
