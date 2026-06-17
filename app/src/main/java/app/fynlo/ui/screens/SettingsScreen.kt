@@ -818,11 +818,19 @@ fun SettingsScreen(
                 SettingsDivider()
 
                 var showLedgerHealth by remember { mutableStateOf(false) }
+                val ledgerHealthSubtitle = when {
+                    ledgerReport.criticalCount > 0 || ledgerReport.warningCount > 0 ->
+                        "${ledgerReport.headline} · Score ${ledgerReport.score}/100 · ${ledgerReport.criticalCount} critical · ${ledgerReport.warningCount} warnings"
+                    ledgerReport.infoCount > 0 ->
+                        "${ledgerReport.headline} · Score ${ledgerReport.score}/100 · ${ledgerReport.infoCount} trace notes"
+                    else ->
+                        "${ledgerReport.headline} · Score ${ledgerReport.score}/100 · No issues"
+                }
                 SettingsActionRow(
                     icon = Icons.Default.Verified,
                     color = if (ledgerReport.criticalCount > 0) Red else if (ledgerReport.warningCount > 0) Amber else Green,
                     title = "Ledger health",
-                    subtitle = "${ledgerReport.headline} · Score ${ledgerReport.score}/100 · ${ledgerReport.issueCount} checks flagged"
+                    subtitle = ledgerHealthSubtitle
                 ) { showLedgerHealth = true }
 
                 if (showLedgerHealth) {
