@@ -1,5 +1,6 @@
 package app.fynlo.logic
 
+import android.annotation.SuppressLint
 import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
@@ -29,6 +30,7 @@ import kotlinx.serialization.json.Json
  * Pure-Kotlin (no Android coroutines beyond DataStore primitives); the
  * recording side is suspend so the caller controls when to write.
  */
+@SuppressLint("StaticFieldLeak")
 object BalanceAuditLog {
 
     /** Source tag — every mutation site picks one. */
