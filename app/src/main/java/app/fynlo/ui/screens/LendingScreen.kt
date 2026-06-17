@@ -16,6 +16,7 @@ import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Sort
 import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.AccountBalanceWallet
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.MoreVert
@@ -328,6 +329,7 @@ fun LendingCard(
                     }
                 }
             }
+            val source = borrower.sourceAccount.ifBlank { "Unknown account" }
             val sub = if (borrower.due.isNotBlank()) "Due ${DateUtils.formatToDisplay(borrower.due)}"
                       else "Lent ${DateUtils.formatToDisplay(borrower.date)}"
             Text(
@@ -335,6 +337,23 @@ fun LendingCard(
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Icon(
+                    Icons.Default.AccountBalanceWallet,
+                    contentDescription = null,
+                    modifier = Modifier.size(12.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    "From $source",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                )
+            }
         }
         Column(horizontalAlignment = Alignment.End) {
             // C16 (3.2.41) — Outstanding on the Lent side is a receivable

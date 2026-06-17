@@ -10,6 +10,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Notes
+import androidx.compose.material.icons.filled.AccountBalanceWallet
 import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.Delete
@@ -429,6 +430,34 @@ val borrowers by viewModel.borrowers.collectAsState()
                         DetailItem("Principal", CurrencyFormatter.detail(borrower.amount, currencyCode, locale))
                         DetailItem("Interest",  CurrencyFormatter.detail(interest, currencyCode, locale))
                         DetailItem("Paid",      CurrencyFormatter.detail(borrower.paid, currencyCode, locale))
+                    }
+                    Spacer(Modifier.height(12.dp))
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f))
+                            .padding(horizontal = 14.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        Icon(
+                            Icons.Default.AccountBalanceWallet,
+                            contentDescription = null,
+                            tint = Emerald500,
+                            modifier = Modifier.size(18.dp),
+                        )
+                        Column(Modifier.weight(1f)) {
+                            Text(
+                                "Disbursed from",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            Text(
+                                borrower.sourceAccount.ifBlank { "Unknown account" },
+                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                            )
+                        }
                     }
                     if (borrower.rate > 0) {
                         Spacer(Modifier.height(8.dp))

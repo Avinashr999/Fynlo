@@ -613,6 +613,21 @@ fun TransactionItem(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1)
             }
+            val accountTrace = when {
+                txn.category.equals("Lending", ignoreCase = true) && txn.fromAcct.isNotBlank() ->
+                    "From ${txn.displayFromAcct(accountIdToName)}"
+                txn.category.equals("Loan Repayment", ignoreCase = true) && txn.toAcct.isNotBlank() ->
+                    "To ${txn.displayToAcct(accountIdToName)}"
+                else -> ""
+            }
+            if (accountTrace.isNotBlank() && accountTrace != sub) {
+                Text(
+                    accountTrace,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                )
+            }
             if (txn.notes.isNotEmpty()) {
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 2.dp)) {
                     Icon(Icons.AutoMirrored.Filled.Notes, null, Modifier.size(12.dp),
