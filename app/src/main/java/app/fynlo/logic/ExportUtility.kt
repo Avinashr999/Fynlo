@@ -125,6 +125,16 @@ object ExportUtility {
     private fun fillPaint(color: Int) = Paint().apply { this.color = color; style = Paint.Style.FILL }
     private fun strokePaint(color: Int) = Paint().apply { this.color = color; style = Paint.Style.STROKE; strokeWidth = 0.5f }
 
+    private data class TableRowSpec(
+        val cols: List<String>,
+        val colors: List<Int>? = null,
+    )
+
+    private data class MeasuredTableRow(
+        val cells: List<Pair<List<String>, Paint>>,
+        val height: Float,
+    )
+
     // ── Page management ───────────────────────────────────────────────────────
     private class PdfBuilder(private val pdf: PdfDocument, private val os: OutputStream) {
         private var page: PdfDocument.Page? = null
@@ -188,15 +198,12 @@ object ExportUtility {
     // are the practical case).
     //
     // Row height grows to fit the cell with the most wrap lines.
-    private fun PdfBuilder.drawTableRow(
+    private fun measureTableRow(
         cols: List<String>,
         widths: List<Float>,
         isHeader: Boolean = false,
-        altBg: Boolean = false,
         colors: List<Int>? = null
-    ) {
-        // Per-cell line wrapping. Header paint is bold white; body paint
-        // takes the optional per-column override colour.
+    ): MeasuredTableRow {
         val perCell = cols.mapIndexed { i, text ->
             val paint = if (isHeader) bodyPaint(COLOR_WHITE, 9f, true)
                         else bodyPaint(colors?.getOrNull(i) ?: COLOR_BLACK, 9f)
@@ -205,24 +212,68 @@ object ExportUtility {
         }
         val tableLineH = 12f
         val rowH = tableLineH * (perCell.maxOfOrNull { it.first.size } ?: 1).coerceAtLeast(1) + 7f
-        checkBreak(rowH + 6f)
+        return MeasuredTableRow(perCell, rowH)
+    }
 
+    private fun PdfBuilder.drawMeasuredTableRow(
+        row: MeasuredTableRow,
+        widths: List<Float>,
+        isHeader: Boolean = false,
+        altBg: Boolean = false,
+    ) {
+        checkBreak(row.height + 6f)
         val bgColor = when {
             isHeader -> COLOR_DARK
             altBg    -> Color.rgb(250, 250, 250)
             else     -> COLOR_WHITE
         }
-        rect(MARGIN, y - LINE_H + 2f, PAGE_W - MARGIN.toFloat(), y - LINE_H + 2f + rowH, bgColor)
+        rect(MARGIN, y - LINE_H + 2f, PAGE_W - MARGIN.toFloat(), y - LINE_H + 2f + row.height, bgColor)
 
         var xPos = MARGIN + 4f
-        perCell.forEachIndexed { i, (lines, paint) ->
+        row.cells.forEachIndexed { i, (lines, paint) ->
             lines.forEachIndexed { lineIdx, line ->
-                canvas().drawText(line, xPos, y + 2f + lineIdx * tableLineH, paint)
+                canvas().drawText(line, xPos, y + 2f + lineIdx * 12f, paint)
             }
             xPos += widths[i]
         }
-        y += rowH
+        y += row.height
         checkBreak()
+    }
+
+    private fun PdfBuilder.drawTableRow(
+        cols: List<String>,
+        widths: List<Float>,
+        isHeader: Boolean = false,
+        altBg: Boolean = false,
+        colors: List<Int>? = null
+    ) {
+        drawMeasuredTableRow(
+            measureTableRow(cols, widths, isHeader, colors),
+            widths,
+            isHeader,
+            altBg,
+        )
+    }
+
+    private fun PdfBuilder.drawTableSection(
+        title: String,
+        widths: List<Float>,
+        headers: List<String>,
+        rows: List<TableRowSpec>,
+    ) {
+        val header = measureTableRow(headers, widths, isHeader = true)
+        val firstRow = rows.firstOrNull()?.let { measureTableRow(it.cols, widths, colors = it.colors) }
+        val firstBlockHeight = 36f + header.height + (firstRow?.height ?: 0f) + 8f
+        keepTogether(firstBlockHeight)
+        sectionHeader(title)
+        drawMeasuredTableRow(header, widths, isHeader = true)
+        rows.forEachIndexed { i, row ->
+            drawMeasuredTableRow(
+                measureTableRow(row.cols, widths, colors = row.colors),
+                widths,
+                altBg = i % 2 == 0,
+            )
+        }
     }
 
     /**
@@ -675,51 +726,52 @@ object ExportUtility {
 
         // 1. Accounts
         if (summary.accountBreakdown.isNotEmpty()) {
-            b.keepSectionStartTogether()
-            b.sectionHeader("1. Account Balances")
             val aw = listOf((PAGE_W - MARGIN * 2) * 0.6f, (PAGE_W - MARGIN * 2) * 0.4f)
-            b.drawTableRow(listOf("Account", "Balance"), aw, isHeader = true)
-            summary.accountBreakdown.entries.forEachIndexed { i, (name, bal) ->
-                b.drawTableRow(listOf(name, fmt(bal, currencyCode)), aw, altBg = i % 2 == 0)
-            }
+            b.drawTableSection(
+                "1. Account Balances",
+                aw,
+                listOf("Account", "Balance"),
+                summary.accountBreakdown.entries.map { (name, bal) ->
+                    TableRowSpec(listOf(name, fmt(bal, currencyCode)))
+                },
+            )
         }
 
         // 2. Lending  — audit #5: dynamic Status computed from due+paid, not
         //   read raw from the stored field which can lag reality.
         val today = LocalDate.now().toString()
         if (borrowers.isNotEmpty()) {
-            b.keepSectionStartTogether()
-            b.sectionHeader("2. Lending & Receivables")
             val usable = PAGE_W - MARGIN * 2
             val lw = listOf(
                 usable*.20f, usable*.13f, usable*.11f, usable*.07f,
                 usable*.13f, usable*.13f, usable*.09f, usable*.14f,
             )
-            b.drawTableRow(
-                listOf("Person","Principal","Paid","Rate","Lent On","Due","Status","Notes"),
-                lw, isHeader = true,
-            )
-            borrowers.forEachIndexed { i, bo ->
+            val rows = borrowers.map { bo ->
                 val status = computeBorrowerStatus(bo, today)
                 val statusColor = when (status) {
                     "Overdue", "Written Off" -> COLOR_RED
                     "Closed"                 -> COLOR_GREEN
                     else                     -> COLOR_BLACK
                 }
-                b.drawTableRow(
+                TableRowSpec(
                     listOf(
                         bo.name, fmt(bo.amount, currencyCode), fmt(bo.paid, currencyCode), "${bo.rate}%",
                         DateUtils.format(bo.date, DateUtils.Style.Compact, dateFormat),
                         if (bo.due.isBlank()) "-" else DateUtils.format(bo.due, DateUtils.Style.Compact, dateFormat),
                         status, bo.notes,
                     ),
-                    lw, altBg = i % 2 == 0,
                     colors = listOf(
                         COLOR_BLACK, COLOR_BLACK, COLOR_BLACK, COLOR_BLACK,
                         COLOR_BLACK, COLOR_BLACK, statusColor, COLOR_GRAY,
                     ),
                 )
             }
+            b.drawTableSection(
+                "2. Lending & Receivables",
+                lw,
+                listOf("Person","Principal","Paid","Rate","Lent On","Due","Status","Notes"),
+                rows,
+            )
         }
 
         // 3. Liabilities & Debts — audit #3 (new section, was missing entirely
@@ -727,55 +779,56 @@ object ExportUtility {
         // liabilities" view). Same shape as the Lending table for visual
         // parity; Status computed dynamically per audit #5.
         if (debts.isNotEmpty()) {
-            b.keepSectionStartTogether()
-            b.sectionHeader("3. Liabilities & Debts")
             val usable = PAGE_W - MARGIN * 2
             val dw = listOf(
                 usable*.21f, usable*.13f, usable*.10f, usable*.07f,
                 usable*.13f, usable*.13f, usable*.09f, usable*.14f,
             )
-            b.drawTableRow(
-                listOf("Creditor","Principal","Paid","Rate","Borrowed","Due","Status","Type"),
-                dw, isHeader = true,
-            )
-            debts.forEachIndexed { i, d ->
+            val rows = debts.map { d ->
                 val status = computeDebtStatus(d, today)
                 val statusColor = when (status) {
                     "Overdue" -> COLOR_RED
                     "Closed"  -> COLOR_GREEN
                     else      -> COLOR_BLACK
                 }
-                b.drawTableRow(
+                TableRowSpec(
                     listOf(
                         d.name, fmt(d.amount, currencyCode), fmt(d.paid, currencyCode), "${d.rate}%",
                         DateUtils.format(d.date, DateUtils.Style.Compact, dateFormat),
                         if (d.due.isBlank()) "-" else DateUtils.format(d.due, DateUtils.Style.Compact, dateFormat),
                         status, d.intType.ifBlank{"-"},
                     ),
-                    dw, altBg = i % 2 == 0,
                     colors = listOf(
                         COLOR_BLACK, COLOR_BLACK, COLOR_BLACK, COLOR_BLACK,
                         COLOR_BLACK, COLOR_BLACK, statusColor, COLOR_GRAY,
                     ),
                 )
             }
+            b.drawTableSection(
+                "3. Liabilities & Debts",
+                dw,
+                listOf("Creditor","Principal","Paid","Rate","Borrowed","Due","Status","Type"),
+                rows,
+            )
         }
 
         // 4. Investments
         if (investments.isNotEmpty()) {
-            b.keepSectionStartTogether()
-            b.sectionHeader("4. Investment Portfolio")
             val usable = PAGE_W - MARGIN * 2
             val iw = listOf(usable*.26f, usable*.13f, usable*.16f, usable*.16f, usable*.14f, usable*.15f)
-            b.drawTableRow(listOf("Asset","Type","Invested","Current","Growth","Date"), iw, isHeader = true)
-            investments.forEachIndexed { i, inv ->
+            val rows = investments.map { inv ->
                 val growth = inv.currentVal - inv.invested
-                b.drawTableRow(
+                TableRowSpec(
                     listOf(inv.name, inv.type, fmt(inv.invested, currencyCode), fmt(inv.currentVal, currencyCode), fmt(growth, currencyCode), DateUtils.format(inv.date, DateUtils.Style.Compact, dateFormat)),
-                    iw, altBg = i % 2 == 0,
                     colors = listOf(COLOR_BLACK, COLOR_GRAY, COLOR_BLACK, COLOR_BLACK, if(growth>=0) COLOR_GREEN else COLOR_RED, COLOR_GRAY)
                 )
             }
+            b.drawTableSection(
+                "4. Investment Portfolio",
+                iw,
+                listOf("Asset","Type","Invested","Current","Growth","Date"),
+                rows,
+            )
         }
 
         // 5. Transactions — audit #6: title now reflects what's actually
@@ -789,19 +842,21 @@ object ExportUtility {
                 "5. All Transactions (${transactions.size})"
             else
                 "5. Most Recent 50 of ${transactions.size} Transactions"
-            b.keepSectionStartTogether()
-            b.sectionHeader(title)
             val usable = PAGE_W - MARGIN * 2
             val tw = listOf(usable*.13f, usable*.12f, usable*.17f, usable*.26f, usable*.15f, usable*.17f)
-            b.drawTableRow(listOf("Date","Type","Category","Description","Amount","Account"), tw, isHeader = true)
-            recent.forEachIndexed { i, t ->
+            val rows = recent.map { t ->
                 val amtColor = if (t.type.equals("income", ignoreCase = true)) COLOR_GREEN else COLOR_RED
-                b.drawTableRow(
+                TableRowSpec(
                     listOf(DateUtils.format(t.date, DateUtils.Style.Compact, dateFormat), t.type, t.category, t.desc, fmt(t.amount, currencyCode), t.fromAcct.ifBlank{t.toAcct}),
-                    tw, altBg = i % 2 == 0,
                     colors = listOf(COLOR_BLACK,COLOR_GRAY,COLOR_BLACK,COLOR_BLACK, amtColor, COLOR_GRAY)
                 )
             }
+            b.drawTableSection(
+                title,
+                tw,
+                listOf("Date","Type","Category","Description","Amount","Account"),
+                rows,
+            )
         }
 
         // Footer
