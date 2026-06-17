@@ -13,6 +13,8 @@ import app.fynlo.data.model.*
 import app.fynlo.data.model.FlowResult
 import app.fynlo.logic.XirrCalculator
 import app.fynlo.logic.CagrCalculator
+import app.fynlo.logic.LedgerAccountability
+import app.fynlo.logic.LedgerAccountabilityReport
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
@@ -153,6 +155,43 @@ class FinanceViewModel @Inject constructor(
         combine(repository.allValuations, _currentProjectId) { list, pid ->
             list.filter { ProjectScope.belongsToSelectedProject(it.projectId, pid) }
         }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    val ledgerAccountabilityReport: StateFlow<LedgerAccountabilityReport> =
+        combine(
+            combine(accounts, transactions, borrowers) { accts, txns, loans ->
+                Triple(accts, txns, loans)
+            },
+            combine(debts, investments, payments) { debtRows, investmentRows, loanPayments ->
+                Triple(debtRows, investmentRows, loanPayments)
+            },
+            combine(debtPayments, syncStatus) { debtPaymentRows, sync ->
+                debtPaymentRows to sync
+            },
+        ) { left, middle, right ->
+            LedgerAccountability.inspect(
+                accounts = left.first,
+                transactions = left.second,
+                borrowers = left.third,
+                debts = middle.first,
+                investments = middle.second,
+                payments = middle.third,
+                debtPayments = right.first,
+                syncStatus = right.second,
+            )
+        }.stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(5000),
+            LedgerAccountability.inspect(
+                accounts = emptyList(),
+                transactions = emptyList(),
+                borrowers = emptyList(),
+                debts = emptyList(),
+                investments = emptyList(),
+                payments = emptyList(),
+                debtPayments = emptyList(),
+                syncStatus = SyncStatus.Initialising,
+            ),
+        )
 
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()

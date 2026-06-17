@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import app.fynlo.data.model.Transaction
+import app.fynlo.logic.CurrencyFormatter
 import app.fynlo.logic.CurrencyUtils
 import app.fynlo.logic.DateUtils
 import app.fynlo.ui.theme.Emerald500
@@ -300,6 +301,23 @@ fun AddTransactionDialog(
                     )
                 }
 
+                val previewAmount = amount.toDoubleOrNull() ?: 0.0
+                val previewAccount = when (selectedSrc) {
+                    "Cash" -> "Personal Cash"
+                    "Custom" -> sourceDetailName
+                    else -> sourceDetailName.ifEmpty { selectedSrc }
+                }
+                if (previewAmount > 0.0 && previewAccount.isNotBlank()) {
+                    Spacer(Modifier.height(14.dp))
+                    AccountImpactPreview(
+                        lines = if (isIncome) {
+                            listOf("$previewAccount +${CurrencyFormatter.detail(previewAmount, currencyCode)}")
+                        } else {
+                            listOf("$previewAccount -${CurrencyFormatter.detail(previewAmount, currencyCode)}")
+                        },
+                    )
+                }
+
                 Spacer(Modifier.height(24.dp))
 
                 // ── Save ──────────────────────────────────────────────────────
@@ -383,6 +401,30 @@ private fun BasicAmountField(
             color = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(Modifier.width(6.dp))
         BasicTextFieldAmount(value, accent, onChange)
+    }
+}
+
+@Composable
+fun AccountImpactPreview(lines: List<String>) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.42f),
+    ) {
+        Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(
+                "Balance impact",
+                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.ExtraBold),
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            lines.forEach { line ->
+                Text(
+                    line,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
     }
 }
 

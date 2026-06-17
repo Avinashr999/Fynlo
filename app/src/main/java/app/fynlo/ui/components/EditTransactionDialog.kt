@@ -15,6 +15,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import app.fynlo.data.model.Transaction
+import app.fynlo.logic.CurrencyFormatter
 import app.fynlo.logic.DateUtils
 import app.fynlo.ui.theme.Emerald500
 import app.fynlo.ui.theme.SemanticRed
@@ -167,6 +168,21 @@ fun EditTransactionDialog(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
                 )
+
+                val parsedPreview = amount.toDoubleOrNull() ?: transaction.amount
+                val impactLines = when (type) {
+                    "Income" -> listOf("${account.ifBlank { transaction.toAcct.ifBlank { "Destination account" } }} +${CurrencyFormatter.detail(parsedPreview)}")
+                    "Expense" -> listOf("${account.ifBlank { transaction.fromAcct.ifBlank { "Source account" } }} -${CurrencyFormatter.detail(parsedPreview)}")
+                    "Transfer" -> listOf(
+                        "${account.ifBlank { transaction.fromAcct.ifBlank { "Source account" } }} -${CurrencyFormatter.detail(parsedPreview)}",
+                        "${transaction.toAcct.ifBlank { "Destination account" }} +${CurrencyFormatter.detail(parsedPreview)}",
+                    )
+                    else -> emptyList()
+                }
+                if (impactLines.isNotEmpty()) {
+                    Spacer(Modifier.height(12.dp))
+                    AccountImpactPreview(impactLines)
+                }
 
                 Spacer(Modifier.height(24.dp))
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {

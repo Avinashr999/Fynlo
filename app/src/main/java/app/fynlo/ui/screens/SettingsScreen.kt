@@ -114,6 +114,7 @@ fun SettingsScreen(
     var pendingCsvRows by remember { mutableStateOf<List<List<String>>?>(null) }
     var csvImportSummary by remember { mutableStateOf<String?>(null) }
     val allAccountsForImport by viewModel.accounts.collectAsState()
+    val ledgerReport by viewModel.ledgerAccountabilityReport.collectAsState()
     var showDataExportDialog by remember { mutableStateOf(false) }
     var selectedDataExportScope by remember { mutableStateOf(DataExportScope.WHOLE) }
     var selectedDataExportFormat by remember { mutableStateOf(DataExportFormat.PDF) }
@@ -802,6 +803,23 @@ fun SettingsScreen(
                             recalcInFlight = false
                         }
                     }
+                }
+
+                SettingsDivider()
+
+                var showLedgerHealth by remember { mutableStateOf(false) }
+                SettingsActionRow(
+                    icon = Icons.Default.Verified,
+                    color = if (ledgerReport.criticalCount > 0) Red else if (ledgerReport.warningCount > 0) Amber else Green,
+                    title = "Ledger health",
+                    subtitle = "${ledgerReport.headline} · Score ${ledgerReport.score}/100 · ${ledgerReport.issueCount} checks flagged"
+                ) { showLedgerHealth = true }
+
+                if (showLedgerHealth) {
+                    LedgerHealthDialog(
+                        report = ledgerReport,
+                        onDismiss = { showLedgerHealth = false },
+                    )
                 }
 
                 if (app.fynlo.BuildConfig.DEBUG) {
@@ -1839,6 +1857,178 @@ private fun SettingsActionRow(
         }
         Icon(Icons.AutoMirrored.Filled.ArrowForwardIos, null,
             Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.65f))
+    }
+}
+
+@Composable
+private fun LedgerHealthDialog(
+    report: app.fynlo.logic.LedgerAccountabilityReport,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Column {
+                Text("Ledger health")
+                Text(
+                    "${report.headline} · Score ${report.score}/100",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        },
+        text = {
+            LazyColumn(
+                modifier = Modifier.fillMaxWidth().heightIn(max = 520.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                item { LedgerHealthSummary(report) }
+                if (report.issues.isNotEmpty()) {
+                    item { LedgerDialogSectionTitle("Checks to review") }
+                    items(report.issues.take(12)) { issue -> LedgerIssueRow(issue) }
+                    if (report.issues.size > 12) {
+                        item {
+                            Text(
+                                "+${report.issues.size - 12} more checks",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                } else {
+                    item {
+                        Text(
+                            "No ledger integrity problems found in the current project.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+                if (report.duplicates.isNotEmpty()) {
+                    item { LedgerDialogSectionTitle("Possible duplicates") }
+                    items(report.duplicates.take(5)) { duplicate ->
+                        LedgerInfoCard(
+                            title = duplicate.title,
+                            detail = duplicate.detail,
+                            accent = Amber,
+                        )
+                    }
+                }
+                if (report.trails.isNotEmpty()) {
+                    item { LedgerDialogSectionTitle("Money trails") }
+                    items(report.trails.take(8)) { trail ->
+                        LedgerInfoCard(
+                            title = "${trail.referenceId} · ${trail.title}",
+                            detail = trail.route,
+                            accent = Green,
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(onClick = onDismiss) { Text("Done") }
+        },
+    )
+}
+
+@Composable
+private fun LedgerHealthSummary(report: app.fynlo.logic.LedgerAccountabilityReport) {
+    Surface(
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+    ) {
+        Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                LedgerSummaryMetric("Critical", report.criticalCount.toString(), Red)
+                LedgerSummaryMetric("Warnings", report.warningCount.toString(), Amber)
+                LedgerSummaryMetric("Traces", report.linkedRecords.toString(), Green)
+            }
+            Text(
+                "Sync: ${report.syncSummary}",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                "Duplicates: ${report.duplicateCount} · Missing trace: ${report.missingTraceCount}",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+@Composable
+private fun LedgerSummaryMetric(label: String, value: String, color: Color) {
+    Column(horizontalAlignment = Alignment.Start) {
+        Text(
+            value,
+            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold),
+            color = color,
+        )
+        Text(
+            label,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+@Composable
+private fun LedgerDialogSectionTitle(title: String) {
+    Text(
+        title,
+        style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.ExtraBold),
+        color = MaterialTheme.colorScheme.onSurface,
+    )
+}
+
+@Composable
+private fun LedgerIssueRow(issue: app.fynlo.logic.LedgerIssue) {
+    val color = when (issue.severity) {
+        app.fynlo.logic.LedgerIssueSeverity.CRITICAL -> Red
+        app.fynlo.logic.LedgerIssueSeverity.WARNING -> Amber
+        app.fynlo.logic.LedgerIssueSeverity.INFO -> Blue
+    }
+    LedgerInfoCard(
+        title = issue.title,
+        detail = issue.detail,
+        accent = color,
+    )
+}
+
+@Composable
+private fun LedgerInfoCard(
+    title: String,
+    detail: String,
+    accent: Color,
+) {
+    Surface(
+        shape = RoundedCornerShape(14.dp),
+        color = MaterialTheme.colorScheme.surface,
+        border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f)),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(12.dp),
+            verticalAlignment = Alignment.Top,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Box(
+                Modifier.size(9.dp).padding(top = 6.dp).background(accent, CircleShape)
+            )
+            Column(Modifier.weight(1f)) {
+                Text(
+                    title,
+                    style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                Text(
+                    detail,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
     }
 }
 
