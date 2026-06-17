@@ -664,7 +664,7 @@ fun InvestmentCard(invest: Investment, currencyCode: String = "INR", isPrivacy: 
                     onClick = onUpdate,
                     modifier = Modifier.weight(1f).height(40.dp),
                     shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = typeAccent),
+                    colors = ButtonDefaults.buttonColors(containerColor = TemplateAction),
                     contentPadding = PaddingValues(horizontal = 10.dp)
                 ) {
                     Icon(Icons.Default.Update, null, Modifier.size(15.dp))
