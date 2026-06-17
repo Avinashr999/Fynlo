@@ -187,8 +187,10 @@ fun RecurringScreen(viewModel: FinanceViewModel) {
                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                     showAddDialog = true
                 },
-                modifier = Modifier.align(Alignment.BottomEnd).padding(24.dp),
-                containerColor = MaterialTheme.colorScheme.primary
+                modifier = Modifier.align(Alignment.BottomEnd).padding(24.dp).size(54.dp),
+                shape = RoundedCornerShape(14.dp),
+                containerColor = Emerald500,
+                contentColor = Color.White,
             ) {
                 Icon(Icons.Default.Add, contentDescription = "Add Recurring")
             }
@@ -518,7 +520,6 @@ private fun AddRecurringDialog(
         )
     }
 }
-
 
 
 

@@ -3,6 +3,7 @@
 import android.app.Activity
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Shapes
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
@@ -10,7 +11,9 @@ import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.core.view.WindowCompat
+import androidx.compose.ui.unit.dp
 
 // ── Carbon + Emerald — Light ─────────────────────────────────────────────────
 private val LightColorScheme = lightColorScheme(
@@ -28,15 +31,15 @@ private val LightColorScheme = lightColorScheme(
     onBackground             = Carbon900,
     surface                  = LightSurface,
     onSurface                = Carbon900,
-    surfaceVariant           = Carbon100,
+    surfaceVariant           = Emerald50,
     onSurfaceVariant         = Carbon600,
-    surfaceContainer         = Carbon100,
-    surfaceContainerHigh     = Carbon200,
-    surfaceContainerHighest  = Color(0xFFE4E4E7),
-    surfaceContainerLow      = Carbon50,
+    surfaceContainer         = Color(0xFFF0F6F1),
+    surfaceContainerHigh     = Color(0xFFE8F1EA),
+    surfaceContainerHighest  = Color(0xFFDCE8E0),
+    surfaceContainerLow      = Color(0xFFF6FAF7),
     surfaceContainerLowest   = Color.White,
-    outline                  = Carbon400,
-    outlineVariant           = Carbon400,
+    outline                  = Carbon400.copy(alpha = 0.82f),
+    outlineVariant           = Carbon200,
     error                    = SemanticRed,
     onError                  = Color.White,
     inverseSurface           = Carbon900,
@@ -61,7 +64,7 @@ private val DarkColorScheme = darkColorScheme(
     onBackground             = Carbon50,
     surface                  = DarkSurface,
     onSurface                = Carbon50,
-    surfaceVariant           = Carbon700,
+    surfaceVariant           = Carbon800,
     onSurfaceVariant         = Color(0xFFD4D4D8),
     surfaceContainer         = Carbon800,
     surfaceContainerHigh     = Carbon700,
@@ -76,6 +79,14 @@ private val DarkColorScheme = darkColorScheme(
     inverseOnSurface         = Carbon900,
     inversePrimary           = Emerald500,
     scrim                    = Color.Black
+)
+
+private val FynloShapes = Shapes(
+    extraSmall = RoundedCornerShape(8.dp),
+    small = RoundedCornerShape(10.dp),
+    medium = RoundedCornerShape(14.dp),
+    large = RoundedCornerShape(18.dp),
+    extraLarge = RoundedCornerShape(24.dp),
 )
 
 @Composable
@@ -103,6 +114,7 @@ fun FynloTheme(
     MaterialTheme(
         colorScheme = colorScheme,
         typography  = Typography,
+        shapes      = FynloShapes,
         content     = content
     )
 }

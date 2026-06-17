@@ -1,5 +1,6 @@
 package app.fynlo.ui.theme
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -21,6 +22,15 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
+val TemplateScreenPadding = 18.dp
+val TemplateCardRadius = 14.dp
+val TemplatePanelRadius = 22.dp
+val TemplateBorder = Color(0xFFDCE8E0)
+val TemplateMutedText = Carbon600
+val TemplateCanvas = LightBackground
+val TemplateAction = Emerald500
+val TemplateActionDark = Emerald700
+
 // ── Fynlo Premium Design System ───────────────────────────────────────────────
 // Deep Emerald + Carbon — inspired by premium fintech apps
 // All screens use these shared components for consistency
@@ -35,7 +45,7 @@ fun PremiumScreenHeader(
 ) {
     Row(
         modifier = modifier.fillMaxWidth()
-            .padding(start = 20.dp, end = 20.dp, top = 14.dp, bottom = 6.dp),
+            .padding(start = TemplateScreenPadding, end = TemplateScreenPadding, top = 14.dp, bottom = 6.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -141,16 +151,11 @@ fun PremiumSectionLabel(
             Modifier.size(4.dp).clip(CircleShape).background(Emerald500)
         )
         Text(
-            label,
+            label.uppercase(),
             style = MaterialTheme.typography.labelLarge.copy(
-                fontWeight = FontWeight.SemiBold,
-                color = Emerald500
+                fontWeight = FontWeight.ExtraBold,
+                color = Emerald800
             )
-        )
-        HorizontalDivider(
-            modifier = Modifier.weight(1f),
-            thickness = 0.5.dp,
-            color = Emerald500.copy(alpha = 0.2f)
         )
     }
 }
@@ -200,16 +205,22 @@ fun PremiumStatCard(
 @Composable
 fun PremiumCard(
     modifier: Modifier = Modifier,
-    borderColor: Color = Color.Transparent,
+    borderColor: Color = TemplateBorder,
     content: @Composable ColumnScope.() -> Unit
 ) {
-    Column(
-        modifier = modifier.fillMaxWidth()
-            .clip(RoundedCornerShape(20.dp))
-            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
-            .padding(16.dp),
-        content = content
-    )
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(TemplateCardRadius),
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 0.dp,
+        shadowElevation = 0.dp,
+        border = BorderStroke(0.8.dp, borderColor),
+    ) {
+        Column(
+            modifier = Modifier.padding(14.dp),
+            content = content
+        )
+    }
 }
 
 // ── Settings item row — for settings screen ───────────────────────────────────
@@ -270,10 +281,11 @@ fun LedgerPanel(
 ) {
     Surface(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(18.dp),
+        shape = RoundedCornerShape(TemplateCardRadius),
         color = MaterialTheme.colorScheme.surface,
-        tonalElevation = 1.dp,
+        tonalElevation = 0.dp,
         shadowElevation = 0.dp,
+        border = BorderStroke(0.8.dp, TemplateBorder),
     ) {
         Column(
             modifier = Modifier.padding(14.dp),
@@ -296,7 +308,7 @@ fun LedgerSectionTitle(
         Text(
             title.uppercase(),
             style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.ExtraBold),
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = Emerald800,
         )
         if (count != null) {
             Text(
@@ -339,9 +351,10 @@ fun LedgerMetricCard(
 ) {
     Surface(
         modifier = modifier.heightIn(min = 78.dp),
-        shape = RoundedCornerShape(14.dp),
+        shape = RoundedCornerShape(TemplateCardRadius),
         color = MaterialTheme.colorScheme.surface,
-        tonalElevation = 1.dp,
+        tonalElevation = 0.dp,
+        border = BorderStroke(0.8.dp, TemplateBorder),
     ) {
         Column(
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 11.dp),
@@ -376,7 +389,7 @@ fun LedgerHeroPanel(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(22.dp),
         color = containerColor,
-        tonalElevation = 2.dp,
+        tonalElevation = 0.dp,
     ) {
         Column(Modifier.fillMaxWidth().padding(18.dp)) {
             Text(
@@ -437,9 +450,10 @@ fun LedgerRow(
 ) {
     Surface(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(14.dp),
+        shape = RoundedCornerShape(TemplateCardRadius),
         color = MaterialTheme.colorScheme.surface,
-        tonalElevation = 1.dp,
+        tonalElevation = 0.dp,
+        border = BorderStroke(0.8.dp, TemplateBorder),
         onClick = onClick,
     ) {
         Row(
@@ -492,6 +506,84 @@ fun LedgerRow(
 //   LazyColumn(contentPadding = PaddingValues(bottom = FabBottomPadding))
 //   Spacer(Modifier.height(FabBottomPadding))   // inside verticalScroll Column
 val FabBottomPadding = 72.dp
+
+@Composable
+fun TemplatePrimaryButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    leadingIcon: ImageVector? = null,
+) {
+    Button(
+        onClick = onClick,
+        enabled = enabled,
+        modifier = modifier.height(48.dp),
+        shape = RoundedCornerShape(12.dp),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = TemplateAction,
+            contentColor = Color.White,
+            disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+        ),
+        elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp, pressedElevation = 0.dp),
+    ) {
+        if (leadingIcon != null) {
+            Icon(leadingIcon, contentDescription = null, modifier = Modifier.size(17.dp))
+            Spacer(Modifier.width(8.dp))
+        }
+        Text(text, style = MaterialTheme.typography.labelLarge)
+    }
+}
+
+@Composable
+fun TemplateSecondaryButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+) {
+    OutlinedButton(
+        onClick = onClick,
+        enabled = enabled,
+        modifier = modifier.height(48.dp),
+        shape = RoundedCornerShape(12.dp),
+        border = BorderStroke(0.8.dp, TemplateBorder),
+        colors = ButtonDefaults.outlinedButtonColors(
+            contentColor = MaterialTheme.colorScheme.onSurface,
+            disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+        ),
+    ) {
+        Text(text, style = MaterialTheme.typography.labelLarge)
+    }
+}
+
+@Composable
+fun TemplatePill(
+    text: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        onClick = onClick,
+        modifier = modifier.height(36.dp),
+        shape = RoundedCornerShape(18.dp),
+        color = if (selected) TemplateAction else MaterialTheme.colorScheme.surface,
+        border = if (selected) null else BorderStroke(0.8.dp, TemplateBorder),
+    ) {
+        Box(
+            modifier = Modifier.padding(horizontal = 14.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text,
+                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.ExtraBold),
+                color = if (selected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
 
 // ── C07: shared empty-state — single CTA, no duplicate FAB ────────────────────
 // Audit (UX_AUDIT §C07) fix point #1: "Empty state shows ONLY the 'Add First X'

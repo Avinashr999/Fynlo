@@ -1468,11 +1468,11 @@ private fun SettingsSectionLabel(title: String) {
 private fun SettingsCard(content: @Composable ColumnScope.() -> Unit) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(TemplateCardRadius),
         color = MaterialTheme.colorScheme.surfaceContainerLowest,
-        tonalElevation = 1.dp,
+        tonalElevation = 0.dp,
         shadowElevation = 0.dp,
-        border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)),
+        border = BorderStroke(0.8.dp, TemplateBorder),
     ) {
         Column(
             modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
@@ -1494,11 +1494,11 @@ private fun SettingsExpandableCard(
     val haptic = LocalHapticFeedback.current
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(TemplateCardRadius),
         color = MaterialTheme.colorScheme.surfaceContainerLowest,
-        tonalElevation = 1.dp,
+        tonalElevation = 0.dp,
         shadowElevation = 0.dp,
-        border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)),
+        border = BorderStroke(0.8.dp, TemplateBorder),
     ) {
         Column(Modifier.fillMaxWidth().animateContentSize()) {
             Row(
@@ -1538,7 +1538,7 @@ private fun SettingsExpandableCard(
             if (expanded) {
                 HorizontalDivider(
                     thickness = 0.5.dp,
-                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f),
+                    color = TemplateBorder,
                 )
                 Column(
                     modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
@@ -1554,7 +1554,7 @@ private fun SettingsDivider() {
     HorizontalDivider(
         modifier  = Modifier.padding(start = 54.dp, top = 6.dp, bottom = 6.dp),
         thickness = 0.5.dp,
-        color     = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)
+        color     = TemplateBorder
     )
 }
 
@@ -1583,9 +1583,9 @@ private fun SettingsSummaryPanel(
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(24.dp),
-        color = Carbon700,
-        tonalElevation = 2.dp,
+        shape = RoundedCornerShape(TemplatePanelRadius),
+        color = Emerald700,
+        tonalElevation = 0.dp,
     ) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {

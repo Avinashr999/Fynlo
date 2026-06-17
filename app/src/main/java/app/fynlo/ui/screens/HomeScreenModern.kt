@@ -55,7 +55,6 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
     val isPrivacy         by viewModel.isPrivacyMode.collectAsState()
     val locale            = LocalLocale.current.platformLocale
     val currencyCode      = currentProject?.currency ?: "INR"
-    val cs                = app.fynlo.logic.CurrencyUtils.symbolFor(currencyCode)
     var showAddTxn        by remember { mutableStateOf(false) }
     var addTxnIncome      by remember { mutableStateOf(false) }
     var accountDialogInitial by remember { mutableStateOf<Account?>(null) }
@@ -63,7 +62,6 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
     var showAccountDialog by remember { mutableStateOf(false) }
     var transferFromAccount by remember { mutableStateOf<Account?>(null) }
     var showTransferDialog by remember { mutableStateOf(false) }
-    val netWorthSnapshots by viewModel.getNetWorthSnapshots().collectAsState(initial = emptyList())
     var activeBreakdownType by remember { mutableStateOf<BreakdownType?>(null) }
 
     // C02 step 3: surface lastRecalcAt as a small "Last updated X ago"
@@ -302,9 +300,9 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 20.dp)
+            .padding(horizontal = TemplateScreenPadding)
     ) {
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(8.dp))
 
         // 3.2.59 — orphan-transaction banner. Pre-3.2.59 the AddTransaction
         // dialog accepted free-text bank names that could miss the
@@ -371,7 +369,7 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
             }
         }
 
-        Spacer(Modifier.height(14.dp))
+        Spacer(Modifier.height(10.dp))
 
         // ── Hero: big net worth number — tap to open Net Worth History ────────
         if (isFreshBook) {
@@ -427,9 +425,7 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
         Spacer(Modifier.height(16.dp))
 
         // ── Net-worth trend chart card (tap → full history) ───────────────────
-        NetWorthTrendCard(netWorthSnapshots.sortedBy { it.date }, cs, locale, isPrivacy) { onNavigateToScreen("net_worth_hist") }
-
-        Spacer(Modifier.height(18.dp))
+        Spacer(Modifier.height(0.dp))
 
         // ── Quick actions ─────────────────────────────────────────────────────
         LedgerPanel {

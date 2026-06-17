@@ -2,7 +2,6 @@ package app.fynlo.ui.components
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -15,7 +14,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -189,27 +187,25 @@ fun AddInvestmentDialog(
                         style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold)
                     )
 
-                    // Radio group
-                    listOf(
-                        SOURCE_ACCOUNT       to "From my account",
-                        SOURCE_EXISTING_DEBT to "From an existing loan I already track",
-                        SOURCE_NEW_LOAN      to "Took a new loan for this investment"
-                    ).forEach { (value, label) ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .selectable(
-                                    selected = sourceType == value,
-                                    onClick = { sourceType = value },
-                                    role = Role.RadioButton
-                                )
-                                .padding(vertical = 4.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            RadioButton(selected = sourceType == value, onClick = { sourceType = value })
-                            Spacer(Modifier.width(8.dp))
-                            Text(label, style = MaterialTheme.typography.bodyMedium)
-                        }
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        TemplatePill(
+                            text = "From account",
+                            selected = sourceType == SOURCE_ACCOUNT,
+                            onClick = { sourceType = SOURCE_ACCOUNT },
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        TemplatePill(
+                            text = "Existing loan",
+                            selected = sourceType == SOURCE_EXISTING_DEBT,
+                            onClick = { sourceType = SOURCE_EXISTING_DEBT },
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        TemplatePill(
+                            text = "New loan",
+                            selected = sourceType == SOURCE_NEW_LOAN,
+                            onClick = { sourceType = SOURCE_NEW_LOAN },
+                            modifier = Modifier.fillMaxWidth(),
+                        )
                     }
 
                     // ── Account picker ────────────────────────────────────────
@@ -373,64 +369,67 @@ fun AddInvestmentDialog(
                 }
 
                 // ── Buttons ───────────────────────────────────────────────────
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                    TextButton(onClick = onDismiss) { Text("Cancel") }
-                    Spacer(Modifier.width(8.dp))
-                    Button(
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TemplateSecondaryButton(
+                        text = "Cancel",
+                        onClick = onDismiss,
+                        modifier = Modifier.weight(1f),
+                    )
+                    TemplatePrimaryButton(
+                        text = if (isNew) "Save Investment" else "Update",
                         onClick = {
-                            if (submitting) return@Button
-                            submitting = true
-                            val parsedDate = DateUtils.parseInput(date)
-                            val investment = Investment(
-                                id         = initialInvestment?.id?.takeIf { it.isNotBlank() } ?: app.fynlo.logic.Ids.newId(),
-                                name       = name.trim(),
-                                type       = type,
-                                invested   = amountDouble,
-                                currentVal = amountDouble, // starts equal; user updates via 'Update Value'
-                                date       = parsedDate,
-                                notes      = notes.trim()
-                            )
-
-                            if (!isNew) {
-                                onConfirm(InvestmentSaveRequest(investment, sourceType = initialInvestment?.sourceType ?: ""))
-                                return@Button
-                            }
-
-                            val req = when (sourceType) {
-                                SOURCE_ACCOUNT -> InvestmentSaveRequest(
-                                    investment = investment,
-                                    sourceType = SOURCE_ACCOUNT,
-                                    sourceAccountName = selectedAccount?.name ?: "Cash",
-                                    sourceAccountId = selectedAccount?.id ?: ""
+                            if (!submitting) {
+                                submitting = true
+                                val parsedDate = DateUtils.parseInput(date)
+                                val investment = Investment(
+                                    id         = initialInvestment?.id?.takeIf { it.isNotBlank() } ?: app.fynlo.logic.Ids.newId(),
+                                    name       = name.trim(),
+                                    type       = type,
+                                    invested   = amountDouble,
+                                    currentVal = amountDouble, // starts equal; user updates via 'Update Value'
+                                    date       = parsedDate,
+                                    notes      = notes.trim()
                                 )
-                                SOURCE_EXISTING_DEBT -> InvestmentSaveRequest(
-                                    investment = investment,
-                                    sourceType = SOURCE_EXISTING_DEBT,
-                                    sourceDebt = selectedDebt
-                                )
-                                SOURCE_NEW_LOAN -> {
-                                    val loanAmt = loanAmount.toDoubleOrNull() ?: amountDouble
-                                    val newDebt = Debt(
-                                        id      = app.fynlo.logic.Ids.newId(),
-                                        name    = lenderName.trim(),
-                                        type    = "Bank / NBFC Loan",
-                                        amount  = loanAmt,
-                                        rate    = loanRate.toDoubleOrNull() ?: 0.0,
-                                        intType = loanIntType,
-                                        date    = parsedDate,
-                                        due     = DateUtils.parseInput(loanDue).takeIf { loanDue.isNotBlank() } ?: "",
-                                        notes   = "Auto-created: funded investment in ${name.trim()}"
-                                    )
-                                    InvestmentSaveRequest(investment = investment, sourceType = SOURCE_NEW_LOAN, newLoan = newDebt)
+
+                                if (!isNew) {
+                                    onConfirm(InvestmentSaveRequest(investment, sourceType = initialInvestment?.sourceType ?: ""))
+                                } else {
+                                    val req = when (sourceType) {
+                                        SOURCE_ACCOUNT -> InvestmentSaveRequest(
+                                            investment = investment,
+                                            sourceType = SOURCE_ACCOUNT,
+                                            sourceAccountName = selectedAccount?.name ?: "Cash",
+                                            sourceAccountId = selectedAccount?.id ?: ""
+                                        )
+                                        SOURCE_EXISTING_DEBT -> InvestmentSaveRequest(
+                                            investment = investment,
+                                            sourceType = SOURCE_EXISTING_DEBT,
+                                            sourceDebt = selectedDebt
+                                        )
+                                        SOURCE_NEW_LOAN -> {
+                                            val loanAmt = loanAmount.toDoubleOrNull() ?: amountDouble
+                                            val newDebt = Debt(
+                                                id      = app.fynlo.logic.Ids.newId(),
+                                                name    = lenderName.trim(),
+                                                type    = "Bank / NBFC Loan",
+                                                amount  = loanAmt,
+                                                rate    = loanRate.toDoubleOrNull() ?: 0.0,
+                                                intType = loanIntType,
+                                                date    = parsedDate,
+                                                due     = DateUtils.parseInput(loanDue).takeIf { loanDue.isNotBlank() } ?: "",
+                                                notes   = "Auto-created: funded investment in ${name.trim()}"
+                                            )
+                                            InvestmentSaveRequest(investment = investment, sourceType = SOURCE_NEW_LOAN, newLoan = newDebt)
+                                        }
+                                        else -> InvestmentSaveRequest(investment, sourceType = "")
+                                    }
+                                    onConfirm(req)
                                 }
-                                else -> InvestmentSaveRequest(investment, sourceType = "")
                             }
-                            onConfirm(req)
                         },
-                        enabled = canSave && !submitting
-                    ) {
-                        Text(if (isNew) "Save Investment" else "Update")
-                    }
+                        enabled = canSave && !submitting,
+                        modifier = Modifier.weight(1.25f),
+                    )
                 }
                 DisabledButtonHint(disabledReason)
         }

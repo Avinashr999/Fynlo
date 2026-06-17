@@ -336,7 +336,7 @@ fun MainNavigation(viewModel: FinanceViewModel) {
         gesturesEnabled = !canNavigateBack,
         drawerContent   = {
             ModalDrawerSheet(
-                drawerContainerColor = MaterialTheme.colorScheme.surface,
+                drawerContainerColor = MaterialTheme.colorScheme.background,
                 modifier = Modifier.width(300.dp)
             ) {
                 Column(
@@ -363,12 +363,12 @@ fun MainNavigation(viewModel: FinanceViewModel) {
                     Surface(
                         modifier = Modifier.fillMaxWidth()
                             .padding(start = 14.dp, end = 14.dp, top = 28.dp, bottom = 12.dp),
-                        shape = RoundedCornerShape(22.dp),
+                        shape = RoundedCornerShape(18.dp),
                         color = MaterialTheme.colorScheme.surfaceContainerLowest,
-                        tonalElevation = 1.dp,
+                        tonalElevation = 0.dp,
                         border = androidx.compose.foundation.BorderStroke(
-                            0.5.dp,
-                            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.32f),
+                            0.8.dp,
+                            TemplateBorder,
                         ),
                     ) {
                         Row(
@@ -394,12 +394,12 @@ fun MainNavigation(viewModel: FinanceViewModel) {
                                 Spacer(Modifier.height(6.dp))
                                 Surface(
                                     shape = RoundedCornerShape(999.dp),
-                                    color = Emerald500.copy(alpha = 0.10f),
+                                    color = Emerald100.copy(alpha = 0.75f),
                                 ) {
                                     Text(
                                         "Local ledger",
                                         style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                                        color = Emerald500,
+                                        color = Emerald700,
                                         modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.dp),
                                     )
                                 }
@@ -914,7 +914,7 @@ private fun LedgerAppTopBar(
             modifier = Modifier
                 .fillMaxWidth()
                 .statusBarsPadding()
-                .height(58.dp)
+                .height(56.dp)
                 .padding(horizontal = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -927,7 +927,7 @@ private fun LedgerAppTopBar(
             Row(
                 modifier = Modifier
                     .weight(1f)
-                    .clip(RoundedCornerShape(14.dp))
+                    .clip(RoundedCornerShape(12.dp))
                     .clickable(onClick = onHome)
                     .padding(horizontal = 2.dp, vertical = 6.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -954,11 +954,11 @@ private fun LedgerAppTopBar(
             )
             Surface(
                 onClick = onSyncClick,
-                modifier = Modifier.size(38.dp),
+                modifier = Modifier.size(40.dp),
                 shape = RoundedCornerShape(12.dp),
                 color = MaterialTheme.colorScheme.surface,
-                tonalElevation = 1.dp,
-                shadowElevation = 4.dp,
+                tonalElevation = 0.dp,
+                shadowElevation = 2.dp,
                 border = androidx.compose.foundation.BorderStroke(
                     0.5.dp,
                     MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f),
@@ -980,11 +980,11 @@ private fun LedgerShellButton(
 ) {
     Surface(
         onClick = onClick,
-        modifier = Modifier.size(38.dp),
+        modifier = Modifier.size(40.dp),
         shape = RoundedCornerShape(12.dp),
         color = MaterialTheme.colorScheme.surface,
-        tonalElevation = 1.dp,
-        shadowElevation = 4.dp,
+        tonalElevation = 0.dp,
+        shadowElevation = 2.dp,
         border = androidx.compose.foundation.BorderStroke(
             0.5.dp,
             MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f),
@@ -1010,17 +1010,17 @@ private fun LedgerBottomNav(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(104.dp)
+            .height(92.dp)
             .navigationBarsPadding()
-            .padding(start = 12.dp, end = 12.dp, top = 6.dp, bottom = 12.dp),
+            .padding(start = 14.dp, end = 14.dp, top = 4.dp, bottom = 10.dp),
         contentAlignment = Alignment.Center,
     ) {
         Surface(
-            modifier = Modifier.fillMaxWidth().height(78.dp),
-            shape = RoundedCornerShape(22.dp),
+            modifier = Modifier.fillMaxWidth().height(68.dp),
+            shape = RoundedCornerShape(24.dp),
             color = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f),
-            tonalElevation = 4.dp,
-            shadowElevation = 12.dp,
+            tonalElevation = 0.dp,
+            shadowElevation = 8.dp,
             border = androidx.compose.foundation.BorderStroke(
                 0.5.dp,
                 MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f),
@@ -1037,17 +1037,17 @@ private fun LedgerBottomNav(
                         modifier = Modifier
                             .weight(1f)
                             .fillMaxHeight()
-                            .clip(RoundedCornerShape(20.dp))
+                            .clip(RoundedCornerShape(18.dp))
                             .clickable { onSelect(screen) }
-                            .padding(top = 8.dp, bottom = 8.dp),
+                            .padding(top = 6.dp, bottom = 6.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Center,
                     ) {
                         Box(
                             modifier = Modifier
-                                .height(34.dp)
-                                .width(if (selected) 62.dp else 44.dp)
-                                .clip(RoundedCornerShape(20.dp))
+                                .height(30.dp)
+                                .width(if (selected) 58.dp else 38.dp)
+                                .clip(RoundedCornerShape(18.dp))
                                 .background(
                                     if (selected) Emerald100.copy(alpha = 0.92f)
                                     else Color.Transparent
@@ -1057,11 +1057,11 @@ private fun LedgerBottomNav(
                             Icon(
                                 imageVector = screen.icon,
                                 contentDescription = screen.label,
-                                modifier = Modifier.size(if (selected) 24.dp else 22.dp),
+                                modifier = Modifier.size(if (selected) 22.dp else 20.dp),
                                 tint = if (selected) Emerald700 else MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
-                        Spacer(Modifier.height(3.dp))
+                        Spacer(Modifier.height(2.dp))
                         Text(
                             screen.label,
                             style = MaterialTheme.typography.labelMedium.copy(
@@ -1108,12 +1108,12 @@ fun DrawerItem(
 ) {
     val haptic = LocalHapticFeedback.current
     val iconTint = when {
-        selected -> Emerald500
-        accent   -> Emerald500
+        selected -> Emerald700
+        accent   -> Emerald700
         else     -> MaterialTheme.colorScheme.onSurfaceVariant
     }
     val labelColor = when {
-        selected -> Emerald500
+        selected -> Emerald700
         else     -> MaterialTheme.colorScheme.onSurface
     }
     NavigationDrawerItem(
@@ -1129,7 +1129,7 @@ fun DrawerItem(
             Text(
                 text       = label,
                 style      = MaterialTheme.typography.bodyMedium.copy(
-                    fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal
+                    fontWeight = if (selected) FontWeight.ExtraBold else FontWeight.SemiBold
                 ),
                 color      = labelColor
             )
@@ -1140,10 +1140,10 @@ fun DrawerItem(
             onClick()
         },
         colors   = NavigationDrawerItemDefaults.colors(
-            selectedContainerColor   = Emerald500.copy(alpha = 0.12f),
+            selectedContainerColor   = Emerald100.copy(alpha = 0.85f),
             unselectedContainerColor = Color.Transparent
         ),
-        modifier = Modifier.padding(horizontal = 12.dp, vertical = 1.dp).height(48.dp)
+        modifier = Modifier.padding(horizontal = 12.dp, vertical = 1.dp).height(46.dp)
     )
 }
 

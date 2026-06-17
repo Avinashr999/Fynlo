@@ -2,6 +2,7 @@ package app.fynlo.ui.screens
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -13,9 +14,6 @@ import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -39,6 +37,8 @@ import app.fynlo.ui.theme.LedgerMetric
 import app.fynlo.ui.theme.LedgerMetricBand
 import app.fynlo.ui.theme.SemanticRed
 import app.fynlo.ui.theme.PremiumScreenHeader
+import app.fynlo.ui.theme.TemplatePill
+import app.fynlo.ui.theme.TemplateScreenPadding
 
 /**
  * Combined Loans hub — one tab for "money lent out" (Lending) and "money owed"
@@ -189,32 +189,25 @@ fun LoansHubScreen(
                                  else MaterialTheme.colorScheme.onSurfaceVariant,
                 ),
             ),
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            modifier = Modifier.padding(horizontal = TemplateScreenPadding, vertical = 8.dp),
         )
 
-        SingleChoiceSegmentedButtonRow(
-            Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = TemplateScreenPadding, vertical = 4.dp),
+            horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp),
         ) {
-            SegmentedButton(
+            TemplatePill(
+                text = "Lent",
                 selected = tab == 0,
                 onClick = { tab = 0 },
-                shape = SegmentedButtonDefaults.itemShape(0, 2),
-                icon = {},
-                colors = SegmentedButtonDefaults.colors(
-                    activeContainerColor = Emerald500.copy(alpha = 0.14f),
-                    activeContentColor = Emerald500
-                )
-            ) { Text("Lent") }
-            SegmentedButton(
+                modifier = Modifier.weight(1f),
+            )
+            TemplatePill(
+                text = "Owed",
                 selected = tab == 1,
                 onClick = { tab = 1 },
-                shape = SegmentedButtonDefaults.itemShape(1, 2),
-                icon = {},
-                colors = SegmentedButtonDefaults.colors(
-                    activeContainerColor = SemanticRed.copy(alpha = 0.14f),
-                    activeContentColor = SemanticRed
-                )
-            ) { Text("Owed") }
+                modifier = Modifier.weight(1f),
+            )
         }
         Box(Modifier.weight(1f)) {
             if (tab == 0) {

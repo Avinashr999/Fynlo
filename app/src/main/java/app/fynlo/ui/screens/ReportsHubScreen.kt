@@ -205,15 +205,10 @@ fun ReportsHubScreen(
             Column(Modifier.fillMaxWidth().padding(bottom = 16.dp)) {
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     items(ranges, key = { it }) { r ->
-                        FilterChip(
+                        TemplatePill(
+                            text = r,
                             selected = selectedRange == r,
-                            onClick  = { selectedRange = r },
-                            label    = { Text(r, style = MaterialTheme.typography.labelSmall) },
-                            shape    = RoundedCornerShape(12.dp),
-                            colors   = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = green.copy(alpha = 0.16f),
-                                selectedLabelColor     = green
-                            )
+                            onClick = { selectedRange = r },
                         )
                     }
                 }

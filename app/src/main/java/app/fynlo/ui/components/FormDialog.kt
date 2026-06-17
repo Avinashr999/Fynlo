@@ -1,6 +1,7 @@
 package app.fynlo.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -9,7 +10,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -21,6 +21,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import app.fynlo.ui.theme.TemplateBorder
+import app.fynlo.ui.theme.Emerald700
 
 /**
  * C22 dialog universalization (3.2.53) — canonical form-dialog shape.
@@ -67,27 +69,29 @@ fun FormDialog(
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .fillMaxHeight(0.9f),
-                shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+                    .fillMaxHeight(0.86f),
+                shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
                 color = MaterialTheme.colorScheme.surfaceContainerLowest,
-                tonalElevation = 6.dp,
+                tonalElevation = 0.dp,
+                shadowElevation = 12.dp,
+                border = BorderStroke(0.8.dp, TemplateBorder),
             ) {
                 Column(
                     modifier = Modifier.fillMaxSize(),
                 ) {
                     Box(
                         modifier = Modifier
-                            .padding(top = 10.dp)
-                            .size(width = 44.dp, height = 5.dp)
+                            .padding(top = 8.dp)
+                            .size(width = 38.dp, height = 4.dp)
                             .clip(CircleShape)
                             .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f))
                             .align(Alignment.CenterHorizontally)
                     )
-                    Spacer(Modifier.height(10.dp))
+                    Spacer(Modifier.height(8.dp))
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(start = 20.dp, end = 12.dp),
+                            .padding(start = 18.dp, end = 12.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
@@ -95,6 +99,7 @@ fun FormDialog(
                             Text(
                                 title,
                                 style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold),
+                                color = MaterialTheme.colorScheme.onSurface,
                             )
                             Text(
                                 "Review the details before saving",
@@ -102,17 +107,30 @@ fun FormDialog(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
-                        IconButton(onClick = onDismiss) {
-                            Icon(Icons.Default.Close, contentDescription = "Close")
+                        Surface(
+                            onClick = onDismiss,
+                            modifier = Modifier.size(40.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            color = MaterialTheme.colorScheme.surface,
+                            border = BorderStroke(0.8.dp, TemplateBorder),
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    Icons.Default.Close,
+                                    contentDescription = "Close",
+                                    modifier = Modifier.size(18.dp),
+                                    tint = Emerald700,
+                                )
+                            }
                         }
                     }
-                    Spacer(Modifier.height(12.dp))
+                    Spacer(Modifier.height(10.dp))
                     Column(
                         modifier = Modifier
                             .weight(1f)
                             .fillMaxWidth()
                             .verticalScroll(rememberScrollState())
-                            .padding(start = 20.dp, end = 20.dp, bottom = 24.dp),
+                            .padding(start = 18.dp, end = 18.dp, bottom = 22.dp),
                     ) {
                         content()
                     }
