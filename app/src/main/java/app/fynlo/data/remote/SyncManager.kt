@@ -12,6 +12,7 @@ import com.google.firebase.ktx.Firebase
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.tasks.await
 
 /**
  * Listens to Firestore snapshot updates for all collections and writes
@@ -43,6 +44,16 @@ class SyncManager(
     private fun col(name: String) =
         db.collection("users").document(userId).collection(name)
 
+    private suspend fun deletedByAudit(entityType: String, entityId: String, remoteUpdatedAt: Long): Boolean {
+        val deletedAt = dao.latestDeleteAuditTimestamp(entityType, entityId) ?: return false
+        return deletedAt >= remoteUpdatedAt
+    }
+
+    private suspend fun rejectDeletedRemoteDoc(collection: String, doc: DocumentSnapshot) {
+        dao.insertDeletedRemoteDoc(DeletedRemoteDoc(collection, doc.id))
+        runCatching { doc.reference.delete().await() }
+    }
+
     /** Start real-time listeners for every collection. */
     fun startListening() {
         if (userId.isEmpty()) return
@@ -55,6 +66,11 @@ class SyncManager(
                         val doc = change.document
                         if (change.type == DocumentChange.Type.REMOVED) { dao.deleteBorrowerById(doc.id); return@runCatching }
                         if (dao.isRemoteDocDeleted("borrowers", doc.id)) return@runCatching
+                        if (deletedByAudit("loan", doc.id, doc.lng("updatedAt"))) {
+                            dao.deleteBorrowerById(doc.id)
+                            rejectDeletedRemoteDoc("borrowers", doc)
+                            return@runCatching
+                        }
                         val remote = Borrower(
                             id        = doc.id,
                             name      = doc.str("name"),
@@ -282,6 +298,11 @@ class SyncManager(
                         val doc = change.document
                         if (change.type == DocumentChange.Type.REMOVED) { dao.deleteDebtById(doc.id); return@runCatching }
                         if (dao.isRemoteDocDeleted("debts", doc.id)) return@runCatching
+                        if (deletedByAudit("debt", doc.id, doc.lng("updatedAt"))) {
+                            dao.deleteDebtById(doc.id)
+                            rejectDeletedRemoteDoc("debts", doc)
+                            return@runCatching
+                        }
                         val remote = Debt(
                             id        = doc.id,
                             name      = doc.str("name"),
@@ -385,6 +406,11 @@ class SyncManager(
                         val doc = change.document
                         if (change.type == DocumentChange.Type.REMOVED) { dao.deletePaymentById(doc.id); return@runCatching }
                         if (dao.isRemoteDocDeleted("payments", doc.id)) return@runCatching
+                        if (deletedByAudit("loan", doc.str("loanId"), doc.lng("updatedAt"))) {
+                            dao.deletePaymentById(doc.id)
+                            rejectDeletedRemoteDoc("payments", doc)
+                            return@runCatching
+                        }
                         dao.insertPayment(Payment(
                             id        = doc.id,
                             loanId    = doc.str("loanId"),
@@ -415,6 +441,11 @@ class SyncManager(
                         val doc = change.document
                         if (change.type == DocumentChange.Type.REMOVED) { dao.deleteDebtPaymentById(doc.id); return@runCatching }
                         if (dao.isRemoteDocDeleted("debt_payments", doc.id)) return@runCatching
+                        if (deletedByAudit("debt", doc.str("debtId"), doc.lng("updatedAt"))) {
+                            dao.deleteDebtPaymentById(doc.id)
+                            rejectDeletedRemoteDoc("debt_payments", doc)
+                            return@runCatching
+                        }
                         dao.insertDebtPayment(DebtPayment(
                             id        = doc.id,
                             debtId    = doc.str("debtId"),

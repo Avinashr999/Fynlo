@@ -145,6 +145,12 @@ interface FynloDao {
     @Query("SELECT * FROM audit_events ORDER BY timestamp DESC")
     fun getAllAuditEvents(): Flow<List<AuditEvent>>
 
+    @Query("SELECT * FROM audit_events ORDER BY timestamp DESC")
+    suspend fun getAllAuditEventsOnce(): List<AuditEvent>
+
+    @Query("SELECT MAX(timestamp) FROM audit_events WHERE action = 'DELETE' AND entityType = :entityType AND entityId = :entityId")
+    suspend fun latestDeleteAuditTimestamp(entityType: String, entityId: String): Long?
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAuditEvent(event: AuditEvent)
 

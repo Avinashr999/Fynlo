@@ -65,7 +65,11 @@ class FinanceViewModel @Inject constructor(
     init {
         // Auto-fix: recalculate paid = paidPrincipal + paidInterest on every startup
         // This corrects any double-counted records from the pre-fix payment engine
-        viewModelScope.launch(Dispatchers.IO) { repository.fixPaidDoubleCount() }
+        viewModelScope.launch(Dispatchers.IO) {
+            repository.fixPaidDoubleCount()
+            repository.repairDeletedAuditResidue()
+            repository.fixPaidDoubleCount()
+        }
         viewModelScope.launch(Dispatchers.IO) {
             projects.collect { list ->
                 if (_currentProjectId.value.isEmpty() && list.isNotEmpty()) {

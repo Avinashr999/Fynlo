@@ -671,6 +671,112 @@ class FinanceRepository(
         dao.rebuildDebtPaidFromDebtPayments()
     }
 
+    suspend fun repairDeletedAuditResidue(): Int {
+        val latestDeleteByEntity = dao.getAllAuditEventsOnce()
+            .filter { it.action == "DELETE" && it.entityId.isNotBlank() }
+            .groupBy { it.entityType to it.entityId }
+            .mapValues { (_, events) -> events.maxOf { it.timestamp } }
+
+        val deletedLoanIds = latestDeleteByEntity.keys
+            .filter { it.first == "loan" }
+            .map { it.second }
+            .toSet()
+        val deletedDebtIds = latestDeleteByEntity.keys
+            .filter { it.first == "debt" }
+            .map { it.second }
+            .toSet()
+        val deletedTransactionIds = latestDeleteByEntity.keys
+            .filter { it.first == "transaction" }
+            .map { it.second }
+            .toSet()
+
+        val remoteTransactions = mutableSetOf<String>()
+        val remotePayments = mutableSetOf<String>()
+        val remoteDebtPayments = mutableSetOf<String>()
+        val remoteBorrowers = mutableSetOf<String>()
+        val remoteDebts = mutableSetOf<String>()
+        var repaired = 0
+
+        db.withTransaction {
+            deletedTransactionIds.forEach { id ->
+                val deletedAt = latestDeleteByEntity["transaction" to id] ?: return@forEach
+                val txn = dao.getTransactionById(id)
+                if (txn != null && txn.updatedAt <= deletedAt) {
+                    dao.deleteTransaction(txn)
+                    repaired++
+                }
+                tombstoneRemoteDoc("transactions", id)
+                remoteTransactions += id
+            }
+
+            deletedLoanIds.forEach { id ->
+                val deletedAt = latestDeleteByEntity["loan" to id] ?: return@forEach
+                dao.getTransactionsByRef(id).forEach { txn ->
+                    if (txn.updatedAt <= deletedAt) {
+                        dao.deleteTransaction(txn)
+                        tombstoneRemoteDoc("transactions", txn.id)
+                        remoteTransactions += txn.id
+                        repaired++
+                    }
+                }
+                dao.getPaymentsForLoanOnce(id).forEach { payment ->
+                    if (payment.updatedAt <= deletedAt) {
+                        dao.deletePayment(payment)
+                        tombstoneRemoteDoc("payments", payment.id)
+                        remotePayments += payment.id
+                        repaired++
+                    }
+                }
+                dao.getBorrowerById(id)?.let { borrower ->
+                    if (borrower.updatedAt <= deletedAt) {
+                        dao.deleteBorrower(borrower)
+                        repaired++
+                    }
+                }
+                tombstoneRemoteDoc("borrowers", id)
+                remoteBorrowers += id
+            }
+
+            deletedDebtIds.forEach { id ->
+                val deletedAt = latestDeleteByEntity["debt" to id] ?: return@forEach
+                dao.getTransactionsByRef(id).forEach { txn ->
+                    if (txn.updatedAt <= deletedAt) {
+                        dao.deleteTransaction(txn)
+                        tombstoneRemoteDoc("transactions", txn.id)
+                        remoteTransactions += txn.id
+                        repaired++
+                    }
+                }
+                dao.getDebtPaymentsForDebtOnce(id).forEach { payment ->
+                    if (payment.updatedAt <= deletedAt) {
+                        dao.deleteDebtPayment(payment)
+                        tombstoneRemoteDoc("debt_payments", payment.id)
+                        remoteDebtPayments += payment.id
+                        repaired++
+                    }
+                }
+                dao.getDebtById(id)?.let { debt ->
+                    if (debt.updatedAt <= deletedAt) {
+                        dao.deleteDebt(debt)
+                        repaired++
+                    }
+                }
+                tombstoneRemoteDoc("debts", id)
+                remoteDebts += id
+            }
+
+            dao.rebuildBorrowerPaidFromPayments()
+            dao.rebuildDebtPaidFromDebtPayments()
+        }
+
+        remoteTransactions.forEach { sync { deleteTransaction(it) } }
+        remotePayments.forEach { sync { deletePayment(it) } }
+        remoteDebtPayments.forEach { sync { deleteDebtPayment(it) } }
+        remoteBorrowers.forEach { sync { deleteBorrower(it) } }
+        remoteDebts.forEach { sync { deleteDebt(it) } }
+        return repaired
+    }
+
     suspend fun recalculateAllBalances() {
         // C01 fix — Sprint 1 (decisions/2026-05-26-c01-fix-strategy.md).
         // Derives `paid` / `paidPrincipal` / `paidInterest` from the
