@@ -118,4 +118,10 @@ class FirestoreRepository(private val userId: String) {
     suspend fun deleteRecurring(id: String) {
         col("recurring_transactions").document(id).delete().await()
     }
+
+    // ── Audit trail ───────────────────────────────────────────────────────────
+
+    suspend fun setAuditEvent(event: AuditEvent) {
+        col("audit_events").document(event.id).set(event.toFirestoreMap()).await()
+    }
 }

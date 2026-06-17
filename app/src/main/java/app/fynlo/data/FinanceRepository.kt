@@ -143,22 +143,22 @@ class FinanceRepository(
         projectId: String = "personal",
         reason: String = "",
     ) {
-        dao.insertAuditEvent(
-            AuditEvent(
-                id = app.fynlo.logic.Ids.newId(),
-                timestamp = System.currentTimeMillis(),
-                action = action,
-                entityType = entityType,
-                entityId = entityId,
-                title = title.take(120),
-                beforeValue = beforeValue.take(600),
-                afterValue = afterValue.take(600),
-                amountDelta = amountDelta,
-                accountName = accountName.take(120),
-                projectId = projectId.ifBlank { "personal" },
-                reason = reason.take(300),
-            )
+        val event = AuditEvent(
+            id = app.fynlo.logic.Ids.newId(),
+            timestamp = System.currentTimeMillis(),
+            action = action,
+            entityType = entityType,
+            entityId = entityId,
+            title = title.take(120),
+            beforeValue = beforeValue.take(600),
+            afterValue = afterValue.take(600),
+            amountDelta = amountDelta,
+            accountName = accountName.take(120),
+            projectId = projectId.ifBlank { "personal" },
+            reason = reason.take(300),
         )
+        dao.insertAuditEvent(event)
+        sync { setAuditEvent(event) }
     }
 
     private fun Transaction.auditSummary(): String =
@@ -1693,6 +1693,7 @@ class FinanceRepository(
         dao.getAllProjects().first().forEach     { push("project:${it.id}")     { fs.setProject(it) } }
         dao.getAllRecurringTransactionsOnce().forEach { push("recurring:${it.id}") { fs.setRecurring(it) } }
         dao.getAllValuationsOnce().forEach       { push("valuation:${it.id}")   { fs.setValuation(it) } }
+        dao.getAllAuditEventsOnce().forEach      { push("audit:${it.id}")       { fs.setAuditEvent(it) } }
 
         if (failed == 0) syncManager.setSynced() else syncManager.setSyncing()
     }
@@ -1852,8 +1853,8 @@ class FinanceRepository(
         val collections = listOf(
             "accounts", "transactions", "borrowers", "investments", "debts",
             "people", "payments", "debt_payments", "budgets", "goals",
-            "projects", "backup_meta", "backups", "net_worth_snapshots",
-            "investment_valuations"
+            "projects", "recurring_transactions", "backup_meta", "backups",
+            "net_worth_snapshots", "investment_valuations", "audit_events"
         )
 
         db.withTransaction {
@@ -1869,6 +1870,7 @@ class FinanceRepository(
             dao.deleteAllProjects()
             dao.deleteAllBudgets()
             dao.deleteAllGoals()
+            dao.deleteAllAuditEvents()
             dao.deleteAllValuations()
             dao.deleteAllRecurringTransactions()
         }

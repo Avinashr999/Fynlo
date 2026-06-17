@@ -12,7 +12,7 @@ val USER_FIRESTORE_COLLECTIONS = listOf(
     "accounts", "transactions", "borrowers", "investments", "debts",
     "people", "payments", "debt_payments", "budgets", "goals",
     "projects", "recurring_transactions", "backup_meta", "backups",
-    "net_worth_snapshots", "investment_valuations"
+    "net_worth_snapshots", "investment_valuations", "audit_events"
 )
 
 /**

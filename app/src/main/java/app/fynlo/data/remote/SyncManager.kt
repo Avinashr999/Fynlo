@@ -281,7 +281,9 @@ class SyncManager(
                             date = doc.str("date"),
                             value = doc.dbl("value"),
                             notes = doc.str("notes"),
-                            updatedAt = doc.lng("updatedAt")
+                            projectId = doc.strOr("projectId", "personal"),
+                            updatedAt = doc.lng("updatedAt"),
+                            createdAt = doc.lng("createdAt")
                         )
                         dao.insertValuation(remote)
                     }
@@ -389,7 +391,8 @@ class SyncManager(
                             color     = doc.str("color"),
                             currency  = doc.str("currency"),
                             createdAt = doc.str("createdAt"),
-                            updatedAt = doc.lng("updatedAt")
+                            updatedAt = doc.lng("updatedAt"),
+                            description = doc.str("description")
                         ))
                     }
                 }
@@ -481,7 +484,8 @@ class SyncManager(
                             period      = doc.str("period"),
                             projectId   = doc.str("projectId"),
                             updatedAt   = doc.lng("updatedAt"),
-                            createdAt   = doc.lng("createdAt")
+                            createdAt   = doc.lng("createdAt"),
+                            alertThresholdPct = doc.intOr("alertThresholdPct", 80)
                         ))
                     }
                 }
@@ -515,7 +519,8 @@ class SyncManager(
                             isActive   = doc.bool("isActive"),
                             lastRun    = doc.str("lastRun"),
                             projectId  = doc.str("projectId"),
-                            updatedAt  = doc.lng("updatedAt")
+                            updatedAt  = doc.lng("updatedAt"),
+                            createdAt  = doc.lng("createdAt")
                         ))
                     }
                 }
@@ -540,7 +545,40 @@ class SyncManager(
                             notes        = doc.str("notes"),
                             projectId    = doc.str("projectId"),
                             updatedAt    = doc.lng("updatedAt"),
-                            createdAt    = doc.lng("createdAt")
+                            createdAt    = doc.lng("createdAt"),
+                            iconKey      = doc.strOr("iconKey", "star"),
+                            linkedAccount = doc.str("linkedAccount")
+                        ))
+                    }
+                }
+                _status.value = SyncStatus.Synced
+            }
+        }
+
+        // Audit trail is append-only diagnostic data. It must sync so a reinstall
+        // or second device can explain money-action changes instead of showing an
+        // empty trail after Firestore restore.
+        listeners += col("audit_events").addSnapshotListener { snap, err ->
+            if (err != null || snap == null) { handleErr(err); return@addSnapshotListener }
+            scope.launch {
+                snap.documentChanges.forEach { change ->
+                    runCatching {
+                        val doc = change.document
+                        if (change.type == DocumentChange.Type.REMOVED) return@runCatching
+                        dao.insertAuditEvent(AuditEvent(
+                            id          = doc.id,
+                            timestamp   = doc.lng("timestamp"),
+                            action      = doc.str("action"),
+                            entityType  = doc.str("entityType"),
+                            entityId    = doc.str("entityId"),
+                            title       = doc.str("title"),
+                            beforeValue = doc.str("beforeValue"),
+                            afterValue  = doc.str("afterValue"),
+                            amountDelta = doc.dbl("amountDelta"),
+                            accountName = doc.str("accountName"),
+                            projectId   = doc.strOr("projectId", "personal"),
+                            reason      = doc.str("reason"),
+                            actor       = doc.strOr("actor", "remote")
                         ))
                     }
                 }
@@ -563,8 +601,10 @@ class SyncManager(
 
     // ── Extension helpers to safely read Firestore fields ─────────────────────
     private fun DocumentSnapshot.str(key: String)  = getString(key)  ?: ""
+    private fun DocumentSnapshot.strOr(key: String, default: String) = getString(key)?.takeIf { it.isNotBlank() } ?: default
     private fun DocumentSnapshot.dbl(key: String)  = getDouble(key)  ?: 0.0
     private fun DocumentSnapshot.lng(key: String)  = getLong(key)    ?: 0L
     private fun DocumentSnapshot.int(key: String)  = getLong(key)?.toInt() ?: 0
+    private fun DocumentSnapshot.intOr(key: String, default: Int) = getLong(key)?.toInt() ?: default
     private fun DocumentSnapshot.bool(key: String) = getBoolean(key) ?: false
 }

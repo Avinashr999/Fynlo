@@ -188,6 +188,19 @@ service cloud.firestore {
         allow delete: if isOwner(userId);
       }
 
+      // Audit trail (owner-only ledger diagnostics)
+      match /audit_events/{eventId} {
+        allow read: if isOwner(userId);
+        allow create, update: if isOwner(userId)
+          && hasFields(['timestamp', 'action', 'entityType', 'entityId', 'title'])
+          && request.resource.data.timestamp is number
+          && request.resource.data.action is string
+          && request.resource.data.entityType is string
+          && request.resource.data.entityId is string
+          && request.resource.data.title is string;
+        allow delete: if isOwner(userId);
+      }
+
     } // end match /users/{userId}
 
     // ── Block all other paths ─────────────────────────────────────────────
