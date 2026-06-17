@@ -105,6 +105,59 @@ fun AboutScreen() {
         Spacer(Modifier.height(20.dp))
 
         // ── Privacy card ─────────────────────────────────────────────────────
+        Text("What's New",
+            style    = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+            modifier = Modifier.padding(bottom = 10.dp))
+
+        Column(
+            Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp))
+                .background(MaterialTheme.colorScheme.surface)
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            AboutBulletRow(
+                icon = Icons.Default.Verified,
+                title = "Safer money actions",
+                body = "Loan, debt, investment, and expense actions now keep stronger source and destination traces."
+            )
+            AboutBulletRow(
+                icon = Icons.Default.Route,
+                title = "Ledger health",
+                body = "Review critical issues, trace gaps, duplicates, and money routes from Settings."
+            )
+            AboutBulletRow(
+                icon = Icons.Default.DesignServices,
+                title = "Cleaner interface",
+                body = "Screens, dialogs, reports, and app icons now follow the newer Fynlo visual language."
+            )
+            AboutBulletRow(
+                icon = Icons.Default.PictureAsPdf,
+                title = "Improved exports",
+                body = "PDF and spreadsheet reports are clearer, with better section spacing and readable tables."
+            )
+        }
+
+        Spacer(Modifier.height(20.dp))
+
+        Text("How to Use Fynlo",
+            style    = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+            modifier = Modifier.padding(bottom = 10.dp))
+
+        Column(
+            Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp))
+                .background(MaterialTheme.colorScheme.surface)
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            AboutStepRow("1", "Create accounts first", "Add cash, bank, and wallet accounts before entering loans, debts, investments, or expenses.")
+            AboutStepRow("2", "Pick the real source account", "When lending, investing, or spending, choose the account where money actually moved from.")
+            AboutStepRow("3", "Reverse from the original flow", "Delete or restore the original loan, debt, investment, or payment instead of editing generated ledger rows.")
+            AboutStepRow("4", "Check Ledger Health", "Use Settings > Backup & Export > Ledger Health after bulk changes, imports, or manual corrections.")
+            AboutStepRow("5", "Back up before real use", "Export reports or sync to your Google account before replacing test data with real records.")
+        }
+
+        Spacer(Modifier.height(20.dp))
+
         AboutInfoCard(
             icon  = Icons.Default.Shield,
             title = "Privacy & Security",
@@ -193,6 +246,74 @@ fun AboutScreen() {
  * Mirrors the SettingsActionRow shape for consistency: leading icon +
  * label + trailing "open-in-new" chevron. Whole row tappable.
  */
+@Composable
+private fun AboutBulletRow(
+    icon: ImageVector,
+    title: String,
+    body: String,
+) {
+    Row(
+        verticalAlignment = Alignment.Top,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Box(
+            modifier = Modifier.size(36.dp).clip(RoundedCornerShape(12.dp))
+                .background(Emerald500.copy(alpha = 0.12f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(icon, null, Modifier.size(18.dp), tint = Emerald700)
+        }
+        Column(Modifier.weight(1f)) {
+            Text(
+                title,
+                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Text(
+                body,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+@Composable
+private fun AboutStepRow(
+    number: String,
+    title: String,
+    body: String,
+) {
+    Row(
+        verticalAlignment = Alignment.Top,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Box(
+            modifier = Modifier.size(30.dp).clip(CircleShape)
+                .background(Emerald500.copy(alpha = 0.12f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                number,
+                style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.ExtraBold),
+                color = Emerald700,
+            )
+        }
+        Column(Modifier.weight(1f)) {
+            Text(
+                title,
+                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Text(
+                body,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
 @Composable
 private fun AboutLinkRow(
     icon: ImageVector,
