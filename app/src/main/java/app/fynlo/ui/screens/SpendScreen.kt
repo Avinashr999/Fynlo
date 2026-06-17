@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.sp
 import app.fynlo.FinanceViewModel
 import app.fynlo.data.model.Transaction
 import app.fynlo.logic.CurrencyFormatter
+import app.fynlo.logic.isGeneratedJournalEntry
 import app.fynlo.logic.toRecurringTemplate
 import app.fynlo.ui.components.AddTransactionDialog
 import java.time.LocalDate
@@ -355,10 +356,24 @@ private fun ExpenseRow(
     val haptic = LocalHapticFeedback.current
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var showEditDialog    by remember { mutableStateOf(false) }
+    var showManagedEntry  by remember { mutableStateOf(false) }
     var menuOpen          by remember { mutableStateOf(false) }
     var deleteInProgress  by remember(txn.id) { mutableStateOf(false) }
+    val isManagedEntry = txn.isGeneratedJournalEntry()
 
-    if (showDeleteConfirm) {
+    if (showManagedEntry) {
+        AlertDialog(
+            onDismissRequest = { showManagedEntry = false },
+            title = { Text("Managed entry") },
+            text = {
+                Text("This is generated from a loan or debt action. Edit or delete the original loan/debt payment to keep the ledger balanced.")
+            },
+            confirmButton = {
+                Button(onClick = { showManagedEntry = false }) { Text("OK") }
+            }
+        )
+    }
+    if (showDeleteConfirm && !isManagedEntry) {
         AlertDialog(
             onDismissRequest = { showDeleteConfirm = false },
             title = { Text("Delete Expense?") },
@@ -378,7 +393,7 @@ private fun ExpenseRow(
             dismissButton = { TextButton(onClick = { showDeleteConfirm = false }) { Text("Cancel") } }
         )
     }
-    if (showEditDialog) {
+    if (showEditDialog && !isManagedEntry) {
         app.fynlo.ui.components.EditTransactionDialog(
             transaction  = txn,
             bankAccounts = bankAccounts,
@@ -429,8 +444,15 @@ private fun ExpenseRow(
                         tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                    DropdownMenuItem(text = { Text("Edit") }, onClick = { menuOpen = false; showEditDialog = true })
-                    DropdownMenuItem(text = { Text("Delete", color = SemanticRed) }, onClick = { menuOpen = false; showDeleteConfirm = true })
+                    if (isManagedEntry) {
+                        DropdownMenuItem(
+                            text = { Text("Managed by ledger") },
+                            onClick = { menuOpen = false; showManagedEntry = true }
+                        )
+                    } else {
+                        DropdownMenuItem(text = { Text("Edit") }, onClick = { menuOpen = false; showEditDialog = true })
+                        DropdownMenuItem(text = { Text("Delete", color = SemanticRed) }, onClick = { menuOpen = false; showDeleteConfirm = true })
+                    }
                 }
             }
         }

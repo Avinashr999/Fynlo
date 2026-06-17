@@ -74,12 +74,27 @@ fun CollectPaymentDialog(
 
     val accountOptions = if (accounts.isNotEmpty()) accounts
     else listOf(Account(id = "cash", name = "Personal Cash", type = "Cash", balance = 0.0))
-    var selectedAccount by remember { mutableStateOf(accountOptions.first()) }
-
     val principalVal = principalStr.toDoubleOrNull() ?: 0.0
     val interestVal  = interestStr.toDoubleOrNull()  ?: 0.0
     val totalAmount  = principalVal + interestVal
     val isValid      = totalAmount > 0.0
+    val preferredAccount = remember(accountOptions) {
+        accountOptions
+            .filter { it.type.equals("Cash", true) || it.type.equals("Bank", true) }
+            .maxByOrNull { it.balance }
+            ?: accountOptions.maxByOrNull { it.balance }
+            ?: accountOptions.first()
+    }
+    var selectedAccount by remember(accountOptions) { mutableStateOf(preferredAccount) }
+    var accountManuallyPicked by remember(accountOptions) { mutableStateOf(false) }
+    LaunchedEffect(totalAmount, accountOptions) {
+        if (!accountManuallyPicked && totalAmount > 0.0 && selectedAccount.balance < totalAmount) {
+            accountOptions
+                .filter { it.balance >= totalAmount }
+                .maxByOrNull { it.balance }
+                ?.let { selectedAccount = it }
+        }
+    }
 
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Surface(
@@ -343,12 +358,28 @@ fun PayDebtDialog(
 
     val accountOptions = if (accounts.isNotEmpty()) accounts
     else listOf(Account(id = "cash", name = "Personal Cash", type = "Cash", balance = 0.0))
-    var selectedAccount by remember { mutableStateOf(accountOptions.first()) }
 
     val principalVal = principalStr.toDoubleOrNull() ?: 0.0
     val interestVal  = interestStr.toDoubleOrNull()  ?: 0.0
     val totalAmount  = principalVal + interestVal
     val isValid      = totalAmount > 0.0
+    val preferredAccount = remember(accountOptions) {
+        accountOptions
+            .filter { it.type.equals("Cash", true) || it.type.equals("Bank", true) }
+            .maxByOrNull { it.balance }
+            ?: accountOptions.maxByOrNull { it.balance }
+            ?: accountOptions.first()
+    }
+    var selectedAccount by remember(accountOptions) { mutableStateOf(preferredAccount) }
+    var accountManuallyPicked by remember(accountOptions) { mutableStateOf(false) }
+    LaunchedEffect(totalAmount, accountOptions) {
+        if (!accountManuallyPicked && totalAmount > 0.0 && selectedAccount.balance < totalAmount) {
+            accountOptions
+                .filter { it.balance >= totalAmount }
+                .maxByOrNull { it.balance }
+                ?.let { selectedAccount = it }
+        }
+    }
 
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Surface(
@@ -485,7 +516,11 @@ fun PayDebtDialog(
                                             color = if (acct.balance >= 0) Emerald500 else MaterialTheme.colorScheme.error)
                                     }
                                 },
-                                onClick = { selectedAccount = acct; expanded = false })
+                                onClick = {
+                                    selectedAccount = acct
+                                    accountManuallyPicked = true
+                                    expanded = false
+                                })
                         }
                     }
                 }

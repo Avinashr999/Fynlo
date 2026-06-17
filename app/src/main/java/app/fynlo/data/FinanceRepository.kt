@@ -7,6 +7,7 @@ import app.fynlo.data.remote.FirestoreRepository
 import app.fynlo.data.remote.SyncManager
 import app.fynlo.data.remote.deleteFirestoreUserTree
 import app.fynlo.logic.CurrencyFormatter
+import app.fynlo.logic.isGeneratedJournalEntry
 import app.fynlo.logic.resolveAccountIdsWith
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -241,6 +242,7 @@ class FinanceRepository(
         affectedAccounts.forEach { syncAccountByName(it) }
     }
     suspend fun editTransaction(old: Transaction, newRaw: Transaction) {
+        if (old.isGeneratedJournalEntry()) return
         // C03a Stage 2: scrub forbidden literal categories from the new
         // value before applying the edit. `old` is read-only — its
         // category is just used for the old-side Payment-row lookup and
@@ -419,6 +421,7 @@ class FinanceRepository(
         var deleted: Transaction? = null
         db.withTransaction {
             val current = dao.getTransactionById(transaction.id) ?: return@withTransaction
+            if (current.isGeneratedJournalEntry()) return@withTransaction
             // 3.2.72 — audit-log every reversal so a delete shows up in the
             // diagnostic timeline.
             val delTag = app.fynlo.logic.BalanceAuditLog.Source.DELETE_TXN

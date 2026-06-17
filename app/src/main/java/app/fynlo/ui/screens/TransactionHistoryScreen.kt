@@ -29,6 +29,7 @@ import app.fynlo.FinanceViewModel
 import app.fynlo.data.model.Transaction
 import app.fynlo.logic.CurrencyFormatter
 import app.fynlo.logic.DateUtils
+import app.fynlo.logic.isGeneratedJournalEntry
 import app.fynlo.ui.theme.*
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -493,9 +494,21 @@ fun TransactionItem(
     val locale = LocalLocale.current.platformLocale
     var showEditDialog by remember { mutableStateOf(false) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
+    var showManagedEntry by remember { mutableStateOf(false) }
     var deleteInProgress by remember(txn.id) { mutableStateOf(false) }
+    val isManagedEntry = txn.isGeneratedJournalEntry()
 
-    if (showEditDialog) {
+    if (showManagedEntry) {
+        AlertDialog(
+            onDismissRequest = { showManagedEntry = false },
+            title = { Text("Managed entry") },
+            text = {
+                Text("This entry is generated from a loan or debt action. Edit or delete the original payment so linked totals stay correct.")
+            },
+            confirmButton = { Button(onClick = { showManagedEntry = false }) { Text("OK") } }
+        )
+    }
+    if (showEditDialog && !isManagedEntry) {
         app.fynlo.ui.components.EditTransactionDialog(
             transaction  = txn,
             bankAccounts = bankAccounts,
@@ -503,7 +516,7 @@ fun TransactionItem(
             onConfirm    = { updated -> onEdit(updated); showEditDialog = false }
         )
     }
-    if (showDeleteConfirm) {
+    if (showDeleteConfirm && !isManagedEntry) {
         AlertDialog(
             onDismissRequest = { showDeleteConfirm = false },
             title = { Text("Delete transaction?") },
@@ -528,11 +541,11 @@ fun TransactionItem(
     LaunchedEffect(swipeState.currentValue) {
         when (swipeState.currentValue) {
             SwipeToDismissBoxValue.StartToEnd -> {
-                showEditDialog = true
+                if (isManagedEntry) showManagedEntry = true else showEditDialog = true
                 swipeState.reset()
             }
             SwipeToDismissBoxValue.EndToStart -> {
-                showDeleteConfirm = true
+                if (isManagedEntry) showManagedEntry = true else showDeleteConfirm = true
                 swipeState.reset()
             }
             else -> Unit
@@ -541,8 +554,8 @@ fun TransactionItem(
 
     SwipeToDismissBox(
         state = swipeState,
-        enableDismissFromStartToEnd = !selectionMode,
-        enableDismissFromEndToStart = !selectionMode,
+        enableDismissFromStartToEnd = !selectionMode && !isManagedEntry,
+        enableDismissFromEndToStart = !selectionMode && !isManagedEntry,
         backgroundContent = {
             val dir = swipeState.dismissDirection
             val bg = when (dir) {
@@ -566,8 +579,16 @@ fun TransactionItem(
         modifier = Modifier
             .fillMaxWidth()
             .combinedClickable(
-                onClick = { if (selectionMode) onSelect() else showEditDialog = true },
-                onLongClick = onLongPress
+                onClick = {
+                    when {
+                        isManagedEntry -> showManagedEntry = true
+                        selectionMode -> onSelect()
+                        else -> showEditDialog = true
+                    }
+                },
+                onLongClick = {
+                    if (isManagedEntry) showManagedEntry = true else onLongPress()
+                }
             )
             .background(
                 if (isSelected) rowColor.copy(alpha = 0.10f)

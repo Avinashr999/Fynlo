@@ -125,7 +125,14 @@ val currentProject by viewModel.currentProject.collectAsState()
         var withdrawExpanded by remember { mutableStateOf(false) }
         val withdrawAccountOptions = if (accounts.isNotEmpty()) accounts
         else listOf(app.fynlo.data.model.Account(id = "cash", name = "Personal Cash", type = "Cash", balance = 0.0))
-        var withdrawAccount by remember { mutableStateOf(withdrawAccountOptions.first()) }
+        val preferredWithdrawAccount = remember(withdrawAccountOptions) {
+            withdrawAccountOptions.firstOrNull { it.name.equals("Personal Cash", ignoreCase = true) }
+                ?: withdrawAccountOptions
+                    .filter { it.type.equals("Cash", true) || it.type.equals("Bank", true) }
+                    .maxByOrNull { it.balance }
+                ?: withdrawAccountOptions.first()
+        }
+        var withdrawAccount by remember(withdrawAccountOptions) { mutableStateOf(preferredWithdrawAccount) }
 
         androidx.compose.ui.window.Dialog(
             onDismissRequest = { withdrawingInvest = null },
