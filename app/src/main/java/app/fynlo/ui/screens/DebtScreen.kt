@@ -12,6 +12,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.Notes
+import androidx.compose.material.icons.filled.AccountBalanceWallet
 import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
@@ -33,6 +34,7 @@ import app.fynlo.data.model.DebtPayment
 import app.fynlo.logic.CurrencyFormatter
 import app.fynlo.logic.DateUtils
 import app.fynlo.logic.InterestEngine
+import app.fynlo.logic.displayToAcct
 import app.fynlo.ui.components.AddDebtDialog
 import app.fynlo.ui.components.PayDebtDialog
 import app.fynlo.ui.theme.*
@@ -56,6 +58,8 @@ fun DebtScreen(
     LaunchedEffect(Unit) { app.fynlo.data.Analytics.screenView("Debts") }
         val haptic = LocalHapticFeedback.current
 val debts by viewModel.debts.collectAsState()
+    val transactions by viewModel.transactions.collectAsState()
+    val accounts by viewModel.accounts.collectAsState()
     val isPrivacy by viewModel.isPrivacyMode.collectAsState()
     val currentProject by viewModel.currentProject.collectAsState()
     val currencyCode = currentProject?.currency ?: "INR"
@@ -66,6 +70,17 @@ val debts by viewModel.debts.collectAsState()
     // date past today; Closed = paid >= amount (fully repaid).
     var statusFilter by remember { mutableStateOf("Active") }
     val todayKey = remember { java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd")) }
+    val accountIdToName = remember(accounts) { accounts.associate { it.id to it.name } }
+    val debtReceivedIntoById = remember(transactions, accountIdToName) {
+        transactions
+            .filter { it.ref.isNotBlank() && it.category.equals("Debt Received", ignoreCase = true) }
+            .groupBy { it.ref }
+            .mapValues { (_, rows) ->
+                rows.maxByOrNull { it.createdAt.takeIf { created -> created > 0L } ?: it.updatedAt }
+                    ?.displayToAcct(accountIdToName)
+                    .orEmpty()
+            }
+    }
 
     val searched = remember(debts, searchQuery) {
         if (searchQuery.isBlank()) debts
@@ -251,6 +266,7 @@ val debts by viewModel.debts.collectAsState()
             itemsIndexed(filteredDebts, key = { _, d -> d.id }) { index, debt ->
                     DebtCard(
                         debt = debt,
+                        receivedIntoAccount = debtReceivedIntoById[debt.id].orEmpty(),
                         currencyCode = currencyCode,
                         isPrivacy = isPrivacy,
                         onClick = { onNavigateToDetail(debt.id) }
@@ -277,6 +293,7 @@ val debts by viewModel.debts.collectAsState()
 @Composable
 fun DebtCard(
     debt: Debt,
+    receivedIntoAccount: String = "",
     currencyCode: String = "INR",
     isPrivacy: Boolean = false,
     onClick: () -> Unit,
@@ -333,6 +350,24 @@ fun DebtCard(
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+            if (receivedIntoAccount.isNotBlank()) {
+                Spacer(Modifier.height(4.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        Icons.Default.AccountBalanceWallet,
+                        contentDescription = null,
+                        modifier = Modifier.size(13.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.width(5.dp))
+                    Text(
+                        "Into $receivedIntoAccount",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1
+                    )
+                }
+            }
         }
         Column(horizontalAlignment = Alignment.End) {
             val outstandingText = if (isPrivacy) "••••" else CurrencyFormatter.detail(outstanding, currencyCode, locale)

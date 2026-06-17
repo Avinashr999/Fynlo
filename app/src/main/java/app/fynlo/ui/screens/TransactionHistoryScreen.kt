@@ -618,6 +618,12 @@ fun TransactionItem(
                     "From ${txn.displayFromAcct(accountIdToName)}"
                 txn.category.equals("Loan Repayment", ignoreCase = true) && txn.toAcct.isNotBlank() ->
                     "To ${txn.displayToAcct(accountIdToName)}"
+                txn.category.equals("Debt Received", ignoreCase = true) && txn.toAcct.isNotBlank() ->
+                    "Into ${txn.displayToAcct(accountIdToName)}"
+                txn.category.equals("Debt Repayment", ignoreCase = true) && txn.fromAcct.isNotBlank() ->
+                    "From ${txn.displayFromAcct(accountIdToName)}"
+                txn.category.equals("Investment", ignoreCase = true) && txn.fromAcct.isNotBlank() ->
+                    "From ${txn.displayFromAcct(accountIdToName)}"
                 else -> ""
             }
             if (accountTrace.isNotBlank() && accountTrace != sub) {

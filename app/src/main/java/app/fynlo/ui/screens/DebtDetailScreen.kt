@@ -11,6 +11,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Notes
 import androidx.compose.material.icons.filled.CreditCard
+import androidx.compose.material.icons.filled.AccountBalanceWallet
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.ExpandLess
@@ -34,6 +35,8 @@ import app.fynlo.logic.CurrencyFormatter
 import app.fynlo.logic.DateUtils
 import app.fynlo.logic.DebtPayoffPlanner
 import app.fynlo.logic.InterestEngine
+import app.fynlo.logic.displayFromAcct
+import app.fynlo.logic.displayToAcct
 import app.fynlo.ui.components.AddDebtDialog
 import app.fynlo.ui.components.PayDebtDialog
 import app.fynlo.ui.theme.Emerald500
@@ -62,6 +65,7 @@ fun DebtDetailScreen(
     val debts         by viewModel.debts.collectAsState()
     val allPayments   by viewModel.debtPayments.collectAsState()
     val accounts      by viewModel.accounts.collectAsState()
+    val transactions  by viewModel.transactions.collectAsState()
     val currentProject by viewModel.currentProject.collectAsState()
     val currencyCode  = currentProject?.currency ?: "INR"
     val locale        = LocalLocale.current.platformLocale
@@ -82,6 +86,15 @@ fun DebtDetailScreen(
         debt.amount, debt.rate, debt.date, debt.intType, debt.due, debt.paid
     )
     val totalOutstanding = InterestEngine.calcOutstanding(debt.amount, interest, debt.paid)
+    val accountIdToName = remember(accounts) { accounts.associate { it.id to it.name } }
+    val receivedTxn = remember(transactions, debt.id) {
+        transactions
+            .filter { it.ref == debt.id && it.category.equals("Debt Received", ignoreCase = true) }
+            .maxByOrNull { it.createdAt.takeIf { created -> created > 0L } ?: it.updatedAt }
+    }
+    val receivedInto = remember(receivedTxn, accountIdToName) {
+        receivedTxn?.displayToAcct(accountIdToName).orEmpty()
+    }
 
     var showEditDialog    by remember { mutableStateOf(false) }
     var showPayDialog     by remember { mutableStateOf(false) }
@@ -185,6 +198,49 @@ fun DebtDetailScreen(
                         DetailItem("Principal", CurrencyFormatter.detail(debt.amount, currencyCode, locale))
                         DetailItem("Interest",  CurrencyFormatter.detail(interest, currencyCode, locale))
                         DetailItem("Paid",      CurrencyFormatter.detail(debt.paid, currencyCode, locale))
+                    }
+                    if (receivedInto.isNotBlank() || debt.notes.isNotBlank()) {
+                        Spacer(Modifier.height(12.dp))
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(14.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.42f),
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(12.dp),
+                                verticalAlignment = Alignment.Top,
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            ) {
+                                Box(
+                                    Modifier.size(34.dp).clip(CircleShape)
+                                        .background(Emerald500.copy(alpha = 0.14f)),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    Icon(
+                                        Icons.Default.AccountBalanceWallet,
+                                        contentDescription = null,
+                                        tint = Emerald500,
+                                        modifier = Modifier.size(18.dp),
+                                    )
+                                }
+                                Column(Modifier.weight(1f)) {
+                                    if (receivedInto.isNotBlank()) {
+                                        Text(
+                                            "Received into $receivedInto",
+                                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                                            color = MaterialTheme.colorScheme.onSurface,
+                                        )
+                                    }
+                                    if (debt.notes.isNotBlank()) {
+                                        Text(
+                                            "Purpose: ${debt.notes}",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    }
+                                }
+                            }
+                        }
                     }
                     if (debt.rate > 0) {
                         Spacer(Modifier.height(8.dp))
@@ -314,7 +370,18 @@ fun DebtDetailScreen(
                     } else {
                         Column {
                             debtPayments.forEach { payment ->
-                                DebtPaymentItem(payment, currencyCode, locale)
+                                val sourceTxn = transactions.firstOrNull {
+                                    it.ref == debt.id &&
+                                        it.category.equals("Debt Repayment", ignoreCase = true) &&
+                                        it.date == payment.date &&
+                                        kotlin.math.abs(it.amount - payment.amount) < 0.01
+                                }
+                                DebtPaymentItem(
+                                    payment = payment,
+                                    currencyCode = currencyCode,
+                                    locale = locale,
+                                    paidFrom = sourceTxn?.displayFromAcct(accountIdToName).orEmpty(),
+                                )
                             }
                         }
                     }
@@ -397,7 +464,12 @@ private fun DebtExpandableSection(
 }
 
 @Composable
-private fun DebtPaymentItem(payment: DebtPayment, currencyCode: String, locale: Locale) {
+private fun DebtPaymentItem(
+    payment: DebtPayment,
+    currencyCode: String,
+    locale: Locale,
+    paidFrom: String = "",
+) {
     Row(
         modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -424,6 +496,13 @@ private fun DebtPaymentItem(payment: DebtPayment, currencyCode: String, locale: 
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+            if (paidFrom.isNotBlank()) {
+                Text(
+                    "Paid from $paidFrom",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
             if (payment.notes.isNotBlank()) {
                 Text(
                     payment.notes,

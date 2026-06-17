@@ -14,6 +14,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.CallMade
 import androidx.compose.material.icons.automirrored.filled.Notes
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
+import androidx.compose.material.icons.filled.AccountBalanceWallet
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Update
 import androidx.compose.material.icons.filled.Delete
@@ -540,6 +541,9 @@ fun InvestmentCard(invest: Investment, currencyCode: String = "INR", isPrivacy: 
     val growthPercent = if (invest.invested > 0) (growth / invest.invested) * 100 else 0.0
     val isProfit = growth >= 0
     val typeAccent = remember(invest.type) { investmentTypeAccent(invest.type) }
+    val fundingLabel = remember(invest.sourceType, invest.fundingSource) {
+        investmentFundingLabel(invest)
+    }
     var menuOpen by remember { mutableStateOf(false) }
     var showReturnDetails by remember { mutableStateOf(false) }
     val cagr = remember(invest) {
@@ -641,6 +645,28 @@ fun InvestmentCard(invest: Investment, currencyCode: String = "INR", isPrivacy: 
                 }
             }
 
+            if (fundingLabel.isNotBlank()) {
+                Spacer(Modifier.height(8.dp))
+                Row(
+                    Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        Icons.Default.AccountBalanceWallet,
+                        contentDescription = null,
+                        modifier = Modifier.size(14.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        fundingLabel,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 2,
+                    )
+                }
+            }
+
             if (invest.withdrawn > 0 || invest.notes.isNotEmpty()) {
                 Spacer(Modifier.height(8.dp))
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -697,6 +723,18 @@ private fun investmentTypeAccent(type: String): Color = when (type.lowercase(Loc
     "real estate" -> Color(0xFF0F766E)
     "crypto" -> Color(0xFFF97316)
     else -> Emerald500
+}
+
+private fun investmentFundingLabel(invest: Investment): String {
+    val source = invest.fundingSource.trim()
+    if (source.isBlank()) return ""
+    val prefix = when (invest.sourceType) {
+        "account" -> "Funded from"
+        "existing_debt" -> "Funded by debt"
+        "new_loan" -> "Funded by new loan"
+        else -> "Funded from"
+    }
+    return "$prefix $source"
 }
 
 @Composable
