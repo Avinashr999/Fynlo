@@ -13,6 +13,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Notes
+import androidx.compose.material.icons.automirrored.filled.ReceiptLong
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -522,15 +524,20 @@ fun TransactionItem(
         )
     }
 
-    val swipeState = rememberSwipeToDismissBoxState(
-        confirmValueChange = { v ->
-            when (v) {
-                SwipeToDismissBoxValue.StartToEnd -> { showEditDialog = true; false }
-                SwipeToDismissBoxValue.EndToStart -> { showDeleteConfirm = true; false }
-                else -> false
+    val swipeState = rememberSwipeToDismissBoxState()
+    LaunchedEffect(swipeState.currentValue) {
+        when (swipeState.currentValue) {
+            SwipeToDismissBoxValue.StartToEnd -> {
+                showEditDialog = true
+                swipeState.reset()
             }
+            SwipeToDismissBoxValue.EndToStart -> {
+                showDeleteConfirm = true
+                swipeState.reset()
+            }
+            else -> Unit
         }
-    )
+    }
 
     SwipeToDismissBox(
         state = swipeState,
@@ -647,7 +654,7 @@ fun EmptyTransactionState(
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             Icon(
-                Icons.Default.ReceiptLong,
+                Icons.AutoMirrored.Filled.ReceiptLong,
                 contentDescription = null,
                 modifier = Modifier.size(56.dp),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f)
@@ -683,7 +690,7 @@ fun getCategoryIcon(category: String): ImageVector {
         "salary" -> Icons.Default.Payments
         "medical" -> Icons.Default.MedicalServices
         "bills" -> Icons.Default.Receipt
-        "investment" -> Icons.Default.TrendingUp
+        "investment" -> Icons.AutoMirrored.Filled.TrendingUp
         "lending", "loan repayment" -> Icons.Default.Handshake
         "debt", "debt repayment" -> Icons.Default.CreditCard
         else -> Icons.Default.AccountBalanceWallet

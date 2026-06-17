@@ -11,6 +11,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -22,6 +23,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.material.icons.automirrored.filled.MenuBook
 import app.fynlo.BuildConfig
 import app.fynlo.ui.components.FynloBrandMark
 import app.fynlo.ui.theme.*
@@ -76,7 +78,7 @@ fun AboutScreen() {
             Icons.Default.AccountBalance    to "Track accounts, cash, and bank balances",
             Icons.Default.Group             to "Manage loans to friends and family",
             Icons.Default.CreditCard        to "Track debts you owe to others",
-            Icons.Default.TrendingUp        to "Monitor investments and growth",
+            Icons.AutoMirrored.Filled.TrendingUp to "Monitor investments and growth",
             Icons.Default.PieChart          to "Set budgets and track spending",
             Icons.Default.Assessment        to "Reports: P&L, net worth, cash flow",
             Icons.Default.CloudDone         to "Auto-sync to Google Firestore",
@@ -150,7 +152,7 @@ fun AboutScreen() {
             HorizontalDivider(thickness = 0.5.dp,
                 color = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f))
             AboutLinkRow(
-                icon  = Icons.Default.MenuBook,
+                icon  = Icons.AutoMirrored.Filled.MenuBook,
                 label = "Open Source Licenses",
                 onClick = { openUrl("https://github.com/Avinashr999/Fynlo/blob/master/LICENSES.md") }
             )

@@ -11,6 +11,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -98,7 +99,7 @@ fun HomeScreen(viewModel: FinanceViewModel, onNavigateToScreen: (String) -> Unit
             BreakdownType.IDLE_CASH -> Icons.Default.AccountBalance
             BreakdownType.BANK_CASH -> Icons.Default.AccountBalance
             BreakdownType.CASH_IN_HAND -> Icons.Default.Payments
-            BreakdownType.GROWING_ASSETS -> Icons.Default.TrendingUp
+            BreakdownType.GROWING_ASSETS -> Icons.AutoMirrored.Filled.TrendingUp
             BreakdownType.HAND_LOANS -> Icons.Default.Handshake
             else -> Icons.Default.Info
         }

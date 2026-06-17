@@ -11,11 +11,11 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.CallMade
 import androidx.compose.material.icons.automirrored.filled.Notes
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Update
-import androidx.compose.material.icons.filled.TrendingUp
-import androidx.compose.material.icons.filled.CallMade
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.ExpandLess
@@ -564,7 +564,7 @@ fun InvestmentCard(invest: Investment, currencyCode: String = "INR", isPrivacy: 
                             .background(typeAccent.copy(alpha = 0.14f)),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(Icons.Default.TrendingUp, null, Modifier.size(23.dp), tint = typeAccent)
+                        Icon(Icons.AutoMirrored.Filled.TrendingUp, null, Modifier.size(23.dp), tint = typeAccent)
                     }
                     Spacer(Modifier.width(12.dp))
                     Column(Modifier.weight(1f)) {
@@ -678,7 +678,7 @@ fun InvestmentCard(invest: Investment, currencyCode: String = "INR", isPrivacy: 
                         shape = RoundedCornerShape(12.dp),
                         contentPadding = PaddingValues(horizontal = 10.dp)
                     ) {
-                        Icon(Icons.Default.CallMade, null, Modifier.size(15.dp))
+                        Icon(Icons.AutoMirrored.Filled.CallMade, null, Modifier.size(15.dp))
                         Spacer(Modifier.width(6.dp))
                         Text("Withdraw", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold))
                     }

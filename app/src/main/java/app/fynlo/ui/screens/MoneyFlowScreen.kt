@@ -17,6 +17,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -430,7 +431,7 @@ private fun FlowEntryCard(flow: FlowEntry, currencyCode: String, locale: Locale)
         FlowType.LENDING       -> Pair(SemanticAmber, Icons.Default.Person)
         FlowType.DEBT_RECEIVED -> Pair(Carbon500, Icons.Default.CreditCard)
         FlowType.DEBT_REPAY    -> Pair(SemanticRed, Icons.Default.CreditCard)
-        FlowType.INVESTMENT    -> Pair(SemanticTeal, Icons.Default.TrendingUp)
+        FlowType.INVESTMENT    -> Pair(SemanticTeal, Icons.AutoMirrored.Filled.TrendingUp)
     }
 
     Row(Modifier.padding(vertical = 12.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {

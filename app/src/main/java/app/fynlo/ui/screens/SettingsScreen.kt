@@ -15,6 +15,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
+import androidx.compose.material.icons.automirrored.filled.FormatListBulleted
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material3.*
@@ -1015,7 +1016,7 @@ fun SettingsScreen(
         SettingsExpandableCard(
             title = "Formatting",
             subtitle = "Currency and date display",
-            icon = Icons.Default.FormatListBulleted,
+            icon = Icons.AutoMirrored.Filled.FormatListBulleted,
             color = Green,
             expanded = showFormatting,
             onToggle = { showFormatting = !showFormatting },

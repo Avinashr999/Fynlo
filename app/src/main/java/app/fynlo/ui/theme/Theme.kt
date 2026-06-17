@@ -105,7 +105,11 @@ fun FynloTheme(
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as Activity).window
-            window.statusBarColor = colorScheme.background.toArgb()
+            @Suppress("DEPRECATION")
+            fun applyStatusBarColor() {
+                window.statusBarColor = colorScheme.background.toArgb()
+            }
+            applyStatusBarColor()
             WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars =
                 colorScheme.background == LightBackground
         }

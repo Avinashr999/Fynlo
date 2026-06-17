@@ -245,7 +245,7 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
             BreakdownType.IDLE_CASH -> Icons.Default.AccountBalance
             BreakdownType.BANK_CASH -> Icons.Default.AccountBalance
             BreakdownType.CASH_IN_HAND -> Icons.Default.Payments
-            BreakdownType.GROWING_ASSETS -> Icons.Default.TrendingUp
+            BreakdownType.GROWING_ASSETS -> Icons.AutoMirrored.Filled.TrendingUp
             BreakdownType.HAND_LOANS -> Icons.Default.Handshake
             else -> Icons.Default.Info
         }
@@ -583,7 +583,7 @@ private fun FreshStartCard(
             }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 GuidedActionChip("Account", Icons.Default.AccountBalance, Emerald500, Modifier.weight(1f), onAddAccount)
-                GuidedActionChip("Transaction", Icons.Default.ReceiptLong, SemanticBlue, Modifier.weight(1f), onAddTransaction)
+                GuidedActionChip("Transaction", Icons.AutoMirrored.Filled.ReceiptLong, SemanticBlue, Modifier.weight(1f), onAddTransaction)
                 GuidedActionChip("Project", Icons.Default.Folder, SemanticAmber, Modifier.weight(1f), onCreateProject)
             }
         }

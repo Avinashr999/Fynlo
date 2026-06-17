@@ -26,7 +26,7 @@ class FinanceViewModel @Inject constructor(
     private val repository: FinanceRepository,
     private val recalcCoordinator: RecalcCoordinator,
     private val recentlyUsedTracker: RecentlyUsedTracker,
-    @dagger.hilt.android.qualifiers.ApplicationContext private val context: android.content.Context
+    @param:dagger.hilt.android.qualifiers.ApplicationContext private val context: android.content.Context
 ) : ViewModel() {
 
     val isPrivacyMode: StateFlow<Boolean> = app.fynlo.data.UserPreferences.privacyModeEnabled(context)
@@ -179,12 +179,12 @@ class FinanceViewModel @Inject constructor(
     val financialSummary: StateFlow<FinancialSummary> = combine(
         transactions, accounts, investments, borrowers, debts, valuations
     ) { args: Array<List<*>> ->
-        val trans = args[0] as List<Transaction>
-        val accts = args[1] as List<Account>
-        val invs  = args[2] as List<Investment>
-        val brws  = args[3] as List<Borrower>
-        val dbts  = args[4] as List<Debt>
-        val vals  = args[5] as List<InvestmentValuation>
+        val trans = args[0].requireTypedList<Transaction>()
+        val accts = args[1].requireTypedList<Account>()
+        val invs  = args[2].requireTypedList<Investment>()
+        val brws  = args[3].requireTypedList<Borrower>()
+        val dbts  = args[4].requireTypedList<Debt>()
+        val vals  = args[5].requireTypedList<InvestmentValuation>()
 
         val totalCashVal     = accts.sumOf { it.balance }
         val totalInvestVal   = invs.sumOf { it.currentVal }
@@ -1410,6 +1410,8 @@ class FinanceViewModel @Inject constructor(
         }
     }
 }
+
+private inline fun <reified T> List<*>.requireTypedList(): List<T> = map { it as T }
 
 /**
  * C02 step 4: result type for [FinanceViewModel.recalculateAllBalancesCapturingDelta].

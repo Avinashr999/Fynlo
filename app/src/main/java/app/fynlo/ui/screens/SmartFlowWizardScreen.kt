@@ -140,7 +140,7 @@ fun SmartFlowWizardScreen(
                         onClick = { currentStep-- },
                         shape = RoundedCornerShape(12.dp)
                     ) {
-                        Icon(Icons.Default.ArrowBack, null, Modifier.size(18.dp))
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, null, Modifier.size(18.dp))
                         Spacer(Modifier.width(8.dp))
                         Text("Previous")
                     }

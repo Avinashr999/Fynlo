@@ -9,6 +9,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -132,7 +133,7 @@ fun GlobalSearchScreen(
                         id = i.id, title = i.name,
                         subtitle = "Investment - ${i.type} - ${i.date}",
                         amount = i.currentVal, type = "Investment",
-                        icon = Icons.Default.TrendingUp, color = SemanticAmber, score = s,
+                        icon = Icons.AutoMirrored.Filled.TrendingUp, color = SemanticAmber, score = s,
                     ))
                 }
             }

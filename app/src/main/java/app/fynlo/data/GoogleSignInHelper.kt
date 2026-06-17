@@ -1,4 +1,6 @@
-﻿package app.fynlo.data
+@file:Suppress("DEPRECATION")
+
+package app.fynlo.data
 
 import android.content.Context
 import com.google.android.gms.auth.api.signin.GoogleSignIn
