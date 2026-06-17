@@ -109,7 +109,7 @@ fun ProjectsScreen(viewModel: FinanceViewModel, onNavigateToUpgrade: () -> Unit 
                 "Your books",
                 style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
             )
-            FilledTonalButton(
+            Button(
                 onClick = {
                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                     if (isPro || projects.isEmpty()) showAddDialog = true else onNavigateToUpgrade()
@@ -418,6 +418,5 @@ private fun AddProjectDialog(
         )
     }
 }
-
 
 

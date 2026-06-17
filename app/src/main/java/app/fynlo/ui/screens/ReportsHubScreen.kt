@@ -163,7 +163,7 @@ fun ReportsHubScreen(
                 val projectName = currentProject?.name ?: "Personal"
                 val periodLabel = if (selectedRange == "All Time") "All time"
                                   else "${fromDate.format(DateTimeFormatter.ofPattern("dd MMM yyyy"))} – ${toDate.format(DateTimeFormatter.ofPattern("dd MMM yyyy"))}"
-                FilledTonalButton(
+                Button(
                     onClick = {
                         // C21 Stage 1 — standardized filename + identity row.
                         val file = java.io.File(

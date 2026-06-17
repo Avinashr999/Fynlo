@@ -585,6 +585,28 @@ fun TemplatePill(
     }
 }
 
+@Composable
+fun TemplateSegmentedSelector(
+    options: List<String>,
+    selectedIndex: Int,
+    onSelected: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        options.forEachIndexed { index, option ->
+            TemplatePill(
+                text = option,
+                selected = selectedIndex == index,
+                onClick = { onSelected(index) },
+                modifier = Modifier.weight(1f),
+            )
+        }
+    }
+}
+
 // ── C07: shared empty-state — single CTA, no duplicate FAB ────────────────────
 // Audit (UX_AUDIT §C07) fix point #1: "Empty state shows ONLY the 'Add First X'
 // CTA per DESIGN_SYSTEM.md §9.6." Use this on any screen where the empty

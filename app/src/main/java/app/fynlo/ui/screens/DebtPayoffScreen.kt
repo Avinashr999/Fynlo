@@ -214,21 +214,17 @@ private fun PayoffPlanSection(
     ) {
         Text("Payoff plan", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold))
 
-        // Strategy toggle.
-        SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
-            SegmentedButton(
-                selected = strategy == DebtPayoffPlanner.Strategy.SNOWBALL,
-                onClick = { onStrategy(DebtPayoffPlanner.Strategy.SNOWBALL) },
-                shape = SegmentedButtonDefaults.itemShape(0, 2),
-                icon = {},
-            ) { Text("Snowball", style = MaterialTheme.typography.labelSmall) }
-            SegmentedButton(
-                selected = strategy == DebtPayoffPlanner.Strategy.AVALANCHE,
-                onClick = { onStrategy(DebtPayoffPlanner.Strategy.AVALANCHE) },
-                shape = SegmentedButtonDefaults.itemShape(1, 2),
-                icon = {},
-            ) { Text("Avalanche", style = MaterialTheme.typography.labelSmall) }
-        }
+        val strategyOptions = listOf("Snowball", "Avalanche")
+        TemplateSegmentedSelector(
+            options = strategyOptions,
+            selectedIndex = if (strategy == DebtPayoffPlanner.Strategy.SNOWBALL) 0 else 1,
+            onSelected = { idx ->
+                onStrategy(
+                    if (idx == 0) DebtPayoffPlanner.Strategy.SNOWBALL
+                    else DebtPayoffPlanner.Strategy.AVALANCHE
+                )
+            },
+        )
 
         OutlinedTextField(
             value = if (isPrivacy) "••••" else budgetText,

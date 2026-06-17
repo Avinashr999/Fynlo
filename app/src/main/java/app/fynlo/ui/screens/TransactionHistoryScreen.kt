@@ -211,34 +211,28 @@ fun TransactionHistoryScreen(viewModel: FinanceViewModel) {
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                SingleChoiceSegmentedButtonRow(modifier = Modifier.weight(1f)) {
-                    types.forEachIndexed { idx, type ->
-                        SegmentedButton(
-                            selected = selectedType == type,
-                            onClick = { selectedType = type },
-                            shape = SegmentedButtonDefaults.itemShape(idx, types.size),
-                            icon = {},
-                            colors = SegmentedButtonDefaults.colors(
-                                activeContainerColor = Emerald500.copy(alpha = 0.16f),
-                                activeContentColor = Emerald500,
-                            ),
-                            label = { Text(type) },
-                        )
-                    }
-                }
+                TemplateSegmentedSelector(
+                    options = types,
+                    selectedIndex = types.indexOf(selectedType).coerceAtLeast(0),
+                    onSelected = { idx -> selectedType = types[idx] },
+                    modifier = Modifier.weight(1f),
+                )
                 val datesActive = showDateFilter || fromDate.isNotBlank()
-                FilledTonalButton(
+                Surface(
                     onClick = { showDateFilter = !showDateFilter },
+                    modifier = Modifier.height(36.dp),
                     shape = RoundedCornerShape(12.dp),
-                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
-                    colors = if (datesActive) ButtonDefaults.filledTonalButtonColors(
-                        containerColor = Emerald500.copy(alpha = 0.16f),
-                        contentColor = Emerald500,
-                    ) else ButtonDefaults.filledTonalButtonColors(),
+                    color = if (datesActive) Emerald100.copy(alpha = 0.85f) else MaterialTheme.colorScheme.surface,
+                    border = androidx.compose.foundation.BorderStroke(0.8.dp, TemplateBorder),
                 ) {
-                    Icon(Icons.Default.DateRange, null, Modifier.size(16.dp))
-                    Spacer(Modifier.width(4.dp))
-                    Text("Dates", style = MaterialTheme.typography.labelMedium)
+                    Row(
+                        modifier = Modifier.padding(horizontal = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(Icons.Default.DateRange, null, Modifier.size(16.dp), tint = Emerald700)
+                        Spacer(Modifier.width(4.dp))
+                        Text("Dates", style = MaterialTheme.typography.labelMedium, color = Emerald700)
+                    }
                 }
             }
 

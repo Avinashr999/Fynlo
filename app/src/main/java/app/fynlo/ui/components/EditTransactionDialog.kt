@@ -18,6 +18,7 @@ import app.fynlo.data.model.Transaction
 import app.fynlo.logic.DateUtils
 import app.fynlo.ui.theme.Emerald500
 import app.fynlo.ui.theme.SemanticRed
+import app.fynlo.ui.theme.TemplateSegmentedSelector
 
 /**
  * EditTransactionDialog — extended in 3.2.81 (C13 #9) to support changing
@@ -85,21 +86,11 @@ fun EditTransactionDialog(
                 // "Salary" / shows "Food"). The category state is left in
                 // place; user re-picks if the old value doesn't apply.
                 val typeOptions = listOf("Income", "Expense", "Transfer")
-                SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-                    typeOptions.forEachIndexed { idx, t ->
-                        SegmentedButton(
-                            selected = type == t,
-                            onClick = { type = t },
-                            shape = SegmentedButtonDefaults.itemShape(idx, typeOptions.size),
-                            icon = {},
-                            colors = SegmentedButtonDefaults.colors(
-                                activeContainerColor = (if (t == "Income") Emerald500 else if (t == "Expense") SemanticRed else MaterialTheme.colorScheme.primary).copy(alpha = 0.14f),
-                                activeContentColor = if (t == "Income") Emerald500 else if (t == "Expense") SemanticRed else MaterialTheme.colorScheme.primary,
-                            ),
-                            label = { Text(t, style = MaterialTheme.typography.labelMedium) },
-                        )
-                    }
-                }
+                TemplateSegmentedSelector(
+                    options = typeOptions,
+                    selectedIndex = typeOptions.indexOf(type).coerceAtLeast(0),
+                    onSelected = { idx -> type = typeOptions[idx] },
+                )
 
                 Spacer(Modifier.height(12.dp))
                 OutlinedTextField(

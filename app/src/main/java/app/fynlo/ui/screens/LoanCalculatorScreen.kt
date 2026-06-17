@@ -235,17 +235,12 @@ fun LoanCalculatorScreen(viewModel: FinanceViewModel? = null) {
                         modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp), singleLine = true
                     )
                     val tenureUnits = listOf("Months", "Years")
-                    SingleChoiceSegmentedButtonRow {
-                        tenureUnits.forEachIndexed { idx, unit ->
-                            SegmentedButton(
-                                selected = tenureUnit == unit,
-                                onClick = { tenureUnit = unit },
-                                shape = SegmentedButtonDefaults.itemShape(idx, tenureUnits.size),
-                                icon = {},
-                                label = { Text(unit, style = MaterialTheme.typography.labelMedium) },
-                            )
-                        }
-                    }
+                    TemplateSegmentedSelector(
+                        options = tenureUnits,
+                        selectedIndex = tenureUnits.indexOf(tenureUnit).coerceAtLeast(0),
+                        onSelected = { idx -> tenureUnit = tenureUnits[idx] },
+                        modifier = Modifier.width(156.dp),
+                    )
                 }
 
                 ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = !expanded }) {
@@ -506,17 +501,12 @@ fun LoanCalculatorScreen(viewModel: FinanceViewModel? = null) {
                         // remaining balance) so a 30-year home loan goes
                         // from a 360-row wall of text to a scannable 30 rows.
                         val granOptions = listOf("Yearly", "Monthly")
-                        SingleChoiceSegmentedButtonRow {
-                            granOptions.forEachIndexed { idx, g ->
-                                SegmentedButton(
-                                    selected = scheduleGranularity == g,
-                                    onClick = { scheduleGranularity = g },
-                                    shape = SegmentedButtonDefaults.itemShape(idx, granOptions.size),
-                                    icon = {},
-                                    label = { Text(g, style = MaterialTheme.typography.labelSmall) },
-                                )
-                            }
-                        }
+                        TemplateSegmentedSelector(
+                            options = granOptions,
+                            selectedIndex = granOptions.indexOf(scheduleGranularity).coerceAtLeast(0),
+                            onSelected = { idx -> scheduleGranularity = granOptions[idx] },
+                            modifier = Modifier.width(170.dp),
+                        )
                     }
                     Spacer(Modifier.height(12.dp))
 
@@ -756,17 +746,11 @@ private fun PrepaymentWhatIfSection(
 
                 // Mode toggle.
                 val modeOptions = listOf("Monthly extra", "Lump sum")
-                SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
-                    modeOptions.forEachIndexed { idx, m ->
-                        SegmentedButton(
-                            selected = mode == m,
-                            onClick = { mode = m },
-                            shape = SegmentedButtonDefaults.itemShape(idx, modeOptions.size),
-                            icon = {},
-                            label = { Text(m, style = MaterialTheme.typography.labelSmall) },
-                        )
-                    }
-                }
+                TemplateSegmentedSelector(
+                    options = modeOptions,
+                    selectedIndex = modeOptions.indexOf(mode).coerceAtLeast(0),
+                    onSelected = { idx -> mode = modeOptions[idx] },
+                )
 
                 Spacer(Modifier.height(10.dp))
                 OutlinedTextField(

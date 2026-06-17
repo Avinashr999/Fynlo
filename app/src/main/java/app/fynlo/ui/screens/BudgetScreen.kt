@@ -452,11 +452,10 @@ fun AddBudgetDialog(
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             categories.forEach { cat ->
-                FilterChip(
+                TemplatePill(
+                    text = cat,
                     selected = selectedCategory == cat,
                     onClick = { selectedCategory = cat },
-                    label = { Text(cat, style = MaterialTheme.typography.labelSmall) },
-                    shape = RoundedCornerShape(12.dp),
                 )
             }
         }

@@ -173,12 +173,12 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
                         }
                     }
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        FilledTonalButton(onClick = { showEmiCalc = true }, shape = RoundedCornerShape(14.dp),
+                        Button(onClick = { showEmiCalc = true }, shape = RoundedCornerShape(14.dp),
                             contentPadding = PaddingValues(horizontal = 18.dp, vertical = 10.dp)) {
                             Text("EMI", style = MaterialTheme.typography.labelMedium)
                         }
                         Spacer(Modifier.width(8.dp))
-                        FilledTonalButton(onClick = onNavigateToCalendar, shape = RoundedCornerShape(14.dp),
+                        Button(onClick = onNavigateToCalendar, shape = RoundedCornerShape(14.dp),
                             contentPadding = PaddingValues(horizontal = 14.dp, vertical = 10.dp)) {
                             Icon(Icons.Default.CalendarMonth, contentDescription = "Collection Calendar", Modifier.size(18.dp))
                         }
@@ -214,17 +214,12 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
                     "Overdue" to overdueLoans.size,
                     "Closed"  to closedLoans.size,
                 )
-                SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
-                    filters.forEachIndexed { idx, (label, count) ->
-                        SegmentedButton(
-                            selected = statusFilter == label,
-                            onClick = { statusFilter = label },
-                            shape = SegmentedButtonDefaults.itemShape(idx, filters.size),
-                            icon = {},
-                            label = { Text("$label  -  $count", style = MaterialTheme.typography.labelMedium) },
-                        )
-                    }
-                }
+                TemplateSegmentedSelector(
+                    options = filters.map { (label, count) -> "$label  $count" },
+                    selectedIndex = filters.indexOfFirst { it.first == statusFilter }.coerceAtLeast(0),
+                    onSelected = { idx -> statusFilter = filters[idx].first },
+                    modifier = Modifier.padding(vertical = 4.dp),
+                )
             }
 
             // List of borrowers for the current filter. Filter-specific empty
@@ -485,20 +480,15 @@ fun EmiCalculatorDialog(currencyCode: String, onDismiss: () -> Unit) {
             useSimple -> "Simple"
             else -> "Compound"
         }
-        SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-            emiMethodOptions.forEachIndexed { idx, method ->
-                SegmentedButton(
-                    selected = emiSelected == method,
-                    onClick = {
-                        useReducing = (method == "Reducing")
-                        useSimple = (method == "Simple")
-                    },
-                    shape = SegmentedButtonDefaults.itemShape(idx, emiMethodOptions.size),
-                    icon = {},
-                    label = { Text(method, style = MaterialTheme.typography.labelSmall) },
-                )
-            }
-        }
+        TemplateSegmentedSelector(
+            options = emiMethodOptions,
+            selectedIndex = emiMethodOptions.indexOf(emiSelected).coerceAtLeast(0),
+            onSelected = { idx ->
+                val method = emiMethodOptions[idx]
+                useReducing = method == "Reducing"
+                useSimple = method == "Simple"
+            },
+        )
 
         if (!useReducing && !useSimple) {
             Spacer(Modifier.height(14.dp))

@@ -154,7 +154,7 @@ fun ProfitLossScreen(viewModel: FinanceViewModel) {
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                FilledTonalButton(
+                Button(
                     onClick = {
                         // C21 Stage 1 — standardized filename + identity row.
                         val projectName = currentProject?.name ?: "Personal"

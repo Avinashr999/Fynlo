@@ -211,11 +211,10 @@ fun GlobalSearchScreen(
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 typeOptions.forEach { opt ->
-                    FilterChip(
+                    TemplatePill(
+                        text = opt,
                         selected = typeFilter == opt,
-                        onClick  = { typeFilter = opt },
-                        label    = { Text(opt, style = MaterialTheme.typography.labelSmall) },
-                        shape    = RoundedCornerShape(12.dp),
+                        onClick = { typeFilter = opt },
                     )
                 }
             }

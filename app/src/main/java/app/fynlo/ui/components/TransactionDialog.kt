@@ -26,6 +26,8 @@ import app.fynlo.logic.CurrencyUtils
 import app.fynlo.logic.DateUtils
 import app.fynlo.ui.theme.Emerald500
 import app.fynlo.ui.theme.SemanticRed
+import app.fynlo.ui.theme.TemplatePill
+import app.fynlo.ui.theme.TemplateSegmentedSelector
 import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
@@ -169,30 +171,11 @@ fun AddTransactionDialog(
                 Spacer(Modifier.height(16.dp))
 
                 // ── Expense / Income toggle ───────────────────────────────────
-                SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
-                    SegmentedButton(
-                        selected = !isIncome,
-                        onClick = { isIncome = false },
-                        shape = SegmentedButtonDefaults.itemShape(0, 2),
-                        colors = SegmentedButtonDefaults.colors(
-                            activeContainerColor = SemanticRed.copy(alpha = 0.14f),
-                            activeContentColor = SemanticRed
-                        )
-                    ) { Text("Expense") }
-                    SegmentedButton(
-                        selected = isIncome,
-                        // C05: the special-case Food→Salary swap that used to live here
-                        // is gone — the LaunchedEffect(isIncome) above resets selectedCategory
-                        // to "" on every toggle flip, so no cross-type bleed is possible.
-                        onClick = { isIncome = true },
-                        shape = SegmentedButtonDefaults.itemShape(1, 2),
-                        colors = SegmentedButtonDefaults.colors(
-                            activeContainerColor = Emerald500.copy(alpha = 0.14f),
-                            activeContentColor = Emerald500
-                        )
-                    ) { Text("Income") }
-                }
-
+                TemplateSegmentedSelector(
+                    options = listOf("Expense", "Income"),
+                    selectedIndex = if (isIncome) 1 else 0,
+                    onSelected = { index -> isIncome = index == 1 },
+                )
                 Spacer(Modifier.height(24.dp))
 
                 // ── Big amount input (hero) ───────────────────────────────────
@@ -210,15 +193,10 @@ fun AddTransactionDialog(
                 Spacer(Modifier.height(8.dp))
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     categories.forEach { cat ->
-                        FilterChip(
+                        TemplatePill(
+                            text = cat,
                             selected = selectedCategory == cat,
                             onClick = { selectedCategory = cat },
-                            label = { Text(cat) },
-                            shape = RoundedCornerShape(12.dp),
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = Emerald500.copy(alpha = 0.16f),
-                                selectedLabelColor = Emerald500
-                            )
                         )
                     }
                 }
@@ -235,15 +213,10 @@ fun AddTransactionDialog(
                 Spacer(Modifier.height(8.dp))
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     sources.forEach { src ->
-                        FilterChip(
+                        TemplatePill(
+                            text = src,
                             selected = selectedSrc == src,
                             onClick = { selectedSrc = src },
-                            label = { Text(src) },
-                            shape = RoundedCornerShape(12.dp),
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = Emerald500.copy(alpha = 0.16f),
-                                selectedLabelColor = Emerald500
-                            )
                         )
                     }
                 }

@@ -135,7 +135,7 @@ fun CollectPaymentDialog(
                 // ── Auto-suggest buttons ─────────────────────────────────────
                 // Interest Only: show when interest is outstanding
                 if (borrower.rate > 0 && interestOutstanding > 0) {
-                    FilledTonalButton(
+                    Button(
                         onClick = {
                             interestStr  = String.format("%.0f", interestOutstanding)
                             principalStr = ""
@@ -151,7 +151,7 @@ fun CollectPaymentDialog(
                 }
                 // Full Settlement: show whenever ANY amount is outstanding
                 if (totalOutstanding > 0) {
-                    FilledTonalButton(
+                    Button(
                         onClick = {
                             interestStr  = String.format("%.0f", interestOutstanding)
                             principalStr = String.format("%.0f", principalOutstanding)
@@ -396,7 +396,7 @@ fun PayDebtDialog(
 
                 // Auto-suggest buttons
                 if (debt.rate > 0 && interestOutstanding > 0) {
-                    FilledTonalButton(onClick = {
+                    Button(onClick = {
                         interestStr = String.format("%.0f", interestOutstanding); principalStr = ""
                     }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(10.dp)) {
                         Icon(Icons.Default.AutoAwesome, null, Modifier.size(16.dp))
@@ -407,7 +407,7 @@ fun PayDebtDialog(
                 }
                 // Full Settlement — always show when any amount is outstanding
                 if (totalOutstanding > 0) {
-                    FilledTonalButton(onClick = {
+                    Button(onClick = {
                         interestStr  = String.format("%.0f", interestOutstanding)
                         principalStr = String.format("%.0f", principalOutstanding)
                     }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(10.dp),

@@ -148,7 +148,7 @@ fun RecurringScreen(viewModel: FinanceViewModel) {
                                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                                     }
                                 }
-                                FilledTonalButton(
+                                Button(
                                     onClick = {
                                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                         viewModel.triggerDueRecurring()
@@ -329,17 +329,11 @@ private fun AddRecurringDialog(
         app.fynlo.ui.components.FormSectionLabel("Type")
         Spacer(Modifier.height(6.dp))
         val typeOptions = listOf("Income", "Expense")
-        SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-            typeOptions.forEachIndexed { idx, t ->
-                SegmentedButton(
-                    selected = type == t,
-                    onClick = { type = t },
-                    shape = SegmentedButtonDefaults.itemShape(idx, typeOptions.size),
-                    icon = {},
-                    label = { Text(t) },
-                )
-            }
-        }
+        TemplateSegmentedSelector(
+            options = typeOptions,
+            selectedIndex = typeOptions.indexOf(type).coerceAtLeast(0),
+            onSelected = { idx -> type = typeOptions[idx] },
+        )
 
         Spacer(Modifier.height(14.dp))
         app.fynlo.ui.components.FormSectionLabel("Amount")
@@ -357,11 +351,10 @@ private fun AddRecurringDialog(
         Spacer(Modifier.height(8.dp))
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             categories.forEach { cat ->
-                FilterChip(
+                TemplatePill(
+                    text = cat,
                     selected = selectedCategory == cat,
                     onClick = { selectedCategory = cat },
-                    label = { Text(cat) },
-                    shape = RoundedCornerShape(12.dp)
                 )
             }
         }
@@ -387,23 +380,11 @@ private fun AddRecurringDialog(
         app.fynlo.ui.components.FormSectionLabel("Frequency")
         Spacer(Modifier.height(6.dp))
         val freqOptions = listOf("Daily", "Weekly", "Monthly", "Yearly")
-        SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-            freqOptions.forEachIndexed { idx, option ->
-                SegmentedButton(
-                    selected = frequency == option,
-                    onClick = { frequency = option },
-                    shape = SegmentedButtonDefaults.itemShape(idx, freqOptions.size),
-                    icon = {},
-                    label = {
-                        Text(
-                            option,
-                            style = MaterialTheme.typography.labelSmall,
-                            maxLines = 1
-                        )
-                    },
-                )
-            }
-        }
+        TemplateSegmentedSelector(
+            options = freqOptions,
+            selectedIndex = freqOptions.indexOf(frequency).coerceAtLeast(0),
+            onSelected = { idx -> frequency = freqOptions[idx] },
+        )
 
         if (frequency == "Monthly" || frequency == "Yearly") {
             // C22 Stage 2 (3.2.47) — "last day of month" support (audit
@@ -520,6 +501,4 @@ private fun AddRecurringDialog(
         )
     }
 }
-
-
 

@@ -28,6 +28,7 @@ import app.fynlo.logic.CurrencyFormatter
 import app.fynlo.logic.CurrencyUtils
 import app.fynlo.logic.DateUtils
 import app.fynlo.ui.theme.Emerald500
+import app.fynlo.ui.theme.TemplatePill
 import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
@@ -129,14 +130,10 @@ fun AddLendingDialog(
                 } else {
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         people.forEach { person ->
-                            FilterChip(
+                            TemplatePill(
+                                text = person.name,
                                 selected = selectedPerson?.id == person.id,
                                 onClick = { selectedPerson = person },
-                                label = { Text(person.name) },
-                                shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
-                                colors = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = Emerald500.copy(alpha = 0.16f),
-                                    selectedLabelColor = Emerald500)
                             )
                         }
                     }
@@ -148,14 +145,10 @@ fun AddLendingDialog(
                     Spacer(Modifier.height(8.dp))
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         accountOptions.forEach { acct ->
-                            FilterChip(
+                            TemplatePill(
+                                text = acct.name,
                                 selected = selectedAccount.id == acct.id,
                                 onClick = { selectedAccount = acct },
-                                label = { Text(acct.name) },
-                                shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
-                                colors = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = Emerald500.copy(alpha = 0.16f),
-                                    selectedLabelColor = Emerald500)
                             )
                         }
                     }

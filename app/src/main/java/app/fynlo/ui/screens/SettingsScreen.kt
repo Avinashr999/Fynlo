@@ -579,7 +579,7 @@ fun SettingsScreen(
                 )
             )
             if (displayName.isNotBlank()) {
-                FilledTonalButton(
+                Button(
                     onClick = {
                         scope.launch {
                             UserPreferences.setUserDisplayName(context, displayName.trim())

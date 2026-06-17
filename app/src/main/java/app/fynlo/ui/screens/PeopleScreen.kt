@@ -223,7 +223,7 @@ fun PeopleScreen(viewModel: FinanceViewModel) {
         // C22 (3.2.71) — import from system Contacts. Permission requested
         // on tap; the contract auto-skips the prompt and proceeds straight
         // to read if it's already granted.
-        FilledTonalButton(
+        Button(
             onClick = {
                 permLauncher.launch(android.Manifest.permission.READ_CONTACTS)
             },

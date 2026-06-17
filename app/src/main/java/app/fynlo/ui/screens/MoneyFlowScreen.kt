@@ -188,7 +188,7 @@ fun MoneyFlowScreen(viewModel: FinanceViewModel) {
         Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(bottom = 8.dp)) {
             Row(Modifier.fillMaxWidth(), Arrangement.End, Alignment.CenterVertically) {
                 Box {
-                    FilledTonalButton(onClick = { showExportMenu = true }, shape = RoundedCornerShape(12.dp)) {
+                    Button(onClick = { showExportMenu = true }, shape = RoundedCornerShape(12.dp)) {
                         Icon(Icons.Default.Share, null, Modifier.size(16.dp))
                         Spacer(Modifier.width(4.dp))
                         Text("Export")
@@ -338,10 +338,10 @@ fun MoneyFlowScreen(viewModel: FinanceViewModel) {
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     items(tabs.size, key = { it }) { i ->
-                        FilterChip(
+                        TemplatePill(
+                            text = tabs[i],
                             selected = selectedTab == i,
-                            onClick  = { selectedTab = i },
-                            label    = { Text(tabs[i], style = MaterialTheme.typography.labelSmall) }
+                            onClick = { selectedTab = i },
                         )
                     }
                 }

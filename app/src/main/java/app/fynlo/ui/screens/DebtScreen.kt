@@ -115,7 +115,7 @@ val debts by viewModel.debts.collectAsState()
         item {
         if (showHeader) {
             Row(Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 4.dp), Arrangement.End, Alignment.CenterVertically) {
-                FilledTonalButton(
+                Button(
                     onClick = { showAddDialog = true },
                     shape = RoundedCornerShape(12.dp),
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
@@ -222,17 +222,12 @@ val debts by viewModel.debts.collectAsState()
                     "Overdue" to overdueDebts.size,
                     "Closed"  to closedDebts.size,
                 )
-                SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 8.dp)) {
-                    filters.forEachIndexed { idx, (label, count) ->
-                        SegmentedButton(
-                            selected = statusFilter == label,
-                            onClick = { statusFilter = label },
-                            shape = SegmentedButtonDefaults.itemShape(idx, filters.size),
-                            icon = {},
-                            label = { Text("$label  -  $count", style = MaterialTheme.typography.labelMedium) },
-                        )
-                    }
-                }
+                TemplateSegmentedSelector(
+                    options = filters.map { (label, count) -> "$label  $count" },
+                    selectedIndex = filters.indexOfFirst { it.first == statusFilter }.coerceAtLeast(0),
+                    onSelected = { idx -> statusFilter = filters[idx].first },
+                    modifier = Modifier.padding(top = 4.dp, bottom = 8.dp),
+                )
             }
         }
         if (filteredDebts.isEmpty()) {
@@ -373,4 +368,3 @@ fun EmptyDebtState(onAdd: () -> Unit = {}) {
         actionLabel = "Add First Debt"
     )
 }
-
