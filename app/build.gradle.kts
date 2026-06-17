@@ -1,4 +1,5 @@
 import java.util.Properties
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     alias(libs.plugins.android.application)
@@ -90,8 +91,6 @@ android {
         }
         create("staging") {
             initWith(getByName("debug"))
-            isMinifyEnabled   = true
-            isShrinkResources = true
             versionNameSuffix  = "-staging"
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
@@ -118,9 +117,6 @@ android {
         isCoreLibraryDesugaringEnabled = true
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
-    }
-    kotlinOptions {
-        jvmTarget = "17"
     }
     buildFeatures {
         compose = true
@@ -155,6 +151,12 @@ android {
     // config the instrumented FynloDatabaseMigrationTest can't find the
     // schemas and fails with a confusing "Schema for X not found" error.
     sourceSets.getByName("androidTest").assets.srcDirs("$projectDir/schemas")
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget.set(JvmTarget.JVM_17)
+    }
 }
 
 dependencies {

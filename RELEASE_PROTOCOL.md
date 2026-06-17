@@ -59,7 +59,7 @@ Before promoting from any channel:
 - [ ] All open P0 audit clusters closed (per `UX_AUDIT_2026-05-25.md` §5)
 - [ ] `./gradlew detekt` passes with no new violations
 - [ ] `./gradlew test` passes
-- [ ] `./gradlew :app:assembleProdRelease` builds cleanly
+- [ ] `./gradlew :app:assembleProdRelease --no-daemon --console=plain --no-configuration-cache` builds cleanly. Allow a long timeout (10+ minutes on Windows) because signed prod APK/AAB tasks can run well past the default short terminal timeout.
 - [ ] All data-integrity regression tests pass (especially C01 — Recalculate preserves `paid` field)
 - [ ] `versionCode` incremented
 - [ ] `versionName` follows semver
@@ -99,9 +99,18 @@ Before promoting from any channel:
 
 ```powershell
 cd C:\Users\user\AndroidStudioProjects\Fynlo
-./gradlew :app:bundleProdRelease
+./gradlew :app:bundleProdRelease --no-daemon --console=plain --no-configuration-cache
 # Output: app/build/outputs/bundle/prodRelease/app-prod-release.aab
 ```
+
+Use a long command timeout for both release artifact tasks:
+
+```powershell
+./gradlew :app:assembleProdRelease --no-daemon --console=plain --no-configuration-cache
+./gradlew :app:bundleProdRelease --no-daemon --console=plain --no-configuration-cache
+```
+
+On Windows these production builds can take several minutes because R8, signing, packaging, and bundle generation all run together. A slow release build is not a failure unless Gradle exits non-zero.
 
 Verify:
 - AAB size reasonable (compare to last release)

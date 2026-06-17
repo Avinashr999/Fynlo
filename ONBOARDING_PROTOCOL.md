@@ -107,6 +107,14 @@ Solution:
 ./gradlew clean :app:assembleProdDebug --no-daemon
 ```
 
+For signed production APK/AAB builds, use a long terminal timeout and avoid the configuration cache during final verification:
+```powershell
+./gradlew :app:assembleProdRelease --no-daemon --console=plain --no-configuration-cache
+./gradlew :app:bundleProdRelease --no-daemon --console=plain --no-configuration-cache
+```
+
+These tasks can legitimately take 10+ minutes on Windows release machines because R8, signing, packaging, and bundle generation are slower than debug builds.
+
 ### 3.3 Hilt / KSP errors
 
 If `:app:kspProdDebugKotlin` fails:

@@ -58,11 +58,13 @@ See `app/src/dev/README.md` for the dev flavor notes.
 ```bash
 ./gradlew assembleProdDebug
 ./gradlew testProdDebugUnitTest
-./gradlew :app:assembleProdRelease
+./gradlew :app:assembleProdRelease --no-daemon --console=plain --no-configuration-cache
+./gradlew :app:bundleProdRelease --no-daemon --console=plain --no-configuration-cache
 ./gradlew :app:connectedProdDebugAndroidTest
 ```
 
 The connected Android test task requires a running device or emulator and is important for Room migration validation.
+Production release APK/AAB builds are slower than debug builds; use a long command timeout when running them from automation.
 
 ## Project Layout
 
