@@ -54,6 +54,7 @@ class SyncManager(
                     runCatching {
                         val doc = change.document
                         if (change.type == DocumentChange.Type.REMOVED) { dao.deleteBorrowerById(doc.id); return@runCatching }
+                        if (dao.isRemoteDocDeleted("borrowers", doc.id)) return@runCatching
                         val remote = Borrower(
                             id        = doc.id,
                             name      = doc.str("name"),
@@ -279,6 +280,8 @@ class SyncManager(
                 snap.documentChanges.forEach { change ->
                     runCatching {
                         val doc = change.document
+                        if (change.type == DocumentChange.Type.REMOVED) { dao.deleteDebtById(doc.id); return@runCatching }
+                        if (dao.isRemoteDocDeleted("debts", doc.id)) return@runCatching
                         val remote = Debt(
                             id        = doc.id,
                             name      = doc.str("name"),
@@ -381,6 +384,7 @@ class SyncManager(
                     runCatching {
                         val doc = change.document
                         if (change.type == DocumentChange.Type.REMOVED) { dao.deletePaymentById(doc.id); return@runCatching }
+                        if (dao.isRemoteDocDeleted("payments", doc.id)) return@runCatching
                         dao.insertPayment(Payment(
                             id        = doc.id,
                             loanId    = doc.str("loanId"),
@@ -410,6 +414,7 @@ class SyncManager(
                     runCatching {
                         val doc = change.document
                         if (change.type == DocumentChange.Type.REMOVED) { dao.deleteDebtPaymentById(doc.id); return@runCatching }
+                        if (dao.isRemoteDocDeleted("debt_payments", doc.id)) return@runCatching
                         dao.insertDebtPayment(DebtPayment(
                             id        = doc.id,
                             debtId    = doc.str("debtId"),

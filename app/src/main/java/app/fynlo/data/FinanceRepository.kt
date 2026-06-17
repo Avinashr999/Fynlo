@@ -307,6 +307,7 @@ class FinanceRepository(
                     .maxByOrNull { it.updatedAt }
                 if (matching != null) {
                     dao.deletePayment(matching)
+                    tombstoneRemoteDoc("payments", matching.id)
                     sync { deletePayment(matching.id) }
                 }
                 touchedBorrowers += old.ref
@@ -341,6 +342,7 @@ class FinanceRepository(
                     .maxByOrNull { it.updatedAt }
                 if (matching != null) {
                     dao.deleteDebtPayment(matching)
+                    tombstoneRemoteDoc("debt_payments", matching.id)
                     sync { deleteDebtPayment(matching.id) }
                 }
                 touchedDebts += old.ref
@@ -459,6 +461,7 @@ class FinanceRepository(
                     .maxByOrNull { it.updatedAt }
                 if (matchingPayment != null) {
                     dao.deletePayment(matchingPayment)
+                    tombstoneRemoteDoc("payments", matchingPayment.id)
                     sync { deletePayment(matchingPayment.id) }
                 }
                 dao.rebuildBorrowerPaidFromPayments()
@@ -470,6 +473,7 @@ class FinanceRepository(
                     .maxByOrNull { it.updatedAt }
                 if (matchingPayment != null) {
                     dao.deleteDebtPayment(matchingPayment)
+                    tombstoneRemoteDoc("debt_payments", matchingPayment.id)
                     sync { deleteDebtPayment(matchingPayment.id) }
                 }
                 dao.rebuildDebtPaidFromDebtPayments()
@@ -612,6 +616,7 @@ class FinanceRepository(
         val byDesc = dao.getTransactionsByDesc("Lent to ${borrower.name}")
             .filter { it.ref.isBlank() && it.category == "Lending" }
         val linkedTxns = (byRef + byDesc).distinctBy { it.id }
+        var linkedPayments = emptyList<Payment>()
 
         db.withTransaction {
             linkedTxns.forEach { txn ->
@@ -625,9 +630,15 @@ class FinanceRepository(
                     }
                 }
                 dao.deleteTransaction(txn)
+                tombstoneRemoteDoc("transactions", txn.id)
             }
-            dao.getPaymentsForLoanOnce(borrower.id).forEach { p -> dao.deletePayment(p) }
+            linkedPayments = dao.getPaymentsForLoanOnce(borrower.id)
+            linkedPayments.forEach { p ->
+                dao.deletePayment(p)
+                tombstoneRemoteDoc("payments", p.id)
+            }
             dao.deleteBorrower(borrower)
+            tombstoneRemoteDoc("borrowers", borrower.id)
             recordAudit(
                 action = "DELETE",
                 entityType = "loan",
@@ -640,6 +651,7 @@ class FinanceRepository(
             )
         }
         linkedTxns.forEach { sync { deleteTransaction(it.id) } }
+        linkedPayments.forEach { sync { deletePayment(it.id) } }
         sync { deleteBorrower(borrower.id) }
         linkedTxns.map { it.fromAcct }.filter { it.isNotBlank() }.distinct().forEach { syncAccountByName(it) }
         linkedTxns.map { it.toAcct   }.filter { it.isNotBlank() }.distinct().forEach { syncAccountByName(it) }
@@ -1191,6 +1203,7 @@ class FinanceRepository(
     }
     suspend fun deleteDebt(debt: Debt) {
         var linkedTxns = emptyList<Transaction>()
+        var linkedPayments = emptyList<DebtPayment>()
         var didDelete = false
         db.withTransaction {
             val current = dao.getDebtById(debt.id) ?: return@withTransaction
@@ -1206,9 +1219,15 @@ class FinanceRepository(
                     }
                 }
                 dao.deleteTransaction(txn)
+                tombstoneRemoteDoc("transactions", txn.id)
             }
-            dao.getDebtPaymentsForDebtOnce(current.id).forEach { p -> dao.deleteDebtPayment(p) }
+            linkedPayments = dao.getDebtPaymentsForDebtOnce(current.id)
+            linkedPayments.forEach { p ->
+                dao.deleteDebtPayment(p)
+                tombstoneRemoteDoc("debt_payments", p.id)
+            }
             dao.deleteDebt(current)
+            tombstoneRemoteDoc("debts", current.id)
             recordAudit(
                 action = "DELETE",
                 entityType = "debt",
@@ -1223,6 +1242,7 @@ class FinanceRepository(
         }
         if (!didDelete) return
         linkedTxns.forEach { sync { deleteTransaction(it.id) } }
+        linkedPayments.forEach { sync { deleteDebtPayment(it.id) } }
         sync { deleteDebt(debt.id) }
         linkedTxns.map { it.fromAcct }.filter { it.isNotBlank() }.distinct().forEach { syncAccountByName(it) }
         linkedTxns.map { it.toAcct }.filter { it.isNotBlank() }.distinct().forEach { syncAccountByName(it) }
