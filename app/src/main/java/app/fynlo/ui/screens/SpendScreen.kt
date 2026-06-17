@@ -226,24 +226,11 @@ val transactions by viewModel.transactions.collectAsState()
                                             Box(Modifier.size(10.dp).clip(CircleShape).background(color))
                                             Text(cat, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold))
                                         }
-                                        Column(horizontalAlignment = Alignment.End) {
-                                            Text(CurrencyFormatter.detail(amt, currencyCode, locale),
-                                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
-                                                color = color)
-                                            if (budgetPct != null) {
-                                                val pctColor = when {
-                                                    budgetPct >= 100 -> SemanticRed
-                                                    budgetPct >= 80  -> SemanticAmber
-                                                    else             -> MaterialTheme.colorScheme.onSurfaceVariant
-                                                }
-                                                Surface(color = pctColor.copy(alpha = 0.12f),
-                                                    shape = RoundedCornerShape(4.dp)) {
-                                                    Text("$budgetPct% of ${CurrencyFormatter.detail(budget!!.limitAmount, currencyCode, locale)}",
-                                                        style = MaterialTheme.typography.labelSmall, color = pctColor,
-                                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
-                                                }
-                                            }
-                                        }
+                                        Text(
+                                            CurrencyFormatter.detail(amt, currencyCode, locale),
+                                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                                            color = color,
+                                        )
                                     }
                                     Spacer(Modifier.height(6.dp))
                                     Box(Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp))
@@ -252,11 +239,18 @@ val transactions by viewModel.transactions.collectAsState()
                                             .clip(RoundedCornerShape(4.dp)).background(
                                                 if (budgetPct != null && budgetPct >= 100) SemanticRed else color))
                                     }
-                                    // Budget limit line label
                                     if (budget != null) {
-                                        Text("Budget: ${CurrencyFormatter.detail(budget.limitAmount, currencyCode, locale)}",
+                                        val pctColor = when {
+                                            (budgetPct ?: 0) >= 100 -> SemanticRed
+                                            (budgetPct ?: 0) >= 80  -> SemanticAmber
+                                            else                    -> MaterialTheme.colorScheme.onSurfaceVariant
+                                        }
+                                        Text(
+                                            "${budgetPct ?: 0}% used of ${CurrencyFormatter.detail(budget.limitAmount, currencyCode, locale)} budget",
                                             style = MaterialTheme.typography.labelSmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f))
+                                            color = pctColor,
+                                            modifier = Modifier.padding(top = 5.dp),
+                                        )
                                     }
                                 }
                             }

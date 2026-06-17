@@ -799,125 +799,143 @@ private fun AccountManageDialog(
     val amount = balance.toDoubleOrNull()
     val isValid = name.isNotBlank() && amount != null
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(if (initial == null) "Add Account" else "Edit Account") },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = it },
-                    label = { Text("Account name") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                ExposedDropdownMenuBox(
-                    expanded = expanded,
-                    onExpandedChange = { expanded = !expanded },
-                ) {
-                    OutlinedTextField(
-                        value = type,
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("Type") },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
-                        modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, true).fillMaxWidth(),
-                    )
-                    ExposedDropdownMenu(
-                        expanded = expanded,
-                        onDismissRequest = { expanded = false },
-                    ) {
-                        accountTypes.forEach { option ->
-                            DropdownMenuItem(
-                                text = { Text(option) },
-                                onClick = {
-                                    type = option
-                                    expanded = false
-                                },
-                            )
-                        }
-                    }
-                }
-                OutlinedTextField(
-                    value = balance,
-                    onValueChange = { balance = it.filter { c -> c.isDigit() || c == '.' || c == '-' } },
-                    label = { Text("Balance (${app.fynlo.logic.CurrencyUtils.symbolFor(currencyCode)})") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                if (initial != null) {
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.18f))
-                    Text(
-                        "Account actions",
-                        style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
-                    )
-                    OutlinedButton(
-                        enabled = canTransfer && onTransfer != null,
-                        onClick = { onTransfer?.invoke() },
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Icon(Icons.Default.SwapHoriz, null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(8.dp))
-                        Text("Transfer balance")
-                    }
-                    OutlinedButton(
-                        enabled = canClose && onClose != null,
-                        onClick = { onClose?.invoke() },
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Icon(Icons.Default.Block, null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(8.dp))
-                        Text("Close account")
-                    }
-                    Text(
-                        if (canClose) "Closed accounts are hidden from new entries but history stays intact."
-                        else "Transfer the remaining balance before closing.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    OutlinedButton(
-                        enabled = canDelete && onDelete != null,
-                        onClick = { onDelete?.invoke() },
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = SemanticRed),
-                    ) {
-                        Icon(Icons.Default.Delete, null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(8.dp))
-                        Text("Delete account")
-                    }
-                    Text(
-                        if (canDelete) "Delete is available because this account has no transactions."
-                        else "$linkedTransactionCount linked transaction${if (linkedTransactionCount == 1) "" else "s"} found. Close it instead.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    app.fynlo.ui.components.FormDialog(
+        title = if (initial == null) "Add Account" else "Edit Account",
+        onDismiss = onDismiss,
+    ) {
+        app.fynlo.ui.components.FormSectionLabel("Account details")
+        Spacer(Modifier.height(8.dp))
+        OutlinedTextField(
+            value = name,
+            onValueChange = { name = it },
+            placeholder = { Text("Account name") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(14.dp),
+        )
+        Spacer(Modifier.height(12.dp))
+        ExposedDropdownMenuBox(
+            expanded = expanded,
+            onExpandedChange = { expanded = !expanded },
+        ) {
+            OutlinedTextField(
+                value = type,
+                onValueChange = {},
+                readOnly = true,
+                label = { Text("Type") },
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
+                modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, true).fillMaxWidth(),
+                shape = RoundedCornerShape(14.dp),
+            )
+            ExposedDropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false },
+            ) {
+                accountTypes.forEach { option ->
+                    DropdownMenuItem(
+                        text = { Text(option) },
+                        onClick = {
+                            type = option
+                            expanded = false
+                        },
                     )
                 }
             }
-        },
-        confirmButton = {
-            Button(
-                enabled = isValid,
-                onClick = {
-                    onConfirm(
-                        Account(
-                            id = initial?.id?.takeIf { it.isNotBlank() } ?: app.fynlo.logic.Ids.newId(),
-                            name = name.trim(),
-                            type = type,
-                            balance = amount ?: 0.0,
-                            icon = initial?.icon ?: "",
-                            color = initial?.color ?: "#3b82f6",
-                            notes = initial?.notes ?: "",
-                            projectId = initial?.projectId ?: "personal",
-                            createdAt = initial?.createdAt ?: 0L,
-                        )
+        }
+        Spacer(Modifier.height(12.dp))
+        OutlinedTextField(
+            value = balance,
+            onValueChange = { balance = it.filter { c -> c.isDigit() || c == '.' || c == '-' } },
+            placeholder = { Text("Balance (${app.fynlo.logic.CurrencyUtils.symbolFor(currencyCode)})") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(14.dp),
+        )
+        if (initial != null) {
+            Spacer(Modifier.height(18.dp))
+            HorizontalDivider(color = TemplateBorder)
+            Spacer(Modifier.height(14.dp))
+            app.fynlo.ui.components.FormSectionLabel("Account actions")
+            Spacer(Modifier.height(8.dp))
+            OutlinedButton(
+                enabled = canTransfer && onTransfer != null,
+                onClick = { onTransfer?.invoke() },
+                modifier = Modifier.fillMaxWidth().height(48.dp),
+                shape = RoundedCornerShape(14.dp),
+                border = BorderStroke(0.8.dp, TemplateBorder),
+            ) {
+                Icon(Icons.Default.SwapHoriz, null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text("Transfer balance")
+            }
+            Spacer(Modifier.height(8.dp))
+            OutlinedButton(
+                enabled = canClose && onClose != null,
+                onClick = { onClose?.invoke() },
+                modifier = Modifier.fillMaxWidth().height(48.dp),
+                shape = RoundedCornerShape(14.dp),
+                border = BorderStroke(0.8.dp, TemplateBorder),
+            ) {
+                Icon(Icons.Default.Block, null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text("Close account")
+            }
+            Text(
+                if (canClose) "Closed accounts are hidden from new entries but history stays intact."
+                else "Transfer the remaining balance before closing.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 4.dp, bottom = 8.dp),
+            )
+            OutlinedButton(
+                enabled = canDelete && onDelete != null,
+                onClick = { onDelete?.invoke() },
+                modifier = Modifier.fillMaxWidth().height(48.dp),
+                shape = RoundedCornerShape(14.dp),
+                border = BorderStroke(0.8.dp, SemanticRed.copy(alpha = 0.28f)),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = SemanticRed),
+            ) {
+                Icon(Icons.Default.Delete, null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text("Delete account")
+            }
+            Text(
+                if (canDelete) "Delete is available because this account has no transactions."
+                else "$linkedTransactionCount linked transaction${if (linkedTransactionCount == 1) "" else "s"} found. Close it instead.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 4.dp),
+            )
+        }
+        Spacer(Modifier.height(18.dp))
+        TemplatePrimaryButton(
+            text = "Save Account",
+            enabled = isValid,
+            modifier = Modifier.fillMaxWidth(),
+            onClick = {
+                onConfirm(
+                    Account(
+                        id = initial?.id?.takeIf { it.isNotBlank() } ?: app.fynlo.logic.Ids.newId(),
+                        name = name.trim(),
+                        type = type,
+                        balance = amount ?: 0.0,
+                        icon = initial?.icon ?: "",
+                        color = initial?.color ?: "#3b82f6",
+                        notes = initial?.notes ?: "",
+                        projectId = initial?.projectId ?: "personal",
+                        createdAt = initial?.createdAt ?: 0L,
                     )
-                },
-            ) { Text("Save") }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
-        },
-    )
+                )
+            },
+        )
+        app.fynlo.ui.components.DisabledButtonHint(
+            when {
+                name.isBlank() -> "Enter an account name to continue"
+                amount == null -> "Enter a valid balance to continue"
+                else -> null
+            }
+        )
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -938,66 +956,81 @@ private fun AccountTransferDialog(
     val amount = amountText.toDoubleOrNull()
     val isValid = target != null && amount != null && amount > 0.0
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Transfer balance") },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text(
-                    "From ${from.name}",
-                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
-                )
-                ExposedDropdownMenuBox(
-                    expanded = expanded,
-                    onExpandedChange = { expanded = !expanded },
-                ) {
-                    OutlinedTextField(
-                        value = target?.name ?: "",
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("To account") },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
-                        modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, true).fillMaxWidth(),
+    app.fynlo.ui.components.FormDialog(
+        title = "Transfer balance",
+        onDismiss = onDismiss,
+    ) {
+        app.fynlo.ui.components.FormSectionLabel("From account")
+        Spacer(Modifier.height(8.dp))
+        Text(
+            from.name,
+            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+        Text(
+            CurrencyFormatter.detail(from.balance, currencyCode, LocalLocale.current.platformLocale),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.height(16.dp))
+        app.fynlo.ui.components.FormSectionLabel("To account")
+        Spacer(Modifier.height(8.dp))
+        ExposedDropdownMenuBox(
+            expanded = expanded,
+            onExpandedChange = { expanded = !expanded },
+        ) {
+            OutlinedTextField(
+                value = target?.name ?: "",
+                onValueChange = {},
+                readOnly = true,
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
+                modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, true).fillMaxWidth(),
+                shape = RoundedCornerShape(14.dp),
+            )
+            ExposedDropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false },
+            ) {
+                accounts.forEach { account ->
+                    DropdownMenuItem(
+                        text = { Text(account.name) },
+                        onClick = {
+                            target = account
+                            expanded = false
+                        },
                     )
-                    ExposedDropdownMenu(
-                        expanded = expanded,
-                        onDismissRequest = { expanded = false },
-                    ) {
-                        accounts.forEach { account ->
-                            DropdownMenuItem(
-                                text = { Text(account.name) },
-                                onClick = {
-                                    target = account
-                                    expanded = false
-                                },
-                            )
-                        }
-                    }
                 }
-                OutlinedTextField(
-                    value = amountText,
-                    onValueChange = { amountText = it.filter { c -> c.isDigit() || c == '.' } },
-                    label = { Text("Amount (${app.fynlo.logic.CurrencyUtils.symbolFor(currencyCode)})") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                )
             }
-        },
-        confirmButton = {
-            Button(
-                enabled = isValid && !submitting,
-                onClick = {
-                    if (!submitting) {
-                        submitting = true
-                        target?.let { onConfirm(it, amount ?: 0.0) }
-                    }
-                },
-            ) { Text("Transfer") }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
-        },
-    )
+        }
+        Spacer(Modifier.height(12.dp))
+        OutlinedTextField(
+            value = amountText,
+            onValueChange = { amountText = it.filter { c -> c.isDigit() || c == '.' } },
+            placeholder = { Text("Amount (${app.fynlo.logic.CurrencyUtils.symbolFor(currencyCode)})") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(14.dp),
+        )
+        Spacer(Modifier.height(18.dp))
+        TemplatePrimaryButton(
+            text = "Transfer Balance",
+            enabled = isValid && !submitting,
+            modifier = Modifier.fillMaxWidth(),
+            onClick = {
+                if (!submitting) {
+                    submitting = true
+                    target?.let { onConfirm(it, amount ?: 0.0) }
+                }
+            },
+        )
+        app.fynlo.ui.components.DisabledButtonHint(
+            when {
+                target == null -> "Choose an account to receive the balance"
+                amount == null || amount <= 0.0 -> "Enter a positive amount to continue"
+                else -> null
+            }
+        )
+    }
 }
 
 @Composable
