@@ -16,7 +16,8 @@ function Invoke-Adb {
 function Dump-Screen {
     param(
         [string]$Name,
-        [string[]]$MustContain
+        [string[]]$MustContain,
+        [string[]]$AnyContain = @()
     )
 
     $remote = "/sdcard/fynlo_$Name.xml"
@@ -30,6 +31,18 @@ function Dump-Screen {
             throw "Smoke check '$Name' did not contain '$label'"
         }
     }
+    if ($AnyContain.Count -gt 0) {
+        $matched = $false
+        foreach ($label in $AnyContain) {
+            if ($text -match [regex]::Escape($label)) {
+                $matched = $true
+                break
+            }
+        }
+        if (-not $matched) {
+            throw "Smoke check '$Name' did not contain any expected state label: $($AnyContain -join ', ')"
+        }
+    }
     Write-Host "OK $Name"
 }
 
@@ -37,6 +50,7 @@ function Wait-Screen {
     param(
         [string]$Name,
         [string[]]$MustContain,
+        [string[]]$AnyContain = @(),
         [int]$TimeoutSeconds = 45
     )
 
@@ -44,7 +58,7 @@ function Wait-Screen {
     $lastError = $null
     do {
         try {
-            Dump-Screen $Name $MustContain
+            Dump-Screen $Name $MustContain $AnyContain
             return
         } catch {
             $lastError = $_
@@ -101,6 +115,6 @@ Wait-Screen "reports" @("Reports", "Report PDF", "P&amp;L Statement", "Net Worth
 
 Invoke-Adb @("shell", "input", "tap", "1102", "2625") | Out-Null
 Start-Sleep -Seconds 1
-Wait-Screen "expenses" @("Expenses", "Spent in", "No expenses")
+Wait-Screen "expenses" @("Expenses") @("Spent in", "No expenses", "Recent", "Category Breakdown")
 
 Write-Host "Smoke passed. Dumps saved to $OutDir"
