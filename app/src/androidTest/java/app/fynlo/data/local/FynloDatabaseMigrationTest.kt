@@ -380,7 +380,7 @@ class FynloDatabaseMigrationTest {
                 MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17,
                 MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20,
                 MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23,
-                MIGRATION_23_24, MIGRATION_24_25,
+                MIGRATION_23_24, MIGRATION_24_25, MIGRATION_25_26,
             )
             .build()
         try {
@@ -390,6 +390,39 @@ class FynloDatabaseMigrationTest {
             db.openHelper.writableDatabase
         } finally {
             db.close()
+        }
+    }
+
+    @Test
+    @Throws(IOException::class)
+    fun migrate25to26_createsDeletedRemoteDocsTombstoneTable() {
+        helper.createDatabase(TEST_DB, 25).close()
+
+        val db = helper.runMigrationsAndValidate(
+            TEST_DB,
+            26,
+            true,
+            MIGRATION_25_26,
+        )
+
+        db.execSQL(
+            """
+            INSERT INTO deleted_remote_docs (`collection`, id, deletedAt)
+            VALUES ('investments', 'inv-1', 123456789)
+            """.trimIndent(),
+        )
+
+        db.query(
+            """
+            SELECT deletedAt
+            FROM deleted_remote_docs
+            WHERE `collection` = ? AND id = ?
+            """.trimIndent(),
+            arrayOf("investments", "inv-1"),
+        ).use { c ->
+            assertTrue("v26 tombstone row must be readable after migration.", c.moveToFirst())
+            assertEquals(123456789L, c.getLong(0))
+            assertFalse(c.moveToNext())
         }
     }
 
