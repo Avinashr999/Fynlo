@@ -283,37 +283,62 @@ val borrowers by viewModel.borrowers.collectAsState()
     // C12 Stage 3 — Mark NPA / Restore confirmation (lifted from LendingScreen).
     if (showDefaultConfirm) {
         val isCurrentlyDefaulted = borrower.status == "Defaulted"
-        AlertDialog(
+        androidx.compose.ui.window.Dialog(
             onDismissRequest = { showDefaultConfirm = false },
-            title = { Text(if (isCurrentlyDefaulted) "Restore to Performing?" else "Mark as Defaulted?") },
-            text = {
-                Text(
-                    if (isCurrentlyDefaulted)
-                        "This will mark ${borrower.name} as Active again and unfreeze interest accrual from today."
-                    else
-                        "Interest will be frozen at today's value. ${borrower.name} will be marked NPA.",
-                    style = MaterialTheme.typography.bodySmall
-                )
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        if (!defaultInProgress) {
-                            defaultInProgress = true
-                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                            if (isCurrentlyDefaulted) viewModel.restoreBorrowerToActive(borrower)
-                            else viewModel.markBorrowerDefaulted(borrower)
-                            showDefaultConfirm = false
-                        }
-                    },
-                    enabled = !defaultInProgress,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = if (isCurrentlyDefaulted) Emerald500 else app.fynlo.ui.theme.SemanticAmber
+            properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false),
+        ) {
+            Surface(
+                modifier = Modifier.fillMaxWidth(0.86f),
+                shape = RoundedCornerShape(28.dp),
+                color = MaterialTheme.colorScheme.surfaceContainerLowest,
+                tonalElevation = 0.dp,
+                shadowElevation = 12.dp,
+                border = androidx.compose.foundation.BorderStroke(0.8.dp, TemplateBorder),
+            ) {
+                Column(
+                    modifier = Modifier.padding(24.dp),
+                    verticalArrangement = Arrangement.spacedBy(18.dp),
+                ) {
+                    Text(
+                        if (isCurrentlyDefaulted) "Restore to Performing?" else "Mark as Defaulted?",
+                        style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.ExtraBold),
+                        color = MaterialTheme.colorScheme.onSurface,
                     )
-                ) { Text(if (isCurrentlyDefaulted) "Restore" else "Mark NPA") }
-            },
-            dismissButton = { TextButton(onClick = { showDefaultConfirm = false }) { Text("Cancel") } }
-        )
+                    Text(
+                        if (isCurrentlyDefaulted)
+                            "This will mark ${borrower.name} as active again and unfreeze interest accrual from today."
+                        else
+                            "Interest will be frozen at today's value. ${borrower.name} will be marked NPA.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        TextButton(onClick = { showDefaultConfirm = false }) { Text("Cancel") }
+                        Spacer(Modifier.width(10.dp))
+                        Button(
+                            onClick = {
+                                if (!defaultInProgress) {
+                                    defaultInProgress = true
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    if (isCurrentlyDefaulted) viewModel.restoreBorrowerToActive(borrower)
+                                    else viewModel.markBorrowerDefaulted(borrower)
+                                    showDefaultConfirm = false
+                                }
+                            },
+                            enabled = !defaultInProgress,
+                            shape = RoundedCornerShape(18.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (isCurrentlyDefaulted) Emerald500 else app.fynlo.ui.theme.SemanticAmber
+                            )
+                        ) { Text(if (isCurrentlyDefaulted) "Restore" else "Mark NPA") }
+                    }
+                }
+            }
+        }
     }
 
     // C12 Stage 3 — Write Off confirmation (lifted from LendingScreen).

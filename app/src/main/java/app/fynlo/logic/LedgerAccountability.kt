@@ -125,10 +125,10 @@ object LedgerAccountability {
             val linked = txByRef[borrower.id].orEmpty()
             val fundingTxn = linked.firstOrNull { it.category.equals("Lending", true) || it.type.equals("Expense", true) }
             if (borrower.sourceAccount.isBlank() && fundingTxn == null) {
-                addIssue(LedgerIssueSeverity.WARNING, "Loan funding source missing", "${borrower.name} does not show which account disbursed the loan.", "loan", borrower.id)
+                addIssue(LedgerIssueSeverity.INFO, "Loan funding trace missing", "${borrower.name} was created before a funding account was linked. Future loans record this automatically.", "loan", borrower.id)
             }
             if (fundingTxn == null) {
-                addIssue(LedgerIssueSeverity.WARNING, "Loan ledger link missing", "${borrower.name} has no linked disbursement transaction.", "loan", borrower.id)
+                addIssue(LedgerIssueSeverity.INFO, "Loan disbursement trace missing", "${borrower.name} has no linked disbursement row. This is usually legacy/imported data.", "loan", borrower.id)
             }
             val paymentTotal = paymentsByLoan[borrower.id].orEmpty().sumOf { it.amount }
             if (abs(paymentTotal - borrower.paid) > 0.01) {
@@ -148,7 +148,7 @@ object LedgerAccountability {
             val linked = txByRef[debt.id].orEmpty()
             val receivedTxn = linked.firstOrNull { it.category.equals("Debt Received", true) }
             if (receivedTxn == null) {
-                addIssue(LedgerIssueSeverity.WARNING, "Debt receipt link missing", "${debt.name} has no linked Debt Received transaction.", "debt", debt.id)
+                addIssue(LedgerIssueSeverity.INFO, "Debt receipt trace missing", "${debt.name} has no linked Debt Received row. Future debts record the destination account automatically.", "debt", debt.id)
             } else if (receivedTxn.toAcct.isBlank()) {
                 addIssue(LedgerIssueSeverity.CRITICAL, "Debt destination missing", "${debt.name} does not show where borrowed money was deposited.", "debt", debt.id)
             }
@@ -169,13 +169,13 @@ object LedgerAccountability {
         investments.forEach { investment ->
             val linked = txByRef[investment.id].orEmpty()
             if (investment.fundingSource.isBlank()) {
-                addIssue(LedgerIssueSeverity.WARNING, "Investment funding source missing", "${investment.name} does not show where money came from.", "investment", investment.id)
+                addIssue(LedgerIssueSeverity.INFO, "Investment funding trace missing", "${investment.name} was created before the funding source was captured. Future investments record this automatically.", "investment", investment.id)
             }
             if (investment.sourceType in setOf("existing_debt", "new_loan") && investment.linkedDebtId.isBlank()) {
                 addIssue(LedgerIssueSeverity.WARNING, "Investment debt link missing", "${investment.name} is debt-funded but has no linked debt id.", "investment", investment.id)
             }
             if (linked.none { it.category.equals("Investment", true) }) {
-                addIssue(LedgerIssueSeverity.WARNING, "Investment ledger link missing", "${investment.name} has no linked investment transaction.", "investment", investment.id)
+                addIssue(LedgerIssueSeverity.INFO, "Investment ledger trace missing", "${investment.name} has no linked investment row. This is usually legacy/imported data.", "investment", investment.id)
             }
             trails += LedgerMoneyTrail(
                 recordType = "investment",

@@ -36,6 +36,18 @@ import app.fynlo.ui.theme.*
 
 // ─── Collect Loan Repayment ─────────────────────────────────────────────────
 
+private fun preferredMoneyAccount(accountOptions: List<Account>): Account {
+    val realAccounts = accountOptions.filterNot {
+        it.name.equals("New", ignoreCase = true) || it.id.equals("new", ignoreCase = true)
+    }
+    val candidates = realAccounts.ifEmpty { accountOptions }
+    return candidates
+        .filter { it.type.equals("Cash", true) || it.type.equals("Bank", true) }
+        .maxByOrNull { it.balance }
+        ?: candidates.maxByOrNull { it.balance }
+        ?: accountOptions.first()
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CollectPaymentDialog(
@@ -78,13 +90,7 @@ fun CollectPaymentDialog(
     val interestVal  = interestStr.toDoubleOrNull()  ?: 0.0
     val totalAmount  = principalVal + interestVal
     val isValid      = totalAmount > 0.0
-    val preferredAccount = remember(accountOptions) {
-        accountOptions
-            .filter { it.type.equals("Cash", true) || it.type.equals("Bank", true) }
-            .maxByOrNull { it.balance }
-            ?: accountOptions.maxByOrNull { it.balance }
-            ?: accountOptions.first()
-    }
+    val preferredAccount = remember(accountOptions) { preferredMoneyAccount(accountOptions) }
     var selectedAccount by remember(accountOptions) { mutableStateOf(preferredAccount) }
     var accountManuallyPicked by remember(accountOptions) { mutableStateOf(false) }
     LaunchedEffect(totalAmount, accountOptions) {
@@ -269,7 +275,11 @@ fun CollectPaymentDialog(
                                             color = if (acct.balance >= 0) Emerald500 else MaterialTheme.colorScheme.error)
                                     }
                                 },
-                                onClick = { selectedAccount = acct; expanded = false }
+                                onClick = {
+                                    selectedAccount = acct
+                                    accountManuallyPicked = true
+                                    expanded = false
+                                }
                             )
                         }
                     }
@@ -363,13 +373,7 @@ fun PayDebtDialog(
     val interestVal  = interestStr.toDoubleOrNull()  ?: 0.0
     val totalAmount  = principalVal + interestVal
     val isValid      = totalAmount > 0.0
-    val preferredAccount = remember(accountOptions) {
-        accountOptions
-            .filter { it.type.equals("Cash", true) || it.type.equals("Bank", true) }
-            .maxByOrNull { it.balance }
-            ?: accountOptions.maxByOrNull { it.balance }
-            ?: accountOptions.first()
-    }
+    val preferredAccount = remember(accountOptions) { preferredMoneyAccount(accountOptions) }
     var selectedAccount by remember(accountOptions) { mutableStateOf(preferredAccount) }
     var accountManuallyPicked by remember(accountOptions) { mutableStateOf(false) }
     LaunchedEffect(totalAmount, accountOptions) {
