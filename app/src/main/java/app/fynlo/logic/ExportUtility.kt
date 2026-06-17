@@ -227,12 +227,13 @@ object ExportUtility {
             altBg    -> Color.rgb(250, 250, 250)
             else     -> COLOR_WHITE
         }
-        rect(MARGIN, y - LINE_H + 2f, PAGE_W - MARGIN.toFloat(), y - LINE_H + 2f + row.height, bgColor)
+        val rowTop = y
+        rect(MARGIN, rowTop, PAGE_W - MARGIN.toFloat(), rowTop + row.height, bgColor)
 
         var xPos = MARGIN + 4f
         row.cells.forEachIndexed { i, (lines, paint) ->
             lines.forEachIndexed { lineIdx, line ->
-                canvas().drawText(line, xPos, y + 2f + lineIdx * 12f, paint)
+                canvas().drawText(line, xPos, rowTop + 13f + lineIdx * 12f, paint)
             }
             xPos += widths[i]
         }
@@ -263,7 +264,7 @@ object ExportUtility {
     ) {
         val header = measureTableRow(headers, widths, isHeader = true)
         val firstRow = rows.firstOrNull()?.let { measureTableRow(it.cols, widths, colors = it.colors) }
-        val firstBlockHeight = 36f + header.height + (firstRow?.height ?: 0f) + 8f
+        val firstBlockHeight = 48f + header.height + (firstRow?.height ?: 0f) + 8f
         keepTogether(firstBlockHeight)
         sectionHeader(title)
         drawMeasuredTableRow(header, widths, isHeader = true)
@@ -409,7 +410,7 @@ object ExportUtility {
         }
         // Advance below the donut (whichever's taller — donut or legend).
         y = panelTop + maxOf(r * 2 + CHART_PANEL_PAD, legendY - panelTop)
-        nl(8f)
+        nl(18f)
     }
 
     /**
@@ -587,7 +588,7 @@ object ExportUtility {
         y += 4f
         val p = Paint().apply { color = COLOR_PRIMARY; strokeWidth = 1f }
         canvas().drawLine(MARGIN, y, (PAGE_W - MARGIN).toFloat(), y, p)
-        nl(8f)
+        nl(18f)
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
