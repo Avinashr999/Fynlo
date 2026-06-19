@@ -158,7 +158,7 @@ fun CollectPaymentDialog(
                 if (borrower.rate > 0 && interestOutstanding > 0) {
                     Button(
                         onClick = {
-                            interestStr  = String.format("%.0f", interestOutstanding)
+                            interestStr  = String.format(locale, "%.0f", interestOutstanding)
                             principalStr = ""
                         },
                         modifier = Modifier.fillMaxWidth(),
@@ -174,8 +174,8 @@ fun CollectPaymentDialog(
                 if (totalOutstanding > 0) {
                     Button(
                         onClick = {
-                            interestStr  = String.format("%.0f", interestOutstanding)
-                            principalStr = String.format("%.0f", principalOutstanding)
+                            interestStr  = String.format(locale, "%.0f", interestOutstanding)
+                            principalStr = String.format(locale, "%.0f", principalOutstanding)
                         },
                         modifier = Modifier.fillMaxWidth(),
                         shape    = RoundedCornerShape(10.dp)
@@ -432,7 +432,7 @@ fun PayDebtDialog(
                 // Auto-suggest buttons
                 if (debt.rate > 0 && interestOutstanding > 0) {
                     Button(onClick = {
-                        interestStr = String.format("%.0f", interestOutstanding); principalStr = ""
+                        interestStr = String.format(locale, "%.0f", interestOutstanding); principalStr = ""
                     }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(10.dp)) {
                         Icon(Icons.Default.AutoAwesome, null, Modifier.size(16.dp))
                         Spacer(Modifier.width(6.dp))
@@ -443,8 +443,8 @@ fun PayDebtDialog(
                 // Full Settlement — always show when any amount is outstanding
                 if (totalOutstanding > 0) {
                     Button(onClick = {
-                        interestStr  = String.format("%.0f", interestOutstanding)
-                        principalStr = String.format("%.0f", principalOutstanding)
+                        interestStr  = String.format(locale, "%.0f", interestOutstanding)
+                        principalStr = String.format(locale, "%.0f", principalOutstanding)
                     }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(10.dp),
                     colors = ButtonDefaults.filledTonalButtonColors(containerColor = Emerald500.copy(alpha = 0.15f))) {
                         Icon(Icons.Default.AutoAwesome, null, Modifier.size(16.dp), tint = Emerald500)

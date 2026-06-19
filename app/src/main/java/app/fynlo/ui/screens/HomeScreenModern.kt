@@ -463,7 +463,11 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
         val visibleAccountEntries = summary.accountBreakdown.entries.filter { activeAccountByName[it.key] != null }
         LedgerPanel {
             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
-                LedgerSectionTitle("Accounts", visibleAccountEntries.size.takeIf { it > 0 }?.toString(), Modifier.weight(1f))
+                LedgerSectionTitle(
+                    title = "Accounts",
+                    modifier = Modifier.weight(1f),
+                    count = visibleAccountEntries.size.takeIf { it > 0 }?.toString(),
+                )
                 IconButton(onClick = {
                     accountDialogInitial = null
                     accountDialogDefaultType = "Bank"
@@ -1079,7 +1083,7 @@ private fun NetWorthTrendCard(
         border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)),
     ) {
         Column(Modifier.padding(16.dp)) {
-            LedgerSectionTitle("Net worth trend", if (snaps.size >= 2) "30d" else null)
+            LedgerSectionTitle("Net worth trend", count = if (snaps.size >= 2) "30d" else null)
             Spacer(Modifier.height(10.dp))
             if (snaps.size < 2) {
                 Box(Modifier.fillMaxWidth().height(80.dp), Alignment.Center) {

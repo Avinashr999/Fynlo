@@ -55,7 +55,7 @@ fun GoalScreen(viewModel: FinanceViewModel) {
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        PremiumScreenHeader("Savings Goals", "Track your financial targets")
+        PremiumScreenHeader("Savings Goals", subtitle = "Track your financial targets")
         Box(modifier = Modifier.weight(1f)) {
             // C07 fix (UX_AUDIT §C07): on empty state show ONLY the shared
             // EmptyState CTA, hiding both the list AND the FAB so the user

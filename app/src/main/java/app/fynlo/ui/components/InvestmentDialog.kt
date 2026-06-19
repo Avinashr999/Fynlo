@@ -392,7 +392,7 @@ fun AddInvestmentDialog(
                                 )
 
                                 if (!isNew) {
-                                    onConfirm(InvestmentSaveRequest(investment, sourceType = initialInvestment?.sourceType ?: ""))
+                                    onConfirm(InvestmentSaveRequest(investment, sourceType = initialInvestment.sourceType))
                                 } else {
                                     val req = when (sourceType) {
                                         SOURCE_ACCOUNT -> InvestmentSaveRequest(

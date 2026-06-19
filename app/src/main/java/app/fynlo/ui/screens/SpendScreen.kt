@@ -208,7 +208,7 @@ val transactions by viewModel.transactions.collectAsState()
                 // Category breakdown with FIXED budget %
                 if (byCat.isNotEmpty()) {
                     LedgerPanel {
-                        LedgerSectionTitle("Category Breakdown", byCat.size.toString())
+                        LedgerSectionTitle("Category Breakdown", count = byCat.size.toString())
                         Spacer(Modifier.height(12.dp))
                         Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                             byCat.forEachIndexed { i, (cat, amt) ->

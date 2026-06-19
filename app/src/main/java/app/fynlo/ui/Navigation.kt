@@ -32,6 +32,7 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.dp
+import androidx.core.net.toUri
 import app.fynlo.billing.BillingManager
 import app.fynlo.data.AuthManager
 import app.fynlo.logic.toRecurringTemplate
@@ -1212,14 +1213,14 @@ private fun openPlayStore(context: android.content.Context) {
         context.startActivity(
             android.content.Intent(
                 android.content.Intent.ACTION_VIEW,
-                android.net.Uri.parse("market://details?id=${context.packageName}"),
+                "market://details?id=${context.packageName}".toUri(),
             ).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
         )
     } catch (_: Exception) {
         context.startActivity(
             android.content.Intent(
                 android.content.Intent.ACTION_VIEW,
-                android.net.Uri.parse("https://play.google.com/store/apps/details?id=${context.packageName}"),
+                "https://play.google.com/store/apps/details?id=${context.packageName}".toUri(),
             ).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
         )
     }

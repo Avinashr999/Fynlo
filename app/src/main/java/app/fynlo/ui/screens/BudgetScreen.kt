@@ -78,7 +78,7 @@ fun BudgetScreen(viewModel: FinanceViewModel) {
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        PremiumScreenHeader("Budgeting", "Monthly spending limits")
+        PremiumScreenHeader("Budgeting", subtitle = "Monthly spending limits")
         val sorted = remember(budgets, expenses) {
             budgets.sortedByDescending { b ->
                 val pct = (expenses[b.category] ?: 0.0) / b.limitAmount
@@ -395,7 +395,7 @@ fun AddBudgetDialog(
     // C22 (3.2.57) — per-budget warning threshold (50..95 in 5% steps,
     // default 80). The slider lives below the limit field so it reads as
     // "set the cap, then tune when you want to be warned".
-    var thresholdPct     by remember { mutableStateOf(80) }
+    var thresholdPct     by remember { mutableIntStateOf(80) }
 
     // C04 Stage 3: chained-fallback prefill, applied once on dialog open.
     //   1. Try `suggestCategory()` — the highest-uncapped-spend heuristic.

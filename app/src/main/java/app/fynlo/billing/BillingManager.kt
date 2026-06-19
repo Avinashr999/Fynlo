@@ -77,7 +77,7 @@ object BillingManager {
                         .build()
                 )
             ).build()
-        ) { _, list -> _subProduct.value = list.firstOrNull() }
+        ) { _, result -> _subProduct.value = result.productDetailsList.firstOrNull() }
 
         client.queryProductDetailsAsync(
             QueryProductDetailsParams.newBuilder().setProductList(
@@ -88,7 +88,7 @@ object BillingManager {
                         .build()
                 )
             ).build()
-        ) { _, list -> _lifetimeProduct.value = list.firstOrNull() }
+        ) { _, result -> _lifetimeProduct.value = result.productDetailsList.firstOrNull() }
     }
 
     /** Re-check what the user owns (call on launch / "Restore purchases"). */

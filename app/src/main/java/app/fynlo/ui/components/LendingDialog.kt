@@ -45,8 +45,8 @@ fun AddLendingDialog(
     val locale = LocalLocale.current.platformLocale
 
     var selectedPerson by remember { mutableStateOf<Person?>(null) }
-    var amount by remember { mutableStateOf(initialBorrower?.amount?.takeIf { it > 0 }?.let { String.format("%.0f", it) } ?: "") }
-    var rate by remember { mutableStateOf(initialBorrower?.rate?.takeIf { it > 0 }?.let { String.format("%.0f", it) } ?: "") }
+    var amount by remember { mutableStateOf(initialBorrower?.amount?.takeIf { it > 0 }?.let { String.format(locale, "%.0f", it) } ?: "") }
+    var rate by remember { mutableStateOf(initialBorrower?.rate?.takeIf { it > 0 }?.let { String.format(locale, "%.0f", it) } ?: "") }
     var date by remember { mutableStateOf(initialBorrower?.date?.let { DateUtils.formatToDisplay(it) } ?: java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy"))) }
     var due by remember { mutableStateOf(initialBorrower?.due?.let { DateUtils.formatToDisplay(it) } ?: "") }
     var notes by remember { mutableStateOf(initialBorrower?.notes ?: "") }
@@ -123,7 +123,7 @@ fun AddLendingDialog(
                 Text("Borrower", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Spacer(Modifier.height(8.dp))
                 if (isEdit) {
-                    Text(initialBorrower!!.name, style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold))
+                    Text(requireNotNull(initialBorrower).name, style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold))
                 } else if (people.isEmpty()) {
                     Text("Add a contact in Contact Book first.", style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -230,7 +230,7 @@ fun AddLendingDialog(
                         val rawId = initialBorrower?.id ?: ""
                         val borrower = Borrower(
                             id     = if (rawId.isBlank()) app.fynlo.logic.Ids.newId() else rawId,
-                            sourceAccount = if (!isEdit) selectedAccount.name else initialBorrower!!.sourceAccount,
+                            sourceAccount = if (!isEdit) selectedAccount.name else requireNotNull(initialBorrower).sourceAccount,
                             name   = selectedPerson?.name ?: initialBorrower?.name ?: "Unknown",
                             phone  = selectedPerson?.phone ?: initialBorrower?.phone ?: "",
                             amount = amount.toDoubleOrNull() ?: 0.0,

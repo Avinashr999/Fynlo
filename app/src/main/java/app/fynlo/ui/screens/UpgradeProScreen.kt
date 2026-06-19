@@ -1,6 +1,5 @@
 package app.fynlo.ui.screens
 
-import android.app.Activity
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -35,7 +34,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.platform.LocalContext
+import androidx.activity.compose.LocalActivity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.fynlo.billing.BillingManager
@@ -55,7 +54,7 @@ private val PRO_BENEFITS = listOf(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun UpgradeProScreen(onNavigateBack: () -> Unit = {}) {
-    val activity = LocalContext.current as? Activity
+    val activity = LocalActivity.current
     val isPro by BillingManager.isPro.collectAsState()
 
     Scaffold(

@@ -25,6 +25,7 @@ import androidx.compose.material.icons.filled.Sms
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.core.net.toUri
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -239,7 +240,7 @@ val borrowers by viewModel.borrowers.collectAsState()
             confirmButton = {
                 if (phone.isNotBlank()) {
                     TextButton(onClick = {
-                        val uri = android.net.Uri.parse("https://wa.me/$intlPhone?text=${android.net.Uri.encode(waMsg)}")
+                        val uri = "https://wa.me/$intlPhone?text=${android.net.Uri.encode(waMsg)}".toUri()
                         try {
                             context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, uri))
                         } catch (_: Exception) {
@@ -264,7 +265,7 @@ val borrowers by viewModel.borrowers.collectAsState()
                         TextButton(onClick = {
                             context.startActivity(
                                 android.content.Intent(android.content.Intent.ACTION_SENDTO,
-                                    android.net.Uri.parse("smsto:$intlPhone")
+                                    "smsto:$intlPhone".toUri()
                                 ).apply { putExtra("sms_body", smsMsg) }
                             )
                             showReminderPicker = false

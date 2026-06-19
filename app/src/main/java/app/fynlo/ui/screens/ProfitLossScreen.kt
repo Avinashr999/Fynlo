@@ -142,7 +142,7 @@ fun ProfitLossScreen(viewModel: FinanceViewModel) {
     val red   = SemanticRed
 
     Column(modifier = Modifier.fillMaxSize()) {
-        PremiumScreenHeader("Profit & Loss", "Revenue, expenses & lending P&L")
+        PremiumScreenHeader("Profit & Loss", subtitle = "Revenue, expenses & lending P&L")
         Column(
             modifier = Modifier.fillMaxSize()
                 .padding(horizontal = 16.dp)

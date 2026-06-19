@@ -147,7 +147,7 @@ fun ReportsHubScreen(
     val blue  = SemanticBlue
 
     Column(modifier = Modifier.fillMaxSize()) {
-        PremiumScreenHeader("Reports", "Open a report to drill in")
+        PremiumScreenHeader("Reports", subtitle = "Open a report to drill in")
         Column(
             modifier = Modifier.fillMaxSize()
                 .padding(horizontal = 16.dp)

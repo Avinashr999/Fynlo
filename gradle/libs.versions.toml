@@ -1,5 +1,5 @@
 [versions]
-firebaseBom = "33.7.0"
+firebaseBom = "34.15.0"
 agp = "9.2.1"
 coreKtx = "1.18.0"
 junit = "4.13.2"
@@ -8,22 +8,33 @@ espressoCore = "3.7.0"
 lifecycleRuntimeKtx = "2.10.0"
 lifecycleViewmodelCompose = "2.10.0"
 activityCompose = "1.13.0"
-kotlin = "2.2.10"
-composeBom = "2026.04.01"
-firebaseAi = "17.11.0"
-googleGmsGoogleServices = "4.4.2"
+kotlin = "2.3.21"
+composeBom = "2026.06.00"
+firebaseAi = "17.13.0"
+googleGmsGoogleServices = "4.5.0"
 room = "2.8.4"
 navigationCompose = "2.9.8"
-kotlinxSerialization = "1.8.1"
-ksp = "2.3.7"
+kotlinxSerialization = "1.11.0"
+ksp = "2.3.9"
 poi = "5.5.1"
-hilt = "2.56"
-hiltNavigationCompose = "1.2.0"
+hilt = "2.59.2"
+hiltNavigationCompose = "1.3.0"
 # Performance benchmarking — alpha required because Fynlo uses AGP 9.x
-benchmark = "1.5.0-alpha05"
-baselineprofile = "1.5.0-alpha05"
+benchmark = "1.5.0-alpha06"
+baselineprofile = "1.5.0-alpha06"
 profileinstaller = "1.4.1"
 uiautomator = "2.3.0"
+androidxTestCore = "1.7.0"
+coroutinesTest = "1.11.0"
+mockk = "1.14.11"
+robolectric = "4.16.1"
+turbine = "1.2.1"
+desugarJdkLibs = "2.1.5"
+work = "2.11.2"
+datastorePreferences = "1.2.1"
+fragmentKtx = "1.8.9"
+appcompat = "1.7.1"
+billing = "9.0.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -44,24 +55,35 @@ androidx-compose-material3 = { group = "androidx.compose.material3", name = "mat
 androidx-compose-material-icons-extended = { group = "androidx.compose.material", name = "material-icons-extended" }
 firebase-ai = { group = "com.google.firebase", name = "firebase-ai", version.ref = "firebaseAi" }
 firebase-bom       = { group = "com.google.firebase", name = "firebase-bom",           version.ref = "firebaseBom" }
-firebase-firestore = { group = "com.google.firebase", name = "firebase-firestore-ktx" }
-firebase-auth      = { group = "com.google.firebase", name = "firebase-auth-ktx" }
-firebase-crashlytics = { group = "com.google.firebase", name = "firebase-crashlytics-ktx" }
-firebase-perf        = { group = "com.google.firebase", name = "firebase-perf-ktx" }
-firebase-analytics   = { group = "com.google.firebase", name = "firebase-analytics-ktx" }
-work-runtime    = { group = "androidx.work",   name = "work-runtime-ktx",           version = "2.9.1" }
+firebase-firestore = { group = "com.google.firebase", name = "firebase-firestore" }
+firebase-auth      = { group = "com.google.firebase", name = "firebase-auth" }
+firebase-crashlytics = { group = "com.google.firebase", name = "firebase-crashlytics" }
+firebase-perf        = { group = "com.google.firebase", name = "firebase-perf" }
+firebase-analytics   = { group = "com.google.firebase", name = "firebase-analytics" }
+work-runtime    = { group = "androidx.work",   name = "work-runtime-ktx",           version.ref = "work" }
 biometric        = { group = "androidx.biometric", name = "biometric",                version = "1.1.0" }
-google-signin    = { group = "com.google.android.gms", name = "play-services-auth", version = "21.0.0" }
+google-signin    = { group = "com.google.android.gms", name = "play-services-auth", version = "21.6.0" }
+datastore-preferences = { group = "androidx.datastore", name = "datastore-preferences", version.ref = "datastorePreferences" }
+androidx-fragment-ktx = { group = "androidx.fragment", name = "fragment-ktx", version.ref = "fragmentKtx" }
+androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
+billing-ktx = { group = "com.android.billingclient", name = "billing-ktx", version.ref = "billing" }
 room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }
 room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }
 room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "room" }
+room-testing = { group = "androidx.room", name = "room-testing", version.ref = "room" }
 navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigationCompose" }
 kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlinxSerialization" }
+desugar-jdk-libs = { group = "com.android.tools", name = "desugar_jdk_libs", version.ref = "desugarJdkLibs" }
 apache-poi = { group = "org.apache.poi", name = "poi", version.ref = "poi" }
 apache-poi-ooxml = { group = "org.apache.poi", name = "poi-ooxml", version.ref = "poi" }
 hilt-android = { group = "com.google.dagger", name = "hilt-android", version.ref = "hilt" }
 hilt-android-compiler = { group = "com.google.dagger", name = "hilt-android-compiler", version.ref = "hilt" }
 hilt-navigation-compose = { group = "androidx.hilt", name = "hilt-navigation-compose", version.ref = "hiltNavigationCompose" }
+androidx-test-core = { group = "androidx.test", name = "core", version.ref = "androidxTestCore" }
+coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "coroutinesTest" }
+mockk = { group = "io.mockk", name = "mockk", version.ref = "mockk" }
+robolectric = { group = "org.robolectric", name = "robolectric", version.ref = "robolectric" }
+turbine = { group = "app.cash.turbine", name = "turbine", version.ref = "turbine" }
 
 # Benchmark / Baseline Profile
 androidx-benchmark-macro-junit4 = { group = "androidx.benchmark", name = "benchmark-macro-junit4", version.ref = "benchmark" }
@@ -70,13 +92,12 @@ androidx-test-uiautomator       = { group = "androidx.test.uiautomator", name = 
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
-kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 google-gms-google-services = { id = "com.google.gms.google-services", version.ref = "googleGmsGoogleServices" }
-firebase-crashlytics-plugin = { id = "com.google.firebase.crashlytics", version = "3.0.2" }
+firebase-crashlytics-plugin = { id = "com.google.firebase.crashlytics", version = "3.0.7" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 hilt-android-plugin = { id = "com.google.dagger.hilt.android", version.ref = "hilt" }
-firebase-perf-plugin = { id = "com.google.firebase.firebase-perf", version = "1.4.2" }
+firebase-perf-plugin = { id = "com.google.firebase.firebase-perf", version = "2.0.2" }
 android-test     = { id = "com.android.test",        version.ref = "agp" }
 baselineprofile  = { id = "androidx.baselineprofile", version.ref = "baselineprofile" }

@@ -3,8 +3,8 @@ package app.fynlo.notifications
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
-import android.os.Build
 import androidx.core.app.NotificationCompat
+import androidx.core.graphics.toColorInt
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import app.fynlo.FynloApplication
@@ -88,12 +88,10 @@ class ReminderWorker(
     }
 
     private fun createChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(CHANNEL_ID, CHANNEL_NAME, NotificationManager.IMPORTANCE_DEFAULT)
-            channel.description = "Reminders for loan due dates and overdue payments"
-            val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            nm.createNotificationChannel(channel)
-        }
+        val channel = NotificationChannel(CHANNEL_ID, CHANNEL_NAME, NotificationManager.IMPORTANCE_DEFAULT)
+        channel.description = "Reminders for loan due dates and overdue payments"
+        val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        nm.createNotificationChannel(channel)
     }
 
     private fun notify(id: Int, title: String, message: String) {
@@ -105,7 +103,7 @@ class ReminderWorker(
             .setStyle(NotificationCompat.BigTextStyle().bigText(message))
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)
-            .setColor(android.graphics.Color.parseColor("#059669"))
+            .setColor("#059669".toColorInt())
             .build()
         nm.notify(id, notif)
     }

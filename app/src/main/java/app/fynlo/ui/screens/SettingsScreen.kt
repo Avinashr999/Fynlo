@@ -33,6 +33,7 @@ import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.core.net.toUri
 import app.fynlo.FinanceViewModel
 import app.fynlo.data.UserPreferences
 import app.fynlo.logic.CurrencyFormatter
@@ -432,7 +433,7 @@ fun SettingsScreen(
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        PremiumScreenHeader("Settings", "Your Fynlo control room")
+        PremiumScreenHeader("Settings", subtitle = "Your Fynlo control room")
         Column(
         modifier = Modifier
             .fillMaxSize()
@@ -1262,10 +1263,10 @@ fun SettingsScreen(
                 ) {
                     try {
                         context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW,
-                            android.net.Uri.parse("market://details?id=${context.packageName}")))
+                            "market://details?id=${context.packageName}".toUri()))
                     } catch (e: Exception) {
                         context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW,
-                            android.net.Uri.parse("https://play.google.com/store/apps/details?id=${context.packageName}")))
+                            "https://play.google.com/store/apps/details?id=${context.packageName}".toUri()))
                     }
                 }
             }
@@ -2232,11 +2233,11 @@ private fun CsvImportDialog(
         val i = header.indexOfFirst { h -> keywords.any { k -> h.contains(k, ignoreCase = true) } }
         return if (i >= 0) i else -1
     }
-    var dateCol     by remember { mutableStateOf(findCol("date", "txn date", "value date").let { if (it < 0) 0 else it }) }
-    var descCol     by remember { mutableStateOf(findCol("desc", "narration", "particulars", "memo").let { if (it < 0) 1.coerceAtMost(header.lastIndex.coerceAtLeast(0)) else it }) }
-    var amountCol   by remember { mutableStateOf(findCol("amount", "amt", "debit", "credit").let { if (it < 0) 2.coerceAtMost(header.lastIndex.coerceAtLeast(0)) else it }) }
+    var dateCol     by remember { mutableIntStateOf(findCol("date", "txn date", "value date").let { if (it < 0) 0 else it }) }
+    var descCol     by remember { mutableIntStateOf(findCol("desc", "narration", "particulars", "memo").let { if (it < 0) 1.coerceAtMost(header.lastIndex.coerceAtLeast(0)) else it }) }
+    var amountCol   by remember { mutableIntStateOf(findCol("amount", "amt", "debit", "credit").let { if (it < 0) 2.coerceAtMost(header.lastIndex.coerceAtLeast(0)) else it }) }
     // -1 sentinel = "None" (no category column).
-    var categoryCol by remember { mutableStateOf(findCol("category", "cat")) }
+    var categoryCol by remember { mutableIntStateOf(findCol("category", "cat")) }
     var targetAccount by remember { mutableStateOf(accounts.firstOrNull().orEmpty()) }
 
     val mapping = app.fynlo.logic.BankStatementImport.ColumnMap(

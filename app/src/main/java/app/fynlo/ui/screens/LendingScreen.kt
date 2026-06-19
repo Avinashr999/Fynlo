@@ -140,7 +140,7 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
     // back to it any time.
 
     Column(modifier = Modifier.fillMaxSize()) {
-        if (showHeader) PremiumScreenHeader("Lending", "Interest loans & hand loans")
+        if (showHeader) PremiumScreenHeader("Lending", subtitle = "Interest loans & hand loans")
         Box(modifier = Modifier.weight(1f)) {
         app.fynlo.ui.components.PullRefresh(viewModel) {
         LazyColumn(

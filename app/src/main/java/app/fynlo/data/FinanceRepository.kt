@@ -1871,6 +1871,7 @@ class FinanceRepository(
             dao.deleteAllBudgets()
             dao.deleteAllGoals()
             dao.deleteAllAuditEvents()
+            dao.deleteAllDeletedRemoteDocs()
             dao.deleteAllValuations()
             dao.deleteAllRecurringTransactions()
         }
@@ -1927,6 +1928,8 @@ class FinanceRepository(
                 dao.deleteAllProjects()
                 dao.deleteAllBudgets()
                 dao.deleteAllGoals()
+                dao.deleteAllAuditEvents()
+                dao.deleteAllDeletedRemoteDocs()
                 dao.deleteAllValuations()
                 dao.deleteAllRecurringTransactions()
                 dao.deleteAllNetWorthSnapshots()

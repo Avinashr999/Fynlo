@@ -426,7 +426,7 @@ val currentProject by viewModel.currentProject.collectAsState()
                 if (allocation.size >= 2 && portfolioValue > 0) {
                     item {
                         LedgerPanel(Modifier.padding(bottom = 16.dp)) {
-                            LedgerSectionTitle("Allocation", "${allocation.size} types")
+                            LedgerSectionTitle("Allocation", count = "${allocation.size} types")
                             Spacer(Modifier.height(10.dp))
                             // Stacked bar
                             Row(
@@ -907,7 +907,7 @@ fun UpdateInvestmentValueDialog(
             // line so the win moment is visible. Negative shows a muted
             // red. Zero hides the line.
             val prevVal = investment.currentVal
-            val deltaSinceLast = (parsed ?: 0.0) - prevVal
+            val deltaSinceLast = parsed - prevVal
             if (kotlin.math.abs(deltaSinceLast) > 0.005 && newValue.isNotBlank()) {
                 Spacer(Modifier.height(8.dp))
                 val deltaStr = if (deltaSinceLast >= 0)

@@ -2,7 +2,7 @@ package app.fynlo.ui.components
 
 import android.content.Context
 import android.content.Intent
-import android.net.Uri
+import androidx.core.net.toUri
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -223,7 +223,7 @@ private fun emailFallback(
         }
     }
     val intent = Intent(Intent.ACTION_SENDTO).apply {
-        data = Uri.parse("mailto:fynloapp.support@gmail.com")
+        data = "mailto:fynloapp.support@gmail.com".toUri()
         putExtra(Intent.EXTRA_SUBJECT, "Fynlo Bug Report [$reportId] $title")
         putExtra(Intent.EXTRA_TEXT, body)
     }

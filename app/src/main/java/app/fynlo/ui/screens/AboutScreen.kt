@@ -1,7 +1,7 @@
 package app.fynlo.ui.screens
 
 import android.content.Intent
-import android.net.Uri
+import androidx.core.net.toUri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -38,7 +38,7 @@ fun AboutScreen() {
             .padding(horizontal = 16.dp)
             .verticalScroll(rememberScrollState())
     ) {
-        PremiumScreenHeader("About Fynlo", "Ledger-first finance, built for clarity")
+        PremiumScreenHeader("About Fynlo", subtitle = "Ledger-first finance, built for clarity")
         Spacer(Modifier.height(16.dp))
 
         // ── App identity card ────────────────────────────────────────────────
@@ -190,7 +190,7 @@ fun AboutScreen() {
             // Best-effort URL open; if no browser is installed (very rare)
             // the intent silently no-ops rather than crashing.
             runCatching {
-                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                context.startActivity(Intent(Intent.ACTION_VIEW, url.toUri()))
             }
         }
         Column(

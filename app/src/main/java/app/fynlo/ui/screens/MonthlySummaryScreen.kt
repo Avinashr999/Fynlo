@@ -140,7 +140,7 @@ fun MonthlySummaryScreen(viewModel: FinanceViewModel) {
     fun signed(v: Double) = (if (v >= 0) "+" else "") + CurrencyFormatter.detail(v, currencyCode, locale)
 
     Column(modifier = Modifier.fillMaxSize()) {
-        PremiumScreenHeader("Monthly Summary", "12-month income & expense trend")
+        PremiumScreenHeader("Monthly Summary", subtitle = "12-month income & expense trend")
         Column(
             modifier = Modifier.fillMaxSize()
                 .padding(horizontal = 16.dp)

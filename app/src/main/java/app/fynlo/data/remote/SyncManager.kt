@@ -7,8 +7,8 @@ import com.google.firebase.firestore.DocumentChange
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestoreException
 import com.google.firebase.firestore.ListenerRegistration
-import com.google.firebase.firestore.ktx.firestore
-import com.google.firebase.ktx.Firebase
+import com.google.firebase.Firebase
+import com.google.firebase.firestore.firestore
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -26,7 +26,7 @@ class SyncManager(
     private val dao: FynloDao
 ) {
     private val db     = Firebase.firestore
-    private val scope  = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private var scope  = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private val listeners = mutableListOf<ListenerRegistration>()
 
     private val _status = MutableStateFlow<SyncStatus>(SyncStatus.Initialising)
@@ -57,6 +57,10 @@ class SyncManager(
     /** Start real-time listeners for every collection. */
     fun startListening() {
         if (userId.isEmpty()) return
+        if (scope.coroutineContext[Job]?.isCancelled == true) {
+            scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+        }
+        if (listeners.isNotEmpty()) return
 
         listeners += col("borrowers").addSnapshotListener { snap, err ->
             if (err != null || snap == null) { handleErr(err); return@addSnapshotListener }
@@ -182,6 +186,11 @@ class SyncManager(
                 snap.documentChanges.forEach { change ->
                     runCatching {
                         val doc = change.document
+                        if (change.type == DocumentChange.Type.REMOVED) {
+                            dao.deleteAccountById(doc.id)
+                            return@runCatching
+                        }
+                        if (dao.isRemoteDocDeleted("accounts", doc.id)) return@runCatching
                         val remoteAcct = Account(
                             id        = doc.id,
                             name      = doc.str("name"),
@@ -272,7 +281,7 @@ class SyncManager(
                     runCatching {
                         val doc = change.document
                         if (change.type == DocumentChange.Type.REMOVED) {
-                            // dao.deleteValuationById(doc.id) // if we add this
+                            dao.deleteValuationById(doc.id)
                             return@runCatching
                         }
                         val remote = InvestmentValuation(
@@ -362,6 +371,11 @@ class SyncManager(
                 snap.documentChanges.forEach { change ->
                     runCatching {
                         val doc = change.document
+                        if (change.type == DocumentChange.Type.REMOVED) {
+                            dao.deletePersonById(doc.id)
+                            return@runCatching
+                        }
+                        if (dao.isRemoteDocDeleted("people", doc.id)) return@runCatching
                         dao.insertPerson(Person(
                             id        = doc.id,
                             name      = doc.str("name"),
@@ -384,6 +398,11 @@ class SyncManager(
                 snap.documentChanges.forEach { change ->
                     runCatching {
                         val doc = change.document
+                        if (change.type == DocumentChange.Type.REMOVED) {
+                            dao.deleteProjectById(doc.id)
+                            return@runCatching
+                        }
+                        if (dao.isRemoteDocDeleted("projects", doc.id)) return@runCatching
                         dao.insertProject(Project(
                             id        = doc.id,
                             name      = doc.str("name"),
@@ -597,6 +616,7 @@ class SyncManager(
         listeners.forEach { it.remove() }
         listeners.clear()
         scope.cancel()
+        scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     }
 
     // ── Extension helpers to safely read Firestore fields ─────────────────────

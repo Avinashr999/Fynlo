@@ -39,9 +39,9 @@ val TemplateActionDark = Emerald700
 @Composable
 fun PremiumScreenHeader(
     title: String,
+    modifier: Modifier = Modifier,
     subtitle: String = "",
     action: (@Composable () -> Unit)? = null,
-    modifier: Modifier = Modifier
 ) {
     Row(
         modifier = modifier.fillMaxWidth()
@@ -73,9 +73,9 @@ fun PremiumScreenHeader(
 @Composable
 fun LedgerDetailTopBar(
     title: String,
-    subtitle: String? = null,
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier,
+    subtitle: String? = null,
     actions: @Composable RowScope.() -> Unit = {},
 ) {
     Surface(
@@ -165,10 +165,10 @@ fun PremiumSectionLabel(
 fun PremiumStatCard(
     label: String,
     value: String,
+    modifier: Modifier = Modifier,
     icon: ImageVector? = null,
     iconTint: Color = Emerald500,
     valueColor: Color = MaterialTheme.colorScheme.onSurface,
-    modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null
 ) {
     val base = if (onClick != null)
@@ -297,8 +297,8 @@ fun LedgerPanel(
 @Composable
 fun LedgerSectionTitle(
     title: String,
-    count: String? = null,
     modifier: Modifier = Modifier,
+    count: String? = null,
 ) {
     Row(
         modifier = modifier.fillMaxWidth(),
@@ -443,10 +443,10 @@ fun LedgerRow(
     title: String,
     subtitle: String,
     value: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
     iconTint: Color = Emerald500,
     valueColor: Color = MaterialTheme.colorScheme.onSurface,
-    modifier: Modifier = Modifier,
-    onClick: () -> Unit,
 ) {
     Surface(
         modifier = modifier.fillMaxWidth(),

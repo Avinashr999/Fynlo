@@ -1,5 +1,6 @@
 package app.fynlo.ui.screens
 
+import android.annotation.SuppressLint
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.BorderStroke
@@ -33,6 +34,7 @@ import app.fynlo.data.PinManager
 import app.fynlo.ui.screens.PinMode
 import app.fynlo.ui.theme.*
 
+@SuppressLint("InlinedApi")
 @Composable
 fun ProfileScreen(
     onLogout: () -> Unit,
@@ -115,7 +117,7 @@ fun ProfileScreen(
     val name     = app.authManager.userName
 
     Column(modifier = Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
-        PremiumScreenHeader("Profile & Security", "Identity, sync, and app lock")
+        PremiumScreenHeader("Profile & Security", subtitle = "Identity, sync, and app lock")
         Column(
         modifier = Modifier
             .fillMaxSize()

@@ -1,6 +1,7 @@
 ﻿package app.fynlo.data
 
 import android.content.Context
+import androidx.core.content.edit
 import java.security.SecureRandom
 import java.security.MessageDigest
 import java.util.Base64
@@ -22,11 +23,11 @@ class PinManager(context: Context) {
     /** True only when user has explicitly enabled biometric AND PIN is set. */
     var isBiometricEnabled: Boolean
         get() = isPinSet && prefs.getBoolean("biometric_enabled", false)
-        set(value) { prefs.edit().putBoolean("biometric_enabled", value).apply() }
+        set(value) { prefs.edit { putBoolean("biometric_enabled", value) } }
 
     fun setPin(pin: String) {
         require(pin.length == 4 && pin.all { it.isDigit() }) { "PIN must be 4 digits" }
-        prefs.edit().putString(PIN_HASH, pbkdf2Record(pin)).apply()
+        prefs.edit { putString(PIN_HASH, pbkdf2Record(pin)) }
     }
 
     fun verifyPin(input: String): Boolean {
@@ -43,10 +44,10 @@ class PinManager(context: Context) {
     }
 
     fun clearPin() {
-        prefs.edit()
-            .remove(PIN_HASH)
-            .putBoolean("biometric_enabled", false)   // also disable biometric if PIN removed
-            .apply()
+        prefs.edit {
+            remove(PIN_HASH)
+            putBoolean("biometric_enabled", false)   // also disable biometric if PIN removed
+        }
     }
 
     /**
@@ -56,7 +57,7 @@ class PinManager(context: Context) {
      * key (pin_hash + biometric_enabled).
      */
     fun clearPinSync() {
-        prefs.edit().clear().commit()
+        prefs.edit(commit = true) { clear() }
     }
 
     private fun pbkdf2Record(pin: String): String {

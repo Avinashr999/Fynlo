@@ -3,7 +3,6 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.google.gms.google.services)
     alias(libs.plugins.firebase.crashlytics.plugin)
@@ -50,8 +49,8 @@ android {
         applicationId = "app.fynlo"
         minSdk = 26
         targetSdk = 36
-        versionCode = 226
-        versionName = "3.2.103"
+        versionCode = 229
+        versionName = "3.2.105"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -150,7 +149,7 @@ android {
     // when spinning up a database at a prior schema version. Without this
     // config the instrumented FynloDatabaseMigrationTest can't find the
     // schemas and fails with a confusing "Schema for X not found" error.
-    sourceSets.getByName("androidTest").assets.srcDirs("$projectDir/schemas")
+    sourceSets.getByName("androidTest").assets.directories.add("$projectDir/schemas")
 }
 
 kotlin {
@@ -160,7 +159,7 @@ kotlin {
 }
 
 dependencies {
-    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
+    coreLibraryDesugaring(libs.desugar.jdk.libs)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.compose.material3)
@@ -177,7 +176,7 @@ dependencies {
     implementation(libs.hilt.navigation.compose)
 
     // DataStore
-    implementation("androidx.datastore:datastore-preferences:1.1.4")
+    implementation(libs.datastore.preferences)
 
     // Room
     implementation(libs.room.runtime)
@@ -202,31 +201,31 @@ dependencies {
     implementation(libs.firebase.analytics)
     implementation(libs.work.runtime)
     implementation(libs.biometric)
-    implementation("androidx.fragment:fragment-ktx:1.8.3")
-    implementation("androidx.appcompat:appcompat:1.7.0")
+    implementation(libs.androidx.fragment.ktx)
+    implementation(libs.androidx.appcompat)
     implementation(libs.google.signin)
-    implementation("com.android.billingclient:billing-ktx:7.1.1")
+    implementation(libs.billing.ktx)
 
     // Baseline Profile installer (consumes profile produced by :macrobenchmark)
     implementation(libs.androidx.profileinstaller)
     "baselineProfile"(project(":macrobenchmark"))
 
     testImplementation(libs.junit)
-    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0")
-    testImplementation("io.mockk:mockk:1.13.14")
-    testImplementation("app.cash.turbine:turbine:1.2.0")
+    testImplementation(libs.coroutines.test)
+    testImplementation(libs.mockk)
+    testImplementation(libs.turbine)
     // Robolectric + AndroidX test core — lets JVM unit tests spin up an
     // in-memory Room database (FynloDatabase needs a Context, which
     // Robolectric provides). Used by RecalculateBalancesDataIntegrityTest
     // and any future C01/C02-style real-SQL regression tests.
-    testImplementation("org.robolectric:robolectric:4.14.1")
-    testImplementation("androidx.test:core:1.6.1")
-    testImplementation("androidx.test.ext:junit:1.3.0")
-    testImplementation("androidx.room:room-testing:2.8.4")
+    testImplementation(libs.robolectric)
+    testImplementation(libs.androidx.test.core)
+    testImplementation(libs.androidx.junit)
+    testImplementation(libs.room.testing)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     androidTestImplementation(libs.androidx.espresso.core)
-    androidTestImplementation("androidx.room:room-testing:2.8.4")
+    androidTestImplementation(libs.room.testing)
     androidTestImplementation(libs.androidx.junit)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     debugImplementation(libs.androidx.compose.ui.tooling)

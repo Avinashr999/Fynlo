@@ -180,7 +180,7 @@ fun MoneyFlowScreen(viewModel: FinanceViewModel) {
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        PremiumScreenHeader("Money Flow", "Income & expense patterns")
+        PremiumScreenHeader("Money Flow", subtitle = "Income & expense patterns")
 
         // C15e (3.2.34) fix — was `Column(Modifier.fillMaxSize()...)` which
         // gobbled all remaining vertical space in the outer Column and left

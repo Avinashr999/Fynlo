@@ -20,6 +20,7 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.biometric.BiometricManager
@@ -28,6 +29,7 @@ import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
 import app.fynlo.data.PinManager
 import app.fynlo.ui.theme.*
+import kotlin.math.roundToInt
 
 enum class PinMode { ENTER, SET, CONFIRM }
 
@@ -230,7 +232,7 @@ fun PinScreen(
 
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(14.dp),
-                    modifier = Modifier.offset(x = shakeOffset.value.dp),
+                    modifier = Modifier.offset { IntOffset(shakeOffset.value.roundToInt(), 0) },
                 ) {
                     repeat(4) { i ->
                         Box(

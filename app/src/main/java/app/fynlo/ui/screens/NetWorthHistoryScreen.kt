@@ -69,7 +69,7 @@ fun NetWorthHistoryScreen(viewModel: FinanceViewModel) {
     var backfillBusy by remember { mutableStateOf(false) }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        PremiumScreenHeader("Net Worth History", "Your wealth over time")
+        PremiumScreenHeader("Net Worth History", subtitle = "Your wealth over time")
         Column(
             modifier = Modifier.fillMaxSize()
                 .padding(horizontal = 16.dp)

@@ -19,6 +19,7 @@ Supporting documents (consult when relevant):
 - `LINT_RULES.md` — codified rules; if your change would violate one, refactor
 - `PR_CHECKLIST.md` — the PR template; structure your output to fill its sections
 - `.github/workflows/checks.yml` — CI rules; if you'd fail any of these, fix before suggesting
+- `docs/release-handoff/2026-06-20-internal-testing-knowledge-hub.md` - mandatory handoff for the 3.2.105 internal testing release, Play Console setup, reset/sync fix, ledger traceability, and template revamp context
 
 ## 0.2 Required reading order
 
@@ -28,7 +29,8 @@ At the start of every session, before producing any code or design suggestion:
 2. Read `AI_AGENT_PROTOCOL.md` in full
 3. Read `DESIGN_SYSTEM.md` — §1 (archetypes), §11 (color semantics), §16 (anti-patterns) at minimum
 4. Read `UX_AUDIT_2026-05-25.md` — §2 (clusters), §3 (priority), §5 (ship-blocking matrix), §8 (the critical paragraph)
-5. Read the specific source files you're about to modify
+5. For any release, Play Console, Firestore sync, ledger traceability, PDF/export, app icon, screenshot, or template-revamp work, read docs/release-handoff/2026-06-20-internal-testing-knowledge-hub.md
+6. Read the specific source files you're about to modify
 
 ## 0.3 Mandatory session-start acknowledgement
 
@@ -1554,3 +1556,10 @@ All 5 steps of the audit's §C02 fix list are now landed. Status post-C02:
 ---
 
 *(Older history not maintained — see `git log --first-parent` for the pre-C01 timeline.)*
+---
+
+## Journal Addendum - 2026-06-20 Internal Testing Knowledge Hub
+
+Created `docs/release-handoff/2026-06-20-internal-testing-knowledge-hub.md` as the durable handoff for the long pre-launch session covering internal testing 3.2.105, investment funding safety, reset/cloud sync cleanup, ledger traceability, PDF/export fixes, template-lock UI revamp, Play Console setup, screenshots, store assets, and manual smoke status.
+
+Future AI sessions must read that handoff before touching release prep, Play Console support, Firestore sync, accounting traceability, PDF/XLSX exports, app icon/assets, screenshots, or the template revamp. The file records what was fixed, what must not regress, and what remains as non-blocking follow-up.

@@ -22,8 +22,6 @@ import java.util.Locale
  */
 object ExportUtility {
 
-    private val locale = Locale.getDefault()
-
     /**
      * C21 Stage 1 (3.2.35) — standardized filename pattern per audit §C21 #2.
      * Replaces the prior `report_<epoch>.pdf` / `report_<date>.pdf` ad-hoc
@@ -96,7 +94,7 @@ object ExportUtility {
      * so the PDF reflects the project's currency, not a hardcoded `₹`.
      */
     private fun fmt(v: Double, currencyCode: String) =
-        CurrencyFormatter.detail(v, currencyCode, locale)
+        CurrencyFormatter.detail(v, currencyCode, Locale.getDefault())
 
     // A4 at 72 DPI
     private const val PAGE_W = 595
@@ -171,7 +169,7 @@ object ExportUtility {
         fun line(color: Int = Color.LTGRAY) {
             y += 4f
             val p = Paint().apply { this.color = color; strokeWidth = 0.5f }
-            canvas().drawLine(MARGIN, y, (PAGE_W - MARGIN).toFloat(), y, p)
+            canvas().drawLine(MARGIN, y, PAGE_W - MARGIN, y, p)
             y += 6f
         }
 
@@ -228,7 +226,7 @@ object ExportUtility {
             else     -> COLOR_WHITE
         }
         val rowTop = y
-        rect(MARGIN, rowTop, PAGE_W - MARGIN.toFloat(), rowTop + row.height, bgColor)
+        rect(MARGIN, rowTop, PAGE_W - MARGIN, rowTop + row.height, bgColor)
 
         var xPos = MARGIN + 4f
         row.cells.forEachIndexed { i, (lines, paint) ->
@@ -446,7 +444,7 @@ object ExportUtility {
         y += CHART_PANEL_TITLE_H
 
         val chartLeft   = MARGIN + 48f  // leave 48dp for y-axis labels
-        val chartRight  = (PAGE_W - MARGIN).toFloat()
+        val chartRight  = PAGE_W - MARGIN
         val chartTop    = y
         val chartH      = 82f
         val chartBottom = chartTop + chartH
@@ -524,7 +522,7 @@ object ExportUtility {
         }
 
         val chartLeft   = MARGIN + 48f
-        val chartRight  = (PAGE_W - MARGIN).toFloat()
+        val chartRight  = PAGE_W - MARGIN
         val chartTop    = y
         val chartH      = 48f
         val chartBottom = chartTop + chartH
@@ -587,7 +585,7 @@ object ExportUtility {
         canvas().drawText(title, MARGIN, y, bodyPaint(COLOR_PRIMARY, 13f, true))
         y += 4f
         val p = Paint().apply { color = COLOR_PRIMARY; strokeWidth = 1f }
-        canvas().drawLine(MARGIN, y, (PAGE_W - MARGIN).toFloat(), y, p)
+        canvas().drawLine(MARGIN, y, PAGE_W - MARGIN, y, p)
         nl(18f)
     }
 
@@ -1002,7 +1000,7 @@ object ExportUtility {
             "Outstanding"     to fmt(outstanding, currencyCode)
         )
         details.forEachIndexed { i, (label, value) ->
-            if (i % 2 == 0) b.rect(MARGIN, b.y - 12f, PAGE_W - MARGIN.toFloat(), b.y + 4f, Color.rgb(249,250,251))
+            if (i % 2 == 0) b.rect(MARGIN, b.y - 12f, PAGE_W - MARGIN, b.y + 4f, Color.rgb(249,250,251))
             b.canvas().drawText(label, MARGIN + 4f, b.y, bodyPaint(COLOR_GRAY, 10f, true))
             val valueColor = if (label == "Outstanding") (if (outstanding > 0) COLOR_RED else COLOR_GREEN) else COLOR_BLACK
             b.canvas().drawText(value, mid, b.y, bodyPaint(valueColor, 10f))

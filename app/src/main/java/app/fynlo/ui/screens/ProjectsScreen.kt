@@ -25,6 +25,7 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.core.graphics.toColorInt
 
 
 @Composable
@@ -98,7 +99,7 @@ fun ProjectsScreen(viewModel: FinanceViewModel, onNavigateToUpgrade: () -> Unit 
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        PremiumScreenHeader("Projects", "Separate books for every money world")
+        PremiumScreenHeader("Projects", subtitle = "Separate books for every money world")
         Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
         Row(
             modifier            = Modifier.fillMaxWidth(),
@@ -180,7 +181,7 @@ private fun ProjectCard(
             Surface(
                 modifier = Modifier.size(42.dp),
                 shape    = RoundedCornerShape(12.dp),
-                color    = runCatching { Color(android.graphics.Color.parseColor(project.color)) }
+                color    = runCatching { Color(project.color.toColorInt()) }
                               .getOrDefault(MaterialTheme.colorScheme.primary)
             ) {
                 Box(contentAlignment = Alignment.Center) {
@@ -367,7 +368,7 @@ private fun AddProjectDialog(
                 // Theme primary keeps the fallback visually grounded.
                 val primaryFallback = MaterialTheme.colorScheme.primary
                 val parsed = runCatching {
-                    Color(android.graphics.Color.parseColor(hex))
+                    Color(hex.toColorInt())
                 }.getOrDefault(primaryFallback)
                 Surface(
                     modifier  = Modifier.size(36.dp),
@@ -418,5 +419,3 @@ private fun AddProjectDialog(
         )
     }
 }
-
-

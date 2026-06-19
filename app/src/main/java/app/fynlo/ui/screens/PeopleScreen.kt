@@ -206,7 +206,7 @@ fun PeopleScreen(viewModel: FinanceViewModel) {
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        PremiumScreenHeader("Contact Book", "Linked to loans & reminders")
+        PremiumScreenHeader("Contact Book", subtitle = "Linked to loans & reminders")
         Box(modifier = Modifier.weight(1f)) {
         Column(modifier = Modifier.fillMaxSize()) {
         OutlinedTextField(

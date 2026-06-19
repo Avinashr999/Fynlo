@@ -120,7 +120,7 @@ val debts by viewModel.debts.collectAsState()
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        if (showHeader) PremiumScreenHeader("My Debts", "Loans you owe to others")
+        if (showHeader) PremiumScreenHeader("My Debts", subtitle = "Loans you owe to others")
         Box(modifier = Modifier.weight(1f)) {
         app.fynlo.ui.components.PullRefresh(viewModel) {
         LazyColumn(

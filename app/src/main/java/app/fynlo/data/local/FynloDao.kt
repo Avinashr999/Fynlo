@@ -345,6 +345,9 @@ interface FynloDao {
 
     @Query("DELETE FROM audit_events")
     suspend fun deleteAllAuditEvents()
+
+    @Query("DELETE FROM deleted_remote_docs")
+    suspend fun deleteAllDeletedRemoteDocs()
     // ─── Legacy projectId normalization ───────────────────────────────────────
     // Fixes records created before v2.0 (empty projectId) or with the
     // placeholder "personal" string — updates them to the real project UUID.
@@ -446,6 +449,15 @@ interface FynloDao {
 
     @Query("DELETE FROM debt_payments WHERE id = :id")
     suspend fun deleteDebtPaymentById(id: String)
+
+    @Query("DELETE FROM people WHERE id = :id")
+    suspend fun deletePersonById(id: String)
+
+    @Query("DELETE FROM projects WHERE id = :id")
+    suspend fun deleteProjectById(id: String)
+
+    @Query("DELETE FROM investment_valuations WHERE id = :id")
+    suspend fun deleteValuationById(id: String)
 
     @Query("DELETE FROM budgets WHERE category = :category")
     suspend fun deleteBudgetByCategory(category: String)

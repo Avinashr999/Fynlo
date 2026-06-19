@@ -2,6 +2,7 @@ package app.fynlo
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.core.content.edit
 import app.fynlo.data.FinanceRepository
 import app.fynlo.data.ProjectScope
 import app.fynlo.data.RecalcCoordinator
@@ -1041,9 +1042,9 @@ class FinanceViewModel @Inject constructor(
             runCatching {
                 app.fynlo.data.PinManager(context).clearPinSync()
                 context.getSharedPreferences("fynlo_prefs", android.content.Context.MODE_PRIVATE)
-                    .edit().clear().commit()
+                    .edit(commit = true) { clear() }
                 context.getSharedPreferences("theme_prefs", android.content.Context.MODE_PRIVATE)
-                    .edit().clear().commit()
+                    .edit(commit = true) { clear() }
             }
 
             // 4. Sign out of Google / Firebase Auth.
