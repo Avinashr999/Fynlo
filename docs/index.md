@@ -2,8 +2,8 @@
 
 Official legal pages for the Fynlo personal finance Android app.
 
-- [Privacy Policy](privacy/)
-- [Terms and Conditions](terms/)
+- [Privacy Policy](privacy.html)
+- [Terms and Conditions](terms.html)
 
 For privacy questions, support, or data deletion requests, contact:
 
