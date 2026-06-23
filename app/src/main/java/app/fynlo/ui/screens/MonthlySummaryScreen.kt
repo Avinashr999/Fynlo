@@ -514,8 +514,8 @@ private fun exportMonthsAsCsv(
     // The project name isn't readily available at this helper's call site so
     // the subject defaults to the report type itself; matches the pattern
     // for cases where there's no per-project subject to embed.
-    val file = java.io.File(
-        context.cacheDir,
+    val file = app.fynlo.logic.ExportUtility.exportCacheFile(
+        context,
         app.fynlo.logic.ExportUtility.filename("MonthlySummary", "Personal", "csv")
     )
     file.bufferedWriter().use { w ->

@@ -421,3 +421,20 @@ Play App Signing certificate extracted from `229.apk`:
 
 - SHA-1: `D8:31:51:86:FD:1E:11:6A:AF:46:7C:9F:88:5C:82:B4:FD:B0:89:95`
 - SHA-256: `A1:C6:ED:60:B9:13:CC:5D:F8:B9:41:43:BE:3C:66:88:59:88:8E:37:3A:D9:C1:B5:BF:97:93:84:A2:2A:7F:2A`
+
+## Security Hardening Roadmap - 2026-06-23
+
+Completed safe-now:
+
+- FileProvider no longer exposes the whole app cache, files directory, or external cache.
+- Generated share files now live under `cache/exports/` only.
+- Export/share flows covered by this rule: Reports PDF, P&L PDF, Money Flow CSV/PDF, Monthly Summary CSV, and Loan Statement PDF.
+
+Focused security review result: no launch-blocking issue found for the internal testing release. The official Codex Security deep scan workspace was opened, but deep-mode preflight could not prove worker-slot capacity, so treat that deep scan as not finalized.
+
+Phase 2, after Play listing/internal-testing stabilization:
+
+- Decide whether the local ledger database needs full encryption beyond Android app sandbox and PIN protection.
+- Add stricter Firestore rule validation for document fields and schema once sync behavior is stable.
+- Revisit Crashlytics/Analytics privacy controls if store disclosure or user consent strategy changes.
+- Upload native debug symbols for future Play Console crash/ANR analysis.

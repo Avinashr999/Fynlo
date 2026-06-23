@@ -158,8 +158,8 @@ fun ProfitLossScreen(viewModel: FinanceViewModel) {
                     onClick = {
                         // C21 Stage 1 — standardized filename + identity row.
                         val projectName = currentProject?.name ?: "Personal"
-                        val file = java.io.File(
-                            context.cacheDir,
+                        val file = app.fynlo.logic.ExportUtility.exportCacheFile(
+                            context,
                             app.fynlo.logic.ExportUtility.filename("PL_Report", projectName, "pdf")
                         )
                         file.outputStream().use {

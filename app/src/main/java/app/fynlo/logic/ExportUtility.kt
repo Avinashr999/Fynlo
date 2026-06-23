@@ -6,10 +6,12 @@ import android.graphics.Paint
 import android.graphics.Paint.Align
 import android.graphics.Typeface
 import android.graphics.pdf.PdfDocument
+import android.content.Context
 import app.fynlo.BuildConfig
 import app.fynlo.data.model.*
 import app.fynlo.ui.screens.FlowEntry
 import app.fynlo.ui.screens.FlowType
+import java.io.File
 import java.io.OutputStream
 import java.time.LocalDate
 import java.util.Locale
@@ -44,8 +46,18 @@ object ExportUtility {
         return "Fynlo_${reportType}_${date}_$safeSubject.$ext"
     }
 
+
     /**
-     * C21 Stage 1 — header info row rendered at the top of every PDF cover.
+     * Generated reports are the only files Fynlo shares outside the app.
+     * Keep every FileProvider-backed share inside cache/exports/ so Android
+     * never grants URI access to the broader cache or internal files roots.
+     */
+    fun exportCacheFile(context: Context, fileName: String): File {
+        val exportDir = File(context.cacheDir, "exports").also { it.mkdirs() }
+        return File(exportDir, fileName)
+    }
+    /**
+     * C21 Stage 1 � header info row rendered at the top of every PDF cover.
      * Audit §C21 #8 + #9: "Project: ... | User: ... | Period: ... | Currency: ..."
      *
      * Defaults are tolerant — User segment is omitted entirely when blank

@@ -166,8 +166,8 @@ fun ReportsHubScreen(
                 Button(
                     onClick = {
                         // C21 Stage 1 — standardized filename + identity row.
-                        val file = java.io.File(
-                            context.cacheDir,
+                        val file = app.fynlo.logic.ExportUtility.exportCacheFile(
+                            context,
                             app.fynlo.logic.ExportUtility.filename("Report", projectName, "pdf")
                         )
                         file.outputStream().use {

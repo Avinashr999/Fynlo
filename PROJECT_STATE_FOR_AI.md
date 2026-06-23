@@ -1572,3 +1572,17 @@ Internal testers reported Google Sign-In failing with the login-screen developer
 ## Journal Addendum - 2026-06-23 Play App Signing Fingerprints
 
 Play Console did not show App integrity/App signing in the visible sidebar. Downloaded the Play-generated Signed, universal APK (`229.apk`) from App bundle explorer and extracted the Play App Signing certificate using Android SDK `apksigner verify --print-certs`. Firebase must add the V3.0 Signer SHA fingerprints: SHA-1 `D8:31:51:86:FD:1E:11:6A:AF:46:7C:9F:88:5C:82:B4:FD:B0:89:95` and SHA-256 `A1:C6:ED:60:B9:13:CC:5D:F8:B9:41:43:BE:3C:66:88:59:88:8E:37:3A:D9:C1:B5:BF:97:93:84:A2:2A:7F:2A`. Ignore the Source Stamp Signer certificate for Firebase OAuth.
+
+---
+
+## Journal Addendum - 2026-06-23 Security Hardening Roadmap
+
+Safe-now hardening completed: FileProvider sharing is restricted to generated export files under `cache/exports/`. Report, CSV, P&L, Money Flow, Monthly Summary, and Loan Statement shares now create files through `ExportUtility.exportCacheFile(...)`, so the app no longer exposes the broader cache, files, or external-cache roots through content URIs.
+
+Security review status: focused review found no launch-blocking issue. The official Codex Security deep scan workspace was opened, but its deep preflight could not prove worker-slot capacity, so the complete deep-scan artifact was not finalized.
+
+Phase 2 hardening after Play listing/internal-testing stabilization:
+- Evaluate full local ledger DB encryption, such as SQLCipher or equivalent Room-compatible storage, if stronger protection than Android app sandbox plus PIN is required.
+- Tighten Firestore security rules with schema and field validation once sync coverage and account deletion/reset behavior are stable.
+- Consider explicit privacy controls for Crashlytics/Analytics collection if Play/Data Safety positioning changes.
+- Upload native debug symbols for Play Console crash/ANR diagnostics when practical.

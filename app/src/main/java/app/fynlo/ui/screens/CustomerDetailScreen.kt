@@ -386,8 +386,8 @@ val borrowers by viewModel.borrowers.collectAsState()
                 IconButton(onClick = {
                         // C21 Stage 1 — standardized filename + identity row
                         // (project + signed-in email on the PDF cover).
-                        val file = java.io.File(
-                            context.cacheDir,
+                        val file = app.fynlo.logic.ExportUtility.exportCacheFile(
+                            context,
                             app.fynlo.logic.ExportUtility.filename("LoanStatement", borrower.name, "pdf")
                         )
                         file.outputStream().use { os ->
