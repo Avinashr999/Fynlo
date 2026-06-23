@@ -246,11 +246,11 @@ private fun friendlyGoogleSignInError(error: Throwable): String {
             "Google sign-in is already in progress."
         GoogleSignInStatusCodes.SIGN_IN_FAILED ->
             "Google sign-in failed. Please try again."
-        10 -> "Google sign-in is not available in this build. Continue without signing in for now."
+        10 -> "Google sign-in setup is missing for this Play build. Continue without signing in for now."
         else -> when {
             error.message?.contains("cancel", ignoreCase = true) == true -> ""
             error.message?.startsWith("10") == true ->
-                "Google sign-in is not available in this build. Continue without signing in for now."
+                "Google sign-in setup is missing for this Play build. Continue without signing in for now."
             else -> "Google sign-in failed. Please try again."
         }
     }

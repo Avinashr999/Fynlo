@@ -1563,3 +1563,12 @@ All 5 steps of the audit's §C02 fix list are now landed. Status post-C02:
 Created `docs/release-handoff/2026-06-20-internal-testing-knowledge-hub.md` as the durable handoff for the long pre-launch session covering internal testing 3.2.105, investment funding safety, reset/cloud sync cleanup, ledger traceability, PDF/export fixes, template-lock UI revamp, Play Console setup, screenshots, store assets, and manual smoke status.
 
 Future AI sessions must read that handoff before touching release prep, Play Console support, Firestore sync, accounting traceability, PDF/XLSX exports, app icon/assets, screenshots, or the template revamp. The file records what was fixed, what must not regress, and what remains as non-blocking follow-up.
+---
+
+## Journal Addendum - 2026-06-23 Google Sign-In Internal Testing
+
+Internal testers reported Google Sign-In failing with the login-screen developer-error message. Diagnosis points to Play App Signing SHA fingerprints missing from Firebase/Google OAuth for package `app.fynlo`. Hardened `GoogleSignInHelper` to use the generated `default_web_client_id` resource with fallback, clarified the login error text, and recorded the Play Console > App integrity > Firebase SHA-1/SHA-256 routine in the internal testing knowledge hub.
+
+## Journal Addendum - 2026-06-23 Play App Signing Fingerprints
+
+Play Console did not show App integrity/App signing in the visible sidebar. Downloaded the Play-generated Signed, universal APK (`229.apk`) from App bundle explorer and extracted the Play App Signing certificate using Android SDK `apksigner verify --print-certs`. Firebase must add the V3.0 Signer SHA fingerprints: SHA-1 `D8:31:51:86:FD:1E:11:6A:AF:46:7C:9F:88:5C:82:B4:FD:B0:89:95` and SHA-256 `A1:C6:ED:60:B9:13:CC:5D:F8:B9:41:43:BE:3C:66:88:59:88:8E:37:3A:D9:C1:B5:BF:97:93:84:A2:2A:7F:2A`. Ignore the Source Stamp Signer certificate for Firebase OAuth.
