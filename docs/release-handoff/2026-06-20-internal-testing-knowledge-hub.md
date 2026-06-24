@@ -446,3 +446,10 @@ Phase 2, after Play listing/internal-testing stabilization:
 - Add stricter Firestore rule validation for document fields and schema once sync behavior is stable.
 - Revisit Crashlytics/Analytics privacy controls if store disclosure or user consent strategy changes.
 - Upload native debug symbols for future Play Console crash/ANR analysis.
+
+## 2026-06-24 - Test Android Apps pass and network security cleanup
+
+- `test-android-apps` analysis was requested. No adb device or emulator was available, so screen/performance automation could not run in that pass.
+- Local verification passed for prod-debug unit tests and Kotlin compilation.
+- `lintProdDebug` passed after moving debug user-certificate trust into `debug-overrides` in `app/src/debug/res/xml/network_security_config.xml`.
+- Production network security already trusted only system certificates and disallowed cleartext traffic; this cleanup prevents debug lint noise without weakening Play release security.

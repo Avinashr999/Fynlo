@@ -1596,3 +1596,9 @@ User requested changing the visible app/store/legal/export brand from `Fynlo` to
 Important boundary: package name, namespace, database names, shared-preference keys, class names, and other stable technical identifiers remain unchanged. The app still ships as package `app.fynlo`; do not rename this unless a future Play migration explicitly requires a brand-new app listing.
 
 Next Play upload for this rename line uses `versionCode = 230` and `versionName = "3.2.106"`. Future Play listing text, screenshots, feature graphic, and tester-facing release notes should use `Fynlo Ledger`.
+## 2026-06-24 - Android test plugin analysis
+
+- Ran the `test-android-apps` code-side QA pass after the phone was disconnected from adb.
+- Unit tests and prod-debug Kotlin compilation passed.
+- Lint passed after fixing the debug-only network security config so user-installed certificates live under `debug-overrides`, while release remains HTTPS-only and system-certificates-only.
+- Device/emulator UI and performance capture still require a connected adb phone or an Android emulator in PATH.

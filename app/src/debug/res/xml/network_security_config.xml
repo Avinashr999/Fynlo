@@ -1,19 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  DEBUG-ONLY override of the main network security config. Identical to the
-  release config, but additionally permits cleartext to the local Firebase
-  emulator (10.0.2.2 = the host loopback as seen from an Android emulator, and
-  localhost) so instrumented tests like FirestoreResetTest can talk to the
-  Firestore emulator over plain HTTP/gRPC. This file only applies to debug
-  builds — release keeps cleartext fully disabled.
+  Debug-only override of the main network security config.
+  Release keeps cleartext disabled and trusts only system certificates.
+  Debug builds also allow user-installed certificates and local Firebase
+  emulator traffic for instrumented tests.
 -->
 <network-security-config>
     <base-config cleartextTrafficPermitted="false">
         <trust-anchors>
             <certificates src="system" />
-            <certificates src="user" />
         </trust-anchors>
     </base-config>
+    <debug-overrides>
+        <trust-anchors>
+            <certificates src="user" />
+        </trust-anchors>
+    </debug-overrides>
     <domain-config cleartextTrafficPermitted="true">
         <domain includeSubdomains="true">10.0.2.2</domain>
         <domain includeSubdomains="true">localhost</domain>
