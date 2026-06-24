@@ -200,7 +200,21 @@ fun AboutScreen() {
             AboutLinkRow(
                 icon  = Icons.Default.Shield,
                 label = "Privacy Policy",
-                onClick = { openUrl("https://github.com/Avinashr999/Fynlo/blob/master/PRIVACY_POLICY.md") }
+                onClick = { openUrl("https://avinashr999.github.io/Fynlo/privacy/") }
+            )
+            HorizontalDivider(thickness = 0.5.dp,
+                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f))
+            AboutLinkRow(
+                icon  = Icons.AutoMirrored.Filled.MenuBook,
+                label = "Terms & Conditions",
+                onClick = { openUrl("https://avinashr999.github.io/Fynlo/terms/") }
+            )
+            HorizontalDivider(thickness = 0.5.dp,
+                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f))
+            AboutLinkRow(
+                icon  = Icons.Default.Delete,
+                label = "Account & Data Deletion",
+                onClick = { openUrl("https://avinashr999.github.io/Fynlo/delete-account.html") }
             )
             HorizontalDivider(thickness = 0.5.dp,
                 color = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f))

@@ -1,32 +1,9 @@
 # Fynlo Ledger - Terms & Conditions
 
 **Document version:** 1.0
-**Effective date:** [TO BE SET on first publication]
-**Last updated:** 2026-05-25
+**Effective date:** 24 June 2026
+**Last updated:** 2026-06-24
 **URL:** https://avinashr999.github.io/Fynlo/terms/
-
----
-
-## Warning: Notice to developer (delete before publishing)
-
-> This document is filled with reasonable defaults but **still requires lawyer review** before publishing or showing to any user.
->
-> Before going live:
->
-> 1. Have an Indian tech lawyer review the entire document, with special attention to Section 11 (liability cap) and Section 14 (discontinuation/refunds)
-> 2. Verify all factual claims match actual app behavior
-> 3. Set the effective date
-> 4. Once OPC is registered, replace "Avinash Reddy Karri" with the OPC name throughout
-> 5. Confirm pricing in Section 10 is final (currently Rs 149/month, Rs 999/year, limited founding lifetime Rs 2,799)
-> 6. Confirm the Rs 999 liability cap with lawyer - verify defensibility for your jurisdiction
-> 7. Delete this notice block before publishing
->
-> Specific items to ask lawyer about:
-> - Is the Rs 999 liability cap clause in Section 11.2 enforceable? Defensible against unconscionability challenge?
-> - Is the "courts of Kakinada" jurisdiction in Section 16.2 the right choice? (Where you reside, but lawyer may suggest alternatives)
-> - Is the class-action waiver in Section 16.5 enforceable in India for consumer disputes?
-> - Is the Founding Lifetime refund schedule in Section 14.4 reasonable?
-> - Should Section 6 (Acceptable Use) include AI/automation prohibitions if you ever offer Fynlo Ledger's data via API?
 
 ---
 
@@ -532,7 +509,6 @@ For questions about these Terms:
   - Subject "Fynlo Ledger Legal" for legal questions
   - Subject "Fynlo Ledger Dispute" for formal disputes
   - Subject "Fynlo Ledger Refund" for refund requests
-- **Postal:** [TO BE ADDED - Avinash's business address in Kakinada]
 
 For privacy or grievance matters, see the Privacy Policy.
 
@@ -552,15 +528,5 @@ In-app, you will be asked to explicitly accept these Terms before first use and 
 ---
 
 **Document version 1.0**
-**Effective date:** [TO BE SET]
+**Effective date:** 24 June 2026
 **URL:** https://avinashr999.github.io/Fynlo/terms/
-
-
-
-
-
-
-
-
-
-

@@ -464,3 +464,9 @@ When the phone is connected again, run the remaining `test-android-apps` device-
 - Watch logcat for crashes, Google sign-in errors, Firestore sync/reset errors, and ledger/action failures.
 - Run basic performance checks for navigation, modal open/close, add/edit/delete flows, and report/export paths.
 - Treat this as the continuation of the 2026-06-24 Android testing pass, not a new unrelated task.
+
+## 2026-06-24 - Fynlo Ledger legal page cleanup
+
+- Confirmed Privacy Policy, Account/Data Deletion, legal index, and Terms pages use the visible `Fynlo Ledger` brand.
+- Updated About screen legal links to the public GitHub Pages privacy, terms, and data deletion URLs.
+- Removed developer-only publishing placeholders from `docs/terms.md`; Terms still needs owner/lawyer factual review before monetized production launch, especially subscription and acceptance wording.
