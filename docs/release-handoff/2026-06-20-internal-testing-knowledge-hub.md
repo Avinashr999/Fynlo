@@ -470,3 +470,10 @@ When the phone is connected again, run the remaining `test-android-apps` device-
 - Confirmed Privacy Policy, Account/Data Deletion, legal index, and Terms pages use the visible `Fynlo Ledger` brand.
 - Updated About screen legal links to the public GitHub Pages privacy, terms, and data deletion URLs.
 - Removed developer-only publishing placeholders from `docs/terms.md`; Terms still needs owner/lawyer factual review before monetized production launch, especially subscription and acceptance wording.
+
+## 2026-06-24 - Phone QA date picker polish
+
+- Phone-connected QA continued on the production package after installing the latest prod-debug build.
+- Main screens and core sheets were visually checked on the connected phone: dashboard, loans, invest, reports, expenses, search, drawer, settings, add account, add transaction, add loan, and add investment.
+- One safe polish fix landed: `DatePickerField` is now picker-only/read-only. This prevents the keyboard from opening unexpectedly on date fields and keeps form sheets calmer.
+- Future QA should still include a quick tap on date fields in add/edit transaction, loan, debt, budget, recurring, goal, and investment forms to confirm the Material date picker opens and the keyboard stays hidden.

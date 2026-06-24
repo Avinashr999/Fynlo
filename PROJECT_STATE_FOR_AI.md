@@ -1602,3 +1602,10 @@ Next Play upload for this rename line uses `versionCode = 230` and `versionName 
 - Unit tests and prod-debug Kotlin compilation passed.
 - Lint passed after fixing the debug-only network security config so user-installed certificates live under `debug-overrides`, while release remains HTTPS-only and system-certificates-only.
 - Device/emulator UI and performance capture still require a connected adb phone or an Android emulator in PATH.
+
+## 2026-06-24 - Phone QA date picker polish
+
+- Continued the phone-connected Android QA pass on device `3C15CA0055F00000` with the production package `app.fynlo`.
+- Installed the latest prod-debug build and verified the visible brand as `Fynlo Ledger` across dashboard, loans, invest, reports, expenses, search, drawer, settings, and core add/edit sheets.
+- Found one polish issue in the investment add sheet: the shared date field could pull up the keyboard instead of behaving like a picker-only control.
+- Updated `DatePickerField` so date inputs are read-only picker controls. Tapping the field opens the Material date picker and clears focus, preventing accidental keyboard popups across investment, transaction, loan, budget, recurring, and other date-based forms.

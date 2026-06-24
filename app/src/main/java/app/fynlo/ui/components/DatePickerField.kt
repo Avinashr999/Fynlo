@@ -1,6 +1,7 @@
 ﻿package app.fynlo.ui.components
 
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -8,13 +9,14 @@ import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.unit.dp
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
 /**
  * Reusable date picker field.
- * Displays a text field. Tapping opens a Material3 DatePickerDialog.
+ * Displays a picker-style field. Tapping opens a Material3 DatePickerDialog.
  * value / onValueChange use "DD-MM-YYYY" format (app's internal format).
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -27,6 +29,17 @@ fun DatePickerField(
     optional: Boolean = false
 ) {
     var showPicker by remember { mutableStateOf(false) }
+    val focusManager = LocalFocusManager.current
+    val interactionSource = remember { MutableInteractionSource() }
+
+    LaunchedEffect(interactionSource) {
+        interactionSource.interactions.collect { interaction ->
+            if (interaction is PressInteraction.Release) {
+                focusManager.clearFocus(force = true)
+                showPicker = true
+            }
+        }
+    }
 
     // Parse current value to populate the picker
     val initialMillis = remember(value) {
@@ -62,15 +75,16 @@ fun DatePickerField(
 
     OutlinedTextField(
         value         = value,
-        onValueChange = onValueChange,
+        onValueChange = {},
         label         = { Text(if (optional) "$label (optional)" else label) },
         trailingIcon  = {
             IconButton(onClick = { showPicker = true }) {
                 Icon(Icons.Default.CalendarMonth, contentDescription = "Pick date")
             }
         },
-        readOnly      = false,   // still allow manual typing
+        readOnly      = true,
         singleLine    = true,
+        interactionSource = interactionSource,
         modifier      = modifier.fillMaxWidth(),
         shape         = RoundedCornerShape(16.dp),
         colors        = OutlinedTextFieldDefaults.colors(
@@ -84,5 +98,4 @@ fun DatePickerField(
         placeholder   = { Text("DD-MM-YYYY") }
     )
 }
-
 
