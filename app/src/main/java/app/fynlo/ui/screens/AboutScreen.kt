@@ -38,7 +38,7 @@ fun AboutScreen() {
             .padding(horizontal = 16.dp)
             .verticalScroll(rememberScrollState())
     ) {
-        PremiumScreenHeader("About Fynlo", subtitle = "Ledger-first finance, built for clarity")
+        PremiumScreenHeader("About Fynlo Ledger", subtitle = "Ledger-first finance, built for clarity")
         Spacer(Modifier.height(16.dp))
 
         // ── App identity card ────────────────────────────────────────────────
@@ -52,7 +52,7 @@ fun AboutScreen() {
         ) {
                 FynloBrandMark(size = 56.dp)
                 Column {
-                    Text("Fynlo",
+                    Text("Fynlo Ledger",
                         style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold))
                     Text("Personal finance ledger",
                         style = MaterialTheme.typography.bodySmall,
@@ -70,7 +70,7 @@ fun AboutScreen() {
         Spacer(Modifier.height(20.dp))
 
         // ── Feature highlights ───────────────────────────────────────────────
-        Text("What Fynlo Does",
+        Text("What Fynlo Ledger Does",
             style    = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
             modifier = Modifier.padding(bottom = 10.dp))
 
@@ -128,7 +128,7 @@ fun AboutScreen() {
             AboutBulletRow(
                 icon = Icons.Default.DesignServices,
                 title = "Cleaner interface",
-                body = "Screens, dialogs, reports, and app icons now follow the newer Fynlo visual language."
+                body = "Screens, dialogs, reports, and app icons now follow the newer Fynlo Ledger visual language."
             )
             AboutBulletRow(
                 icon = Icons.Default.PictureAsPdf,
@@ -139,7 +139,7 @@ fun AboutScreen() {
 
         Spacer(Modifier.height(20.dp))
 
-        Text("How to Use Fynlo",
+        Text("How to Use Fynlo Ledger",
             style    = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
             modifier = Modifier.padding(bottom = 10.dp))
 
@@ -171,7 +171,7 @@ fun AboutScreen() {
         AboutInfoCard(
             icon  = Icons.Default.Gavel,
             title = "Legal Disclaimer",
-            body  = "Fynlo is a manual-entry personal finance ledger for personal use only. It is NOT a banking, lending, or investment advisory service. Always verify your data with official bank statements. The developer is not responsible for any financial decisions made using this app.",
+            body  = "Fynlo Ledger is a manual-entry personal finance ledger for personal use only. It is NOT a banking, lending, or investment advisory service. Always verify your data with official bank statements. The developer is not responsible for any financial decisions made using this app.",
             color = SemanticRed
         )
 

@@ -1,16 +1,16 @@
-# Fynlo Account and Data Deletion
+# Fynlo Ledger Account and Data Deletion
 
 **Last updated:** 18 June 2026
-**App:** Fynlo
+**App:** Fynlo Ledger
 **Package name:** app.fynlo
 
-Fynlo lets you use the app without signing in. If you use Fynlo offline, your data is stored on your device and can be deleted by resetting app data from inside the app or by uninstalling the app.
+Fynlo Ledger lets you use the app without signing in. If you use Fynlo Ledger offline, your data is stored on your device and can be deleted by resetting app data from inside the app or by uninstalling the app.
 
-If you sign in with Google and use cloud sync, you can request deletion of your account-associated Fynlo data.
+If you sign in with Google and use cloud sync, you can request deletion of your account-associated Fynlo Ledger data.
 
 ## Delete data in the app
 
-Open Fynlo and go to:
+Open Fynlo Ledger and go to:
 
 **Settings > Backup & Export / Profile & Security > Reset or delete app data**
 
@@ -24,13 +24,13 @@ If you cannot access the app or want help deleting cloud-synced data, email:
 
 Use the subject:
 
-**Fynlo Data Deletion Request**
+**Fynlo Ledger Data Deletion Request**
 
-Include the Google account email you used to sign in to Fynlo. We may ask you to confirm ownership of that email before deleting account-associated cloud data.
+Include the Google account email you used to sign in to Fynlo Ledger. We may ask you to confirm ownership of that email before deleting account-associated cloud data.
 
 ## What data is deleted
 
-When a valid deletion request is processed, Fynlo deletes account-associated app data stored for cloud sync, including financial ledger records, loans, debts, investments, transactions, budgets, goals, projects, preferences, and related sync records.
+When a valid deletion request is processed, Fynlo Ledger deletes account-associated app data stored for cloud sync, including financial ledger records, loans, debts, investments, transactions, budgets, goals, projects, preferences, and related sync records.
 
 Local data stored only on your device must be deleted from the app or device because we cannot access data that was never synced.
 

@@ -119,7 +119,7 @@ fun LoginScreen(onSignedIn: () -> Unit) {
 
             // App name
             Text(
-                "Fynlo",
+                "Fynlo Ledger",
                 fontSize   = 40.sp,
                 fontWeight = FontWeight.ExtraBold,
                 color      = Color.White,

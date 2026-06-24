@@ -25,12 +25,12 @@ object BackupRestorePreviewer {
             Json.decodeFromString<BackupData>(json)
         } catch (e: SerializationException) {
             throw IllegalStateException(
-                "This file is not a valid Fynlo backup. Use Export JSON Backup for restore; CSV and PDF exports cannot be restored.",
+                "This file is not a valid Fynlo Ledger backup. Use Export JSON Backup for restore; CSV and PDF exports cannot be restored.",
                 e,
             )
         } catch (e: IllegalArgumentException) {
             throw IllegalStateException(
-                "This file is not a valid Fynlo backup. Use Export JSON Backup for restore; CSV and PDF exports cannot be restored.",
+                "This file is not a valid Fynlo Ledger backup. Use Export JSON Backup for restore; CSV and PDF exports cannot be restored.",
                 e,
             )
         }
@@ -38,7 +38,7 @@ object BackupRestorePreviewer {
             is BackupIntegrity.Check.Ok -> Unit
             is BackupIntegrity.Check.UnsupportedVersion ->
                 throw IllegalStateException(
-                    "Backup format v${verdict.version} is newer than this app supports. Update Fynlo and try again."
+                    "Backup format v${verdict.version} is newer than this app supports. Update Fynlo Ledger and try again."
                 )
             is BackupIntegrity.Check.HashMismatch ->
                 throw IllegalStateException("Backup integrity check failed. The file may be corrupted or modified.")
@@ -98,7 +98,7 @@ object BackupRestorePreviewer {
             }
         }.distinct()
         if (missingAccountIds.isNotEmpty()) {
-            warnings += "Some account ID links are missing. Fynlo will fall back to stored account names where possible."
+            warnings += "Some account ID links are missing. Fynlo Ledger will fall back to stored account names where possible."
         }
 
         val missingAccountNames = buildList {

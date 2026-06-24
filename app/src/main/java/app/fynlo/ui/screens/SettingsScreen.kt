@@ -304,7 +304,7 @@ fun SettingsScreen(
             onConfirm = { pwd ->
                 pendingExportPassword = pwd
                 showExportPwdDialog = false
-                jsonLauncher.launch("Fynlo_Backup_${System.currentTimeMillis()}.fynloenc")
+                jsonLauncher.launch("Fynlo_Ledger_Backup_${System.currentTimeMillis()}.fynloenc")
             },
             onDismiss = { showExportPwdDialog = false },
         )
@@ -433,7 +433,7 @@ fun SettingsScreen(
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        PremiumScreenHeader("Settings", subtitle = "Your Fynlo control room")
+        PremiumScreenHeader("Settings", subtitle = "Your Fynlo Ledger control room")
         Column(
         modifier = Modifier
             .fillMaxSize()
@@ -464,7 +464,7 @@ fun SettingsScreen(
                     Icon(Icons.Default.Star, null, Modifier.size(22.dp), tint = Emerald500)
                 }
                 Column(Modifier.weight(1f)) {
-                    Text("Upgrade to Fynlo Pro",
+                    Text("Upgrade to Fynlo Ledger Pro",
                         style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
                         color = Emerald500)
                     Text("Unlimited everything, cloud sync, reports & more",
@@ -637,7 +637,7 @@ fun SettingsScreen(
                     color = Green,
                     title = "Export Full Backup (.xlsx)",
                     subtitle = "All data in 7 sheets \u2014 opens in Excel/Sheets"
-                ) { if (isPro) xlsxLauncher.launch("Fynlo_Backup_${System.currentTimeMillis()}.xlsx") else onNavigateToUpgrade() }
+                ) { if (isPro) xlsxLauncher.launch("Fynlo_Ledger_Backup_${System.currentTimeMillis()}.xlsx") else onNavigateToUpgrade() }
 
                 SettingsDivider()
                 }
@@ -695,7 +695,7 @@ fun SettingsScreen(
                         showExportPwdDialog = true
                     } else {
                         pendingExportPassword = ""
-                        jsonLauncher.launch("Fynlo_Backup_${System.currentTimeMillis()}.json")
+                        jsonLauncher.launch("Fynlo_Ledger_Backup_${System.currentTimeMillis()}.json")
                     }
                 }
 
@@ -706,7 +706,7 @@ fun SettingsScreen(
                     color = Red,
                     title = "Export PDF Report",
                     subtitle = "Financial summary report"
-                ) { if (isPro) pdfLauncher.launch("Fynlo_Report_${System.currentTimeMillis()}.pdf") else onNavigateToUpgrade() }
+                ) { if (isPro) pdfLauncher.launch("Fynlo_Ledger_Report_${System.currentTimeMillis()}.pdf") else onNavigateToUpgrade() }
 
                 SettingsDivider()
 
@@ -856,7 +856,7 @@ fun SettingsScreen(
                         events = auditEvents,
                         onDismiss = { showAuditTrail = false },
                         onExport = {
-                            auditExportLauncher.launch("Fynlo_Audit_Trail_${System.currentTimeMillis()}.csv")
+                            auditExportLauncher.launch("Fynlo_Ledger_Audit_Trail_${System.currentTimeMillis()}.csv")
                         },
                     )
                 }
@@ -900,7 +900,7 @@ fun SettingsScreen(
                         title = { Text("Reset cloud sync?") },
                         text = {
                             Text(
-                                "This wipes all your Fynlo data on Firestore (cloud) and re-pushes the current local data as the new canonical version.\n\n" +
+                                "This wipes all your Fynlo Ledger data on Firestore (cloud) and re-pushes the current local data as the new canonical version.\n\n" +
                                 "Local data stays untouched. Other devices signed in to the same account will be re-synced from the new cloud state on their next launch.\n\n" +
                                 "Use this only if the Balance change log shows SYNC_PULL_DEBT / _BORROWER entries restoring values you don't recognise."
                             )
@@ -1259,7 +1259,7 @@ fun SettingsScreen(
                     icon  = Icons.Default.Star,
                     color = Amber,
                     title = "Rate on Play Store",
-                    subtitle = "Enjoying Fynlo? Leave us a review!"
+                    subtitle = "Enjoying Fynlo Ledger? Leave us a review!"
                 ) {
                     try {
                         context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW,

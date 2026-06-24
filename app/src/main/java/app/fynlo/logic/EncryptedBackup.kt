@@ -76,7 +76,7 @@ object EncryptedBackup {
      *    corrupted backup".
      */
     fun decrypt(blob: ByteArray, password: String): String {
-        require(isEncrypted(blob)) { "Not a Fynlo-encrypted backup" }
+        require(isEncrypted(blob)) { "Not a Fynlo Ledger encrypted backup" }
         require(password.isNotEmpty()) { "Password must not be empty" }
         require(blob.size >= MAGIC.size + SALT_BYTES + NONCE_BYTES) { "Backup truncated" }
 

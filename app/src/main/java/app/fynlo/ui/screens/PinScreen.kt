@@ -100,7 +100,7 @@ fun PinScreen(
         }
         BiometricPrompt(activity, executor, callback).authenticate(
             BiometricPrompt.PromptInfo.Builder()
-                .setTitle("Unlock Fynlo")
+                .setTitle("Unlock Fynlo Ledger")
                 .setSubtitle("Use fingerprint or face unlock")
                 .setAllowedAuthenticators(
                     BiometricManager.Authenticators.BIOMETRIC_WEAK

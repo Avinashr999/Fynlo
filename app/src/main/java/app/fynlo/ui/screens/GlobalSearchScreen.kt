@@ -275,7 +275,7 @@ fun GlobalSearchScreen(
                                 Icon(Icons.Default.Search, null, Modifier.size(64.dp),
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(0.4f))
                                 Spacer(Modifier.height(16.dp))
-                                Text("Search across Fynlo",
+                                Text("Search across Fynlo Ledger",
                                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
                                     color = MaterialTheme.colorScheme.onSurface)
                                 Spacer(Modifier.height(6.dp))

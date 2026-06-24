@@ -62,7 +62,7 @@ sealed class Screen(val route: String, val label: String, val icon: ImageVector)
     object Invest : Screen("invest", "Invest", Icons.AutoMirrored.Filled.TrendingUp)
     object Spend : Screen("spend", "Expenses", Icons.AutoMirrored.Filled.ReceiptLong)
     object Settings : Screen("settings", "Settings", Icons.Default.Settings)
-    object UpgradePro : Screen("upgrade_pro", "Fynlo Pro", Icons.Default.Star)
+    object UpgradePro : Screen("upgrade_pro", "Fynlo Ledger Pro", Icons.Default.Star)
     object About : Screen("about", "About", Icons.Default.Info)
     object People : Screen("people", "Contact Book", Icons.Default.Group)
     object Budgets : Screen("budgets", "Budgeting", Icons.Default.AccountBalanceWallet)
@@ -345,7 +345,7 @@ fun MainNavigation(viewModel: FinanceViewModel) {
                 ) {
 
                     // ── C20 (3.2.44) — Compact header per audit §C20 ──────────────
-                    // Pre-C20 the header was 52dp icon + "Fynlo" headline + a
+                    // Pre-C20 the header was 52dp icon + "Fynlo Ledger" headline + a
                     // "Personal Finance Manager" tagline = ~120dp tall (~25%
                     // of drawer vertical). Now it's a single row: 40dp avatar
                     // + user name + email. Drops the tagline (it's still on
@@ -936,7 +936,7 @@ private fun LedgerAppTopBar(
             ) {
                 FynloBrandMark(size = 30.dp)
                 Text(
-                    "Fynlo",
+                    "Fynlo Ledger",
                     style = MaterialTheme.typography.titleLarge.copy(
                         fontWeight = FontWeight.ExtraBold,
                         color = Emerald700,
@@ -1177,13 +1177,13 @@ private fun FynloReviewDialog(
         },
         title = {
             Text(
-                "Enjoying Fynlo?",
+                "Enjoying Fynlo Ledger?",
                 style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold),
             )
         },
         text = {
             Text(
-                "A quick Play Store review helps other people find Fynlo and tells us what to polish next.",
+                "A quick Play Store review helps other people find Fynlo Ledger and tells us what to polish next.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

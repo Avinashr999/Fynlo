@@ -1,4 +1,4 @@
-﻿# Fynlo - Terms & Conditions
+# Fynlo Ledger - Terms & Conditions
 
 **Document version:** 1.0
 **Effective date:** [TO BE SET on first publication]
@@ -26,17 +26,17 @@
 > - Is the "courts of Kakinada" jurisdiction in Section 16.2 the right choice? (Where you reside, but lawyer may suggest alternatives)
 > - Is the class-action waiver in Section 16.5 enforceable in India for consumer disputes?
 > - Is the Founding Lifetime refund schedule in Section 14.4 reasonable?
-> - Should Section 6 (Acceptable Use) include AI/automation prohibitions if you ever offer Fynlo's data via API?
+> - Should Section 6 (Acceptable Use) include AI/automation prohibitions if you ever offer Fynlo Ledger's data via API?
 
 ---
 
 ## 1. Agreement to Terms
 
-These Terms & Conditions ("Terms") govern your use of the **Fynlo** mobile application ("App", "Fynlo", "Service") provided by **Avinash Reddy Karri** (the "Operator", "we", "us", "our"), based in Kakinada, Andhra Pradesh, India.
+These Terms & Conditions ("Terms") govern your use of the **Fynlo Ledger** mobile application ("App", "Fynlo Ledger", "Service") provided by **Avinash Reddy Karri** (the "Operator", "we", "us", "our"), based in Kakinada, Andhra Pradesh, India.
 
 *Note: Operator status will update to a registered One Person Company (OPC) before monetization launch. Users will be notified of the change via in-app notice.*
 
-By downloading, installing, or using Fynlo, you ("User", "you") agree to be bound by these Terms. If you do not agree, do not use the App.
+By downloading, installing, or using Fynlo Ledger, you ("User", "you") agree to be bound by these Terms. If you do not agree, do not use the App.
 
 These Terms work alongside our **Privacy Policy** (available at https://avinashr999.github.io/Fynlo/privacy/) and any applicable in-app notices.
 
@@ -44,23 +44,23 @@ These Terms work alongside our **Privacy Policy** (available at https://avinashr
 
 ## 2. Eligibility
 
-To use Fynlo, you must:
+To use Fynlo Ledger, you must:
 
 - Be at least 18 years old
 - Have legal capacity to enter into a contract under Indian law
 - Provide accurate information when prompted
 - Have a valid Google Account for sign-in
-- Be located in a jurisdiction where Fynlo is legally available
+- Be located in a jurisdiction where Fynlo Ledger is legally available
 
-By using Fynlo, you confirm you meet these requirements.
+By using Fynlo Ledger, you confirm you meet these requirements.
 
 ---
 
-## 3. What Fynlo is - and is not
+## 3. What Fynlo Ledger is - and is not
 
-### 3.1 What Fynlo IS
+### 3.1 What Fynlo Ledger IS
 
-Fynlo is a **manual-entry personal finance ledger** that helps you:
+Fynlo Ledger is a **manual-entry personal finance ledger** that helps you:
 
 - Track your accounts, transactions, and balances (you enter all data manually)
 - Manage records of loans you've given to others
@@ -69,9 +69,9 @@ Fynlo is a **manual-entry personal finance ledger** that helps you:
 - Set budgets and savings goals
 - Generate reports based on data you've entered
 
-### 3.2 What Fynlo IS NOT
+### 3.2 What Fynlo Ledger IS NOT
 
-Fynlo is **NOT**:
+Fynlo Ledger is **NOT**:
 
 - A banking service
 - A lending service
@@ -81,11 +81,11 @@ Fynlo is **NOT**:
 - A payment processor
 - Connected in any way to your actual bank accounts, UPI, credit cards, or investments
 
-Fynlo is a record-keeping tool. The numbers shown in Fynlo reflect what you have entered. They are not verified against any external financial institution.
+Fynlo Ledger is a record-keeping tool. The numbers shown in Fynlo Ledger reflect what you have entered. They are not verified against any external financial institution.
 
 ### 3.3 No financial advice
 
-Nothing in Fynlo constitutes financial, legal, tax, or investment advice. Decisions about your money are yours alone. If you need professional advice, consult a qualified Chartered Accountant, financial advisor, or other professional.
+Nothing in Fynlo Ledger constitutes financial, legal, tax, or investment advice. Decisions about your money are yours alone. If you need professional advice, consult a qualified Chartered Accountant, financial advisor, or other professional.
 
 ---
 
@@ -93,7 +93,7 @@ Nothing in Fynlo constitutes financial, legal, tax, or investment advice. Decisi
 
 ### 4.1 Creating an account
 
-You sign into Fynlo using Google Sign-In. By signing in, you authorize us to receive your name, email, and Google ID from Google. See our Privacy Policy for details.
+You sign into Fynlo Ledger using Google Sign-In. By signing in, you authorize us to receive your name, email, and Google ID from Google. See our Privacy Policy for details.
 
 ### 4.2 Account security
 
@@ -108,7 +108,7 @@ We are not liable for unauthorized access to your data that results from your fa
 
 ### 4.3 One person per account
 
-Each Fynlo account is for individual personal use. You may not share your account with others. Your data is personal and tied to your Google identity.
+Each Fynlo Ledger account is for individual personal use. You may not share your account with others. Your data is personal and tied to your Google identity.
 
 ### 4.4 Account termination by you
 
@@ -125,8 +125,8 @@ We may suspend or terminate your account if:
 - You violate these Terms
 - We're legally required to
 - We reasonably believe your account is being used for fraud, abuse, or illegal activity
-- You haven't used Fynlo for 24+ months (inactive account cleanup, with prior email notice)
-- Fynlo is discontinued (per Section 14)
+- You haven't used Fynlo Ledger for 24+ months (inactive account cleanup, with prior email notice)
+- Fynlo Ledger is discontinued (per Section 14)
 
 Where practical, we'll notify you before termination and allow you to export your data.
 
@@ -136,7 +136,7 @@ Where practical, we'll notify you before termination and allow you to export you
 
 ### 5.1 You own your data
 
-All the financial data you enter into Fynlo belongs to you. We do not claim ownership of your transactions, loans, contacts, or any other content you create.
+All the financial data you enter into Fynlo Ledger belongs to you. We do not claim ownership of your transactions, loans, contacts, or any other content you create.
 
 ### 5.2 License you grant us
 
@@ -153,14 +153,14 @@ This license ends when you delete your account.
 
 We make reasonable efforts to maintain your data on our servers, but **you are responsible for keeping your own backups**:
 
-- Use Fynlo's in-app JSON or XLSX export regularly
+- Use Fynlo Ledger's in-app JSON or XLSX export regularly
 - Store backups somewhere safe (Google Drive, your computer, etc.)
 
 We are not liable for data loss in excess of what you can recover from your own backups. See Section 11 (Liability).
 
 ### 5.4 Accuracy
 
-You confirm that the data you enter into Fynlo is accurate to your knowledge. We do not verify your entries. Reports generated by Fynlo are only as accurate as the data you've entered.
+You confirm that the data you enter into Fynlo Ledger is accurate to your knowledge. We do not verify your entries. Reports generated by Fynlo Ledger are only as accurate as the data you've entered.
 
 ---
 
@@ -168,15 +168,15 @@ You confirm that the data you enter into Fynlo is accurate to your knowledge. We
 
 You agree NOT to:
 
-- Use Fynlo for any illegal purpose
+- Use Fynlo Ledger for any illegal purpose
 - Reverse engineer, decompile, or attempt to extract source code (except as allowed by law)
 - Attempt to bypass authentication, security, or access controls
-- Use Fynlo to harass, threaten, or send unsolicited communications to anyone
+- Use Fynlo Ledger to harass, threaten, or send unsolicited communications to anyone
 - Attempt to access other users' data
 - Upload malicious code, viruses, or harmful content
-- Use Fynlo through automated tools, scrapers, or bots
-- Resell, sublicense, or commercially redistribute Fynlo without our written permission
-- Use Fynlo's WhatsApp/SMS reminder feature for spam or unsolicited messages
+- Use Fynlo Ledger through automated tools, scrapers, or bots
+- Resell, sublicense, or commercially redistribute Fynlo Ledger without our written permission
+- Use Fynlo Ledger's WhatsApp/SMS reminder feature for spam or unsolicited messages
 - Misrepresent yourself or your affiliations
 - Violate applicable laws (Indian Contract Act, Information Technology Act, Consumer Protection Act, DPDP Act, etc.)
 
@@ -188,29 +188,29 @@ Violation of this section may result in immediate account termination without re
 
 ### 7.1 Our IP
 
-The Fynlo app, its design, logo, brand name, source code, documentation, and content (other than your data) are owned by the Operator or licensed to us. They are protected by copyright, trademark, and other intellectual property laws.
+The Fynlo Ledger app, its design, logo, brand name, source code, documentation, and content (other than your data) are owned by the Operator or licensed to us. They are protected by copyright, trademark, and other intellectual property laws.
 
-Use of Fynlo does not transfer any IP rights to you. You receive only a limited license to use the App as described in Section 8.
+Use of Fynlo Ledger does not transfer any IP rights to you. You receive only a limited license to use the App as described in Section 8.
 
 ### 7.2 Your IP
 
-You retain all rights to the data you enter into Fynlo. See Section 5.
+You retain all rights to the data you enter into Fynlo Ledger. See Section 5.
 
 ### 7.3 Feedback
 
-If you give us feedback, suggestions, or ideas about Fynlo, you grant us a perpetual, worldwide, royalty-free right to use them without restriction. We're not obligated to use your feedback, but if we do, we own the resulting changes.
+If you give us feedback, suggestions, or ideas about Fynlo Ledger, you grant us a perpetual, worldwide, royalty-free right to use them without restriction. We're not obligated to use your feedback, but if we do, we own the resulting changes.
 
 ---
 
-## 8. License to use Fynlo
+## 8. License to use Fynlo Ledger
 
-We grant you a limited, non-exclusive, non-transferable, revocable license to install and use Fynlo on devices you own or control, solely for personal, non-commercial purposes, subject to these Terms.
+We grant you a limited, non-exclusive, non-transferable, revocable license to install and use Fynlo Ledger on devices you own or control, solely for personal, non-commercial purposes, subject to these Terms.
 
 This license does not include the right to:
 
 - Modify, adapt, or create derivative works
-- Distribute, rent, lease, sell, or sublicense Fynlo
-- Use Fynlo on behalf of a third party as a service
+- Distribute, rent, lease, sell, or sublicense Fynlo Ledger
+- Use Fynlo Ledger on behalf of a third party as a service
 
 This license terminates automatically when these Terms terminate.
 
@@ -218,7 +218,7 @@ This license terminates automatically when these Terms terminate.
 
 ## 9. App availability
 
-We strive to keep Fynlo available, but we do not guarantee uninterrupted service. The App may be unavailable due to:
+We strive to keep Fynlo Ledger available, but we do not guarantee uninterrupted service. The App may be unavailable due to:
 
 - Scheduled maintenance
 - Unscheduled outages (especially in services we depend on, like Firebase or Google Play)
@@ -234,7 +234,7 @@ We are not liable for losses arising from temporary unavailability. For prolonge
 
 ### 10.1 Pricing
 
-Fynlo offers the following purchase options:
+Fynlo Ledger offers the following purchase options:
 
 | Plan | Price (INR) | What you get |
 |---|---|---|
@@ -258,11 +258,11 @@ We may modify pricing for new purchases at any time. Existing subscribers and fo
 
 The free tier provides access to core features as defined in the App. We may change the scope of free vs. paid features over time, with at least 30 days notice for existing users before any reduction in free-tier features.
 
-If a free trial expires or a subscription is cancelled, Fynlo will not automatically delete your existing data. Existing records may remain visible, and backup/export access may remain available so you can keep a copy of your records. Certain actions may be limited after trial expiry or cancellation, including adding or editing records, cloud sync, imports, advanced reports, multi-project features, and other Pro features.
+If a free trial expires or a subscription is cancelled, Fynlo Ledger will not automatically delete your existing data. Existing records may remain visible, and backup/export access may remain available so you can keep a copy of your records. Certain actions may be limited after trial expiry or cancellation, including adding or editing records, cloud sync, imports, advanced reports, multi-project features, and other Pro features.
 
 ### 10.4 Founding Lifetime purchase definition
 
-"Founding Lifetime" means the lifetime of the Fynlo Service while operated by Avinash Reddy Karri or any successor entity. Lifetime access ends per the discontinuation procedure in Section 14, in which case refunds apply per Section 14.4.
+"Founding Lifetime" means the lifetime of the Fynlo Ledger Service while operated by Avinash Reddy Karri or any successor entity. Lifetime access ends per the discontinuation procedure in Section 14, in which case refunds apply per Section 14.4.
 
 Founding Lifetime purchases include Pro features available at the time of purchase and future Pro features added during the Service's lifetime, except third-party paid services, human services, custom business setup, or separately priced add-ons that are clearly sold outside the core Pro plan.
 
@@ -301,9 +301,9 @@ FYNLO IS PROVIDED "AS IS" AND "AS AVAILABLE" WITHOUT WARRANTIES OF ANY KIND, EXP
 
 We do not warrant that:
 
-- Fynlo will be uninterrupted, error-free, or perfectly accurate
+- Fynlo Ledger will be uninterrupted, error-free, or perfectly accurate
 - Defects will be corrected immediately
-- Fynlo will meet your specific requirements
+- Fynlo Ledger will meet your specific requirements
 - Calculations (interest, payoff projections, growth metrics) are correct for tax, legal, or financial-planning purposes
 - Data will never be lost (you are responsible for backups; see Section 5.3)
 
@@ -311,7 +311,7 @@ We do not warrant that:
 
 To the fullest extent permitted by law:
 
-**Our total cumulative liability to you under or relating to these Terms or your use of Fynlo, regardless of the form of action and whether in contract, tort, statute, or otherwise, is limited to Rs 999 (Indian Rupees Nine Hundred Ninety-Nine Only).**
+**Our total cumulative liability to you under or relating to these Terms or your use of Fynlo Ledger, regardless of the form of action and whether in contract, tort, statute, or otherwise, is limited to Rs 999 (Indian Rupees Nine Hundred Ninety-Nine Only).**
 
 This limitation applies in aggregate to all claims arising under or relating to these Terms, not per claim or per incident.
 
@@ -333,7 +333,7 @@ To the fullest extent permitted by law, WE ARE NOT LIABLE FOR:
 - Data loss beyond what you can recover from your own backups
 - Damages caused by services we do not control (Google, Firebase, ISP outages, device failures)
 - Damages caused by your failure to maintain backups
-- Damages caused by your reliance on Fynlo's data for legal, tax, or financial decisions
+- Damages caused by your reliance on Fynlo Ledger's data for legal, tax, or financial decisions
 - Damages from unauthorized access to your account that we did not cause
 - Force majeure events
 
@@ -349,8 +349,8 @@ You agree to indemnify and hold harmless the Operator, its officers, employees, 
 
 - Your violation of these Terms
 - Your violation of any third party's rights
-- Your misuse of Fynlo
-- Any content or data you submit through Fynlo
+- Your misuse of Fynlo Ledger
+- Any content or data you submit through Fynlo Ledger
 
 ---
 
@@ -361,7 +361,7 @@ We may update these Terms from time to time:
 - **Minor changes** (clarifications, typo fixes): Effective immediately; latest version always at https://avinashr999.github.io/Fynlo/terms/
 - **Material changes** (new fees, new restrictions, changes to liability or refund terms): At least 30 days notice via in-app notification and email; you may need to re-accept
 
-If you don't agree to material changes, you can stop using Fynlo and delete your account before the changes take effect. Existing paid purchases retain their original terms until renewal or end-of-term.
+If you don't agree to material changes, you can stop using Fynlo Ledger and delete your account before the changes take effect. Existing paid purchases retain their original terms until renewal or end-of-term.
 
 Version history:
 
@@ -373,7 +373,7 @@ Version history:
 
 ### 14.1 Our right to discontinue
 
-We may discontinue Fynlo (in whole or in part) at any time, for any reason, including but not limited to:
+We may discontinue Fynlo Ledger (in whole or in part) at any time, for any reason, including but not limited to:
 
 - Business viability
 - Legal or regulatory changes
@@ -385,7 +385,7 @@ This right is not unlimited; refund obligations under Section 14.4 apply.
 
 ### 14.2 Notice of discontinuation
 
-If we decide to discontinue Fynlo, we will provide:
+If we decide to discontinue Fynlo Ledger, we will provide:
 
 - **For free users:** At least 60 days notice before service ceases
 - **For active annual subscribers:** At least 90 days notice OR through the end of the current billing period (whichever is longer)
@@ -413,7 +413,7 @@ You can export your data at any time during the wind-down via the in-app export 
 
 ### 14.4 Refunds on discontinuation
 
-If we discontinue Fynlo:
+If we discontinue Fynlo Ledger:
 
 **Annual subscriptions:**
 
@@ -435,7 +435,7 @@ Refunds processed via Google Play Billing within 14 days of the discontinuation 
 
 ### 14.5 Acquisition or transfer
 
-If Fynlo is acquired by or transferred to another entity:
+If Fynlo Ledger is acquired by or transferred to another entity:
 
 - We will notify you at least 60 days before the transfer
 - You may delete your account before the transfer
@@ -446,7 +446,7 @@ If Fynlo is acquired by or transferred to another entity:
 
 Upon termination (by you, by us, or by discontinuation):
 
-- Your license to use Fynlo ends
+- Your license to use Fynlo Ledger ends
 - Your data will be deleted per the timeline in Section 14.3 (or sooner on your request)
 - Provisions that by their nature should survive (IP, Liability, Indemnification, Dispute Resolution) survive termination
 - Outstanding refunds, if any, are processed per Section 14.4
@@ -475,7 +475,7 @@ Subject to Section 16.3 and Section 16.4, the courts of **Kakinada, Andhra Prade
 
 Before filing any legal proceeding, you agree to first:
 
-1. Notify us in writing of your dispute at avinash999.reddy@gmail.com (subject: "Fynlo Dispute") with a detailed description of the issue
+1. Notify us in writing of your dispute at avinash999.reddy@gmail.com (subject: "Fynlo Ledger Dispute") with a detailed description of the issue
 2. Allow us 30 days to respond and attempt resolution in good faith
 
 If we cannot resolve the matter within 30 days, you may proceed with formal legal action.
@@ -496,7 +496,7 @@ To the extent permitted by law, disputes will be resolved individually. You waiv
 
 ### 17.1 Entire agreement
 
-These Terms, together with our Privacy Policy at https://avinashr999.github.io/Fynlo/privacy/, constitute the entire agreement between you and us regarding Fynlo. They supersede any prior agreements.
+These Terms, together with our Privacy Policy at https://avinashr999.github.io/Fynlo/privacy/, constitute the entire agreement between you and us regarding Fynlo Ledger. They supersede any prior agreements.
 
 ### 17.2 Severability
 
@@ -508,7 +508,7 @@ Our failure to enforce any provision is not a waiver of our right to enforce it 
 
 ### 17.4 Assignment
 
-You may not assign these Terms without our written consent. We may assign these Terms to a successor in connection with a merger, acquisition, or transfer of Fynlo (per Section 14.5).
+You may not assign these Terms without our written consent. We may assign these Terms to a successor in connection with a merger, acquisition, or transfer of Fynlo Ledger (per Section 14.5).
 
 ### 17.5 Notices
 
@@ -529,9 +529,9 @@ These Terms are written in English. If a translation differs from the English ve
 For questions about these Terms:
 
 - **Email:** avinash999.reddy@gmail.com
-  - Subject "Fynlo Legal" for legal questions
-  - Subject "Fynlo Dispute" for formal disputes
-  - Subject "Fynlo Refund" for refund requests
+  - Subject "Fynlo Ledger Legal" for legal questions
+  - Subject "Fynlo Ledger Dispute" for formal disputes
+  - Subject "Fynlo Ledger Refund" for refund requests
 - **Postal:** [TO BE ADDED - Avinash's business address in Kakinada]
 
 For privacy or grievance matters, see the Privacy Policy.
@@ -540,7 +540,7 @@ For privacy or grievance matters, see the Privacy Policy.
 
 ## 19. Acceptance
 
-By using Fynlo, you confirm that:
+By using Fynlo Ledger, you confirm that:
 
 - You have read and understood these Terms
 - You agree to be bound by them

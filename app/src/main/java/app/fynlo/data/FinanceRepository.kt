@@ -1976,7 +1976,7 @@ class FinanceRepository(
     /**
      * Restores from a v1 or v2 backup. Throws on:
      *  - `IllegalStateException` for an unsupported (newer) backup format
-     *    — caller should surface "please update Fynlo".
+     *    — caller should surface "please update Fynlo Ledger".
      *  - `IllegalStateException` for a hash mismatch on a v2 backup
      *    — file is corrupted or modified; do not restore.
      *
@@ -1991,7 +1991,7 @@ class FinanceRepository(
                 throw IllegalStateException(
                     "Backup format v${verdict.version} is newer than this " +
                     "app supports (max v${BackupIntegrity.CURRENT_SCHEMA_VERSION}). " +
-                    "Update Fynlo and try again."
+                    "Update Fynlo Ledger and try again."
                 )
             is BackupIntegrity.Check.HashMismatch ->
                 throw IllegalStateException(

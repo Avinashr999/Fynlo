@@ -60,7 +60,7 @@ fun UpgradeProScreen(onNavigateBack: () -> Unit = {}) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Fynlo Pro") },
+                title = { Text("Fynlo Ledger Pro") },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
@@ -82,7 +82,7 @@ fun UpgradeProScreen(onNavigateBack: () -> Unit = {}) {
                 style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold),
             )
             Text(
-                "Get the full Fynlo - one tracker for every rupee you lend, owe, spend and grow.",
+                "Get the full Fynlo Ledger - one tracker for every rupee you lend, owe, spend and grow.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -122,7 +122,7 @@ fun UpgradeProScreen(onNavigateBack: () -> Unit = {}) {
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(
-                        "You're on Fynlo Pro",
+                        "You're on Fynlo Ledger Pro",
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                         color = Emerald500,
                     )

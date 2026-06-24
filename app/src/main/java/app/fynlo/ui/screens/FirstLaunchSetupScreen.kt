@@ -299,7 +299,7 @@ private fun ThemeStep(selected: Boolean?, onSelect: (Boolean?) -> Unit) {
     StepLayout(
         icon = Icons.Default.DarkMode,
         title = "Pick Your Theme",
-        subtitle = "Choose how Fynlo looks"
+        subtitle = "Choose how Fynlo Ledger looks"
     ) {
         val options = listOf(
             Triple(false, Icons.Default.LightMode, "Light Mode"),

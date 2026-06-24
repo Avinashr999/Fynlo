@@ -1586,3 +1586,13 @@ Phase 2 hardening after Play listing/internal-testing stabilization:
 - Tighten Firestore security rules with schema and field validation once sync coverage and account deletion/reset behavior are stable.
 - Consider explicit privacy controls for Crashlytics/Analytics collection if Play/Data Safety positioning changes.
 - Upload native debug symbols for Play Console crash/ANR diagnostics when practical.
+
+---
+
+## Journal Addendum - 2026-06-24 Visible Brand Rename
+
+User requested changing the visible app/store/legal/export brand from `Fynlo` to `Fynlo Ledger` because another Play Store app already uses the Fynlo name. Completed the visible rename across app labels, onboarding/login, About, settings/help copy, report/export filenames and headers, backup/error copy, localized app labels, and public legal docs.
+
+Important boundary: package name, namespace, database names, shared-preference keys, class names, and other stable technical identifiers remain unchanged. The app still ships as package `app.fynlo`; do not rename this unless a future Play migration explicitly requires a brand-new app listing.
+
+Next Play upload for this rename line uses `versionCode = 230` and `versionName = "3.2.106"`. Future Play listing text, screenshots, feature graphic, and tester-facing release notes should use `Fynlo Ledger`.

@@ -206,14 +206,14 @@ val borrowers by viewModel.borrowers.collectAsState()
                 appendLine()
                 append("Kindly arrange repayment at your convenience. Thank you!")
             }
-            appendLine(); append("— Fynlo")
+            appendLine(); append("— Fynlo Ledger")
         }.trimEnd()
         val smsMsg = buildString {
             if (daysOverdue > 0) append("Hi ${borrower.name}, your loan of ${CurrencyFormatter.detail(borrower.amount, currencyCode, locale)} is $daysOverdue days overdue. ")
             else append("Hi ${borrower.name}, loan reminder: ")
             append("Outstanding: ${CurrencyFormatter.detail(totalOutstanding, currencyCode, locale)}")
             if (borrower.rate > 0) append(" (incl. interest)")
-            append(". Please repay soon. -Fynlo")
+            append(". Please repay soon. -Fynlo Ledger")
         }
 
         AlertDialog(

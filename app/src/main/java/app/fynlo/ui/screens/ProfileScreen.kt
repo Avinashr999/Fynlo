@@ -365,7 +365,7 @@ fun ProfileScreen(
             AlertDialog(
                 onDismissRequest = { showDeleteConfirm = false },
                 title = { Text("Delete account permanently?") },
-                text  = { Text("This erases ALL your data from this device and the cloud, and deletes your Fynlo account. This cannot be undone. Export a backup first if you might want your data later.") },
+                text  = { Text("This erases ALL your data from this device and the cloud, and deletes your Fynlo Ledger account. This cannot be undone. Export a backup first if you might want your data later.") },
                 confirmButton = {
                     TextButton(
                         onClick = {

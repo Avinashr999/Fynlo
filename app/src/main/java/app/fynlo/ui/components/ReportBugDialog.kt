@@ -224,7 +224,7 @@ private fun emailFallback(
     }
     val intent = Intent(Intent.ACTION_SENDTO).apply {
         data = "mailto:fynloapp.support@gmail.com".toUri()
-        putExtra(Intent.EXTRA_SUBJECT, "Fynlo Bug Report [$reportId] $title")
+        putExtra(Intent.EXTRA_SUBJECT, "Fynlo Ledger Bug Report [$reportId] $title")
         putExtra(Intent.EXTRA_TEXT, body)
     }
     runCatching { context.startActivity(intent) }

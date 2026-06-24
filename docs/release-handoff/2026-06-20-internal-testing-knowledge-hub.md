@@ -1,9 +1,9 @@
-# Fynlo Release Knowledge Hub - Internal Testing 3.2.105
+# Fynlo Ledger Release Knowledge Hub - Internal Testing 3.2.106
 
 Date range covered: 2026-06-12 to 2026-06-20
-Current release line: internal testing, versionName 3.2.105, versionCode 229
+Current release line: internal testing, versionName 3.2.106, versionCode 230
 Package name: app.fynlo
-App name: Fynlo
+App name: Fynlo Ledger
 Status: Internal testing is active in Google Play Console. Production launch is not complete yet.
 
 ## Mandatory use
@@ -208,7 +208,7 @@ Use these answers unless the app behavior changes.
 
 ### Store identity
 
-- App name: Fynlo
+- App name: Fynlo Ledger
 - Package name: app.fynlo
 - Pricing: free
 - Main category: Finance
@@ -293,7 +293,7 @@ Purpose mapping:
 
 ### Financial feature declaration
 
-Fynlo is a personal finance ledger/tracker. It is not a bank, lender, payday loan app, direct loan provider, payment wallet, money transfer service, stock trading platform, crypto platform, or financial advisor.
+Fynlo Ledger is a personal finance ledger/tracker. It is not a bank, lender, payday loan app, direct loan provider, payment wallet, money transfer service, stock trading platform, crypto platform, or financial advisor.
 
 If Play Console asks for financial features, choose the closest non-regulated personal finance / tracker / portfolio-management option available, and avoid selecting direct lending, payday lending, banking, wallet, money transfer, or trading unless the app actually starts offering those services.
 
@@ -390,7 +390,15 @@ These were not blocking the internal testing release but should be considered be
 
 ## Current mental model
 
-Fynlo is not just a pretty finance app. The core promise is trustworthy personal ledgering: every money movement should have a source, destination, visible trace, reversible behavior, and an audit story. Design polish matters because it builds confidence, but accounting correctness is the product.
+Fynlo Ledger is not just a pretty finance app. The core promise is trustworthy personal ledgering: every money movement should have a source, destination, visible trace, reversible behavior, and an audit story. Design polish matters because it builds confidence, but accounting correctness is the product.
+
+## Visible brand rename - 2026-06-24
+
+Visible app, store, legal, onboarding, About, export, PDF, CSV, backup, and Play listing copy now uses **Fynlo Ledger** to avoid Play Store naming confusion with other apps named Fynlo.
+
+Do not rename the technical package, namespace, database, preferences, class names, or stable IDs as part of this brand change. The package remains `app.fynlo`, and internal identifiers such as `FynloDatabase`, `Fynlo_pin`, and `Theme.Fynlo` remain stable intentionally.
+
+Next Play upload after this rename should use versionCode 230 / versionName 3.2.106 or newer, and the Play Console store listing should show app name `Fynlo Ledger`.
 ## Google Sign-In Internal Testing Issue - 2026-06-23
 
 Tester symptom: tapping Continue with Google on the internal testing build showed "Google sign-in is not available in this build" / developer error code 10.
