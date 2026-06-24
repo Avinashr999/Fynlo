@@ -453,3 +453,14 @@ Phase 2, after Play listing/internal-testing stabilization:
 - Local verification passed for prod-debug unit tests and Kotlin compilation.
 - `lintProdDebug` passed after moving debug user-certificate trust into `debug-overrides` in `app/src/debug/res/xml/network_security_config.xml`.
 - Production network security already trusted only system certificates and disallowed cleartext traffic; this cleanup prevents debug lint noise without weakening Play release security.
+
+## 2026-06-24 - Pending phone-connected Android QA
+
+When the phone is connected again, run the remaining `test-android-apps` device-side checks that were blocked by missing adb device/emulator:
+
+- Confirm adb sees the phone.
+- Install or open the latest production/developer build as needed.
+- Capture screenshots for login/offline, dashboard, loans, invest, expenses, reports, settings, and key dialogs.
+- Watch logcat for crashes, Google sign-in errors, Firestore sync/reset errors, and ledger/action failures.
+- Run basic performance checks for navigation, modal open/close, add/edit/delete flows, and report/export paths.
+- Treat this as the continuation of the 2026-06-24 Android testing pass, not a new unrelated task.
