@@ -1653,3 +1653,12 @@ Next Play upload for this rename line uses `versionCode = 230` and `versionName 
 - Transaction History now displays per-row account balance impact, for example `Family Cash: Rs. before -> Rs. after`, so users can trace previous balance and next balance directly from the history list. Privacy mode hides these values.
 - Ledger Health now raises a critical `Debt receipt amount mismatch` when a debt principal and its linked `Debt Received` transaction amount diverge. This exposes legacy rows like a debt edited to Rs. 6,75,000 while its original receipt row is still Rs. 1,00,000. It is deliberately reported instead of silently rewriting old cash history.
 - Verification passed: `:app:compileProdDebugKotlin` and `:app:testProdDebugUnitTest`.
+
+## 2026-06-26 - Debt Receipt and Stored Balance Drift Auto-Repair
+
+- Internal testing confirmed the remaining live-data discrepancy: Kalyani Ammamma's debt row was Rs. 6,75,000, but the linked `Debt Received` transaction was still Rs. 1,00,000. The missing Rs. 5,75,000 was therefore not visible in Business Investment because the account ledger was replaying the stale receipt amount.
+- Startup now runs `repairDebtReceiptAmountMismatches()`. It updates the linked receipt transaction to match the debt principal and applies only the missing delta to the original destination account, using `toAcctId` when available.
+- Startup then runs `repairAccountBalanceDriftFromLedger()`. It uses each account's CREATE audit as the opening balance and replays current transaction rows, ignoring `Info` / `journal_only` traces, to correct stored account-balance drift.
+- Verified on connected production package `app.fynlo`: Business Investment moved to Rs. 25,00,000, Family Cash moved from Rs. 29,90,000 to Rs. 27,90,000, HDFC corrected from Rs. 39,898 to Rs. 39,906, and Kalyani's linked receipt now shows Rs. 6,75,000.
+- Audit trail records each repair with before/after values and reasons: the Kalyani receipt amount repair, Business Investment +Rs. 5,75,000, Family Cash -Rs. 2,00,000, and HDFC +Rs. 8.
+- Regression coverage added for both failure shapes in `MoneyActionIdempotencyDataIntegrityTest`: debt receipt mismatch repair and stored account drift repair. Verification passed with `:app:compileProdDebugKotlin`, `:app:testProdDebugUnitTest`, and installs to both prod/dev debug apps.

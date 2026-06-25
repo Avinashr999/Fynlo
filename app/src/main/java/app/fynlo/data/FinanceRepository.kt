@@ -946,6 +946,149 @@ class FinanceRepository(
         return repaired
     }
 
+    /**
+     * Some legacy debt edits changed the Debt principal but left the linked
+     * "Debt Received" transaction at the old amount. That makes the debt page
+     * and the destination account disagree. The debt row is the source of
+     * truth; this repair updates the linked receipt and applies only the
+     * missing delta to the original destination account.
+     */
+    suspend fun repairDebtReceiptAmountMismatches(): Int {
+        val debts = dao.getAllDebts().first()
+        val transactions = dao.getAllTransactionsList()
+        val remoteTransactions = mutableListOf<Transaction>()
+        val touchedAccounts = mutableSetOf<String>()
+        var repaired = 0
+
+        db.withTransaction {
+            debts.forEach { debt ->
+                val receipt = transactions.firstOrNull { txn ->
+                    txn.ref == debt.id && txn.category.equals("Debt Received", ignoreCase = true)
+                } ?: return@forEach
+                val delta = debt.amount - receipt.amount
+                if (kotlin.math.abs(delta) <= 0.005) return@forEach
+
+                val destinationId = receipt.toAcctId.ifBlank {
+                    dao.getAccountByName(receipt.toAcct)?.id.orEmpty()
+                }
+                val destinationName = receipt.toAcct.ifBlank {
+                    dao.getAccountById(destinationId)?.name.orEmpty()
+                }
+                applyAccountDelta(destinationId, destinationName, delta)
+                val repairedReceipt = receipt.copy(
+                    amount = debt.amount,
+                    toAcct = destinationName,
+                    toAcctId = destinationId,
+                    updatedAt = System.currentTimeMillis(),
+                )
+                dao.insertTransaction(repairedReceipt)
+                remoteTransactions += repairedReceipt
+                if (destinationName.isNotBlank()) touchedAccounts += destinationName
+                recordAudit(
+                    action = "REPAIR",
+                    entityType = "transaction",
+                    entityId = repairedReceipt.id,
+                    title = "Debt receipt amount repaired: ${debt.name}",
+                    beforeValue = receipt.auditSummary(),
+                    afterValue = repairedReceipt.auditSummary(),
+                    amountDelta = delta,
+                    accountName = destinationName,
+                    projectId = repairedReceipt.projectId,
+                    reason = "Debt principal and linked Debt Received transaction must match",
+                )
+                repaired++
+            }
+        }
+
+        remoteTransactions.forEach { txn -> sync { setTransaction(txn) } }
+        touchedAccounts.filter { it.isNotBlank() }.forEach { syncAccountByName(it) }
+        return repaired
+    }
+
+    /**
+     * Last-resort account reconciliation for stored balance drift. It uses the
+     * account CREATE audit as the opening balance, then replays current
+     * transaction rows. Rows marked Info or journal_only are ignored because
+     * they are trace notes, not money movement.
+     */
+    suspend fun repairAccountBalanceDriftFromLedger(): Int {
+        val accounts = dao.getAllAccountsList()
+        val transactions = dao.getAllTransactionsList()
+        val auditEvents = dao.getAllAuditEventsOnce()
+        val repairedAccounts = mutableListOf<Account>()
+        var repaired = 0
+
+        db.withTransaction {
+            accounts.forEach { account ->
+                val openingAudit = auditEvents
+                    .filter { event ->
+                        event.action == "CREATE" &&
+                            event.entityType == "account" &&
+                            (event.entityId == account.id || event.accountName == account.name)
+                    }
+                    .minByOrNull { it.timestamp }
+                    ?: return@forEach
+                val expected = expectedBalanceFromLedger(
+                    account = account,
+                    openingBalance = openingAudit.amountDelta,
+                    transactions = transactions,
+                )
+                val delta = expected - account.balance
+                if (kotlin.math.abs(delta) <= 0.005) return@forEach
+
+                val repairedAccount = account.copy(
+                    balance = expected,
+                    updatedAt = System.currentTimeMillis(),
+                )
+                dao.insertAccount(repairedAccount)
+                repairedAccounts += repairedAccount
+                recordAudit(
+                    action = "REPAIR",
+                    entityType = "account",
+                    entityId = account.id,
+                    title = "Account balance reconciled: ${account.name}",
+                    beforeValue = account.balance.toString(),
+                    afterValue = expected.toString(),
+                    amountDelta = delta,
+                    accountName = account.name,
+                    projectId = account.projectId,
+                    reason = "Stored account balance must match opening balance plus transaction ledger",
+                )
+                repaired++
+            }
+        }
+
+        repairedAccounts.forEach { account -> sync { setAccount(account) } }
+        return repaired
+    }
+
+    private fun expectedBalanceFromLedger(
+        account: Account,
+        openingBalance: Double,
+        transactions: List<Transaction>,
+    ): Double {
+        var balance = openingBalance
+        transactions.forEach { txn ->
+            if (txn.type.equals("Info", ignoreCase = true)) return@forEach
+            if (txn.tags.split(",").any { it.trim().equals("journal_only", ignoreCase = true) }) return@forEach
+
+            val fromMatches = accountMatches(account, txn.fromAcctId, txn.fromAcct)
+            val toMatches = accountMatches(account, txn.toAcctId, txn.toAcct)
+            when (txn.type.lowercase()) {
+                "expense" -> if (fromMatches) balance -= txn.amount
+                "income" -> if (toMatches) balance += txn.amount
+                "transfer" -> {
+                    if (fromMatches) balance -= txn.amount
+                    if (toMatches) balance += txn.amount
+                }
+            }
+        }
+        return balance
+    }
+
+    private fun accountMatches(account: Account, id: String, name: String): Boolean =
+        (id.isNotBlank() && id == account.id) || (name.isNotBlank() && name == account.name)
+
     suspend fun recalculateAllBalances() {
         // C01 fix — Sprint 1 (decisions/2026-05-26-c01-fix-strategy.md).
         // Derives `paid` / `paidPrincipal` / `paidInterest` from the

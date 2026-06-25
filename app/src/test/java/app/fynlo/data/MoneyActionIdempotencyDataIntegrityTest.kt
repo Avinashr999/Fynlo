@@ -5,6 +5,7 @@ import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import app.fynlo.data.local.FynloDatabase
 import app.fynlo.data.model.Account
+import app.fynlo.data.model.AuditEvent
 import app.fynlo.data.model.Borrower
 import app.fynlo.data.model.Debt
 import app.fynlo.data.model.DebtPayment
@@ -256,6 +257,74 @@ class MoneyActionIdempotencyDataIntegrityTest {
         assertEquals(1675.0, db.dao().getAccountById("acc-1")!!.balance, 0.0001)
         assertEquals(675.0, fundingTransaction.amount, 0.0001)
         assertEquals("acc-1", fundingTransaction.toAcctId)
+    }
+
+    @Test
+    fun `repairing debt receipt mismatch applies only missing principal delta once`() = runBlocking {
+        db.dao().insertAccount(Account(id = "business", name = "Business Investment", type = "Cash", balance = 100000.0))
+        db.dao().insertDebt(
+            Debt(
+                id = "debt-kalyani",
+                name = "Kalyani Mohamad towards KK",
+                amount = 675000.0,
+                rate = 0.0,
+                date = "2025-10-01",
+            )
+        )
+        db.dao().insertTransaction(
+            Transaction(
+                id = "receipt-kalyani",
+                date = "2025-10-01",
+                type = "Income",
+                amount = 100000.0,
+                toAcct = "Business Investment",
+                toAcctId = "business",
+                category = "Debt Received",
+                desc = "Debt received from Kalyani Mohamad towards KK",
+                ref = "debt-kalyani",
+            )
+        )
+
+        assertEquals(1, repository.repairDebtReceiptAmountMismatches())
+        assertEquals(0, repository.repairDebtReceiptAmountMismatches())
+
+        val repairedReceipt = db.dao().getTransactionById("receipt-kalyani")!!
+        assertEquals(675000.0, repairedReceipt.amount, 0.0001)
+        assertEquals(675000.0, db.dao().getAccountById("business")!!.balance, 0.0001)
+    }
+
+    @Test
+    fun `repairing stored account drift restores balance from opening audit and ledger`() = runBlocking {
+        db.dao().insertAccount(Account(id = "family", name = "Family Cash", type = "Cash", balance = 2990000.0))
+        db.dao().insertAuditEvent(
+            AuditEvent(
+                id = "audit-family-create",
+                timestamp = 1L,
+                action = "CREATE",
+                entityType = "account",
+                entityId = "family",
+                title = "Account created: Family Cash",
+                amountDelta = 11615000.0,
+                accountName = "Family Cash",
+            )
+        )
+        db.dao().insertTransaction(
+            Transaction(
+                id = "family-expense-ledger",
+                date = "2026-06-15",
+                type = "Expense",
+                amount = 8825000.0,
+                fromAcct = "Family Cash",
+                fromAcctId = "family",
+                category = "Ledger correction test",
+                desc = "Family Cash outgoing ledger total",
+            )
+        )
+
+        assertEquals(1, repository.repairAccountBalanceDriftFromLedger())
+        assertEquals(0, repository.repairAccountBalanceDriftFromLedger())
+
+        assertEquals(2790000.0, db.dao().getAccountById("family")!!.balance, 0.0001)
     }
 
     @Test

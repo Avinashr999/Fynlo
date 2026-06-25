@@ -70,6 +70,8 @@ class FinanceViewModel @Inject constructor(
             repository.fixPaidDoubleCount()
             repository.repairDeletedAuditResidue()
             repository.repairDebtFundedInvestmentTransferTraces()
+            repository.repairDebtReceiptAmountMismatches()
+            repository.repairAccountBalanceDriftFromLedger()
             repository.fixPaidDoubleCount()
         }
         viewModelScope.launch(Dispatchers.IO) {

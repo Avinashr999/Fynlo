@@ -522,3 +522,16 @@ When the phone is connected again, run the remaining `test-android-apps` device-
 - Transaction History now shows per-transaction before/after balance impact for affected accounts, which gives users a visible ledger path instead of forcing them to infer movement from totals.
 - Ledger Health now reports a critical `Debt receipt amount mismatch` when debt principal and the linked `Debt Received` transaction amount differ. This catches legacy rows created before destination-account edit repair, but does not silently rewrite old balances.
 - Verification: prod-debug Kotlin compile and full prod-debug unit tests passed.
+
+## 2026-06-26 - Debt receipt mismatch and account drift repair
+
+- Follow-up phone DB inspection found the exact remaining issue: one Kalyani Ammamma debt had principal Rs. 6,75,000 but the linked `Debt Received` transaction still had Rs. 1,00,000. That stale receipt left Rs. 5,75,000 missing from Business Investment.
+- Added `repairDebtReceiptAmountMismatches()` and wired it into startup. It updates the linked receipt to the debt principal and applies only the difference to the original credited account.
+- Added `repairAccountBalanceDriftFromLedger()` and wired it into startup immediately after receipt mismatch repair. It rebuilds stored account balances from account CREATE audit opening balances plus current transaction ledger rows, while ignoring `Info` / `journal_only` traces.
+- Production-phone verification after installing and launching the repaired build:
+  - Business Investment: Rs. 25,00,000.
+  - Family Cash: Rs. 27,90,000.
+  - HDFC: Rs. 39,906.
+  - Kalyani linked receipt: Rs. 6,75,000 and tied to Business Investment account id.
+- Audit Trail now contains explicit `REPAIR` rows for the receipt mismatch and each stored-balance reconciliation. If a tester asks "where did money go?", check these repair rows first.
+- Regression tests added for Kalyani-style receipt mismatch and Family Cash-style stored balance drift. Verification passed: `:app:compileProdDebugKotlin`, `:app:testProdDebugUnitTest`, prod debug install, and dev debug install.
