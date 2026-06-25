@@ -549,3 +549,8 @@ When the phone is connected again, run the remaining `test-android-apps` device-
   - Debt principal and receipt amount match for the Business Investment debt receipts.
   - BZA Rs. 2,50,000 and BZA Rs. 75,000 now each have exactly one journal-only investment trace linked to their own investment id.
 - Verification passed: `:app:compileProdDebugKotlin`, `:app:testProdDebugUnitTest`, prod debug install, and dev debug install.
+
+## 2026-06-26 - Internal testing release 3.2.107
+
+- Bumped the next Google Play internal testing upload to `versionCode = 231` / `versionName = 3.2.107`.
+- This AAB is needed because direct adb installs only update the connected phone; internal testers receive the fix only after a new App Bundle is uploaded and published on the internal testing track.

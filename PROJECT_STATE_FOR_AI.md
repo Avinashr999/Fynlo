@@ -1672,3 +1672,8 @@ Next Play upload for this rename line uses `versionCode = 230` and `versionName 
 - Valuation History dialog contrast was tightened so titles, values, date labels, and chart labels use readable surface/primary colors instead of faint outline tones.
 - Verified on connected production package `app.fynlo`: Business Investment remains Rs. 25,00,000, its seven receipt rows sum to Rs. 25,00,000, all listed debt receipts match their debt principal, and BZA now has separate Rs. 2,50,000 and Rs. 75,000 journal traces linked to the correct investment ids.
 - Regression coverage added for debt-funded investment trace relinking and account-funded-to-debt-funded investment source correction. Verification passed with `:app:compileProdDebugKotlin`, `:app:testProdDebugUnitTest`, prod debug install, and dev debug install.
+
+## 2026-06-26 - Internal Testing AAB 3.2.107
+
+- Bumped Play upload version to `versionCode = 231` and `versionName = "3.2.107"` after the investment journal trace repair was committed and pushed.
+- Purpose of this release: deliver the latest ledger trace hardening to Google Play internal testers. Previous direct phone installs do not update testers unless a new AAB is uploaded.
