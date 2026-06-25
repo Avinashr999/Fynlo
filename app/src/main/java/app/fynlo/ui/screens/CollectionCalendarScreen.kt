@@ -27,8 +27,10 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.LocalLocale
 import app.fynlo.FinanceViewModel
 import app.fynlo.data.model.Borrower
+import app.fynlo.data.model.Debt
 import app.fynlo.logic.CurrencyFormatter
 import app.fynlo.logic.DateUtils
+import app.fynlo.logic.DebtLiabilityCalculator
 import app.fynlo.logic.InterestEngine
 import app.fynlo.ui.theme.*
 import java.time.LocalDate
@@ -40,8 +42,13 @@ import java.util.Locale
 
 private enum class DueStatus { OVERDUE, TODAY, UPCOMING_SOON, UPCOMING, SETTLED }
 
+private enum class DueKind { LENDING, DEBT }
+
 private data class DueEntry(
-    val borrower: Borrower,
+    val id: String,
+    val title: String,
+    val subtitle: String,
+    val kind: DueKind,
     val dueDate: LocalDate,
     val outstanding: Double,
     val status: DueStatus
@@ -71,9 +78,11 @@ private fun statusColor(s: DueStatus): Color = when (s) {
 fun CollectionCalendarScreen(
     viewModel: FinanceViewModel,
     onNavigateBack: () -> Unit = {},
-    onNavigateToBorrower: (String) -> Unit = {}
+    onNavigateToBorrower: (String) -> Unit = {},
+    onNavigateToDebt: (String) -> Unit = {},
 ) {
     val borrowers by viewModel.borrowers.collectAsState()
+    val debts by viewModel.debts.collectAsState()
     val currentProject by viewModel.currentProject.collectAsState()
     val currencyCode = currentProject?.currency ?: "INR"
     val today = remember { LocalDate.now() }
@@ -83,18 +92,44 @@ fun CollectionCalendarScreen(
     var displayMonth by remember { mutableStateOf(YearMonth.now()) }
     var selectedDate by remember { mutableStateOf<LocalDate?>(today) }
 
-    // Build due entries for ALL active borrowers that have a due date
-    val allEntries = remember(borrowers) {
-        borrowers
+    // Build due entries for all active borrower and debt rows that have a due date.
+    val allEntries = remember(borrowers, debts, today) {
+        val lendingEntries = borrowers
             .filter { it.due.isNotBlank() && it.paid < it.amount }
             .mapNotNull { b ->
                 try {
                     val due = LocalDate.parse(b.due, dbFmt)
                     val interest = InterestEngine.calcIntAccrued(b.amount, b.rate, b.date, b.intType, b.due, b.paid)
                     val outstanding = InterestEngine.calcOutstanding(b.amount, interest, b.paid)
-                    DueEntry(b, due, outstanding, dueStatus(due, today, outstanding))
+                    DueEntry(
+                        id = b.id,
+                        title = b.name,
+                        subtitle = b.phone,
+                        kind = DueKind.LENDING,
+                        dueDate = due,
+                        outstanding = outstanding,
+                        status = dueStatus(due, today, outstanding),
+                    )
                 } catch (e: Exception) { null }
             }
+        val debtEntries = debts
+            .filter { it.due.isNotBlank() && it.status != "Cleared" }
+            .mapNotNull { d: Debt ->
+                try {
+                    val due = LocalDate.parse(d.due, dbFmt)
+                    val outstanding = DebtLiabilityCalculator.outstanding(d).total
+                    DueEntry(
+                        id = d.id,
+                        title = d.name,
+                        subtitle = "Debt you owe",
+                        kind = DueKind.DEBT,
+                        dueDate = due,
+                        outstanding = outstanding,
+                        status = dueStatus(due, today, outstanding),
+                    )
+                } catch (e: Exception) { null }
+            }
+        lendingEntries + debtEntries
     }
 
     // Group by date for the calendar
@@ -252,13 +287,18 @@ fun CollectionCalendarScreen(
                     )
                 }
             } else {
-                items(selectedEntries, key = { it.borrower.id }) { entry ->
+                items(selectedEntries, key = { "${it.kind}:${it.id}" }) { entry ->
                     DueEntryCard(
                         entry = entry,
                         currencyCode = currencyCode,
                         today = today,
                         locale = locale,
-                        onClick = { onNavigateToBorrower(entry.borrower.id) }
+                        onClick = {
+                            when (entry.kind) {
+                                DueKind.LENDING -> onNavigateToBorrower(entry.id)
+                                DueKind.DEBT -> onNavigateToDebt(entry.id)
+                            }
+                        }
                     )
                 }
             }
@@ -431,7 +471,7 @@ private fun DueEntryCard(
             Spacer(Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    entry.borrower.name,
+                    entry.title,
                     style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -441,9 +481,9 @@ private fun DueEntryCard(
                     style = MaterialTheme.typography.labelSmall,
                     color = color
                 )
-                if (entry.borrower.phone.isNotBlank()) {
+                if (entry.subtitle.isNotBlank()) {
                     Text(
-                        entry.borrower.phone,
+                        entry.subtitle,
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

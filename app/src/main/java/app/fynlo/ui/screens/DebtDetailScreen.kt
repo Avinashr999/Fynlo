@@ -107,8 +107,9 @@ fun DebtDetailScreen(
         AddDebtDialog(
             viewModel    = viewModel,
             onDismiss    = { showEditDialog = false },
-            onConfirm    = { updated, _ -> viewModel.updateDebt(updated); showEditDialog = false },
-            initialDebt  = debt
+            onConfirm    = { updated, destination -> viewModel.updateDebtWithDestination(updated, destination); showEditDialog = false },
+            initialDebt  = debt,
+            initialDestinationAccountName = receivedInto,
         )
     }
     if (showPayDialog) {

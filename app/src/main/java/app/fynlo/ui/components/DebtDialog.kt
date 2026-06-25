@@ -36,6 +36,7 @@ fun AddDebtDialog(
     onDismiss: () -> Unit,
     onConfirm: (Debt, String) -> Unit,
     initialDebt: Debt? = null,
+    initialDestinationAccountName: String = "",
     currencyCode: String = "INR",
 ) {
     val people   by viewModel.people.collectAsState()
@@ -45,7 +46,7 @@ fun AddDebtDialog(
     var selectedPerson  by remember { mutableStateOf<Person?>(null) }
     var personExpanded  by remember { mutableStateOf(false) }
     var customLenderName by remember { mutableStateOf(initialDebt?.name ?: "") }
-    var useCustomName   by remember { mutableStateOf(false) }
+    var useCustomName   by remember { mutableStateOf(initialDebt != null) }
 
     var amount   by remember { mutableStateOf(initialDebt?.amount?.toString() ?: "") }
     var rate     by remember { mutableStateOf(initialDebt?.rate?.toString() ?: "") }
@@ -57,7 +58,12 @@ fun AddDebtDialog(
     // Actual account dropdown
     val accountOptions = if (accounts.isNotEmpty()) accounts
     else listOf(Account(id = "cash", name = "Personal Cash", type = "Cash", balance = 0.0))
-    var selectedAccount  by remember { mutableStateOf(accountOptions.first()) }
+    var selectedAccount  by remember(accountOptions, initialDebt?.id, initialDestinationAccountName) {
+        mutableStateOf(
+            accountOptions.firstOrNull { it.name == initialDestinationAccountName }
+                ?: accountOptions.first()
+        )
+    }
     var expandedDest     by remember { mutableStateOf(false) }
 
     var expandedIntType  by remember { mutableStateOf(false) }
@@ -141,8 +147,7 @@ fun AddDebtDialog(
                 Spacer(Modifier.height(4.dp))
 
                 // ── Deposit to account (actual accounts) ──────────────────
-                if (initialDebt == null) {
-                    ExposedDropdownMenuBox(expanded = expandedDest, onExpandedChange = { expandedDest = !expandedDest }) {
+                ExposedDropdownMenuBox(expanded = expandedDest, onExpandedChange = { expandedDest = !expandedDest }) {
                         OutlinedTextField(
                             value = selectedAccount.name,
                             onValueChange = {},
@@ -184,8 +189,7 @@ fun AddDebtDialog(
                             }
                         }
                     }
-                    Spacer(Modifier.height(8.dp))
-                }
+                Spacer(Modifier.height(8.dp))
 
                 // ── Amount + dates ────────────────────────────────────────
                 OutlinedTextField(value = amount, onValueChange = { amount = it },

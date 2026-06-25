@@ -445,7 +445,7 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
             DashboardNudges(
                 dueSoonCount = dueSoonCount,
                 recentActivityCount = recentActivityCount,
-                onOpenDues = { onNavigateToScreen("loans_hub") },
+                onOpenDues = { onNavigateToScreen("collection_calendar") },
                 onAddTransaction = {
                     addTxnIncome = false
                     showAddTxn = true

@@ -71,13 +71,22 @@ fun AddInvestmentDialog(
     var typeExpanded by remember { mutableStateOf(false) }
 
     // ── Funding source state (only for new investments) ──────────────────────
-    var sourceType by remember { mutableStateOf(SOURCE_ACCOUNT) }
+    var sourceType by remember(initialInvestment?.id) {
+        mutableStateOf(initialInvestment?.sourceType?.takeIf { it.isNotBlank() } ?: SOURCE_ACCOUNT)
+    }
+    var sourceExpanded by remember { mutableStateOf(false) }
+    fun sourceLabel(value: String): String = when (value) {
+        SOURCE_EXISTING_DEBT -> "Existing loan"
+        SOURCE_NEW_LOAN -> "New loan"
+        else -> "From account"
+    }
 
     // Account picker
     val activeAccounts = accounts
-    var selectedAccount by remember(activeAccounts) {
+    var selectedAccount by remember(activeAccounts, initialInvestment?.id, initialInvestment?.fundingSource) {
         mutableStateOf(
-            activeAccounts.firstOrNull { it.name.equals("Personal Cash", ignoreCase = true) }
+            activeAccounts.firstOrNull { it.name == initialInvestment?.fundingSource }
+                ?: activeAccounts.firstOrNull { it.name.equals("Personal Cash", ignoreCase = true) }
                 ?: activeAccounts.firstOrNull { it.type.equals("Cash", ignoreCase = true) && !it.name.contains("petty", ignoreCase = true) }
                 ?: activeAccounts.firstOrNull()
         )
@@ -179,7 +188,8 @@ fun AddInvestmentDialog(
                 )
 
                 // ── Funding Source — only for new investments ─────────────────
-                if (isNew) {
+                val canEditAccountSource = !isNew && (sourceType == SOURCE_ACCOUNT || initialInvestment?.fundingSource.orEmpty().isBlank())
+                if (isNew || canEditAccountSource) {
                     HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
 
                     Text(
@@ -187,25 +197,36 @@ fun AddInvestmentDialog(
                         style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold)
                     )
 
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        TemplatePill(
-                            text = "From account",
-                            selected = sourceType == SOURCE_ACCOUNT,
-                            onClick = { sourceType = SOURCE_ACCOUNT },
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                        TemplatePill(
-                            text = "Existing loan",
-                            selected = sourceType == SOURCE_EXISTING_DEBT,
-                            onClick = { sourceType = SOURCE_EXISTING_DEBT },
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                        TemplatePill(
-                            text = "New loan",
-                            selected = sourceType == SOURCE_NEW_LOAN,
-                            onClick = { sourceType = SOURCE_NEW_LOAN },
-                            modifier = Modifier.fillMaxWidth(),
-                        )
+                    if (isNew) {
+                        ExposedDropdownMenuBox(
+                            expanded = sourceExpanded,
+                            onExpandedChange = { sourceExpanded = !sourceExpanded },
+                        ) {
+                            OutlinedTextField(
+                                value = sourceLabel(sourceType),
+                                onValueChange = {},
+                                readOnly = true,
+                                label = { Text("Funding source") },
+                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = sourceExpanded) },
+                                modifier = Modifier
+                                    .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, true)
+                                    .fillMaxWidth(),
+                            )
+                            ExposedDropdownMenu(
+                                expanded = sourceExpanded,
+                                onDismissRequest = { sourceExpanded = false },
+                            ) {
+                                listOf(SOURCE_ACCOUNT, SOURCE_EXISTING_DEBT, SOURCE_NEW_LOAN).forEach { option ->
+                                    DropdownMenuItem(
+                                        text = { Text(sourceLabel(option)) },
+                                        onClick = {
+                                            sourceType = option
+                                            sourceExpanded = false
+                                        },
+                                    )
+                                }
+                            }
+                        }
                     }
 
                     // ── Account picker ────────────────────────────────────────
@@ -386,13 +407,24 @@ fun AddInvestmentDialog(
                                     name       = name.trim(),
                                     type       = type,
                                     invested   = amountDouble,
-                                    currentVal = amountDouble, // starts equal; user updates via 'Update Value'
+                                    currentVal = initialInvestment?.currentVal ?: amountDouble,
                                     date       = parsedDate,
-                                    notes      = notes.trim()
+                                    notes      = notes.trim(),
+                                    sourceType = if (isNew) "" else sourceType,
+                                    fundingSource = if (!isNew && sourceType == SOURCE_ACCOUNT) selectedAccount?.name.orEmpty() else initialInvestment?.fundingSource.orEmpty(),
+                                    linkedDebtId = initialInvestment?.linkedDebtId.orEmpty(),
+                                    createdAt = initialInvestment?.createdAt ?: 0L,
                                 )
 
                                 if (!isNew) {
-                                    onConfirm(InvestmentSaveRequest(investment, sourceType = initialInvestment.sourceType))
+                                    onConfirm(
+                                        InvestmentSaveRequest(
+                                            investment = investment,
+                                            sourceType = sourceType,
+                                            sourceAccountName = selectedAccount?.name.orEmpty(),
+                                            sourceAccountId = selectedAccount?.id.orEmpty(),
+                                        )
+                                    )
                                 } else {
                                     val req = when (sourceType) {
                                         SOURCE_ACCOUNT -> InvestmentSaveRequest(

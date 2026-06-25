@@ -12,6 +12,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.unit.dp
 import java.time.LocalDate
+import java.time.Year
 import java.time.format.DateTimeFormatter
 
 /**
@@ -50,7 +51,15 @@ fun DatePickerField(
         }.getOrDefault(LocalDate.now().toEpochDay() * 86_400_000L)
     }
 
-    val state = rememberDatePickerState(initialSelectedDateMillis = initialMillis)
+    val yearRange = remember {
+        val currentYear = Year.now().value
+        (currentYear - 80)..(currentYear + 50)
+    }
+
+    val state = rememberDatePickerState(
+        initialSelectedDateMillis = initialMillis,
+        yearRange = yearRange,
+    )
 
     if (showPicker) {
         DatePickerDialog(
@@ -98,4 +107,3 @@ fun DatePickerField(
         placeholder   = { Text("DD-MM-YYYY") }
     )
 }
-

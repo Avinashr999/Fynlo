@@ -154,6 +154,108 @@ class MoneyActionIdempotencyDataIntegrityTest {
     }
 
     @Test
+    fun `editing debt amount applies only principal delta to original destination account`() = runBlocking {
+        db.dao().insertAccount(Account(id = "acc-1", name = "Business Investment", type = "Bank", balance = 1000.0))
+        val debt = Debt(
+            id = "debt-1",
+            name = "Lender",
+            amount = 100.0,
+            rate = 0.0,
+            date = "2026-06-15",
+        )
+
+        repository.insertDebtWithDestination(debt, "Business Investment", "personal")
+        repository.updateDebt(debt.copy(amount = 675.0))
+
+        val fundingTransaction = db.dao().getTransactionsByRef("debt-1")
+            .single { it.category == "Debt Received" }
+        assertEquals(1675.0, db.dao().getAccountById("acc-1")!!.balance, 0.0001)
+        assertEquals(675.0, fundingTransaction.amount, 0.0001)
+        assertEquals("acc-1", fundingTransaction.toAcctId)
+    }
+
+    @Test
+    fun `editing borrower source reverses old account and debits corrected account`() = runBlocking {
+        db.dao().insertAccount(Account(id = "acc-family", name = "Family Cash", type = "Cash", balance = 1000.0))
+        db.dao().insertAccount(Account(id = "acc-business", name = "Business Investment", type = "Bank", balance = 2000.0))
+        val borrower = Borrower(
+            id = "loan-1",
+            name = "Sudhakar",
+            amount = 100.0,
+            rate = 0.0,
+            date = "2026-06-15",
+        )
+
+        repository.insertBorrowerWithSource(borrower, "Family Cash", "personal")
+        repository.updateBorrowerWithSource(
+            borrower.copy(amount = 675.0, sourceAccount = "Business Investment"),
+            "Business Investment",
+        )
+
+        val fundingTransaction = db.dao().getTransactionsByRef("loan-1")
+            .single { it.category == "Lending" }
+        assertEquals(1000.0, db.dao().getAccountById("acc-family")!!.balance, 0.0001)
+        assertEquals(1325.0, db.dao().getAccountById("acc-business")!!.balance, 0.0001)
+        assertEquals(675.0, fundingTransaction.amount, 0.0001)
+        assertEquals("Business Investment", fundingTransaction.fromAcct)
+        assertEquals("acc-business", fundingTransaction.fromAcctId)
+    }
+
+    @Test
+    fun `editing debt destination reverses old account and credits corrected account`() = runBlocking {
+        db.dao().insertAccount(Account(id = "acc-family", name = "Family Cash", type = "Cash", balance = 1000.0))
+        db.dao().insertAccount(Account(id = "acc-business", name = "Business Investment", type = "Bank", balance = 2000.0))
+        val debt = Debt(
+            id = "debt-1",
+            name = "Sudhakar",
+            amount = 100.0,
+            rate = 0.0,
+            date = "2026-06-15",
+        )
+
+        repository.insertDebtWithDestination(debt, "Family Cash", "personal")
+        repository.updateDebtWithDestination(debt.copy(amount = 675.0), "Business Investment")
+
+        val fundingTransaction = db.dao().getTransactionsByRef("debt-1")
+            .single { it.category == "Debt Received" }
+        assertEquals(1000.0, db.dao().getAccountById("acc-family")!!.balance, 0.0001)
+        assertEquals(2675.0, db.dao().getAccountById("acc-business")!!.balance, 0.0001)
+        assertEquals(675.0, fundingTransaction.amount, 0.0001)
+        assertEquals("Business Investment", fundingTransaction.toAcct)
+        assertEquals("acc-business", fundingTransaction.toAcctId)
+    }
+
+    @Test
+    fun `editing account funded investment source reverses old account and debits corrected account`() = runBlocking {
+        db.dao().insertAccount(Account(id = "acc-family", name = "Family Cash", type = "Cash", balance = 1000.0))
+        db.dao().insertAccount(Account(id = "acc-business", name = "Business Investment", type = "Bank", balance = 2000.0))
+        val investment = Investment(
+            id = "inv-1",
+            name = "Gold ETF",
+            type = "Gold",
+            invested = 100.0,
+            currentVal = 125.0,
+            date = "2026-06-15",
+        )
+
+        repository.insertInvestmentFundedByAccount(investment, "Family Cash", "personal", "acc-family")
+        repository.updateInvestmentFundedByAccount(
+            investment.copy(invested = 675.0, currentVal = 700.0),
+            "Business Investment",
+            "personal",
+            "acc-business",
+        )
+
+        val fundingTransaction = db.dao().getTransactionsByRef("inv-1")
+            .single { it.category == "Investment" }
+        assertEquals(1000.0, db.dao().getAccountById("acc-family")!!.balance, 0.0001)
+        assertEquals(1325.0, db.dao().getAccountById("acc-business")!!.balance, 0.0001)
+        assertEquals(675.0, fundingTransaction.amount, 0.0001)
+        assertEquals("Business Investment", fundingTransaction.fromAcct)
+        assertEquals("acc-business", fundingTransaction.fromAcctId)
+    }
+
+    @Test
     fun `retrying same loan repayment does not credit destination account twice`() = runBlocking {
         db.dao().insertAccount(Account(id = "acc-1", name = "Personal Cash", type = "Cash", balance = 1000.0))
         db.dao().insertBorrower(Borrower(id = "loan-1", name = "Ravi", amount = 100.0, rate = 0.0, date = "2026-06-15"))

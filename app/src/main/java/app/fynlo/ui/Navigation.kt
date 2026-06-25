@@ -208,10 +208,12 @@ fun MainNavigation(viewModel: FinanceViewModel) {
     val reviewLastShownAt by UserPreferences.reviewPromptLastShownAt(context).collectAsState(initial = 0L)
     var showReviewPrompt by remember { mutableStateOf(false) }
 
-    LaunchedEffect(transactionsForReview.size, hasRatedApp, reviewLastShownAt) {
+    LaunchedEffect(transactionsForReview.size, hasRatedApp, reviewLastShownAt, isLoggedIn, isPinUnlocked) {
         val now = System.currentTimeMillis()
         val cooldownMs = 7L * 24L * 60L * 60L * 1000L
         if (
+            isLoggedIn &&
+            isPinUnlocked &&
             !hasRatedApp &&
             transactionsForReview.size >= 8 &&
             now - reviewLastShownAt > cooldownMs
@@ -741,7 +743,8 @@ fun MainNavigation(viewModel: FinanceViewModel) {
                     CollectionCalendarScreen(
                         viewModel = viewModel,
                         onNavigateBack = { navController.navigateUp() },
-                        onNavigateToBorrower = { id -> navController.navigate("customer/$id") }
+                        onNavigateToBorrower = { id -> navController.navigate("customer/$id") },
+                        onNavigateToDebt = { id -> navController.navigate("debt/$id") },
                     )
                 }
                 composable(Screen.GlobalSearch.route) {

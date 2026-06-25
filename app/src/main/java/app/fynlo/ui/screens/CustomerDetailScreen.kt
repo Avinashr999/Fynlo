@@ -102,8 +102,8 @@ val borrowers by viewModel.borrowers.collectAsState()
         AddLendingDialog(
             viewModel = viewModel,
             onDismiss = { showEditDialog = false },
-            onConfirm = { updated, _ ->
-                viewModel.updateBorrower(updated)
+            onConfirm = { updated, source ->
+                viewModel.updateBorrowerWithSource(updated, source)
                 showEditDialog = false
             },
             initialBorrower = borrower

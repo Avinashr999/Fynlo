@@ -28,10 +28,9 @@ import app.fynlo.logic.CurrencyFormatter
 import app.fynlo.logic.CurrencyUtils
 import app.fynlo.logic.DateUtils
 import app.fynlo.ui.theme.Emerald500
-import app.fynlo.ui.theme.TemplatePill
 import java.util.*
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddLendingDialog(
     viewModel: FinanceViewModel,
@@ -45,6 +44,7 @@ fun AddLendingDialog(
     val locale = LocalLocale.current.platformLocale
 
     var selectedPerson by remember { mutableStateOf<Person?>(null) }
+    var borrowerExpanded by remember { mutableStateOf(false) }
     var amount by remember { mutableStateOf(initialBorrower?.amount?.takeIf { it > 0 }?.let { String.format(locale, "%.0f", it) } ?: "") }
     var rate by remember { mutableStateOf(initialBorrower?.rate?.takeIf { it > 0 }?.let { String.format(locale, "%.0f", it) } ?: "") }
     var date by remember { mutableStateOf(initialBorrower?.date?.let { DateUtils.formatToDisplay(it) } ?: java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy"))) }
@@ -55,7 +55,13 @@ fun AddLendingDialog(
 
     val accountOptions = if (accounts.isNotEmpty()) accounts
         else listOf(app.fynlo.data.model.Account(id = "cash", name = "Personal Cash", type = "Cash", balance = 0.0))
-    var selectedAccount by remember { mutableStateOf(accountOptions.first()) }
+    var selectedAccount by remember(accountOptions, initialBorrower?.id) {
+        mutableStateOf(
+            accountOptions.firstOrNull { it.name == initialBorrower?.sourceAccount }
+                ?: accountOptions.first()
+        )
+    }
+    var accountExpanded by remember { mutableStateOf(false) }
 
     val advancedInterestTypes = listOf("Reducing Balance", "Compound Interest", "Both")
     val isEdit = initialBorrower != null
@@ -128,33 +134,98 @@ fun AddLendingDialog(
                     Text("Add a contact in Contact Book first.", style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 } else {
-                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        people.forEach { person ->
-                            TemplatePill(
-                                text = person.name,
-                                selected = selectedPerson?.id == person.id,
-                                onClick = { selectedPerson = person },
-                            )
+                    ExposedDropdownMenuBox(
+                        expanded = borrowerExpanded,
+                        onExpandedChange = { borrowerExpanded = !borrowerExpanded },
+                    ) {
+                        OutlinedTextField(
+                            value = selectedPerson?.name ?: "",
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text("Borrower") },
+                            placeholder = { Text("Select from contacts") },
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = borrowerExpanded) },
+                            modifier = Modifier
+                                .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, true)
+                                .fillMaxWidth(),
+                            shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+                        )
+                        ExposedDropdownMenu(
+                            expanded = borrowerExpanded,
+                            onDismissRequest = { borrowerExpanded = false },
+                        ) {
+                            people.forEach { person ->
+                                DropdownMenuItem(
+                                    text = { Text(person.name) },
+                                    onClick = {
+                                        selectedPerson = person
+                                        borrowerExpanded = false
+                                    },
+                                )
+                            }
                         }
                     }
                 }
 
-                if (!isEdit) {
-                    Spacer(Modifier.height(20.dp))
-                    Text("Lend from", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Spacer(Modifier.height(8.dp))
-                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Spacer(Modifier.height(20.dp))
+                Text(if (isEdit) "Lent from" else "Lend from", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Spacer(Modifier.height(8.dp))
+                ExposedDropdownMenuBox(
+                    expanded = accountExpanded,
+                    onExpandedChange = { accountExpanded = !accountExpanded },
+                ) {
+                    OutlinedTextField(
+                        value = selectedAccount.name,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text(if (isEdit) "Lent from" else "Lend from") },
+                        supportingText = {
+                            Text(
+                                "${selectedAccount.type}  -  Balance: ${CurrencyFormatter.detail(selectedAccount.balance, currencyCode, locale)}",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Emerald500,
+                            )
+                        },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = accountExpanded) },
+                        modifier = Modifier
+                            .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, true)
+                            .fillMaxWidth(),
+                        shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+                    )
+                    ExposedDropdownMenu(
+                        expanded = accountExpanded,
+                        onDismissRequest = { accountExpanded = false },
+                    ) {
                         accountOptions.forEach { acct ->
-                            TemplatePill(
-                                text = acct.name,
-                                selected = selectedAccount.id == acct.id,
-                                onClick = { selectedAccount = acct },
+                            DropdownMenuItem(
+                                text = {
+                                    Row(
+                                        Modifier.fillMaxWidth(),
+                                        Arrangement.SpaceBetween,
+                                        Alignment.CenterVertically,
+                                    ) {
+                                        Column {
+                                            Text(acct.name, fontWeight = FontWeight.Medium)
+                                            Text(
+                                                acct.type,
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            )
+                                        }
+                                        Text(
+                                            CurrencyFormatter.detail(acct.balance, currencyCode, locale),
+                                            style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
+                                            color = if (acct.balance >= 0) Emerald500 else MaterialTheme.colorScheme.error,
+                                        )
+                                    }
+                                },
+                                onClick = {
+                                    selectedAccount = acct
+                                    accountExpanded = false
+                                },
                             )
                         }
                     }
-                    Spacer(Modifier.height(4.dp))
-                    Text("Balance: ${CurrencyFormatter.detail(selectedAccount.balance, currencyCode, locale)}",
-                        style = MaterialTheme.typography.labelSmall, color = Emerald500)
                 }
 
                 Spacer(Modifier.height(20.dp))
@@ -226,11 +297,11 @@ fun AddLendingDialog(
                     onClick = {
                         if (submitting) return@Button
                         submitting = true
-                        val finalSource = if (isEdit) "Personal Cash" else selectedAccount.name
+                        val finalSource = selectedAccount.name
                         val rawId = initialBorrower?.id ?: ""
                         val borrower = Borrower(
                             id     = if (rawId.isBlank()) app.fynlo.logic.Ids.newId() else rawId,
-                            sourceAccount = if (!isEdit) selectedAccount.name else requireNotNull(initialBorrower).sourceAccount,
+                            sourceAccount = selectedAccount.name,
                             name   = selectedPerson?.name ?: initialBorrower?.name ?: "Unknown",
                             phone  = selectedPerson?.phone ?: initialBorrower?.phone ?: "",
                             amount = amount.toDoubleOrNull() ?: 0.0,

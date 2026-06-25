@@ -77,7 +77,11 @@ val currentProject by viewModel.currentProject.collectAsState()
             onDismiss = { editingInvest = null },
             onConfirm = { req: InvestmentSaveRequest ->
                 if (editingInvest?.id?.isNotBlank() == true) {
-                    viewModel.updateInvestment(req.investment)
+                    if (req.sourceType == "account") {
+                        viewModel.updateInvestmentFundedByAccount(req.investment, req.sourceAccountName, req.sourceAccountId)
+                    } else {
+                        viewModel.updateInvestment(req.investment)
+                    }
                     viewModel.showFeedback("Investment updated")
                 } else {
                     when (req.sourceType) {

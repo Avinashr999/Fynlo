@@ -648,9 +648,21 @@ class FinanceViewModel @Inject constructor(
         }
     }
 
+    fun updateBorrowerWithSource(borrower: Borrower, source: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            repository.updateBorrowerWithSource(borrower.copy(projectId = pid), source)
+        }
+    }
+
     fun updateDebt(debt: Debt) {
         viewModelScope.launch(Dispatchers.IO) {
             repository.updateDebt(debt.copy(projectId = pid, updatedAt = System.currentTimeMillis()))
+        }
+    }
+
+    fun updateDebtWithDestination(debt: Debt, destination: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            repository.updateDebtWithDestination(debt.copy(projectId = pid, updatedAt = System.currentTimeMillis()), destination)
         }
     }
 
@@ -678,6 +690,12 @@ class FinanceViewModel @Inject constructor(
     fun updateInvestment(investment: Investment) {
         viewModelScope.launch(Dispatchers.IO) {
             repository.updateInvestment(investment.copy(projectId = pid))
+        }
+    }
+
+    fun updateInvestmentFundedByAccount(investment: Investment, accountName: String, accountId: String = "") {
+        viewModelScope.launch(Dispatchers.IO) {
+            repository.updateInvestmentFundedByAccount(investment.copy(projectId = pid), accountName, pid, accountId)
         }
     }
 

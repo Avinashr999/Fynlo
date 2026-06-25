@@ -517,38 +517,118 @@ class FinanceRepository(
     suspend fun insertBorrower(borrower: Borrower) = insertBorrowerWithSource(borrower, "Personal Cash")
 
     suspend fun updateBorrower(borrower: Borrower) {
+        updateBorrowerWithSource(borrower, borrower.sourceAccount)
+    }
+
+    suspend fun updateBorrowerWithSource(borrower: Borrower, sourceAccount: String) {
         val before = dao.getBorrowerById(borrower.id)
-        val b = borrower.copy(updatedAt = System.currentTimeMillis())
-        dao.insertBorrower(b)
-        recordAudit(
-            action = "EDIT",
-            entityType = "loan",
-            entityId = b.id,
-            title = "Loan edited: ${b.name}",
-            beforeValue = before?.let { "${it.name}:${it.amount}:paid=${it.paid}:source=${it.sourceAccount}:status=${it.status}" } ?: "",
-            afterValue = "${b.name}:${b.amount}:paid=${b.paid}:source=${b.sourceAccount}:status=${b.status}",
-            amountDelta = b.amount - (before?.amount ?: b.amount),
-            accountName = b.sourceAccount,
-            projectId = b.projectId,
-        )
-        sync { setBorrower(b) }
+        val now = System.currentTimeMillis()
+        var oldSource = ""
+        var newSource = ""
+        var updatedBorrower: Borrower? = null
+        var updatedFundingTxn: Transaction? = null
+        db.withTransaction {
+            val fundingTxn = dao.getTransactionsByRef(borrower.id)
+                .firstOrNull { it.category == "Lending" && it.type.equals("Expense", ignoreCase = true) }
+            oldSource = fundingTxn?.fromAcct ?: before?.sourceAccount.orEmpty()
+            newSource = sourceAccount.ifBlank { oldSource.ifBlank { before?.sourceAccount.orEmpty() } }
+            val newSourceId = dao.getAccountByName(newSource)?.id ?: ""
+            val b = borrower.copy(sourceAccount = newSource, updatedAt = now)
+            dao.insertBorrower(b)
+            updatedBorrower = b
+            if (before != null && fundingTxn != null) {
+                applyAccountDelta(fundingTxn.fromAcctId, fundingTxn.fromAcct, fundingTxn.amount)
+                applyAccountDelta(newSourceId, newSource, -b.amount)
+                updatedFundingTxn = fundingTxn.copy(
+                    date = b.date,
+                    amount = b.amount,
+                    fromAcct = newSource,
+                    fromAcctId = newSourceId,
+                    category = "Lending",
+                    desc = "Lent to ${b.name}",
+                    notes = b.notes,
+                    projectId = b.projectId,
+                    updatedAt = now,
+                )
+                dao.insertTransaction(updatedFundingTxn!!)
+            }
+            recordAudit(
+                action = "EDIT",
+                entityType = "loan",
+                entityId = b.id,
+                title = "Loan edited: ${b.name}",
+                beforeValue = before?.let { "${it.name}:${it.amount}:paid=${it.paid}:source=${it.sourceAccount}:status=${it.status}" } ?: "",
+                afterValue = "${b.name}:${b.amount}:paid=${b.paid}:source=${b.sourceAccount}:status=${b.status}",
+                amountDelta = b.amount - (before?.amount ?: b.amount),
+                accountName = b.sourceAccount,
+                projectId = b.projectId,
+            )
+        }
+        sync {
+            updatedBorrower?.let { setBorrower(it) }
+            updatedFundingTxn?.let { setTransaction(it) }
+        }
+        if (oldSource.isNotBlank()) syncAccountByName(oldSource)
+        if (newSource.isNotBlank() && newSource != oldSource) syncAccountByName(newSource)
     }
 
     suspend fun updateDebt(debt: Debt) {
+        val existingDestination = dao.getTransactionsByRef(debt.id)
+            .firstOrNull { it.category == "Debt Received" && it.type.equals("Income", ignoreCase = true) }
+            ?.toAcct.orEmpty()
+        updateDebtWithDestination(debt, existingDestination)
+    }
+
+    suspend fun updateDebtWithDestination(debt: Debt, requestedDestinationAccount: String) {
+        var destinationAccount = ""
+        var oldDestinationAccount = ""
+        var updatedFundingTxn: Transaction? = null
         val before = dao.getDebtById(debt.id)
-        val d = debt.copy(updatedAt = System.currentTimeMillis())
-        dao.insertDebt(d)
-        recordAudit(
-            action = "EDIT",
-            entityType = "debt",
-            entityId = d.id,
-            title = "Debt edited: ${d.name}",
-            beforeValue = before?.let { "${it.name}:${it.amount}:paid=${it.paid}:status=${it.status}" } ?: "",
-            afterValue = "${d.name}:${d.amount}:paid=${d.paid}:status=${d.status}",
-            amountDelta = d.amount - (before?.amount ?: d.amount),
-            projectId = d.projectId,
-        )
-        sync { setDebt(d) }
+        val now = System.currentTimeMillis()
+        val d = debt.copy(updatedAt = now)
+        db.withTransaction {
+            val fundingTxn = dao.getTransactionsByRef(d.id)
+                .firstOrNull { it.category == "Debt Received" && it.type.equals("Income", ignoreCase = true) }
+            oldDestinationAccount = fundingTxn?.toAcct.orEmpty()
+            destinationAccount = requestedDestinationAccount.ifBlank { oldDestinationAccount }
+            val destinationAccountId = dao.getAccountByName(destinationAccount)?.id ?: ""
+            dao.insertDebt(d)
+            if (fundingTxn != null) {
+                if (before != null) {
+                    applyAccountDelta(fundingTxn.toAcctId, fundingTxn.toAcct, -fundingTxn.amount)
+                    applyAccountDelta(destinationAccountId, destinationAccount, d.amount)
+                }
+                updatedFundingTxn = fundingTxn.copy(
+                    date = d.date,
+                    amount = d.amount,
+                    toAcct = destinationAccount,
+                    toAcctId = destinationAccountId,
+                    category = "Debt Received",
+                    desc = "Loan received from ${d.name}",
+                    notes = d.notes,
+                    projectId = d.projectId,
+                    updatedAt = now,
+                )
+                dao.insertTransaction(updatedFundingTxn!!)
+            }
+            recordAudit(
+                action = "EDIT",
+                entityType = "debt",
+                entityId = d.id,
+                title = "Debt edited: ${d.name}",
+                beforeValue = before?.let { "${it.name}:${it.amount}:paid=${it.paid}:status=${it.status}" } ?: "",
+                afterValue = "${d.name}:${d.amount}:paid=${d.paid}:status=${d.status}:to=$destinationAccount",
+                amountDelta = d.amount - (before?.amount ?: d.amount),
+                accountName = destinationAccount,
+                projectId = d.projectId,
+            )
+        }
+        sync {
+            setDebt(d)
+            updatedFundingTxn?.let { setTransaction(it) }
+        }
+        if (oldDestinationAccount.isNotBlank()) syncAccountByName(oldDestinationAccount)
+        if (destinationAccount.isNotBlank()) syncAccountByName(destinationAccount)
     }
     /**
      * C03b Stage #3 (3.2.90) — find a Person by phone, or create one and
@@ -594,21 +674,23 @@ class FinanceRepository(
                 updatedAt = now,
                 createdAt = if (borrower.createdAt == 0L) now else borrower.createdAt,
             )
-            dao.insertBorrower(b)
-            dao.updateAccountBalance(sourceAccount, -borrower.amount)
-            val t = Transaction(app.fynlo.logic.Ids.newId(), borrower.date, "Expense", borrower.amount, fromAcct = sourceAccount, category = "Lending", desc = "Lent to ${borrower.name}", ref = borrower.id, notes = borrower.notes, projectId = projectId, updatedAt = now, createdAt = now)
+            val bWithSource = b.copy(sourceAccount = sourceAccount)
+            dao.insertBorrower(bWithSource)
+            val sourceAccountId = dao.getAccountByName(sourceAccount)?.id ?: ""
+            applyAccountDelta(sourceAccountId, sourceAccount, -borrower.amount)
+            val t = Transaction(app.fynlo.logic.Ids.newId(), borrower.date, "Expense", borrower.amount, fromAcct = sourceAccount, fromAcctId = sourceAccountId, category = "Lending", desc = "Lent to ${borrower.name}", ref = borrower.id, notes = borrower.notes, projectId = projectId, updatedAt = now, createdAt = now)
             dao.insertTransaction(t)
             recordAudit(
                 action = "CREATE",
                 entityType = "loan",
-                entityId = b.id,
-                title = "Loan created: ${b.name}",
-                afterValue = "lent=${b.amount}:from=$sourceAccount:txn=${t.id}",
-                amountDelta = -b.amount,
+                entityId = bWithSource.id,
+                title = "Loan created: ${bWithSource.name}",
+                afterValue = "lent=${bWithSource.amount}:from=$sourceAccount:txn=${t.id}",
+                amountDelta = -bWithSource.amount,
                 accountName = sourceAccount,
                 projectId = projectId,
             )
-            sync { setBorrower(b); setTransaction(t) }
+            sync { setBorrower(bWithSource); setTransaction(t) }
         }
         Analytics.loanCreated(hasInterest = borrower.rate > 0.0)
         syncAccountByName(sourceAccount)
@@ -1161,6 +1243,69 @@ class FinanceRepository(
         sync { setInvestment(updated) }
     }
 
+    suspend fun updateInvestmentFundedByAccount(
+        investment: Investment,
+        accountName: String,
+        projectId: String = investment.projectId,
+        accountId: String = "",
+    ) {
+        val before = dao.getInvestmentById(investment.id)
+        val now = System.currentTimeMillis()
+        var oldSource = ""
+        var newSource = accountName
+        var updatedInvestment: Investment? = null
+        var updatedFundingTxn: Transaction? = null
+        db.withTransaction {
+            val fundingTxn = dao.getTransactionsByRef(investment.id)
+                .firstOrNull { it.category == "Investment" && it.type.equals("Expense", ignoreCase = true) }
+            oldSource = fundingTxn?.fromAcct ?: before?.fundingSource.orEmpty()
+            newSource = accountName.ifBlank { oldSource }
+            val resolvedAccountId = accountId.ifBlank { dao.getAccountByName(newSource)?.id ?: "" }
+            val i = investment.copy(
+                sourceType = "account",
+                fundingSource = newSource,
+                projectId = projectId,
+                updatedAt = now,
+                createdAt = if (investment.createdAt == 0L) before?.createdAt ?: now else investment.createdAt,
+            )
+            dao.insertInvestment(i)
+            updatedInvestment = i
+            if (before != null && fundingTxn != null) {
+                applyAccountDelta(fundingTxn.fromAcctId, fundingTxn.fromAcct, fundingTxn.amount)
+                applyAccountDelta(resolvedAccountId, newSource, -i.invested)
+                updatedFundingTxn = fundingTxn.copy(
+                    date = i.date,
+                    amount = i.invested,
+                    fromAcct = newSource,
+                    fromAcctId = resolvedAccountId,
+                    category = "Investment",
+                    desc = "Invested in ${i.name}",
+                    notes = i.notes,
+                    projectId = projectId,
+                    updatedAt = now,
+                )
+                dao.insertTransaction(updatedFundingTxn!!)
+            }
+            recordAudit(
+                action = "EDIT",
+                entityType = "investment",
+                entityId = i.id,
+                title = "Investment edited: ${i.name}",
+                beforeValue = before?.let { "${it.name}:${it.invested}:current=${it.currentVal}:source=${it.fundingSource}" } ?: "",
+                afterValue = "${i.name}:${i.invested}:current=${i.currentVal}:source=${i.fundingSource}",
+                amountDelta = i.invested - (before?.invested ?: i.invested),
+                accountName = i.fundingSource,
+                projectId = projectId,
+            )
+        }
+        sync {
+            updatedInvestment?.let { setInvestment(it) }
+            updatedFundingTxn?.let { setTransaction(it) }
+        }
+        if (oldSource.isNotBlank()) syncAccountByName(oldSource)
+        if (newSource.isNotBlank() && newSource != oldSource) syncAccountByName(newSource)
+    }
+
     suspend fun executeLinkedInvestment(
         investment: Investment,
         fundingSourceType: String, // "Account", "Debt", "Already Settled"
@@ -1293,8 +1438,9 @@ class FinanceRepository(
                 createdAt = if (debt.createdAt == 0L) now else debt.createdAt,
             )
             dao.insertDebt(d)
-            dao.updateAccountBalance(destinationAccount, debt.amount)
-            val t = Transaction(app.fynlo.logic.Ids.newId(), debt.date, "Income", debt.amount, toAcct = destinationAccount, category = "Debt Received", desc = "Loan received from ${debt.name}", ref = d.id, notes = debt.notes, projectId = projectId, updatedAt = now, createdAt = now)
+            val destinationAccountId = dao.getAccountByName(destinationAccount)?.id ?: ""
+            applyAccountDelta(destinationAccountId, destinationAccount, debt.amount)
+            val t = Transaction(app.fynlo.logic.Ids.newId(), debt.date, "Income", debt.amount, toAcct = destinationAccount, toAcctId = destinationAccountId, category = "Debt Received", desc = "Loan received from ${debt.name}", ref = d.id, notes = debt.notes, projectId = projectId, updatedAt = now, createdAt = now)
             dao.insertTransaction(t)
             recordAudit(
                 action = "CREATE",

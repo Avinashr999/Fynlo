@@ -1609,3 +1609,38 @@ Next Play upload for this rename line uses `versionCode = 230` and `versionName 
 - Installed the latest prod-debug build and verified the visible brand as `Fynlo Ledger` across dashboard, loans, invest, reports, expenses, search, drawer, settings, and core add/edit sheets.
 - Found one polish issue in the investment add sheet: the shared date field could pull up the keyboard instead of behaving like a picker-only control.
 - Updated `DatePickerField` so date inputs are read-only picker controls. Tapping the field opens the Material date picker and clears focus, preventing accidental keyboard popups across investment, transaction, loan, budget, recurring, and other date-based forms.
+
+## 2026-06-24 - Play asset refresh and review prompt gate
+
+- Installed the developer build on connected phone `3C15CA0055F00000`: package `app.fynlo.dev`, versionCode `230`, versionName `3.2.106-dev`.
+- Found a store-polish issue while capturing screenshots: the Play review prompt could appear on the login screen before the user entered the app.
+- Fixed `Navigation.kt` so the review prompt can only show after login and PIN unlock. This prevents first-launch/sign-in and Play screenshot capture from being interrupted.
+- Regenerated `play_store_assets/feature_graphic_1024x500.png` with visible `Fynlo Ledger` branding and kept the existing symbol-only 512x512 app icon.
+- Refreshed the Play phone upload screenshots in `play_store_assets/screenshots_upload/` as a clean six-file set: sign-in, dashboard, loans, invest, reports, and expenses. Removed stale/raw upload screenshots so the folder does not mix old `Fynlo` assets with `Fynlo Ledger`.
+- Tablet screenshots were not generated in this pass because only phone AVDs (`Pixel_6`, `Pixel_7`, `Pixel_9`) exist locally and the `avdmanager` tool is not installed. Create a tablet AVD or connect a tablet before claiming real 7-inch/10-inch tablet screenshots.
+
+## 2026-06-25 - Debt Edit Destination Account Delta Fix
+
+- Manual internal-testing smoke found a debt edit bug: a debt created into an account, such as Rs. 1,00,000 into Business Investment, could be edited to a larger principal while the Debt page changed but the receiving account stayed at the old credited amount.
+- Fixed `FinanceRepository.updateDebt(...)` so the linked `Debt Received` transaction is the source of truth for the destination account. Editing a debt now updates that linked transaction and applies only the principal delta to the original destination account, using `toAcctId` when available.
+- New debt creation now stores `toAcctId` on the linked `Debt Received` transaction and credits the destination account through the same id-aware account delta path used by other money actions.
+- Added regression coverage in `MoneyActionIdempotencyDataIntegrityTest`: editing a debt from 100 to 675 credits only +575 to the original Business Investment account and preserves the linked transaction account id.
+- Verification passed: focused money-action integrity test, `:app:compileProdDebugKotlin`, and full `:app:testProdDebugUnitTest`.
+
+## 2026-06-26 - Editable Money Source/Destination Traceability
+
+- User raised a trust-critical edit scenario: a money action saved to the wrong account must be correctable later without manual balance surgery.
+- Lending edit now exposes `Lent from` and routes through `updateBorrowerWithSource(...)`. The repository reverses the original linked `Lending` transaction source account, applies the corrected source account debit, and updates the linked transaction `fromAcct/fromAcctId`.
+- Debt edit now exposes `Received into Account` and routes through `updateDebtWithDestination(...)`. The repository reverses the original `Debt Received` destination credit, applies the corrected destination credit, and updates the linked transaction `toAcct/toAcctId`.
+- Account-funded investment edit now exposes funding source correction. The repository reverses the original investment funding account, debits the corrected account, preserves current value, and updates the linked funding transaction.
+- Dashboard due-soon nudge now opens the collection calendar instead of the generic loans hub. The calendar now includes both lending dues and debt dues, with overdue red, today green, near-due amber, and later upcoming blue; tapping rows opens borrower or debt detail appropriately.
+- Zero-interest hand loans are already included in the active lending filter when unpaid and not settled/written off. If a specific hand loan is missing on-device, inspect that row's saved `status`, `paid`, and `amount` values rather than assuming the hand-loan list excludes it.
+- Regression coverage added in `MoneyActionIdempotencyDataIntegrityTest` for correcting borrower source, debt destination, and investment funding source. Verification passed with focused money-action tests, `:app:compileProdDebugKotlin`, and full `:app:testProdDebugUnitTest`.
+
+## 2026-06-26 - Date Picker and Form Selection Polish
+
+- Phone feedback found the Material date picker could become slow when jumping across years in loan, debt, contact, investment, budget, and related sheets.
+- `DatePickerField` now bounds the selectable year range to current year minus 80 through current year plus 50. This keeps practical finance dates available while avoiding the huge year list that made some devices janky.
+- Dynamic selection chips in the lending form were replaced with dropdowns for borrower and source account. This keeps long contact/account lists from wrapping into crowded rows.
+- Investment funding source selection was changed from three stacked pill controls to a single dropdown, matching the calmer form language used by debt/account pickers.
+- Launcher label check: production resources already resolve `app_name` to `Fynlo Ledger`; dev resources resolve to `Fynlo Ledger Dev`. If the launcher still shows only `Fynlo`, treat it as launcher truncation/cache or an older installed build, not a source label regression.

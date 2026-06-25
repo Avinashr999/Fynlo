@@ -477,3 +477,39 @@ When the phone is connected again, run the remaining `test-android-apps` device-
 - Main screens and core sheets were visually checked on the connected phone: dashboard, loans, invest, reports, expenses, search, drawer, settings, add account, add transaction, add loan, and add investment.
 - One safe polish fix landed: `DatePickerField` is now picker-only/read-only. This prevents the keyboard from opening unexpectedly on date fields and keeps form sheets calmer.
 - Future QA should still include a quick tap on date fields in add/edit transaction, loan, debt, budget, recurring, goal, and investment forms to confirm the Material date picker opens and the keyboard stays hidden.
+
+## 2026-06-24 - Play Store asset pass for Fynlo Ledger
+
+- Developer build was installed on the connected phone as `app.fynlo.dev` / `3.2.106-dev` / versionCode `230` before Play asset work.
+- While capturing the sign-in screenshot, the Play review prompt appeared before login. `Navigation.kt` now gates the prompt behind both `isLoggedIn` and `isPinUnlocked`, so it cannot interrupt login/offline onboarding or store screenshots.
+- Feature graphic regenerated at `play_store_assets/feature_graphic_1024x500.png` with `Fynlo Ledger` branding. The existing `play_store_assets/icon_512x512.png` remains valid and was not changed.
+- Phone upload screenshots were refreshed and cleaned to exactly six files under `play_store_assets/screenshots_upload/`: `01_signin.png`, `02_dashboard.png`, `03_loans.png`, `04_invest.png`, `05_reports.png`, and `06_expenses.png`.
+- Current phone screenshot dimensions are `1272x2800`, all below 8 MB and valid for Play phone uploads.
+- Tablet screenshots remain a separate task: no tablet AVD exists locally, `emulator.exe` exists only under the SDK path, and `avdmanager` was not available to create a new tablet profile during this pass. Do not claim 7-inch/10-inch tablet screenshots until a real tablet or tablet emulator is used.
+
+## 2026-06-25 - Debt edit destination-account delta safety
+
+- Internal testing found a trust-critical debt edit issue: editing a debt amount updated the Debt page but did not adjust the account that originally received the borrowed money.
+- Fix rule: the linked `Debt Received` transaction is the authoritative trace for where the debt money entered. Debt edits now update that transaction and apply only the principal delta to the original destination account.
+- New debt funding transactions now persist `toAcctId`, so future edits can use id-based account updates instead of relying only on account names.
+- Regression test added in `MoneyActionIdempotencyDataIntegrityTest`: create a debt into Business Investment, edit principal upward, confirm only the delta is added to that same account and the linked transaction remains traceable.
+- Verification passed with the focused money-action integrity test, prod-debug Kotlin compilation, and full prod-debug unit tests.
+
+## 2026-06-26 - Account correction on edit for core money actions
+
+- Internal testing raised the broader case behind the debt-edit bug: users can pick the wrong account when creating a loan, debt, or investment, and the edit screen must let them correct it safely.
+- Lending edit now shows the source account. Saving a corrected source reverses the original linked `Lending` transaction's account debit, debits the corrected account, and updates `fromAcct/fromAcctId`.
+- Debt edit now shows the destination account. Saving a corrected destination reverses the original linked `Debt Received` account credit, credits the corrected account, and updates `toAcct/toAcctId`.
+- Account-funded investment edit now shows the funding account. Saving a corrected funding source reverses the old funding account debit, debits the corrected account, preserves today's/current value, and updates the linked investment funding transaction.
+- Dashboard due-soon now opens the collection calendar. That calendar includes both lent-out due items and debts owed, with overdue red, today green, near-due amber, and later upcoming blue; rows route to borrower or debt detail.
+- If a tester reports a hand loan not appearing, first check the saved row fields: zero-interest unpaid loans are included in the active lending list unless status is settled/written off or paid is already at/above amount.
+- Family Cash versus Business Investment correction path: after this build is installed, open the affected debt/loan/investment edit screen and correct the source/destination account. The app should reverse the old account movement and apply the corrected one; do not manually edit account balances unless ledger health still reports a mismatch after the correction.
+- Verification: focused money-action integrity tests, prod-debug Kotlin compile, and full prod-debug unit tests passed.
+
+## 2026-06-26 - Date picker and form selection polish
+
+- Phone feedback found date selection could freeze or feel slow while jumping years in finance forms.
+- Shared `DatePickerField` now uses a bounded year range of current year minus 80 through current year plus 50, which keeps normal finance use cases available and reduces picker workload.
+- Lending add/edit now uses dropdowns for borrower and source account instead of wrapping chips, improving crowded forms on smaller phones.
+- Investment add now uses a dropdown for funding source instead of three stacked source pills. Account and debt pickers were already dropdown-based.
+- App launcher label source is already `Fynlo Ledger` for production and `Fynlo Ledger Dev` for dev. Launcher home-screen text may still truncate or cache; do not change package name or stable identifiers for this.
