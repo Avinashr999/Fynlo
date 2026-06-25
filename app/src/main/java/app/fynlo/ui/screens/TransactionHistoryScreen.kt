@@ -26,6 +26,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.fynlo.FinanceViewModel
+import app.fynlo.data.model.Account
 import app.fynlo.data.model.Transaction
 import app.fynlo.logic.CurrencyFormatter
 import app.fynlo.logic.DateUtils
@@ -33,6 +34,7 @@ import app.fynlo.logic.isGeneratedJournalEntry
 import app.fynlo.ui.theme.*
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
+import kotlin.math.abs
 
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
@@ -40,6 +42,7 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 fun TransactionHistoryScreen(viewModel: FinanceViewModel) {
     val haptic = LocalHapticFeedback.current
     val transactions by viewModel.filteredTransactions.collectAsState()
+    val allProjectTransactions by viewModel.transactions.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
     val currentProject by viewModel.currentProject.collectAsState()
     val isPrivacy by viewModel.isPrivacyMode.collectAsState()
@@ -75,6 +78,9 @@ fun TransactionHistoryScreen(viewModel: FinanceViewModel) {
             if (to.isNotBlank()) list = list.filter { it.date <= to }
         }
         list
+    }
+    val balanceImpactsByTransaction = remember(allProjectTransactions, allAccounts) {
+        buildBalanceImpactsByTransaction(allProjectTransactions, allAccounts)
     }
 
     val totalIncome  = filteredHistory.filter { it.type.equals("income", true) }.sumOf { it.amount }
@@ -406,6 +412,7 @@ fun TransactionHistoryScreen(viewModel: FinanceViewModel) {
                                 // C03b Stage #1b-2 (3.2.88) — id → current name
                                 // for rename-reflective sub-label.
                                 accountIdToName = allAccounts.associate { it.id to it.name },
+                                balanceImpacts = balanceImpactsByTransaction[transaction.id].orEmpty(),
                             )
                             if (idx < dayTxns.lastIndex) {
                                 HorizontalDivider(thickness = 0.5.dp, color = hairline,
@@ -426,6 +433,88 @@ private fun androidx.compose.foundation.lazy.LazyListScope.itemsIndexedTxns(
     content: @Composable (Int, Transaction) -> Unit
 ) {
     items(list.size, key = { list[it].id }) { i -> content(i, list[i]) }
+}
+
+data class TransactionBalanceImpact(
+    val accountName: String,
+    val before: Double,
+    val after: Double,
+    val delta: Double,
+)
+
+private fun buildBalanceImpactsByTransaction(
+    transactions: List<Transaction>,
+    accounts: List<Account>,
+): Map<String, List<TransactionBalanceImpact>> {
+    val nameByKey = buildMap {
+        accounts.forEach { account ->
+            put(account.id, account.name)
+            put(account.name, account.name)
+        }
+    }
+    val mirrorKeyByKey = buildMap {
+        accounts.forEach { account ->
+            put(account.id, account.name)
+            put(account.name, account.id)
+        }
+    }
+    val running = buildMap {
+        accounts.forEach { account ->
+            put(account.id, account.balance)
+            put(account.name, account.balance)
+        }
+    }.toMutableMap()
+    val impacts = mutableMapOf<String, List<TransactionBalanceImpact>>()
+
+    fun keyFor(id: String, name: String): String =
+        id.takeIf { it.isNotBlank() } ?: name
+
+    fun MutableMap<String, Double>.addDelta(key: String, delta: Double) {
+        if (key.isBlank()) return
+        this[key] = (this[key] ?: 0.0) + delta
+    }
+
+    val newestFirst = transactions.sortedWith(
+        compareByDescending<Transaction> { it.date }
+            .thenByDescending { maxOf(it.updatedAt, it.createdAt) }
+            .thenByDescending { it.id }
+    )
+
+    newestFirst.forEach { txn ->
+        val deltas = mutableMapOf<String, Double>()
+        when (txn.type.lowercase()) {
+            "expense" -> deltas.addDelta(keyFor(txn.fromAcctId, txn.fromAcct), -txn.amount)
+            "income" -> deltas.addDelta(keyFor(txn.toAcctId, txn.toAcct), txn.amount)
+            "transfer" -> {
+                deltas.addDelta(keyFor(txn.fromAcctId, txn.fromAcct), -txn.amount)
+                deltas.addDelta(keyFor(txn.toAcctId, txn.toAcct), txn.amount)
+            }
+        }
+
+        val rowImpacts = deltas
+            .filter { (key, delta) -> key.isNotBlank() && abs(delta) > 0.005 && running.containsKey(key) }
+            .map { (key, delta) ->
+                val after = running[key] ?: 0.0
+                val before = after - delta
+                running[key] = before
+                val mirrorKey = mirrorKeyByKey[key]
+                if (mirrorKey != null) {
+                    running[mirrorKey] = before
+                }
+                TransactionBalanceImpact(
+                    accountName = nameByKey[key] ?: key,
+                    before = before,
+                    after = after,
+                    delta = delta,
+                )
+            }
+
+        if (rowImpacts.isNotEmpty()) {
+            impacts[txn.id] = rowImpacts
+        }
+    }
+
+    return impacts
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -483,6 +572,7 @@ fun TransactionItem(
     // Empty map means "fall through to stored name" — back-compat for
     // call sites that haven't wired it yet.
     accountIdToName: Map<String, String> = emptyMap(),
+    balanceImpacts: List<TransactionBalanceImpact> = emptyList(),
 ) {
     val isExpense  = txn.type.lowercase() == "expense"
     val isIncome   = txn.type.lowercase() == "income"
@@ -665,6 +755,22 @@ fun TransactionItem(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1)
                 }
+            }
+            if (balanceImpacts.isNotEmpty()) {
+                val impactText = if (isPrivacy) {
+                    "Balance: hidden"
+                } else {
+                    balanceImpacts.take(2).joinToString(" | ") { impact ->
+                        "${impact.accountName}: ${CurrencyFormatter.detail(impact.before, currencyCode, locale)} -> ${CurrencyFormatter.detail(impact.after, currencyCode, locale)}"
+                    }
+                }
+                Text(
+                    impactText,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2,
+                    modifier = Modifier.padding(top = 3.dp),
+                )
             }
         }
 

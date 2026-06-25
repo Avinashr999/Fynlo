@@ -100,6 +100,90 @@ class MoneyActionIdempotencyDataIntegrityTest {
     }
 
     @Test
+    fun `funding investment from existing debt creates journal trace without moving accounts`() = runBlocking {
+        db.dao().insertAccount(Account(id = "business", name = "Business Investment", type = "Bank", balance = 1725000.0))
+        db.dao().insertAccount(Account(id = "family", name = "Family Cash", type = "Cash", balance = 2990000.0))
+        val debt = Debt(
+            id = "debt-1",
+            name = "Sudhakar Sabbella",
+            amount = 200000.0,
+            rate = 0.0,
+            date = "2025-11-15",
+        )
+        val investment = Investment(
+            id = "inv-1",
+            name = "BBS",
+            type = "Business",
+            invested = 200000.0,
+            currentVal = 200000.0,
+            date = "2025-10-30",
+        )
+        db.dao().insertDebt(debt)
+
+        repository.insertInvestmentFundedByExistingDebt(investment, debt)
+
+        val trace = db.dao().getTransactionsByRef("inv-1").single()
+        assertEquals("Info", trace.type)
+        assertEquals("journal_only", trace.tags)
+        assertEquals("", trace.fromAcct)
+        assertEquals("", trace.toAcct)
+        assertEquals(1725000.0, db.dao().getAccountById("business")!!.balance, 0.0001)
+        assertEquals(2990000.0, db.dao().getAccountById("family")!!.balance, 0.0001)
+    }
+
+    @Test
+    fun `legacy debt funded investment transfer is neutralized once`() = runBlocking {
+        db.dao().insertAccount(Account(id = "business", name = "Business Investment", type = "Bank", balance = 1725000.0))
+        db.dao().insertAccount(Account(id = "family", name = "Family Cash", type = "Cash", balance = 2990000.0))
+        val debt = Debt(
+            id = "debt-1",
+            name = "Sudhakar Sabbella",
+            amount = 200000.0,
+            rate = 0.0,
+            date = "2025-11-15",
+        )
+        val investment = Investment(
+            id = "inv-1",
+            name = "BBS",
+            type = "Business",
+            invested = 200000.0,
+            currentVal = 200000.0,
+            date = "2025-10-30",
+            fundingSource = debt.name,
+            sourceType = "existing_debt",
+            linkedDebtId = debt.id,
+        )
+        db.dao().insertDebt(debt)
+        db.dao().insertInvestment(investment)
+        db.dao().insertTransaction(
+            Transaction(
+                id = "bad-trace",
+                date = "2025-10-30",
+                type = "Transfer",
+                amount = 200000.0,
+                fromAcct = "Business Investment",
+                fromAcctId = "business",
+                toAcct = "Family Cash",
+                toAcctId = "family",
+                category = "Investment",
+                desc = "Invested in BBS using Sudhakar Sabbella loan funds",
+            )
+        )
+
+        assertEquals(1, repository.repairDebtFundedInvestmentTransferTraces())
+        assertEquals(0, repository.repairDebtFundedInvestmentTransferTraces())
+
+        val repaired = db.dao().getTransactionById("bad-trace")!!
+        assertEquals("Info", repaired.type)
+        assertEquals("inv-1", repaired.ref)
+        assertEquals("journal_only", repaired.tags)
+        assertEquals("", repaired.fromAcct)
+        assertEquals("", repaired.toAcct)
+        assertEquals(1925000.0, db.dao().getAccountById("business")!!.balance, 0.0001)
+        assertEquals(2790000.0, db.dao().getAccountById("family")!!.balance, 0.0001)
+    }
+
+    @Test
     fun `retrying same expense transaction does not debit account twice`() = runBlocking {
         db.dao().insertAccount(Account(id = "acc-1", name = "Personal Cash", type = "Cash", balance = 1000.0))
         val transaction = Transaction(

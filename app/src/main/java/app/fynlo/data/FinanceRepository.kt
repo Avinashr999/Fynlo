@@ -539,7 +539,7 @@ class FinanceRepository(
             if (before != null && fundingTxn != null) {
                 applyAccountDelta(fundingTxn.fromAcctId, fundingTxn.fromAcct, fundingTxn.amount)
                 applyAccountDelta(newSourceId, newSource, -b.amount)
-                updatedFundingTxn = fundingTxn.copy(
+                val fundingUpdate = fundingTxn.copy(
                     date = b.date,
                     amount = b.amount,
                     fromAcct = newSource,
@@ -550,7 +550,8 @@ class FinanceRepository(
                     projectId = b.projectId,
                     updatedAt = now,
                 )
-                dao.insertTransaction(updatedFundingTxn!!)
+                updatedFundingTxn = fundingUpdate
+                dao.insertTransaction(fundingUpdate)
             }
             recordAudit(
                 action = "EDIT",
@@ -598,7 +599,7 @@ class FinanceRepository(
                     applyAccountDelta(fundingTxn.toAcctId, fundingTxn.toAcct, -fundingTxn.amount)
                     applyAccountDelta(destinationAccountId, destinationAccount, d.amount)
                 }
-                updatedFundingTxn = fundingTxn.copy(
+                val fundingUpdate = fundingTxn.copy(
                     date = d.date,
                     amount = d.amount,
                     toAcct = destinationAccount,
@@ -609,7 +610,8 @@ class FinanceRepository(
                     projectId = d.projectId,
                     updatedAt = now,
                 )
-                dao.insertTransaction(updatedFundingTxn!!)
+                updatedFundingTxn = fundingUpdate
+                dao.insertTransaction(fundingUpdate)
             }
             recordAudit(
                 action = "EDIT",
@@ -862,6 +864,88 @@ class FinanceRepository(
         return repaired
     }
 
+    /**
+     * Legacy debt-funded investments used to create an Investment/Transfer
+     * transaction for traceability. That is fine when it is only a journal
+     * row, but any row whose from/to values happen to be real accounts can
+     * distort cash balances during later edits or manual recalculation.
+     *
+     * Convert those old rows into explicit journal-only trace rows and reverse
+     * the account movement once. The conversion is one-way: after type becomes
+     * Info and account columns are blank, this method will not match it again.
+     */
+    suspend fun repairDebtFundedInvestmentTransferTraces(): Int {
+        val accounts = dao.getAllAccountsList()
+        val accountNames = accounts.map { it.name }.toSet()
+        val accountIds = accounts.map { it.id }.toSet()
+        val investments = dao.getAllInvestments().first()
+            .filter { it.sourceType in setOf("existing_debt", "new_loan") && it.linkedDebtId.isNotBlank() }
+        val transactions = dao.getAllTransactionsList()
+        val remoteTransactions = mutableListOf<Transaction>()
+        val touchedAccounts = mutableSetOf<String>()
+        var repaired = 0
+
+        db.withTransaction {
+            investments.forEach { investment ->
+                val candidates = transactions.filter { txn ->
+                    txn.category.equals("Investment", ignoreCase = true) &&
+                        txn.type.equals("Transfer", ignoreCase = true) &&
+                        (txn.ref == investment.id ||
+                            (txn.desc.contains(investment.name, ignoreCase = true) &&
+                                (investment.fundingSource.isBlank() ||
+                                    txn.desc.contains(investment.fundingSource, ignoreCase = true))))
+                }
+
+                candidates.forEach { txn ->
+                    if (txn.fromAcct in accountNames || txn.fromAcctId in accountIds) {
+                        applyAccountDelta(txn.fromAcctId, txn.fromAcct, txn.amount)
+                        touchedAccounts += txn.fromAcct.takeIf { it.isNotBlank() }
+                            ?: accounts.firstOrNull { it.id == txn.fromAcctId }?.name.orEmpty()
+                    }
+                    if (txn.toAcct in accountNames || txn.toAcctId in accountIds) {
+                        applyAccountDelta(txn.toAcctId, txn.toAcct, -txn.amount)
+                        touchedAccounts += txn.toAcct.takeIf { it.isNotBlank() }
+                            ?: accounts.firstOrNull { it.id == txn.toAcctId }?.name.orEmpty()
+                    }
+                    val repairedTags = (txn.tags.split(",") + "journal_only")
+                        .map { it.trim() }
+                        .filter { it.isNotBlank() }
+                        .distinct()
+                        .joinToString(",")
+                    val repairedTxn = txn.copy(
+                        type = "Info",
+                        fromAcct = "",
+                        toAcct = "",
+                        fromAcctId = "",
+                        toAcctId = "",
+                        ref = investment.id,
+                        tags = repairedTags,
+                        updatedAt = System.currentTimeMillis(),
+                    )
+                    dao.insertTransaction(repairedTxn)
+                    remoteTransactions += repairedTxn
+                    recordAudit(
+                        action = "REPAIR",
+                        entityType = "transaction",
+                        entityId = repairedTxn.id,
+                        title = "Debt-funded investment trace neutralized: ${investment.name}",
+                        beforeValue = txn.auditSummary(),
+                        afterValue = repairedTxn.auditSummary(),
+                        amountDelta = 0.0,
+                        accountName = listOf(txn.fromAcct, txn.toAcct).filter { it.isNotBlank() }.joinToString(" -> "),
+                        projectId = repairedTxn.projectId,
+                        reason = "Debt-funded investment trace must not move account balances",
+                    )
+                    repaired++
+                }
+            }
+        }
+
+        remoteTransactions.forEach { txn -> sync { setTransaction(txn) } }
+        touchedAccounts.filter { it.isNotBlank() }.forEach { syncAccountByName(it) }
+        return repaired
+    }
+
     suspend fun recalculateAllBalances() {
         // C01 fix — Sprint 1 (decisions/2026-05-26-c01-fix-strategy.md).
         // Derives `paid` / `paidPrincipal` / `paidInterest` from the
@@ -1019,10 +1103,11 @@ class FinanceRepository(
             if (dao.getInvestmentById(investment.id) != null) return@withTransaction
             val i = investment.copy(sourceType = "existing_debt", fundingSource = debt.name, linkedDebtId = debt.id, projectId = projectId, updatedAt = System.currentTimeMillis(), createdAt = if (investment.createdAt == 0L) System.currentTimeMillis() else investment.createdAt)
             dao.insertInvestment(i)
-            val t = Transaction(app.fynlo.logic.Ids.newId(), investment.date, "Transfer", investment.invested,
-                fromAcct = debt.name, toAcct = investment.name, category = "Investment",
+            val t = Transaction(app.fynlo.logic.Ids.newId(), investment.date, "Info", investment.invested,
+                category = "Investment",
                 desc = "Invested in ${investment.name} using ${debt.name} loan funds",
-                notes = investment.notes, projectId = projectId, updatedAt = System.currentTimeMillis())
+                ref = i.id, notes = investment.notes, tags = "journal_only",
+                projectId = projectId, updatedAt = System.currentTimeMillis())
             dao.insertTransaction(t)
             recordAudit(
                 action = "CREATE",
@@ -1049,10 +1134,11 @@ class FinanceRepository(
             dao.insertInvestment(i)
             val projectCurrency = dao.getProjectById(projectId)?.currency ?: "INR"
             val investedText = app.fynlo.logic.CurrencyFormatter.detail(investment.invested, projectCurrency)
-            val t = Transaction(app.fynlo.logic.Ids.newId(), investment.date, "Transfer", investment.invested,
-                fromAcct = d.name, toAcct = investment.name, category = "Investment",
+            val t = Transaction(app.fynlo.logic.Ids.newId(), investment.date, "Info", investment.invested,
+                category = "Investment",
                 desc = "Invested $investedText in ${investment.name} via ${d.name} loan",
-                notes = investment.notes, projectId = projectId, updatedAt = System.currentTimeMillis())
+                ref = i.id, notes = investment.notes, tags = "journal_only",
+                projectId = projectId, updatedAt = System.currentTimeMillis())
             dao.insertTransaction(t)
             recordAudit(
                 action = "CREATE",
@@ -1273,7 +1359,7 @@ class FinanceRepository(
             if (before != null && fundingTxn != null) {
                 applyAccountDelta(fundingTxn.fromAcctId, fundingTxn.fromAcct, fundingTxn.amount)
                 applyAccountDelta(resolvedAccountId, newSource, -i.invested)
-                updatedFundingTxn = fundingTxn.copy(
+                val fundingUpdate = fundingTxn.copy(
                     date = i.date,
                     amount = i.invested,
                     fromAcct = newSource,
@@ -1284,7 +1370,8 @@ class FinanceRepository(
                     projectId = projectId,
                     updatedAt = now,
                 )
-                dao.insertTransaction(updatedFundingTxn!!)
+                updatedFundingTxn = fundingUpdate
+                dao.insertTransaction(fundingUpdate)
             }
             recordAudit(
                 action = "EDIT",
@@ -1347,13 +1434,12 @@ class FinanceRepository(
                         val t = Transaction(
                             id = app.fynlo.logic.Ids.newId(),
                             date = investment.date,
-                            type = "Transfer", // Debt -> Investment is a balance sheet move
+                            type = "Info",
                             amount = investment.invested,
-                            fromAcct = "Loan: ${d.name}",
-                            toAcct = "Investment: ${investment.name}",
                             category = "Debt",
                             desc = "Investment funded by loan from ${d.name}",
                             ref = d.id,
+                            tags = "journal_only",
                             projectId = pid,
                             updatedAt = System.currentTimeMillis()
                         )

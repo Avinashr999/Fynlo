@@ -151,6 +151,8 @@ object LedgerAccountability {
                 addIssue(LedgerIssueSeverity.INFO, "Debt receipt trace missing", "${debt.name} has no linked Debt Received row. Future debts record the destination account automatically.", "debt", debt.id)
             } else if (receivedTxn.toAcct.isBlank()) {
                 addIssue(LedgerIssueSeverity.CRITICAL, "Debt destination missing", "${debt.name} does not show where borrowed money was deposited.", "debt", debt.id)
+            } else if (abs(receivedTxn.amount - debt.amount) > 0.01) {
+                addIssue(LedgerIssueSeverity.CRITICAL, "Debt receipt amount mismatch", "${debt.name} is ${CurrencyFormatter.detail(debt.amount)} but its received transaction is ${CurrencyFormatter.detail(receivedTxn.amount)}.", "debt", debt.id)
             }
             val paymentTotal = debtPaymentsByDebt[debt.id].orEmpty().sumOf { it.amount }
             if (abs(paymentTotal - debt.paid) > 0.01) {

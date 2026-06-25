@@ -513,3 +513,12 @@ When the phone is connected again, run the remaining `test-android-apps` device-
 - Lending add/edit now uses dropdowns for borrower and source account instead of wrapping chips, improving crowded forms on smaller phones.
 - Investment add now uses a dropdown for funding source instead of three stacked source pills. Account and debt pickers were already dropdown-based.
 - App launcher label source is already `Fynlo Ledger` for production and `Fynlo Ledger Dev` for dev. Launcher home-screen text may still truncate or cache; do not change package name or stable identifiers for this.
+
+## 2026-06-26 - Debt-funded investment journal repair
+
+- Internal testing found a balance-drift row: an old debt-funded BBS investment trace was stored as a real `Transfer` from Business Investment to Family Cash. It should have been trace-only, so it made Family Cash too high and Business Investment too low by Rs. 2,00,000.
+- Future debt-funded investments now record trace rows as `Info` + `journal_only` with no account source/destination columns. Account balances are not touched by this explanatory trace.
+- Startup repair converts legacy debt-funded investment `Transfer` traces to journal-only rows and reverses any accidental account movement once. This should fix the observed Family Cash / Business Investment drift when the updated app is launched.
+- Transaction History now shows per-transaction before/after balance impact for affected accounts, which gives users a visible ledger path instead of forcing them to infer movement from totals.
+- Ledger Health now reports a critical `Debt receipt amount mismatch` when debt principal and the linked `Debt Received` transaction amount differ. This catches legacy rows created before destination-account edit repair, but does not silently rewrite old balances.
+- Verification: prod-debug Kotlin compile and full prod-debug unit tests passed.

@@ -1644,3 +1644,12 @@ Next Play upload for this rename line uses `versionCode = 230` and `versionName 
 - Dynamic selection chips in the lending form were replaced with dropdowns for borrower and source account. This keeps long contact/account lists from wrapping into crowded rows.
 - Investment funding source selection was changed from three stacked pill controls to a single dropdown, matching the calmer form language used by debt/account pickers.
 - Launcher label check: production resources already resolve `app_name` to `Fynlo Ledger`; dev resources resolve to `Fynlo Ledger Dev`. If the launcher still shows only `Fynlo`, treat it as launcher truncation/cache or an older installed build, not a source label regression.
+
+## 2026-06-26 - Debt-Funded Investment Journal Repair
+
+- Internal testing found a real balance-drift explanation: an old debt-funded BBS investment trace was saved as a `Transfer` from Business Investment to Family Cash. That moved Rs. 2,00,000 even though the row was only supposed to explain the investment funding source.
+- Debt-funded investment trace rows are now journal-only: future existing-debt/new-loan investment funding creates `Info` transactions with `journal_only`, no source/destination account columns, and a direct `ref` back to the investment.
+- Startup now runs `repairDebtFundedInvestmentTransferTraces()`. Legacy debt-funded investment `Transfer` rows are converted to journal-only traces and any accidental real-account movement is reversed once. This is expected to correct the observed Family Cash 29,90,000 -> 27,90,000 and Business Investment 17,25,000 -> 19,25,000 case after the app launches.
+- Transaction History now displays per-row account balance impact, for example `Family Cash: Rs. before -> Rs. after`, so users can trace previous balance and next balance directly from the history list. Privacy mode hides these values.
+- Ledger Health now raises a critical `Debt receipt amount mismatch` when a debt principal and its linked `Debt Received` transaction amount diverge. This exposes legacy rows like a debt edited to Rs. 6,75,000 while its original receipt row is still Rs. 1,00,000. It is deliberately reported instead of silently rewriting old cash history.
+- Verification passed: `:app:compileProdDebugKotlin` and `:app:testProdDebugUnitTest`.
