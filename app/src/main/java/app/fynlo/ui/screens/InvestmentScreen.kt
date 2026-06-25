@@ -77,10 +77,18 @@ val currentProject by viewModel.currentProject.collectAsState()
             onDismiss = { editingInvest = null },
             onConfirm = { req: InvestmentSaveRequest ->
                 if (editingInvest?.id?.isNotBlank() == true) {
-                    if (req.sourceType == "account") {
-                        viewModel.updateInvestmentFundedByAccount(req.investment, req.sourceAccountName, req.sourceAccountId)
-                    } else {
-                        viewModel.updateInvestment(req.investment)
+                    when (req.sourceType) {
+                        "account" -> {
+                            viewModel.updateInvestmentFundedByAccount(req.investment, req.sourceAccountName, req.sourceAccountId)
+                        }
+                        "existing_debt" -> {
+                            req.sourceDebt?.let {
+                                viewModel.updateInvestmentFundedByExistingDebt(req.investment, it)
+                            } ?: viewModel.updateInvestment(req.investment)
+                        }
+                        else -> {
+                            viewModel.updateInvestment(req.investment)
+                        }
                     }
                     viewModel.showFeedback("Investment updated")
                 } else {
@@ -982,10 +990,15 @@ fun ValuationHistoryDialog(
         modifier = Modifier.fillMaxWidth(0.95f),
         properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false),
         onDismissRequest = onDismiss,
-        title = { Text("Valuation History") },
+        title = { Text("Valuation History", color = MaterialTheme.colorScheme.onSurface) },
         text = {
             Column(Modifier.fillMaxWidth()) {
-                Text(investment.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text(
+                    investment.name,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
                 Spacer(Modifier.height(12.dp))
 
                 if (valuations.isEmpty()) {
@@ -1003,17 +1016,17 @@ fun ValuationHistoryDialog(
                             Icons.Default.History,
                             contentDescription = null,
                             modifier = Modifier.size(40.dp),
-                            tint = MaterialTheme.colorScheme.outlineVariant
+                            tint = MaterialTheme.colorScheme.primary
                         )
                         Text(
                             "No valuation history yet",
                             style = MaterialTheme.typography.titleSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
                             "Tap \"Update Value\" on the investment to start tracking how its value changes over time.",
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.outlineVariant,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             textAlign = androidx.compose.ui.text.style.TextAlign.Center
                         )
                     }
@@ -1042,12 +1055,22 @@ fun ValuationHistoryDialog(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Column {
-                                    Text(DateUtils.formatToDisplay(v.date), style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
+                                    Text(
+                                        DateUtils.formatToDisplay(v.date),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                    )
                                     if (v.notes.isNotBlank()) {
                                         Text(v.notes, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                     }
                                 }
-                                Text(CurrencyFormatter.detail(v.value, currencyCode), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.ExtraBold)
+                                Text(
+                                    CurrencyFormatter.detail(v.value, currencyCode),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                )
                             }
                             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
                         }
@@ -1087,7 +1110,7 @@ private fun ValuationHistoryChart(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
-            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+            .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.28f))
             .padding(12.dp),
     ) {
         // Top row: min + current label
@@ -1095,18 +1118,18 @@ private fun ValuationHistoryChart(
             Text(
                 "Min: ${CurrencyFormatter.detail(minV, currencyCode, locale)}",
                 style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = MaterialTheme.colorScheme.onSurface,
             )
             Text(
                 "Max: ${CurrencyFormatter.detail(maxV, currencyCode, locale)}",
                 style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
-                color = Emerald500,
+                color = MaterialTheme.colorScheme.primary,
             )
         }
         Spacer(Modifier.height(8.dp))
 
-        val lineColor = Emerald500
-        val gridColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
+        val lineColor = MaterialTheme.colorScheme.primary
+        val gridColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f)
         androidx.compose.foundation.Canvas(
             modifier = Modifier.fillMaxWidth().height(120.dp),
         ) {
@@ -1157,12 +1180,12 @@ private fun ValuationHistoryChart(
             Text(
                 DateUtils.formatToDisplay(valuations.first().date),
                 style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.outlineVariant,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Text(
                 DateUtils.formatToDisplay(valuations.last().date),
                 style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.outlineVariant,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
     }

@@ -95,8 +95,12 @@ fun AddInvestmentDialog(
 
     // Existing debt picker
     val activeDebts = debts.filter { it.status == "Active" }
-    var selectedDebt by remember(activeDebts) {
-        mutableStateOf(activeDebts.firstOrNull())
+    var selectedDebt by remember(activeDebts, initialInvestment?.id, initialInvestment?.linkedDebtId, initialInvestment?.fundingSource) {
+        mutableStateOf(
+            activeDebts.firstOrNull { it.id == initialInvestment?.linkedDebtId }
+                ?: activeDebts.firstOrNull { it.name == initialInvestment?.fundingSource }
+                ?: activeDebts.firstOrNull()
+        )
     }
     var debtExpanded by remember { mutableStateOf(false) }
 
@@ -187,9 +191,9 @@ fun AddInvestmentDialog(
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                // ── Funding Source — only for new investments ─────────────────
-                val canEditAccountSource = !isNew && (sourceType == SOURCE_ACCOUNT || initialInvestment?.fundingSource.orEmpty().isBlank())
-                if (isNew || canEditAccountSource) {
+                // Funding source stays editable so a mistaken source tap can
+                // be corrected without leaving the ledger route unclear.
+                run {
                     HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
 
                     Text(
@@ -197,34 +201,37 @@ fun AddInvestmentDialog(
                         style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold)
                     )
 
-                    if (isNew) {
-                        ExposedDropdownMenuBox(
+                    ExposedDropdownMenuBox(
+                        expanded = sourceExpanded,
+                        onExpandedChange = { sourceExpanded = !sourceExpanded },
+                    ) {
+                        OutlinedTextField(
+                            value = sourceLabel(sourceType),
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text("Funding source") },
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = sourceExpanded) },
+                            modifier = Modifier
+                                .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, true)
+                                .fillMaxWidth(),
+                        )
+                        ExposedDropdownMenu(
                             expanded = sourceExpanded,
-                            onExpandedChange = { sourceExpanded = !sourceExpanded },
+                            onDismissRequest = { sourceExpanded = false },
                         ) {
-                            OutlinedTextField(
-                                value = sourceLabel(sourceType),
-                                onValueChange = {},
-                                readOnly = true,
-                                label = { Text("Funding source") },
-                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = sourceExpanded) },
-                                modifier = Modifier
-                                    .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, true)
-                                    .fillMaxWidth(),
-                            )
-                            ExposedDropdownMenu(
-                                expanded = sourceExpanded,
-                                onDismissRequest = { sourceExpanded = false },
-                            ) {
-                                listOf(SOURCE_ACCOUNT, SOURCE_EXISTING_DEBT, SOURCE_NEW_LOAN).forEach { option ->
-                                    DropdownMenuItem(
-                                        text = { Text(sourceLabel(option)) },
-                                        onClick = {
-                                            sourceType = option
-                                            sourceExpanded = false
-                                        },
-                                    )
-                                }
+                            val sourceOptions = if (isNew) {
+                                listOf(SOURCE_ACCOUNT, SOURCE_EXISTING_DEBT, SOURCE_NEW_LOAN)
+                            } else {
+                                listOf(SOURCE_ACCOUNT, SOURCE_EXISTING_DEBT)
+                            }
+                            sourceOptions.forEach { option ->
+                                DropdownMenuItem(
+                                    text = { Text(sourceLabel(option)) },
+                                    onClick = {
+                                        sourceType = option
+                                        sourceExpanded = false
+                                    },
+                                )
                             }
                         }
                     }
@@ -411,8 +418,16 @@ fun AddInvestmentDialog(
                                     date       = parsedDate,
                                     notes      = notes.trim(),
                                     sourceType = if (isNew) "" else sourceType,
-                                    fundingSource = if (!isNew && sourceType == SOURCE_ACCOUNT) selectedAccount?.name.orEmpty() else initialInvestment?.fundingSource.orEmpty(),
-                                    linkedDebtId = initialInvestment?.linkedDebtId.orEmpty(),
+                                    fundingSource = when {
+                                        !isNew && sourceType == SOURCE_ACCOUNT -> selectedAccount?.name.orEmpty()
+                                        !isNew && sourceType == SOURCE_EXISTING_DEBT -> selectedDebt?.name.orEmpty()
+                                        else -> initialInvestment?.fundingSource.orEmpty()
+                                    },
+                                    linkedDebtId = when {
+                                        !isNew && sourceType == SOURCE_EXISTING_DEBT -> selectedDebt?.id.orEmpty()
+                                        !isNew && sourceType == SOURCE_ACCOUNT -> ""
+                                        else -> initialInvestment?.linkedDebtId.orEmpty()
+                                    },
                                     createdAt = initialInvestment?.createdAt ?: 0L,
                                 )
 
@@ -423,6 +438,7 @@ fun AddInvestmentDialog(
                                             sourceType = sourceType,
                                             sourceAccountName = selectedAccount?.name.orEmpty(),
                                             sourceAccountId = selectedAccount?.id.orEmpty(),
+                                            sourceDebt = selectedDebt,
                                         )
                                     )
                                 } else {

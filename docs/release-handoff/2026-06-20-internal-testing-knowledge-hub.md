@@ -535,3 +535,17 @@ When the phone is connected again, run the remaining `test-android-apps` device-
   - Kalyani linked receipt: Rs. 6,75,000 and tied to Business Investment account id.
 - Audit Trail now contains explicit `REPAIR` rows for the receipt mismatch and each stored-balance reconciliation. If a tester asks "where did money go?", check these repair rows first.
 - Regression tests added for Kalyani-style receipt mismatch and Family Cash-style stored balance drift. Verification passed: `:app:compileProdDebugKotlin`, `:app:testProdDebugUnitTest`, prod debug install, and dev debug install.
+
+## 2026-06-26 - Investment journal trace relink and source correction
+
+- Phone DB inspection proved the visible Business Investment total was correct: seven `Debt Received` rows total Rs. 25,00,000. The mismatch was explanatory, not cash-moving: the Rs. 75,000 BZA investment trace was linked to the Rs. 2,50,000 BZA investment instead of the Rs. 75,000 row.
+- Added `repairDebtFundedInvestmentJournalTraceRefs()` to startup. It relinks a wrongly attached `Info` + `journal_only` investment row to the matching investment amount, or creates a missing journal-only trace when no exact row exists. It never changes account balances.
+- Ledger Health now reports investment trace problems directly: missing trace, amount mismatch, duplicate trace, or a debt-funded investment trace that still has account movement columns.
+- Investment edit now lets users correct funding source between `From account` and `Existing loan`. This prevents a mistaken source tap from requiring manual balance/account surgery later.
+- Valuation History contrast was improved after phone feedback that values/history text were too faint.
+- Production-phone verification after install/launch:
+  - Business Investment remained Rs. 25,00,000.
+  - Business Investment receipt rows still total Rs. 25,00,000.
+  - Debt principal and receipt amount match for the Business Investment debt receipts.
+  - BZA Rs. 2,50,000 and BZA Rs. 75,000 now each have exactly one journal-only investment trace linked to their own investment id.
+- Verification passed: `:app:compileProdDebugKotlin`, `:app:testProdDebugUnitTest`, prod debug install, and dev debug install.

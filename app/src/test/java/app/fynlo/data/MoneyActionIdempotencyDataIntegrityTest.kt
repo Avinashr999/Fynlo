@@ -185,6 +185,74 @@ class MoneyActionIdempotencyDataIntegrityTest {
     }
 
     @Test
+    fun `debt funded investment journal traces are relinked to matching investment amounts`() = runBlocking {
+        val debt = Debt(
+            id = "debt-kalyani",
+            name = "Kalyani Ammamma",
+            amount = 325000.0,
+            rate = 0.0,
+            date = "2025-06-06",
+        )
+        val largeBza = Investment(
+            id = "inv-bza-250",
+            name = "BZA",
+            type = "Business",
+            invested = 250000.0,
+            currentVal = 250000.0,
+            date = "2025-06-06",
+            fundingSource = debt.name,
+            sourceType = "existing_debt",
+            linkedDebtId = debt.id,
+        )
+        val smallBza = largeBza.copy(
+            id = "inv-bza-75",
+            invested = 75000.0,
+            currentVal = 75000.0,
+            date = "2025-07-11",
+        )
+        db.dao().insertDebt(debt)
+        db.dao().insertInvestment(largeBza)
+        db.dao().insertInvestment(smallBza)
+        db.dao().insertTransaction(
+            Transaction(
+                id = "trace-250",
+                date = "2025-06-06",
+                type = "Info",
+                amount = 250000.0,
+                category = "Investment",
+                desc = "Invested in BZA using Kalyani Ammamma loan funds",
+                ref = "inv-bza-250",
+                tags = "journal_only",
+            )
+        )
+        db.dao().insertTransaction(
+            Transaction(
+                id = "trace-75-wrong-ref",
+                date = "2025-07-11",
+                type = "Info",
+                amount = 75000.0,
+                category = "Investment",
+                desc = "Invested in BZA using Kalyani Ammamma loan funds",
+                ref = "inv-bza-250",
+                tags = "journal_only",
+            )
+        )
+
+        assertEquals(1, repository.repairDebtFundedInvestmentJournalTraceRefs())
+        assertEquals(0, repository.repairDebtFundedInvestmentJournalTraceRefs())
+
+        val largeTraces = db.dao().getTransactionsByRef("inv-bza-250")
+            .filter { it.category == "Investment" }
+        val smallTraces = db.dao().getTransactionsByRef("inv-bza-75")
+            .filter { it.category == "Investment" }
+        assertEquals(1, largeTraces.size)
+        assertEquals(250000.0, largeTraces.single().amount, 0.0001)
+        assertEquals(1, smallTraces.size)
+        assertEquals("trace-75-wrong-ref", smallTraces.single().id)
+        assertEquals(75000.0, smallTraces.single().amount, 0.0001)
+    }
+
+    @Test
     fun `retrying same expense transaction does not debit account twice`() = runBlocking {
         db.dao().insertAccount(Account(id = "acc-1", name = "Personal Cash", type = "Cash", balance = 1000.0))
         val transaction = Transaction(
@@ -406,6 +474,38 @@ class MoneyActionIdempotencyDataIntegrityTest {
         assertEquals(675.0, fundingTransaction.amount, 0.0001)
         assertEquals("Business Investment", fundingTransaction.fromAcct)
         assertEquals("acc-business", fundingTransaction.fromAcctId)
+    }
+
+    @Test
+    fun `editing investment from account funded to debt funded reverses account and writes journal trace`() = runBlocking {
+        db.dao().insertAccount(Account(id = "acc-family", name = "Family Cash", type = "Cash", balance = 1000.0))
+        val debt = Debt(id = "debt-1", name = "Kalyani", amount = 675.0, rate = 0.0, date = "2026-06-15")
+        val investment = Investment(
+            id = "inv-1",
+            name = "BZA",
+            type = "Business",
+            invested = 100.0,
+            currentVal = 100.0,
+            date = "2026-06-15",
+        )
+        db.dao().insertDebt(debt)
+
+        repository.insertInvestmentFundedByAccount(investment, "Family Cash", "personal", "acc-family")
+        repository.updateInvestmentFundedByExistingDebt(
+            investment.copy(invested = 675.0, currentVal = 675.0),
+            debt,
+            "personal",
+        )
+
+        val updatedInvestment = db.dao().getInvestmentById("inv-1")!!
+        val trace = db.dao().getTransactionsByRef("inv-1").single { it.category == "Investment" }
+        assertEquals(1000.0, db.dao().getAccountById("acc-family")!!.balance, 0.0001)
+        assertEquals("existing_debt", updatedInvestment.sourceType)
+        assertEquals("debt-1", updatedInvestment.linkedDebtId)
+        assertEquals("Info", trace.type)
+        assertEquals(675.0, trace.amount, 0.0001)
+        assertEquals("", trace.fromAcct)
+        assertEquals("journal_only", trace.tags)
     }
 
     @Test

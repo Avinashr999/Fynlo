@@ -947,6 +947,144 @@ class FinanceRepository(
     }
 
     /**
+     * Debt-funded investments are journal trace rows: they explain which
+     * liability funded an asset, but they must not move account balances.
+     * Some legacy/edit paths left the right journal amount attached to the
+     * wrong investment id, which made the money trail unclear even when the
+     * account totals were correct.
+     */
+    suspend fun repairDebtFundedInvestmentJournalTraceRefs(): Int {
+        val investments = dao.getAllInvestments().first()
+            .filter { it.sourceType in setOf("existing_debt", "new_loan") && it.linkedDebtId.isNotBlank() }
+        val remoteTransactions = mutableListOf<Transaction>()
+        var repaired = 0
+
+        db.withTransaction {
+            val txCache = dao.getAllTransactionsList().toMutableList()
+
+            fun replaceCached(updated: Transaction) {
+                val index = txCache.indexOfFirst { it.id == updated.id }
+                if (index >= 0) txCache[index] = updated else txCache += updated
+            }
+
+            fun hasExactTrace(investment: Investment): Boolean =
+                txCache.any { txn ->
+                    txn.ref == investment.id &&
+                        isInvestmentJournalTrace(txn) &&
+                        kotlin.math.abs(txn.amount - investment.invested) <= 0.005
+                }
+
+            investments.forEach { investment ->
+                val linked = txCache.filter { txn ->
+                    txn.ref == investment.id && isInvestmentJournalTrace(txn)
+                }
+                val wrongLinked = linked.filter { txn ->
+                    kotlin.math.abs(txn.amount - investment.invested) > 0.005
+                }
+
+                wrongLinked.forEach { txn ->
+                    val target = investments.firstOrNull { other ->
+                        other.id != investment.id &&
+                            !hasExactTrace(other) &&
+                            other.name.equals(investment.name, ignoreCase = true) &&
+                            other.fundingSource.equals(investment.fundingSource, ignoreCase = true) &&
+                            kotlin.math.abs(other.invested - txn.amount) <= 0.005
+                    }
+                    if (target != null) {
+                        val relinked = txn.copy(
+                            ref = target.id,
+                            updatedAt = System.currentTimeMillis(),
+                        )
+                        dao.insertTransaction(relinked)
+                        replaceCached(relinked)
+                        remoteTransactions += relinked
+                        recordAudit(
+                            action = "REPAIR",
+                            entityType = "transaction",
+                            entityId = relinked.id,
+                            title = "Investment trace relinked: ${target.name}",
+                            beforeValue = txn.auditSummary(),
+                            afterValue = relinked.auditSummary(),
+                            amountDelta = 0.0,
+                            accountName = target.fundingSource,
+                            projectId = relinked.projectId,
+                            reason = "Debt-funded investment journal trace must point to the matching investment row",
+                        )
+                        repaired++
+                    }
+                }
+
+                if (hasExactTrace(investment)) return@forEach
+
+                val candidate = txCache.firstOrNull { txn ->
+                    txn.ref != investment.id &&
+                        isInvestmentJournalTrace(txn) &&
+                        kotlin.math.abs(txn.amount - investment.invested) <= 0.005 &&
+                        txn.desc.contains(investment.name, ignoreCase = true) &&
+                        (investment.fundingSource.isBlank() ||
+                            txn.desc.contains(investment.fundingSource, ignoreCase = true))
+                }
+
+                if (candidate != null) {
+                    val relinked = candidate.copy(
+                        ref = investment.id,
+                        updatedAt = System.currentTimeMillis(),
+                    )
+                    dao.insertTransaction(relinked)
+                    replaceCached(relinked)
+                    remoteTransactions += relinked
+                    recordAudit(
+                        action = "REPAIR",
+                        entityType = "transaction",
+                        entityId = relinked.id,
+                        title = "Investment trace relinked: ${investment.name}",
+                        beforeValue = candidate.auditSummary(),
+                        afterValue = relinked.auditSummary(),
+                        amountDelta = 0.0,
+                        accountName = investment.fundingSource,
+                        projectId = relinked.projectId,
+                        reason = "Debt-funded investment journal trace must point to the matching investment row",
+                    )
+                    repaired++
+                } else {
+                    val created = Transaction(
+                        id = app.fynlo.logic.Ids.newId(),
+                        date = investment.date,
+                        type = "Info",
+                        amount = investment.invested,
+                        category = "Investment",
+                        desc = "Invested in ${investment.name} using ${investment.fundingSource} loan funds",
+                        ref = investment.id,
+                        notes = investment.notes,
+                        tags = "journal_only",
+                        projectId = investment.projectId,
+                        updatedAt = System.currentTimeMillis(),
+                        createdAt = System.currentTimeMillis(),
+                    )
+                    dao.insertTransaction(created)
+                    replaceCached(created)
+                    remoteTransactions += created
+                    recordAudit(
+                        action = "REPAIR",
+                        entityType = "transaction",
+                        entityId = created.id,
+                        title = "Investment trace created: ${investment.name}",
+                        afterValue = created.auditSummary(),
+                        amountDelta = 0.0,
+                        accountName = investment.fundingSource,
+                        projectId = created.projectId,
+                        reason = "Debt-funded investment must have an exact journal-only source trace",
+                    )
+                    repaired++
+                }
+            }
+        }
+
+        remoteTransactions.forEach { txn -> sync { setTransaction(txn) } }
+        return repaired
+    }
+
+    /**
      * Some legacy debt edits changed the Debt principal but left the linked
      * "Debt Received" transaction at the old amount. That makes the debt page
      * and the destination account disagree. The debt row is the source of
@@ -1004,6 +1142,11 @@ class FinanceRepository(
         touchedAccounts.filter { it.isNotBlank() }.forEach { syncAccountByName(it) }
         return repaired
     }
+
+    private fun isInvestmentJournalTrace(txn: Transaction): Boolean =
+        txn.category.equals("Investment", ignoreCase = true) &&
+            txn.type.equals("Info", ignoreCase = true) &&
+            txn.tags.split(",").any { it.trim().equals("journal_only", ignoreCase = true) }
 
     /**
      * Last-resort account reconciliation for stored balance drift. It uses the
@@ -1485,8 +1628,11 @@ class FinanceRepository(
         var updatedInvestment: Investment? = null
         var updatedFundingTxn: Transaction? = null
         db.withTransaction {
-            val fundingTxn = dao.getTransactionsByRef(investment.id)
+            val linkedTxns = dao.getTransactionsByRef(investment.id)
+            val fundingTxn = linkedTxns
                 .firstOrNull { it.category == "Investment" && it.type.equals("Expense", ignoreCase = true) }
+            val journalTxn = linkedTxns
+                .firstOrNull { isInvestmentJournalTrace(it) }
             oldSource = fundingTxn?.fromAcct ?: before?.fundingSource.orEmpty()
             newSource = accountName.ifBlank { oldSource }
             val resolvedAccountId = accountId.ifBlank { dao.getAccountByName(newSource)?.id ?: "" }
@@ -1499,19 +1645,39 @@ class FinanceRepository(
             )
             dao.insertInvestment(i)
             updatedInvestment = i
-            if (before != null && fundingTxn != null) {
-                applyAccountDelta(fundingTxn.fromAcctId, fundingTxn.fromAcct, fundingTxn.amount)
+            if (before != null) {
+                if (fundingTxn != null) {
+                    applyAccountDelta(fundingTxn.fromAcctId, fundingTxn.fromAcct, fundingTxn.amount)
+                }
                 applyAccountDelta(resolvedAccountId, newSource, -i.invested)
-                val fundingUpdate = fundingTxn.copy(
+                val fundingUpdate = (fundingTxn ?: journalTxn)?.copy(
                     date = i.date,
+                    type = "Expense",
+                    amount = i.invested,
+                    fromAcct = newSource,
+                    fromAcctId = resolvedAccountId,
+                    toAcct = "",
+                    toAcctId = "",
+                    category = "Investment",
+                    desc = "Invested in ${i.name}",
+                    notes = i.notes,
+                    tags = removeTag((fundingTxn ?: journalTxn)?.tags.orEmpty(), "journal_only"),
+                    projectId = projectId,
+                    updatedAt = now,
+                ) ?: Transaction(
+                    id = app.fynlo.logic.Ids.newId(),
+                    date = i.date,
+                    type = "Expense",
                     amount = i.invested,
                     fromAcct = newSource,
                     fromAcctId = resolvedAccountId,
                     category = "Investment",
                     desc = "Invested in ${i.name}",
+                    ref = i.id,
                     notes = i.notes,
                     projectId = projectId,
                     updatedAt = now,
+                    createdAt = now,
                 )
                 updatedFundingTxn = fundingUpdate
                 dao.insertTransaction(fundingUpdate)
@@ -1535,6 +1701,102 @@ class FinanceRepository(
         if (oldSource.isNotBlank()) syncAccountByName(oldSource)
         if (newSource.isNotBlank() && newSource != oldSource) syncAccountByName(newSource)
     }
+
+    suspend fun updateInvestmentFundedByExistingDebt(
+        investment: Investment,
+        debt: Debt,
+        projectId: String = investment.projectId,
+    ) {
+        val before = dao.getInvestmentById(investment.id)
+        val now = System.currentTimeMillis()
+        val remoteTransactions = mutableListOf<Transaction>()
+        val touchedAccounts = mutableSetOf<String>()
+        var updatedInvestment: Investment? = null
+        db.withTransaction {
+            val linkedTxns = dao.getTransactionsByRef(investment.id)
+            val oldFundingTxn = linkedTxns.firstOrNull {
+                it.category == "Investment" && it.type.equals("Expense", ignoreCase = true)
+            }
+            val journalTxn = linkedTxns.firstOrNull { isInvestmentJournalTrace(it) }
+
+            if (oldFundingTxn != null) {
+                applyAccountDelta(oldFundingTxn.fromAcctId, oldFundingTxn.fromAcct, oldFundingTxn.amount)
+                touchedAccounts += oldFundingTxn.fromAcct
+            }
+
+            val i = investment.copy(
+                sourceType = "existing_debt",
+                fundingSource = debt.name,
+                linkedDebtId = debt.id,
+                projectId = projectId,
+                updatedAt = now,
+                createdAt = if (investment.createdAt == 0L) before?.createdAt ?: now else investment.createdAt,
+            )
+            dao.insertInvestment(i)
+            updatedInvestment = i
+
+            val trace = (journalTxn ?: oldFundingTxn)?.copy(
+                date = i.date,
+                type = "Info",
+                amount = i.invested,
+                fromAcct = "",
+                toAcct = "",
+                fromAcctId = "",
+                toAcctId = "",
+                category = "Investment",
+                desc = "Invested in ${i.name} using ${debt.name} loan funds",
+                ref = i.id,
+                notes = i.notes,
+                tags = addTag((journalTxn ?: oldFundingTxn)?.tags.orEmpty(), "journal_only"),
+                projectId = projectId,
+                updatedAt = now,
+            ) ?: Transaction(
+                id = app.fynlo.logic.Ids.newId(),
+                date = i.date,
+                type = "Info",
+                amount = i.invested,
+                category = "Investment",
+                desc = "Invested in ${i.name} using ${debt.name} loan funds",
+                ref = i.id,
+                notes = i.notes,
+                tags = "journal_only",
+                projectId = projectId,
+                updatedAt = now,
+                createdAt = now,
+            )
+            dao.insertTransaction(trace)
+            remoteTransactions += trace
+            recordAudit(
+                action = "EDIT",
+                entityType = "investment",
+                entityId = i.id,
+                title = "Investment edited: ${i.name}",
+                beforeValue = before?.let { "${it.name}:${it.invested}:current=${it.currentVal}:source=${it.fundingSource}" } ?: "",
+                afterValue = "${i.name}:${i.invested}:current=${i.currentVal}:source=${i.fundingSource}",
+                amountDelta = i.invested - (before?.invested ?: i.invested),
+                accountName = i.fundingSource,
+                projectId = projectId,
+            )
+        }
+        sync {
+            updatedInvestment?.let { setInvestment(it) }
+            remoteTransactions.forEach { setTransaction(it) }
+        }
+        touchedAccounts.filter { it.isNotBlank() }.forEach { syncAccountByName(it) }
+    }
+
+    private fun addTag(existing: String, tag: String): String =
+        (existing.split(",") + tag)
+            .map { it.trim() }
+            .filter { it.isNotBlank() }
+            .distinctBy { it.lowercase() }
+            .joinToString(",")
+
+    private fun removeTag(existing: String, tag: String): String =
+        existing.split(",")
+            .map { it.trim() }
+            .filter { it.isNotBlank() && !it.equals(tag, ignoreCase = true) }
+            .joinToString(",")
 
     suspend fun executeLinkedInvestment(
         investment: Investment,

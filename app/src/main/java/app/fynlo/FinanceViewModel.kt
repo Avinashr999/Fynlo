@@ -70,6 +70,7 @@ class FinanceViewModel @Inject constructor(
             repository.fixPaidDoubleCount()
             repository.repairDeletedAuditResidue()
             repository.repairDebtFundedInvestmentTransferTraces()
+            repository.repairDebtFundedInvestmentJournalTraceRefs()
             repository.repairDebtReceiptAmountMismatches()
             repository.repairAccountBalanceDriftFromLedger()
             repository.fixPaidDoubleCount()
@@ -699,6 +700,12 @@ class FinanceViewModel @Inject constructor(
     fun updateInvestmentFundedByAccount(investment: Investment, accountName: String, accountId: String = "") {
         viewModelScope.launch(Dispatchers.IO) {
             repository.updateInvestmentFundedByAccount(investment.copy(projectId = pid), accountName, pid, accountId)
+        }
+    }
+
+    fun updateInvestmentFundedByExistingDebt(investment: Investment, debt: Debt) {
+        viewModelScope.launch(Dispatchers.IO) {
+            repository.updateInvestmentFundedByExistingDebt(investment.copy(projectId = pid), debt.copy(projectId = pid), pid)
         }
     }
 

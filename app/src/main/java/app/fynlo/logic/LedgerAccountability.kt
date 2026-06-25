@@ -170,14 +170,52 @@ object LedgerAccountability {
 
         investments.forEach { investment ->
             val linked = txByRef[investment.id].orEmpty()
+            val investmentRows = linked.filter { it.category.equals("Investment", true) }
+            val exactInvestmentRows = investmentRows.filter { abs(it.amount - investment.invested) <= 0.01 }
             if (investment.fundingSource.isBlank()) {
                 addIssue(LedgerIssueSeverity.INFO, "Investment funding trace missing", "${investment.name} was created before the funding source was captured. Future investments record this automatically.", "investment", investment.id)
             }
             if (investment.sourceType in setOf("existing_debt", "new_loan") && investment.linkedDebtId.isBlank()) {
                 addIssue(LedgerIssueSeverity.WARNING, "Investment debt link missing", "${investment.name} is debt-funded but has no linked debt id.", "investment", investment.id)
             }
-            if (linked.none { it.category.equals("Investment", true) }) {
+            if (investmentRows.isEmpty()) {
                 addIssue(LedgerIssueSeverity.INFO, "Investment ledger trace missing", "${investment.name} has no linked investment row. This is usually legacy/imported data.", "investment", investment.id)
+            } else if (exactInvestmentRows.isEmpty()) {
+                addIssue(
+                    LedgerIssueSeverity.WARNING,
+                    "Investment ledger trace amount mismatch",
+                    "${investment.name} is ${CurrencyFormatter.detail(investment.invested)} but its linked investment trace is ${CurrencyFormatter.detail(investmentRows.first().amount)}.",
+                    "investment",
+                    investment.id,
+                )
+            }
+            if (investmentRows.size > 1) {
+                addIssue(
+                    LedgerIssueSeverity.WARNING,
+                    "Investment ledger trace duplicate",
+                    "${investment.name} has ${investmentRows.size} linked investment traces. It should have one clear source trace.",
+                    "investment",
+                    investment.id,
+                )
+            }
+            if (investment.sourceType in setOf("existing_debt", "new_loan")) {
+                val movingTrace = investmentRows.firstOrNull { row ->
+                    !row.type.equals("Info", true) ||
+                        !hasTag(row, "journal_only") ||
+                        row.fromAcct.isNotBlank() ||
+                        row.toAcct.isNotBlank() ||
+                        row.fromAcctId.isNotBlank() ||
+                        row.toAcctId.isNotBlank()
+                }
+                if (movingTrace != null) {
+                    addIssue(
+                        LedgerIssueSeverity.CRITICAL,
+                        "Debt-funded investment moves account balance",
+                        "${investment.name} has a debt-funded investment trace that is not journal-only.",
+                        "investment",
+                        investment.id,
+                    )
+                }
             }
             trails += LedgerMoneyTrail(
                 recordType = "investment",
@@ -291,6 +329,9 @@ object LedgerAccountability {
             t.toAcct.lowercase(),
             t.desc.trim().lowercase(),
         ).joinToString("|")
+
+    private fun hasTag(transaction: Transaction, tag: String): Boolean =
+        transaction.tags.split(",").any { it.trim().equals(tag, ignoreCase = true) }
 
     private fun isOldOpen(date: String, today: LocalDate): Boolean =
         runCatching { LocalDate.parse(date).plusDays(90).isBefore(today) }.getOrDefault(false)
