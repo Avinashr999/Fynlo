@@ -61,4 +61,6 @@ data class BackupData(
     val budgets: List<Budget> = emptyList(),
     val goals: List<Goal> = emptyList(),
     val recurringTransactions: List<RecurringTransaction> = emptyList(),
+    val monthlyCloses: List<MonthlyClose> = emptyList(),
+    val proofAttachments: List<ProofAttachment> = emptyList(),
 )

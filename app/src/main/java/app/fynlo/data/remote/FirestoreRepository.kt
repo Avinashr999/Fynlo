@@ -124,4 +124,22 @@ class FirestoreRepository(private val userId: String) {
     suspend fun setAuditEvent(event: AuditEvent) {
         col("audit_events").document(event.id).set(event.toFirestoreMap()).await()
     }
+
+    // ── Book controls ────────────────────────────────────────────────────────
+
+    suspend fun setMonthlyClose(close: MonthlyClose) {
+        col("monthly_closes").document(close.id).set(close.toFirestoreMap()).await()
+    }
+
+    suspend fun deleteMonthlyClose(id: String) {
+        col("monthly_closes").document(id).delete().await()
+    }
+
+    suspend fun setProofAttachment(attachment: ProofAttachment) {
+        col("proof_attachments").document(attachment.id).set(attachment.toFirestoreMap()).await()
+    }
+
+    suspend fun deleteProofAttachment(id: String) {
+        col("proof_attachments").document(id).delete().await()
+    }
 }

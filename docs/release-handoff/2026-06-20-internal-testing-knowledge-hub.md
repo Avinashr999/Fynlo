@@ -723,3 +723,19 @@ Completed:
 Verification:
 
 - `:app:compileProdDebugKotlin` passed.
+
+## 2026-06-30 - Monthly close / undo / proof / conflict hardening
+
+Completed:
+
+- Added schema v29 safety tables for monthly closes, undo actions, proof attachments, and sync conflicts.
+- Added Settings controls for current-month close/reopen, undo last money action, sync conflict review, and proof record visibility.
+- Monthly close blocks dated money changes inside locked months across transactions, loans, debts, investments, withdrawals, and interest waivers.
+- Undo currently covers recent transaction add/edit/delete actions within 10 minutes; do not describe it as a full undo for compound loan/debt/investment flows until that is explicitly added.
+- Proof attachments are stored, backed up/restored, and synced as metadata. Per-record file picker UI is not yet complete.
+- Offline conflict capture records account/transaction conflicts before cloud overwrite; Settings lets the user review and mark them.
+
+Verification:
+
+- `:app:compileProdDebugKotlin` passed.
+- `:app:testProdDebugUnitTest` passed.

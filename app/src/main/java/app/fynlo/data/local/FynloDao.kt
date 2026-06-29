@@ -15,10 +15,14 @@ import app.fynlo.data.model.DebtPayment
 import app.fynlo.data.model.DeletedRemoteDoc
 import app.fynlo.data.model.Goal
 import app.fynlo.data.model.Investment
+import app.fynlo.data.model.MonthlyClose
 import app.fynlo.data.model.Payment
 import app.fynlo.data.model.Person
+import app.fynlo.data.model.ProofAttachment
 import app.fynlo.data.model.Project
+import app.fynlo.data.model.SyncConflict
 import app.fynlo.data.model.Transaction
+import app.fynlo.data.model.UndoAction
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -467,4 +471,69 @@ interface FynloDao {
 
     @Query("DELETE FROM recurring_transactions WHERE id = :id")
     suspend fun deleteRecurringById(id: String)
+
+    // ─── Book controls: close, undo, proofs, sync conflicts ─────────────────
+
+    @Query("SELECT * FROM monthly_closes ORDER BY month DESC, updatedAt DESC")
+    fun getAllMonthlyCloses(): Flow<List<MonthlyClose>>
+
+    @Query("SELECT * FROM monthly_closes WHERE projectId = :projectId AND month = :month AND status = 'Closed' LIMIT 1")
+    suspend fun getClosedMonth(projectId: String, month: String): MonthlyClose?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertMonthlyClose(close: MonthlyClose)
+
+    @Query("DELETE FROM monthly_closes WHERE id = :id")
+    suspend fun deleteMonthlyCloseById(id: String)
+
+    @Query("SELECT * FROM undo_actions WHERE consumedAt = 0 AND expiresAt > :now ORDER BY createdAt DESC LIMIT 1")
+    suspend fun getLatestUndoAction(now: Long): UndoAction?
+
+    @Query("SELECT * FROM undo_actions WHERE consumedAt = 0 AND expiresAt > :now ORDER BY createdAt DESC")
+    fun getAvailableUndoActions(now: Long): Flow<List<UndoAction>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertUndoAction(action: UndoAction)
+
+    @Query("UPDATE undo_actions SET consumedAt = :consumedAt, updatedAt = :consumedAt WHERE id = :id")
+    suspend fun markUndoConsumed(id: String, consumedAt: Long)
+
+    @Query("DELETE FROM undo_actions WHERE expiresAt <= :now OR consumedAt > 0")
+    suspend fun pruneUndoActions(now: Long)
+
+    @Query("SELECT * FROM proof_attachments WHERE ownerType = :ownerType AND ownerId = :ownerId ORDER BY createdAt DESC")
+    fun getProofAttachments(ownerType: String, ownerId: String): Flow<List<ProofAttachment>>
+
+    @Query("SELECT * FROM proof_attachments ORDER BY createdAt DESC")
+    fun getAllProofAttachments(): Flow<List<ProofAttachment>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertProofAttachment(attachment: ProofAttachment)
+
+    @Query("DELETE FROM proof_attachments WHERE id = :id")
+    suspend fun deleteProofAttachmentById(id: String)
+
+    @Query("DELETE FROM proof_attachments")
+    suspend fun deleteAllProofAttachments()
+
+    @Query("DELETE FROM monthly_closes")
+    suspend fun deleteAllMonthlyCloses()
+
+    @Query("DELETE FROM undo_actions")
+    suspend fun deleteAllUndoActions()
+
+    @Query("SELECT * FROM sync_conflicts WHERE resolution = 'Open' ORDER BY createdAt DESC")
+    fun getOpenSyncConflicts(): Flow<List<SyncConflict>>
+
+    @Query("SELECT * FROM sync_conflicts WHERE id = :id LIMIT 1")
+    suspend fun getSyncConflictById(id: String): SyncConflict?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertSyncConflict(conflict: SyncConflict)
+
+    @Query("UPDATE sync_conflicts SET resolution = :resolution, resolvedAt = :resolvedAt, updatedAt = :resolvedAt WHERE id = :id")
+    suspend fun resolveSyncConflict(id: String, resolution: String, resolvedAt: Long)
+
+    @Query("DELETE FROM sync_conflicts")
+    suspend fun deleteAllSyncConflicts()
 }

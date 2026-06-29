@@ -1812,3 +1812,14 @@ The user approved the combined future roadmap below. Do not treat these as compl
 - The result message reports whether linked rows or account balances changed. It does not invent new money actions or make guess-based corrections.
 - This completes the first safe slice of the `Smart mismatch fixer` roadmap. A fully automatic mismatch fixer, monthly close, undo window, attachments, and offline conflict resolver remain later-stage work because they need deeper schema/sync semantics and stronger phone smoke.
 - Verified `:app:compileProdDebugKotlin`, `:app:testProdDebugUnitTest`, and install of both production/developer debug variants to connected device `3C15CA0055F00000`.
+
+## 2026-06-30 - Safety Hardening: Monthly Close, Undo, Proofs, Sync Conflicts
+
+- Added Room schema version 29 with `monthly_closes`, `undo_actions`, `proof_attachments`, and `sync_conflicts`.
+- Monthly close now blocks money-changing writes dated inside a closed month, including transactions, loans, debts, investments, withdrawals, and interest waivers.
+- Settings -> Backup & Export now exposes `Monthly close`, `Undo last money action`, `Sync conflict review`, and `Proof records`.
+- Undo is intentionally narrow and safe: it reverses recent transaction add/edit/delete actions inside a 10-minute window. It does not yet undo compound loan/debt/investment cascades.
+- Proof support is now persisted, backed up/restored, and synced as metadata. Per-record attachment pickers are still a future UI layer.
+- Sync conflict capture records local-vs-cloud divergence for account and transaction rows instead of silently overwriting without trace. The first UI lets the user review and mark conflicts as reviewed.
+- Backup/restore and reset paths now include monthly closes, proof links, undo records, and conflict records so the new safety tables do not leave stale state behind.
+- Verified `:app:compileProdDebugKotlin` and `:app:testProdDebugUnitTest`.

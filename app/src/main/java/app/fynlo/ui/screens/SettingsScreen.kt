@@ -118,6 +118,9 @@ fun SettingsScreen(
     val allAccountsForImport by viewModel.accounts.collectAsState()
     val ledgerReport by viewModel.ledgerAccountabilityReport.collectAsState()
     val auditEvents by viewModel.auditEvents.collectAsState()
+    val monthlyCloses by viewModel.monthlyCloses.collectAsState()
+    val openSyncConflicts by viewModel.openSyncConflicts.collectAsState()
+    val proofAttachments by viewModel.proofAttachments.collectAsState()
     var showDataExportDialog by remember { mutableStateOf(false) }
     var selectedDataExportScope by remember { mutableStateOf(DataExportScope.WHOLE) }
     var selectedDataExportFormat by remember { mutableStateOf(DataExportFormat.PDF) }
@@ -879,6 +882,82 @@ fun SettingsScreen(
                         onExport = {
                             auditExportLauncher.launch("Fynlo_Ledger_Audit_Trail_${System.currentTimeMillis()}.csv")
                         },
+                    )
+                }
+
+                SettingsDivider()
+
+                val currentMonthKey = remember { java.time.YearMonth.now().toString() }
+                val currentMonthClosed = monthlyCloses.any { it.month == currentMonthKey && it.status == "Closed" }
+                var showMonthlyClose by remember { mutableStateOf(false) }
+                SettingsActionRow(
+                    icon = if (currentMonthClosed) Icons.Default.Lock else Icons.Default.EventAvailable,
+                    color = if (currentMonthClosed) Amber else Green,
+                    title = "Monthly close",
+                    subtitle = if (currentMonthClosed) {
+                        "$currentMonthKey is locked. Reopen only when you need a correction."
+                    } else {
+                        "Lock $currentMonthKey after review so old entries cannot accidentally change."
+                    }
+                ) { showMonthlyClose = true }
+
+                if (showMonthlyClose) {
+                    MonthlyCloseDialog(
+                        month = currentMonthKey,
+                        isClosed = currentMonthClosed,
+                        onClose = {
+                            viewModel.closeMonth(currentMonthKey, "Closed from Settings")
+                            showMonthlyClose = false
+                        },
+                        onReopen = {
+                            viewModel.reopenMonth(currentMonthKey, "Reopened from Settings")
+                            showMonthlyClose = false
+                        },
+                        onDismiss = { showMonthlyClose = false },
+                    )
+                }
+
+                SettingsDivider()
+
+                SettingsActionRow(
+                    icon = Icons.Default.Undo,
+                    color = Blue,
+                    title = "Undo last money action",
+                    subtitle = "Reverse the last transaction add, edit, or delete within 10 minutes."
+                ) { viewModel.undoLastMoneyAction() }
+
+                SettingsDivider()
+
+                var showSyncConflicts by remember { mutableStateOf(false) }
+                SettingsActionRow(
+                    icon = Icons.Default.SyncProblem,
+                    color = if (openSyncConflicts.isEmpty()) Green else Amber,
+                    title = "Sync conflict review",
+                    subtitle = if (openSyncConflicts.isEmpty()) {
+                        "No offline edit conflicts waiting."
+                    } else {
+                        "${openSyncConflicts.size} offline edits need review before you fully trust cloud sync."
+                    }
+                ) { showSyncConflicts = true }
+
+                if (showSyncConflicts) {
+                    SyncConflictDialog(
+                        conflicts = openSyncConflicts,
+                        onResolve = { id, resolution -> viewModel.resolveSyncConflict(id, resolution) },
+                        onDismiss = { showSyncConflicts = false },
+                    )
+                }
+
+                SettingsDivider()
+
+                SettingsActionRow(
+                    icon = Icons.Default.AttachFile,
+                    color = Carbon500,
+                    title = "Proof records",
+                    subtitle = "${proofAttachments.size} saved proof links for receipts, screenshots, and documents."
+                ) {
+                    viewModel.showFeedback(
+                        if (proofAttachments.isEmpty()) "No proof links saved yet" else "${proofAttachments.size} proof links saved"
                     )
                 }
 
@@ -1958,6 +2037,114 @@ private fun SettingsActionRow(
         Icon(Icons.AutoMirrored.Filled.ArrowForwardIos, null,
             Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.65f))
     }
+}
+
+@Composable
+private fun MonthlyCloseDialog(
+    month: String,
+    isClosed: Boolean,
+    onClose: () -> Unit,
+    onReopen: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(if (isClosed) "Reopen $month?" else "Close $month?") },
+        text = {
+            Text(
+                if (isClosed) {
+                    "This unlocks the month so corrections can be made. Close it again after checking Book check."
+                } else {
+                    "This locks the month. Income, expenses, loans, debts, investments, transfers, withdrawals, and waivers dated in this month will be blocked until you reopen it."
+                },
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        },
+        confirmButton = {
+            Button(
+                onClick = if (isClosed) onReopen else onClose,
+                colors = ButtonDefaults.buttonColors(containerColor = if (isClosed) Amber else Emerald500),
+                shape = RoundedCornerShape(14.dp),
+            ) {
+                Text(if (isClosed) "Reopen Month" else "Close Month")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        },
+    )
+}
+
+@Composable
+private fun SyncConflictDialog(
+    conflicts: List<app.fynlo.data.model.SyncConflict>,
+    onResolve: (String, String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Column {
+                Text("Sync conflict review")
+                Text(
+                    if (conflicts.isEmpty()) "No open conflicts" else "${conflicts.size} item${if (conflicts.size == 1) "" else "s"} need review",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        },
+        text = {
+            if (conflicts.isEmpty()) {
+                Text(
+                    "Offline and cloud data are aligned right now.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            } else {
+                LazyColumn(
+                    modifier = Modifier.heightIn(max = 420.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    items(conflicts, key = { it.id }) { conflict ->
+                        Surface(
+                            shape = RoundedCornerShape(16.dp),
+                            color = MaterialTheme.colorScheme.surface,
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                        ) {
+                            Column(
+                                Modifier.padding(14.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                Text(
+                                    "${conflict.collection.replace('_', ' ').replaceFirstChar { it.uppercase() }} conflict",
+                                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                                )
+                                Text(
+                                    "A cloud copy and this phone both changed this item while offline. Review the related record before marking it resolved.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                                Row(
+                                    Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.End,
+                                ) {
+                                    TextButton(
+                                        onClick = { onResolve(conflict.id, "Reviewed") },
+                                    ) {
+                                        Text("Mark reviewed")
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text("Done") }
+        },
+    )
 }
 
 @Composable

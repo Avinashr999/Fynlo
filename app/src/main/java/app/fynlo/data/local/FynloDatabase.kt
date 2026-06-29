@@ -25,13 +25,89 @@ import app.fynlo.data.model.FlowTemplate
         NetWorthSnapshot::class,
         InvestmentValuation::class,
         DeletedRemoteDoc::class,
-        AuditEvent::class
+        AuditEvent::class,
+        MonthlyClose::class,
+        UndoAction::class,
+        ProofAttachment::class,
+        SyncConflict::class
     ],
-    version = 28,
+    version = 29,
     exportSchema = true
 )
 abstract class FynloDatabase : RoomDatabase() {
     abstract fun dao(): FynloDao
+}
+
+val MIGRATION_28_29 = object : Migration(28, 29) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("""
+            CREATE TABLE IF NOT EXISTS `monthly_closes` (
+                `id` TEXT NOT NULL,
+                `projectId` TEXT NOT NULL,
+                `month` TEXT NOT NULL,
+                `status` TEXT NOT NULL,
+                `note` TEXT NOT NULL,
+                `closedAt` INTEGER NOT NULL,
+                `reopenedAt` INTEGER NOT NULL,
+                `updatedAt` INTEGER NOT NULL,
+                `createdAt` INTEGER NOT NULL,
+                PRIMARY KEY(`id`)
+            )
+        """.trimIndent())
+        db.execSQL("""
+            CREATE TABLE IF NOT EXISTS `undo_actions` (
+                `id` TEXT NOT NULL,
+                `action` TEXT NOT NULL,
+                `entityType` TEXT NOT NULL,
+                `entityId` TEXT NOT NULL,
+                `title` TEXT NOT NULL,
+                `beforeJson` TEXT NOT NULL,
+                `afterJson` TEXT NOT NULL,
+                `projectId` TEXT NOT NULL,
+                `expiresAt` INTEGER NOT NULL,
+                `consumedAt` INTEGER NOT NULL,
+                `updatedAt` INTEGER NOT NULL,
+                `createdAt` INTEGER NOT NULL,
+                PRIMARY KEY(`id`)
+            )
+        """.trimIndent())
+        db.execSQL("""
+            CREATE TABLE IF NOT EXISTS `proof_attachments` (
+                `id` TEXT NOT NULL,
+                `ownerType` TEXT NOT NULL,
+                `ownerId` TEXT NOT NULL,
+                `displayName` TEXT NOT NULL,
+                `mimeType` TEXT NOT NULL,
+                `localUri` TEXT NOT NULL,
+                `remotePath` TEXT NOT NULL,
+                `note` TEXT NOT NULL,
+                `projectId` TEXT NOT NULL,
+                `updatedAt` INTEGER NOT NULL,
+                `createdAt` INTEGER NOT NULL,
+                PRIMARY KEY(`id`)
+            )
+        """.trimIndent())
+        db.execSQL("""
+            CREATE TABLE IF NOT EXISTS `sync_conflicts` (
+                `id` TEXT NOT NULL,
+                `collection` TEXT NOT NULL,
+                `entityId` TEXT NOT NULL,
+                `fieldSummary` TEXT NOT NULL,
+                `localJson` TEXT NOT NULL,
+                `remoteJson` TEXT NOT NULL,
+                `resolution` TEXT NOT NULL,
+                `projectId` TEXT NOT NULL,
+                `resolvedAt` INTEGER NOT NULL,
+                `updatedAt` INTEGER NOT NULL,
+                `createdAt` INTEGER NOT NULL,
+                PRIMARY KEY(`id`)
+            )
+        """.trimIndent())
+        db.execSQL("CREATE INDEX IF NOT EXISTS `idx_monthly_closes_project_month` ON `monthly_closes` (`projectId`, `month`)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS `idx_undo_actions_active` ON `undo_actions` (`projectId`, `expiresAt`, `consumedAt`)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS `idx_proof_attachments_owner` ON `proof_attachments` (`ownerType`, `ownerId`)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS `idx_sync_conflicts_open` ON `sync_conflicts` (`projectId`, `resolution`, `createdAt`)")
+    }
 }
 
 val MIGRATION_27_28 = object : Migration(27, 28) {

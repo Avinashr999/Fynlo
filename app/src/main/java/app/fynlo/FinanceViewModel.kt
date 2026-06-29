@@ -208,6 +208,63 @@ class FinanceViewModel @Inject constructor(
             list.filter { ProjectScope.belongsToSelectedProject(it.projectId, pid) }
         }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
+    val monthlyCloses: StateFlow<List<MonthlyClose>> =
+        combine(repository.allMonthlyCloses, _currentProjectId) { list, pid ->
+            list.filter { ProjectScope.belongsToSelectedProject(it.projectId, pid) }
+        }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    val openSyncConflicts: StateFlow<List<SyncConflict>> =
+        combine(repository.openSyncConflicts, _currentProjectId) { list, pid ->
+            list.filter { ProjectScope.belongsToSelectedProject(it.projectId, pid) }
+        }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    val proofAttachments: StateFlow<List<ProofAttachment>> =
+        combine(repository.allProofAttachments, _currentProjectId) { list, pid ->
+            list.filter { ProjectScope.belongsToSelectedProject(it.projectId, pid) }
+        }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    private fun runMoneyAction(block: suspend () -> Unit) {
+        viewModelScope.launch(Dispatchers.IO) {
+            runCatching { block() }
+                .onFailure { e ->
+                    val message = if (e is FinanceRepository.ClosedPeriodException) {
+                        e.message ?: "This month is closed. Reopen it before editing."
+                    } else {
+                        e.message ?: "Action could not be completed."
+                    }
+                    _feedbackEvents.tryEmit(message)
+                }
+        }
+    }
+
+    fun closeMonth(month: String, note: String = "") {
+        viewModelScope.launch(Dispatchers.IO) {
+            repository.closeMonth(pid, month, note)
+            _feedbackEvents.tryEmit("Month closed")
+        }
+    }
+
+    fun reopenMonth(month: String, note: String = "") {
+        viewModelScope.launch(Dispatchers.IO) {
+            repository.reopenMonth(pid, month, note)
+            _feedbackEvents.tryEmit("Month reopened")
+        }
+    }
+
+    fun undoLastMoneyAction() {
+        viewModelScope.launch(Dispatchers.IO) {
+            val undone = repository.undoLastMoneyAction()
+            _feedbackEvents.tryEmit(if (undone) "Last action undone" else "No recent action to undo")
+        }
+    }
+
+    fun resolveSyncConflict(id: String, resolution: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            repository.resolveSyncConflict(id, resolution)
+            _feedbackEvents.tryEmit("Conflict marked as $resolution")
+        }
+    }
+
     fun exportAuditTrailCsv(): String {
         fun csvCell(value: String): String = "\"${value.replace("\"", "\"\"")}\""
         val dateFormat = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.US)
@@ -436,7 +493,7 @@ class FinanceViewModel @Inject constructor(
     private val pid   get() = _currentProjectId.value.ifEmpty { "personal" }
 
     fun withdrawFromInvestment(investment: app.fynlo.data.model.Investment, amount: Double, toAccount: String) {
-        viewModelScope.launch(Dispatchers.IO) { repository.withdrawFromInvestment(investment, amount, toAccount) }
+        runMoneyAction { repository.withdrawFromInvestment(investment, amount, toAccount) }
     }
     fun restoreBorrowerToActive(borrower: app.fynlo.data.model.Borrower) {
         viewModelScope.launch(Dispatchers.IO) { repository.restoreBorrowerToActive(borrower) }
@@ -668,52 +725,42 @@ class FinanceViewModel @Inject constructor(
     }
 
     fun addBorrowerWithSource(borrower: Borrower, source: String) {
-        viewModelScope.launch(Dispatchers.IO) {
-            repository.insertBorrowerWithSource(borrower.copy(projectId = pid), source, pid)
-        }
+        runMoneyAction { repository.insertBorrowerWithSource(borrower.copy(projectId = pid), source, pid) }
     }
 
     fun deleteBorrower(borrower: Borrower) {
-        viewModelScope.launch(Dispatchers.IO) { repository.deleteBorrower(borrower) }
+        runMoneyAction { repository.deleteBorrower(borrower) }
     }
 
     fun updateBorrower(borrower: Borrower) {
-        viewModelScope.launch(Dispatchers.IO) {
-            repository.updateBorrower(borrower.copy(projectId = pid))
-        }
+        runMoneyAction { repository.updateBorrower(borrower.copy(projectId = pid)) }
     }
 
     fun updateBorrowerWithSource(borrower: Borrower, source: String) {
-        viewModelScope.launch(Dispatchers.IO) {
-            repository.updateBorrowerWithSource(borrower.copy(projectId = pid), source)
-        }
+        runMoneyAction { repository.updateBorrowerWithSource(borrower.copy(projectId = pid), source) }
     }
 
     fun updateDebt(debt: Debt) {
-        viewModelScope.launch(Dispatchers.IO) {
-            repository.updateDebt(debt.copy(projectId = pid, updatedAt = System.currentTimeMillis()))
-        }
+        runMoneyAction { repository.updateDebt(debt.copy(projectId = pid, updatedAt = System.currentTimeMillis())) }
     }
 
     fun updateDebtWithDestination(debt: Debt, destination: String) {
-        viewModelScope.launch(Dispatchers.IO) {
-            repository.updateDebtWithDestination(debt.copy(projectId = pid, updatedAt = System.currentTimeMillis()), destination)
-        }
+        runMoneyAction { repository.updateDebtWithDestination(debt.copy(projectId = pid, updatedAt = System.currentTimeMillis()), destination) }
     }
 
     // ─── Add investment — pick the right repository function by source type ─────
     fun addInvestmentFundedByAccount(investment: Investment, accountName: String, accountId: String = "") {
-        viewModelScope.launch(Dispatchers.IO) { repository.insertInvestmentFundedByAccount(investment.copy(projectId = pid), accountName, pid, accountId) }
+        runMoneyAction { repository.insertInvestmentFundedByAccount(investment.copy(projectId = pid), accountName, pid, accountId) }
     }
     fun addInvestmentFundedByExistingDebt(investment: Investment, debt: app.fynlo.data.model.Debt) {
-        viewModelScope.launch(Dispatchers.IO) { repository.insertInvestmentFundedByExistingDebt(investment.copy(projectId = pid), debt, pid) }
+        runMoneyAction { repository.insertInvestmentFundedByExistingDebt(investment.copy(projectId = pid), debt, pid) }
     }
     fun addInvestmentFundedByNewLoan(investment: Investment, newDebt: app.fynlo.data.model.Debt) {
-        viewModelScope.launch(Dispatchers.IO) { repository.insertInvestmentFundedByNewLoan(investment.copy(projectId = pid), newDebt.copy(projectId = pid), pid) }
+        runMoneyAction { repository.insertInvestmentFundedByNewLoan(investment.copy(projectId = pid), newDebt.copy(projectId = pid), pid) }
     }
     // Legacy shim kept so Navigation.kt compiles without changes until updated
     fun addInvestmentWithSource(investment: Investment, source: String) {
-        viewModelScope.launch(Dispatchers.IO) { repository.insertInvestmentWithSource(investment.copy(projectId = pid), source, pid) }
+        runMoneyAction { repository.insertInvestmentWithSource(investment.copy(projectId = pid), source, pid) }
     }
 
     fun updateInvestmentValue(investment: Investment, newCurrentVal: Double) {
@@ -729,15 +776,11 @@ class FinanceViewModel @Inject constructor(
     }
 
     fun updateInvestmentFundedByAccount(investment: Investment, accountName: String, accountId: String = "") {
-        viewModelScope.launch(Dispatchers.IO) {
-            repository.updateInvestmentFundedByAccount(investment.copy(projectId = pid), accountName, pid, accountId)
-        }
+        runMoneyAction { repository.updateInvestmentFundedByAccount(investment.copy(projectId = pid), accountName, pid, accountId) }
     }
 
     fun updateInvestmentFundedByExistingDebt(investment: Investment, debt: Debt) {
-        viewModelScope.launch(Dispatchers.IO) {
-            repository.updateInvestmentFundedByExistingDebt(investment.copy(projectId = pid), debt.copy(projectId = pid), pid)
-        }
+        runMoneyAction { repository.updateInvestmentFundedByExistingDebt(investment.copy(projectId = pid), debt.copy(projectId = pid), pid) }
     }
 
     fun executeLinkedInvestment(
@@ -763,25 +806,21 @@ class FinanceViewModel @Inject constructor(
     fun getValuationsForInvestment(invId: String) = repository.getValuationsForInvestment(invId)
 
     fun deleteInvestment(investment: Investment) {
-        viewModelScope.launch(Dispatchers.IO) { repository.deleteInvestmentOnly(investment) }
+        runMoneyAction { repository.deleteInvestmentOnly(investment) }
     }
     fun deleteInvestmentAndReverseAccount(investment: Investment) {
-        viewModelScope.launch(Dispatchers.IO) { repository.deleteInvestmentAndReverseAccount(investment) }
+        runMoneyAction { repository.deleteInvestmentAndReverseAccount(investment) }
     }
     fun deleteInvestmentAndLinkedLoan(investment: Investment) {
-        viewModelScope.launch(Dispatchers.IO) { repository.deleteInvestmentAndLinkedLoan(investment) }
+        runMoneyAction { repository.deleteInvestmentAndLinkedLoan(investment) }
     }
 
     fun addTransaction(transaction: Transaction) {
-        viewModelScope.launch(Dispatchers.IO) {
-            repository.insertTransaction(transaction.copy(projectId = pid))
-        }
+        runMoneyAction { repository.insertTransaction(transaction.copy(projectId = pid)) }
     }
 
     fun updateTransaction(transaction: Transaction) {
-        viewModelScope.launch(Dispatchers.IO) {
-            repository.insertTransaction(transaction.copy(projectId = pid))
-        }
+        runMoneyAction { repository.insertTransaction(transaction.copy(projectId = pid)) }
     }
 
     fun restoreRealData() {
@@ -911,17 +950,15 @@ class FinanceViewModel @Inject constructor(
     }
 
     fun editTransaction(old: Transaction, new: Transaction) {
-        viewModelScope.launch(Dispatchers.IO) { repository.editTransaction(old, new) }
+        runMoneyAction { repository.editTransaction(old, new) }
     }
 
     fun deleteTransaction(transaction: Transaction) {
-        viewModelScope.launch(Dispatchers.IO) { repository.deleteTransaction(transaction) }
+        runMoneyAction { repository.deleteTransaction(transaction) }
     }
 
     fun deleteTransactions(transactions: List<Transaction>) {
-        viewModelScope.launch(Dispatchers.IO) {
-            transactions.forEach { repository.deleteTransaction(it) }
-        }
+        runMoneyAction { transactions.forEach { repository.deleteTransaction(it) } }
     }
 
     /**
@@ -939,25 +976,19 @@ class FinanceViewModel @Inject constructor(
     }
 
     fun addDebtWithDestination(debt: Debt, destination: String) {
-        viewModelScope.launch(Dispatchers.IO) {
-            repository.insertDebtWithDestination(debt.copy(projectId = pid), destination, pid)
-        }
+        runMoneyAction { repository.insertDebtWithDestination(debt.copy(projectId = pid), destination, pid) }
     }
 
     fun deleteDebt(debt: Debt) {
-        viewModelScope.launch(Dispatchers.IO) { repository.deleteDebt(debt) }
+        runMoneyAction { repository.deleteDebt(debt) }
     }
 
     fun collectLoanPayment(payment: Payment, destination: String) {
-        viewModelScope.launch(Dispatchers.IO) {
-            repository.insertPaymentWithDest(payment.copy(projectId = pid), destination, pid)
-        }
+        runMoneyAction { repository.insertPaymentWithDest(payment.copy(projectId = pid), destination, pid) }
     }
 
     fun payDebt(payment: DebtPayment, source: String) {
-        viewModelScope.launch(Dispatchers.IO) {
-            repository.insertDebtPaymentWithSource(payment.copy(projectId = pid), source, pid)
-        }
+        runMoneyAction { repository.insertDebtPaymentWithSource(payment.copy(projectId = pid), source, pid) }
     }
 
     fun waiveBorrowerInterest(borrower: Borrower, amount: Double, reason: String) {

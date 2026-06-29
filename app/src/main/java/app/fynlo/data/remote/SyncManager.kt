@@ -54,6 +54,30 @@ class SyncManager(
         runCatching { doc.reference.delete().await() }
     }
 
+    private suspend fun recordConflict(
+        collection: String,
+        entityId: String,
+        fieldSummary: String,
+        localValue: Any,
+        remoteValue: Any,
+        projectId: String,
+    ) {
+        val now = System.currentTimeMillis()
+        dao.insertSyncConflict(
+            SyncConflict(
+                id = "$collection:$entityId:$now",
+                collection = collection,
+                entityId = entityId,
+                fieldSummary = fieldSummary.take(220),
+                localJson = localValue.toString().take(4_000),
+                remoteJson = remoteValue.toString().take(4_000),
+                projectId = projectId.ifBlank { "personal" },
+                updatedAt = now,
+                createdAt = now,
+            )
+        )
+    }
+
     /** Start real-time listeners for every collection. */
     fun startListening() {
         if (userId.isEmpty()) return
@@ -172,6 +196,20 @@ class SyncManager(
                         )
                         // LWW: only overwrite if remote is newer
                         val localTxn = dao.getTransactionById(remote.id)
+                        if (localTxn != null &&
+                            remote.updatedAt > localTxn.updatedAt &&
+                            localTxn.updatedAt > 0L &&
+                            localTxn.copy(updatedAt = remote.updatedAt) != remote
+                        ) {
+                            recordConflict(
+                                collection = "transactions",
+                                entityId = remote.id,
+                                fieldSummary = "Transaction changed on cloud after local edit",
+                                localValue = localTxn,
+                                remoteValue = remote,
+                                projectId = remote.projectId,
+                            )
+                        }
                         if (localTxn == null || remote.updatedAt >= localTxn.updatedAt) {
                             dao.insertTransaction(remote)
                         }
@@ -205,6 +243,20 @@ class SyncManager(
                             createdAt = doc.lng("createdAt")
                         )
                         val localAcct = dao.getAccountById(doc.id)
+                        if (localAcct != null &&
+                            remoteAcct.updatedAt > localAcct.updatedAt &&
+                            localAcct.updatedAt > 0L &&
+                            localAcct.copy(updatedAt = remoteAcct.updatedAt) != remoteAcct
+                        ) {
+                            recordConflict(
+                                collection = "accounts",
+                                entityId = remoteAcct.id,
+                                fieldSummary = "Account changed on cloud after local edit",
+                                localValue = localAcct,
+                                remoteValue = remoteAcct,
+                                projectId = remoteAcct.projectId,
+                            )
+                        }
                         if (localAcct == null || remoteAcct.updatedAt >= localAcct.updatedAt) {
                             // 3.2.72 — audit the balance delta caused by a
                             // Firestore listener overwrite. This is THE
@@ -600,6 +652,62 @@ class SyncManager(
                             projectId   = doc.strOr("projectId", "personal"),
                             reason      = doc.str("reason"),
                             actor       = doc.strOr("actor", "remote")
+                        ))
+                    }
+                }
+                _status.value = SyncStatus.Synced
+            }
+        }
+
+        listeners += col("monthly_closes").addSnapshotListener { snap, err ->
+            if (err != null || snap == null) { handleErr(err); return@addSnapshotListener }
+            scope.launch {
+                snap.documentChanges.forEach { change ->
+                    runCatching {
+                        val doc = change.document
+                        if (change.type == DocumentChange.Type.REMOVED) {
+                            dao.deleteMonthlyCloseById(doc.id)
+                            return@runCatching
+                        }
+                        dao.insertMonthlyClose(MonthlyClose(
+                            id = doc.id,
+                            projectId = doc.strOr("projectId", "personal"),
+                            month = doc.str("month"),
+                            status = doc.strOr("status", "Closed"),
+                            note = doc.str("note"),
+                            closedAt = doc.lng("closedAt"),
+                            reopenedAt = doc.lng("reopenedAt"),
+                            updatedAt = doc.lng("updatedAt"),
+                            createdAt = doc.lng("createdAt"),
+                        ))
+                    }
+                }
+                _status.value = SyncStatus.Synced
+            }
+        }
+
+        listeners += col("proof_attachments").addSnapshotListener { snap, err ->
+            if (err != null || snap == null) { handleErr(err); return@addSnapshotListener }
+            scope.launch {
+                snap.documentChanges.forEach { change ->
+                    runCatching {
+                        val doc = change.document
+                        if (change.type == DocumentChange.Type.REMOVED) {
+                            dao.deleteProofAttachmentById(doc.id)
+                            return@runCatching
+                        }
+                        dao.insertProofAttachment(ProofAttachment(
+                            id = doc.id,
+                            ownerType = doc.str("ownerType"),
+                            ownerId = doc.str("ownerId"),
+                            displayName = doc.str("displayName"),
+                            mimeType = doc.str("mimeType"),
+                            localUri = doc.str("localUri"),
+                            remotePath = doc.str("remotePath"),
+                            note = doc.str("note"),
+                            projectId = doc.strOr("projectId", "personal"),
+                            updatedAt = doc.lng("updatedAt"),
+                            createdAt = doc.lng("createdAt"),
                         ))
                     }
                 }

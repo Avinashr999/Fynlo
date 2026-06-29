@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import androidx.room.withTransaction
+import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
@@ -46,7 +47,11 @@ class FinanceRepository(
     val allProjects: Flow<List<Project>>         = dao.getAllProjects()
     val allValuations: Flow<List<InvestmentValuation>> = dao.getAllValuations()
     val allAuditEvents: Flow<List<AuditEvent>>   = dao.getAllAuditEvents()
+    val allMonthlyCloses: Flow<List<MonthlyClose>> = dao.getAllMonthlyCloses()
+    val allProofAttachments: Flow<List<ProofAttachment>> = dao.getAllProofAttachments()
+    val openSyncConflicts: Flow<List<SyncConflict>> = dao.getOpenSyncConflicts()
     private val ioScope = CoroutineScope(Dispatchers.IO)
+    private val undoJson = Json { encodeDefaults = true; ignoreUnknownKeys = true }
     fun sync(block: suspend FirestoreRepository.() -> Unit) {
         // Don't attempt Firestore writes without a real authenticated user
         if (syncManager.userId.isEmpty()) return
@@ -131,6 +136,122 @@ class FinanceRepository(
         }
     }
 
+    class ClosedPeriodException(month: String) : IllegalStateException(
+        "This period is closed ($month). Reopen the month before changing past entries."
+    )
+
+    private fun monthKey(date: String): String = date.take(7)
+
+    private suspend fun requireOpenDate(date: String, projectId: String) {
+        val month = monthKey(date)
+        if (month.length == 7 && dao.getClosedMonth(projectId.ifBlank { "personal" }, month) != null) {
+            throw ClosedPeriodException(month)
+        }
+    }
+
+    private suspend fun recordUndo(
+        action: String,
+        entityType: String,
+        entityId: String,
+        title: String,
+        beforeJson: String = "",
+        afterJson: String = "",
+        projectId: String = "personal",
+    ) {
+        val now = System.currentTimeMillis()
+        dao.pruneUndoActions(now)
+        dao.insertUndoAction(
+            UndoAction(
+                id = app.fynlo.logic.Ids.newId(),
+                action = action,
+                entityType = entityType,
+                entityId = entityId,
+                title = title.take(120),
+                beforeJson = beforeJson,
+                afterJson = afterJson,
+                projectId = projectId.ifBlank { "personal" },
+                expiresAt = now + 10 * 60 * 1000L,
+                updatedAt = now,
+                createdAt = now,
+            )
+        )
+    }
+
+    suspend fun closeMonth(projectId: String, month: String, note: String = "") {
+        val now = System.currentTimeMillis()
+        val close = MonthlyClose(
+            id = "${projectId.ifBlank { "personal" }}:$month",
+            projectId = projectId.ifBlank { "personal" },
+            month = month,
+            status = "Closed",
+            note = note,
+            closedAt = now,
+            updatedAt = now,
+            createdAt = now,
+        )
+        dao.insertMonthlyClose(close)
+        recordAudit("CLOSE", "monthly_close", close.id, "Month closed: $month", afterValue = note, projectId = close.projectId)
+        sync { setMonthlyClose(close) }
+    }
+
+    suspend fun reopenMonth(projectId: String, month: String, note: String = "") {
+        val now = System.currentTimeMillis()
+        val close = MonthlyClose(
+            id = "${projectId.ifBlank { "personal" }}:$month",
+            projectId = projectId.ifBlank { "personal" },
+            month = month,
+            status = "Reopened",
+            note = note,
+            closedAt = 0L,
+            reopenedAt = now,
+            updatedAt = now,
+            createdAt = now,
+        )
+        dao.insertMonthlyClose(close)
+        recordAudit("REOPEN", "monthly_close", close.id, "Month reopened: $month", afterValue = note, projectId = close.projectId)
+        sync { setMonthlyClose(close) }
+    }
+
+    suspend fun addProofAttachment(attachment: ProofAttachment) {
+        val now = System.currentTimeMillis()
+        val saved = attachment.copy(updatedAt = now, createdAt = if (attachment.createdAt == 0L) now else attachment.createdAt)
+        dao.insertProofAttachment(saved)
+        recordAudit("ATTACH", saved.ownerType, saved.ownerId, "Proof attached: ${saved.displayName}", afterValue = saved.localUri, projectId = saved.projectId)
+        sync { setProofAttachment(saved) }
+    }
+
+    suspend fun deleteProofAttachment(id: String) {
+        dao.deleteProofAttachmentById(id)
+        sync { deleteProofAttachment(id) }
+    }
+
+    suspend fun resolveSyncConflict(id: String, resolution: String) {
+        dao.resolveSyncConflict(id, resolution, System.currentTimeMillis())
+    }
+
+    suspend fun undoLastMoneyAction(): Boolean {
+        val now = System.currentTimeMillis()
+        val action = dao.getLatestUndoAction(now) ?: return false
+        when (action.entityType) {
+            "transaction" -> when (action.action) {
+                "CREATE" -> dao.getTransactionById(action.entityId)?.let { deleteTransaction(it) }
+                "DELETE" -> {
+                    val restored = undoJson.decodeFromString<Transaction>(action.beforeJson)
+                    insertTransaction(restored.copy(updatedAt = now))
+                }
+                "EDIT" -> {
+                    val before = undoJson.decodeFromString<Transaction>(action.beforeJson)
+                    val current = dao.getTransactionById(action.entityId) ?: before
+                    editTransaction(current, before.copy(updatedAt = now))
+                }
+            }
+            else -> return false
+        }
+        dao.markUndoConsumed(action.id, now)
+        recordAudit("UNDO", action.entityType, action.entityId, "Undo: ${action.title}", projectId = action.projectId)
+        return true
+    }
+
     private suspend fun recordAudit(
         action: String,
         entityType: String,
@@ -184,6 +305,7 @@ class FinanceRepository(
         // C03b Stage #1a: resolve account-name strings into immutable
         // account ids so a rename can't orphan the row.
         val sanitized = TransactionValidator.sanitize(transaction).withResolvedAccountIds()
+        requireOpenDate(sanitized.date, sanitized.projectId)
         val affectedAccounts = mutableListOf<String>()
         db.withTransaction {
             if (dao.getTransactionById(sanitized.id) != null) return@withTransaction
@@ -235,6 +357,14 @@ class FinanceRepository(
                 accountName = listOf(t.fromAcct, t.toAcct).filter { it.isNotBlank() }.joinToString(" -> "),
                 projectId = t.projectId,
             )
+            recordUndo(
+                action = "CREATE",
+                entityType = "transaction",
+                entityId = t.id,
+                title = "Undo added ${t.category}",
+                afterJson = undoJson.encodeToString(t),
+                projectId = t.projectId,
+            )
             sync { setTransaction(t) }
         }
         Analytics.transactionAdded(type = transaction.type, category = transaction.category)
@@ -250,6 +380,8 @@ class FinanceRepository(
         // C03b Stage #1a: resolve account-name strings into ids on the
         // new value so the edit refreshes the immutable mirror.
         val new = TransactionValidator.sanitize(newRaw).withResolvedAccountIds()
+        requireOpenDate(old.date, old.projectId)
+        requireOpenDate(new.date, new.projectId)
         db.withTransaction {
             // 3.2.72 — audit log for both halves of the edit (reverse + apply).
             val revTag = app.fynlo.logic.BalanceAuditLog.Source.EDIT_TXN_REVERSE
@@ -406,6 +538,15 @@ class FinanceRepository(
                 accountName = listOf(new.fromAcct, new.toAcct).filter { it.isNotBlank() }.joinToString(" -> "),
                 projectId = new.projectId,
             )
+            recordUndo(
+                action = "EDIT",
+                entityType = "transaction",
+                entityId = new.id,
+                title = "Undo edited ${new.category}",
+                beforeJson = undoJson.encodeToString(old),
+                afterJson = undoJson.encodeToString(new),
+                projectId = new.projectId,
+            )
             sync { setTransaction(new) }
         }
         // Sync affected accounts
@@ -418,6 +559,7 @@ class FinanceRepository(
     }
 
     suspend fun deleteTransaction(transaction: Transaction) {
+        requireOpenDate(transaction.date, transaction.projectId)
         var deleted: Transaction? = null
         db.withTransaction {
             val current = dao.getTransactionById(transaction.id) ?: return@withTransaction
@@ -500,6 +642,14 @@ class FinanceRepository(
                 accountName = listOf(current.fromAcct, current.toAcct).filter { it.isNotBlank() }.joinToString(" -> "),
                 projectId = current.projectId,
             )
+            recordUndo(
+                action = "DELETE",
+                entityType = "transaction",
+                entityId = current.id,
+                title = "Undo deleted ${current.category}",
+                beforeJson = undoJson.encodeToString(current),
+                projectId = current.projectId,
+            )
             deleted = current
         }
         val current = deleted ?: return
@@ -521,6 +671,7 @@ class FinanceRepository(
     }
 
     suspend fun updateBorrowerWithSource(borrower: Borrower, sourceAccount: String) {
+        requireOpenDate(borrower.date, borrower.projectId)
         val before = dao.getBorrowerById(borrower.id)
         val now = System.currentTimeMillis()
         var oldSource = ""
@@ -581,6 +732,7 @@ class FinanceRepository(
     }
 
     suspend fun updateDebtWithDestination(debt: Debt, requestedDestinationAccount: String) {
+        requireOpenDate(debt.date, debt.projectId)
         var destinationAccount = ""
         var oldDestinationAccount = ""
         var updatedFundingTxn: Transaction? = null
@@ -662,6 +814,7 @@ class FinanceRepository(
     }
 
     suspend fun insertBorrowerWithSource(borrower: Borrower, sourceAccount: String, projectId: String = borrower.projectId) {
+        requireOpenDate(borrower.date, projectId)
         db.withTransaction {
             if (dao.getBorrowerById(borrower.id) != null) return@withTransaction
             val now = System.currentTimeMillis()
@@ -698,6 +851,7 @@ class FinanceRepository(
         syncAccountByName(sourceAccount)
     }
     suspend fun deleteBorrower(borrower: Borrower) {
+        requireOpenDate(borrower.date, borrower.projectId)
         // Find linked transactions — try by ref first, fall back to desc for legacy records
         val byRef  = dao.getTransactionsByRef(borrower.id)
         val byDesc = dao.getTransactionsByDesc("Lent to ${borrower.name}")
@@ -1397,6 +1551,7 @@ class FinanceRepository(
     }
     // ─── Investment — funded by own account ────────────────────────────────────
     suspend fun insertInvestmentFundedByAccount(investment: Investment, accountName: String, projectId: String = investment.projectId, accountId: String = "") {
+        requireOpenDate(investment.date, projectId)
         db.withTransaction {
             if (dao.getInvestmentById(investment.id) != null) return@withTransaction
             val resolvedAccountId = accountId.ifBlank { dao.getAccountByName(accountName)?.id ?: "" }
@@ -1426,6 +1581,7 @@ class FinanceRepository(
 
     // ─── Investment — funded by existing recorded debt ──────────────────────────
     suspend fun insertInvestmentFundedByExistingDebt(investment: Investment, debt: app.fynlo.data.model.Debt, projectId: String = investment.projectId) {
+        requireOpenDate(investment.date, projectId)
         db.withTransaction {
             if (dao.getInvestmentById(investment.id) != null) return@withTransaction
             val i = investment.copy(sourceType = "existing_debt", fundingSource = debt.name, linkedDebtId = debt.id, projectId = projectId, updatedAt = System.currentTimeMillis(), createdAt = if (investment.createdAt == 0L) System.currentTimeMillis() else investment.createdAt)
@@ -1453,6 +1609,8 @@ class FinanceRepository(
 
     // ─── Investment — auto-create new loan + link to investment ─────────────────
     suspend fun insertInvestmentFundedByNewLoan(investment: Investment, newDebt: app.fynlo.data.model.Debt, projectId: String = investment.projectId) {
+        requireOpenDate(investment.date, projectId)
+        requireOpenDate(newDebt.date, projectId)
         db.withTransaction {
             if (dao.getInvestmentById(investment.id) != null) return@withTransaction
             val d = newDebt.copy(projectId = projectId, updatedAt = System.currentTimeMillis())
@@ -1489,6 +1647,7 @@ class FinanceRepository(
 
     // ─── Delete — record only, no balance reversal ─────────────────────────────
     suspend fun deleteInvestmentOnly(investment: Investment) {
+        requireOpenDate(investment.date, investment.projectId)
         var didDelete = false
         db.withTransaction {
             val current = dao.getInvestmentById(investment.id) ?: return@withTransaction
@@ -1520,6 +1679,7 @@ class FinanceRepository(
 
     // ─── Delete — record + reverse source account balance ─────────────────────
     suspend fun deleteInvestmentAndReverseAccount(investment: Investment) {
+        requireOpenDate(investment.date, investment.projectId)
         var didDelete = false
         var fundingSourceToSync = ""
         db.withTransaction {
@@ -1562,6 +1722,7 @@ class FinanceRepository(
 
     // ─── Delete — record + delete the linked loan that was auto-created ────────
     suspend fun deleteInvestmentAndLinkedLoan(investment: Investment) {
+        requireOpenDate(investment.date, investment.projectId)
         var deletedInvestment: Investment? = null
         db.withTransaction {
             val current = dao.getInvestmentById(investment.id) ?: return@withTransaction
@@ -1662,6 +1823,7 @@ class FinanceRepository(
         projectId: String = investment.projectId,
         accountId: String = "",
     ) {
+        requireOpenDate(investment.date, projectId)
         val before = dao.getInvestmentById(investment.id)
         val now = System.currentTimeMillis()
         var oldSource = ""
@@ -1845,6 +2007,8 @@ class FinanceRepository(
         sourceName: String,
         debtDetails: Debt? = null
     ) {
+        requireOpenDate(investment.date, investment.projectId)
+        debtDetails?.let { requireOpenDate(it.date, it.projectId.ifBlank { investment.projectId }) }
         db.withTransaction {
             val pid = investment.projectId
             
@@ -1953,6 +2117,7 @@ class FinanceRepository(
         deleteInvestmentOnly(investment)
     }
     suspend fun insertDebtWithDestination(debt: Debt, destinationAccount: String, projectId: String = debt.projectId) {
+        requireOpenDate(debt.date, projectId)
         db.withTransaction {
             if (dao.getDebtById(debt.id) != null) return@withTransaction
             val now = System.currentTimeMillis()
@@ -1989,6 +2154,7 @@ class FinanceRepository(
         syncAccountByName(destinationAccount)
     }
     suspend fun deleteDebt(debt: Debt) {
+        requireOpenDate(debt.date, debt.projectId)
         var linkedTxns = emptyList<Transaction>()
         var linkedPayments = emptyList<DebtPayment>()
         var didDelete = false
@@ -2035,6 +2201,7 @@ class FinanceRepository(
         linkedTxns.map { it.toAcct }.filter { it.isNotBlank() }.distinct().forEach { syncAccountByName(it) }
     }
     suspend fun insertPaymentWithDest(payment: Payment, destinationAccount: String, projectId: String = payment.projectId) {
+        requireOpenDate(payment.date, projectId)
         db.withTransaction {
             if (dao.getPaymentById(payment.id) != null) return@withTransaction
             val now = System.currentTimeMillis()
@@ -2089,6 +2256,7 @@ class FinanceRepository(
         syncAccountByName(destinationAccount)
     }
     suspend fun insertDebtPaymentWithSource(payment: DebtPayment, sourceAccount: String, projectId: String = payment.projectId) {
+        requireOpenDate(payment.date, projectId)
         db.withTransaction {
             if (dao.getDebtPaymentById(payment.id) != null) return@withTransaction
             val now = System.currentTimeMillis()
@@ -2185,6 +2353,8 @@ class FinanceRepository(
     // toAccount: bank account that receives the money
     // Returns the realized gain/loss for this withdrawal
     suspend fun withdrawFromInvestment(investment: Investment, withdrawAmount: Double, toAccount: String): Double {
+        val today = java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd"))
+        requireOpenDate(today, investment.projectId)
         val proportionWithdrawn = if (investment.currentVal > 0)
             (withdrawAmount / investment.currentVal).coerceIn(0.0, 1.0) else 0.0
         val costBasis   = investment.invested * proportionWithdrawn  // what we paid for this portion
@@ -2306,6 +2476,10 @@ class FinanceRepository(
     fun getPaymentsForLoan(loanId: String) = dao.getPaymentsForLoan(loanId)
 
     suspend fun waiveBorrowerInterest(borrower: Borrower, amount: Double, reason: String) {
+        requireOpenDate(
+            java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd")),
+            borrower.projectId,
+        )
         val targetId = borrower.id
         var updated: Borrower? = null
         db.withTransaction {
@@ -2348,6 +2522,10 @@ class FinanceRepository(
     }
 
     suspend fun waiveDebtInterest(debt: Debt, amount: Double, reason: String) {
+        requireOpenDate(
+            java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd")),
+            debt.projectId,
+        )
         val targetId = debt.id
         var updated: Debt? = null
         db.withTransaction {
@@ -2630,6 +2808,10 @@ class FinanceRepository(
             dao.deleteAllGoals()
             dao.deleteAllAuditEvents()
             dao.deleteAllDeletedRemoteDocs()
+            dao.deleteAllMonthlyCloses()
+            dao.deleteAllProofAttachments()
+            dao.deleteAllUndoActions()
+            dao.deleteAllSyncConflicts()
             dao.deleteAllValuations()
             dao.deleteAllRecurringTransactions()
         }
@@ -2688,6 +2870,10 @@ class FinanceRepository(
                 dao.deleteAllGoals()
                 dao.deleteAllAuditEvents()
                 dao.deleteAllDeletedRemoteDocs()
+                dao.deleteAllMonthlyCloses()
+                dao.deleteAllProofAttachments()
+                dao.deleteAllUndoActions()
+                dao.deleteAllSyncConflicts()
                 dao.deleteAllValuations()
                 dao.deleteAllRecurringTransactions()
                 dao.deleteAllNetWorthSnapshots()
@@ -2725,7 +2911,9 @@ class FinanceRepository(
             debtPayments          = dao.getAllDebtPayments().first(),
             budgets               = dao.getAllBudgets().first(),
             goals                 = dao.getAllGoals().first(),
-            recurringTransactions = dao.getAllRecurringTransactionsOnce()
+            recurringTransactions = dao.getAllRecurringTransactionsOnce(),
+            monthlyCloses         = dao.getAllMonthlyCloses().first(),
+            proofAttachments      = dao.getAllProofAttachments().first(),
         )
         val hash = BackupIntegrity.computeHash(draft)
         return Json.encodeToString(draft.copy(contentHash = hash))
@@ -2769,6 +2957,7 @@ class FinanceRepository(
             dao.deleteAllInvestments(); dao.deleteAllDebts(); dao.deleteAllPeople(); dao.deleteAllProjects()
             dao.deleteAllPayments(); dao.deleteAllDebtPayments(); dao.deleteAllBudgets(); dao.deleteAllGoals()
             dao.deleteAllAuditEvents()
+            dao.deleteAllMonthlyCloses(); dao.deleteAllProofAttachments(); dao.deleteAllUndoActions(); dao.deleteAllSyncConflicts()
             data.accounts.forEach { dao.insertAccount(it) }; data.transactions.forEach { dao.insertTransaction(it) }
             data.borrowers.forEach { dao.insertBorrower(it) }; data.investments.forEach { dao.insertInvestment(it) }
             data.debts.forEach { dao.insertDebt(it) }; data.people.forEach { dao.insertPerson(it) }
@@ -2776,6 +2965,8 @@ class FinanceRepository(
             data.payments.forEach { dao.insertPayment(it) }; data.debtPayments.forEach { dao.insertDebtPayment(it) }
             data.budgets.forEach { dao.insertBudget(it) }; data.goals.forEach { dao.insertGoal(it) }
             data.recurringTransactions.forEach { dao.insertRecurringTransaction(it) }
+            data.monthlyCloses.forEach { dao.insertMonthlyClose(it) }
+            data.proofAttachments.forEach { dao.insertProofAttachment(it) }
             recordAudit(
                 action = "RESTORE",
                 entityType = "backup",
