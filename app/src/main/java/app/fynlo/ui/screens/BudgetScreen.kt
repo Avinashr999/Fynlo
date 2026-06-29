@@ -367,7 +367,6 @@ private fun OverviewChip(label: String, value: String, color: Color, modifier: M
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun AddBudgetDialog(
     currencySymbol: String,
@@ -447,18 +446,13 @@ fun AddBudgetDialog(
 
         app.fynlo.ui.components.FormSectionLabel("Category")
         Spacer(Modifier.height(8.dp))
-        androidx.compose.foundation.layout.FlowRow(
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-            categories.forEach { cat ->
-                TemplatePill(
-                    text = cat,
-                    selected = selectedCategory == cat,
-                    onClick = { selectedCategory = cat },
-                )
-            }
-        }
+        app.fynlo.ui.components.FynloChoiceDropdown(
+            label = "Choose category",
+            options = categories,
+            selected = selectedCategory,
+            onPick = { selectedCategory = it },
+            placeholder = "Select expense type",
+        )
         if (selectedCategory == "Custom") {
             Spacer(Modifier.height(8.dp))
             OutlinedTextField(

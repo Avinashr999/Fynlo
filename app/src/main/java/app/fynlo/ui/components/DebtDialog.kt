@@ -244,19 +244,28 @@ fun AddDebtDialog(
                         onClick = {
                             if (submitting) return@Button
                             submitting = true
-                            val debt = Debt(
-                                id      = initialDebt?.id?.takeIf { it.isNotBlank() } ?: app.fynlo.logic.Ids.newId(),
-                                name    = lenderName,
-                                amount  = amount.toDoubleOrNull() ?: 0.0,
-                                rate    = rate.toDoubleOrNull() ?: 0.0,
-                                date    = DateUtils.parseInput(date),
-                                due     = if (due.isNotEmpty()) DateUtils.parseInput(due) else "",
-                                tenure  = tenure.toIntOrNull() ?: 0,
-                                notes   = notes,
-                                status  = initialDebt?.status ?: "Active",
-                                type    = initialDebt?.type ?: "Friend / Family",
+                            val now = System.currentTimeMillis()
+                            val finalId = initialDebt?.id?.takeIf { it.isNotBlank() } ?: app.fynlo.logic.Ids.newId()
+                            val debt = (initialDebt ?: Debt(
+                                id = finalId,
+                                name = lenderName,
+                                amount = 0.0,
+                                rate = 0.0,
+                                date = DateUtils.parseInput(date),
+                            )).copy(
+                                id = finalId,
+                                name = lenderName,
+                                amount = amount.toDoubleOrNull() ?: 0.0,
+                                rate = rate.toDoubleOrNull() ?: 0.0,
+                                date = DateUtils.parseInput(date),
+                                due = if (due.isNotEmpty()) DateUtils.parseInput(due) else "",
+                                tenure = tenure.toIntOrNull() ?: 0,
+                                notes = notes,
+                                status = initialDebt?.status ?: "Active",
+                                type = initialDebt?.type ?: "Friend / Family",
                                 intType = selectedIntType,
-                                paid    = initialDebt?.paid ?: 0.0
+                                updatedAt = now,
+                                createdAt = initialDebt?.createdAt ?: now,
                             )
                             onConfirm(debt, selectedAccount.name)
                         },

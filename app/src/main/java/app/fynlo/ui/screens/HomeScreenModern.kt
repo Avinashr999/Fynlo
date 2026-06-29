@@ -30,8 +30,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.fynlo.FinanceViewModel
+import app.fynlo.data.SyncStatus
 import app.fynlo.data.model.Account
 import app.fynlo.logic.CurrencyFormatter
+import app.fynlo.logic.LedgerAccountabilityReport
 import app.fynlo.ui.components.AddTransactionDialog
 import app.fynlo.ui.components.PortfolioBreakdownSheet
 import app.fynlo.ui.theme.*
@@ -48,6 +50,8 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
     val haptic            = LocalHapticFeedback.current
     val summary           by viewModel.financialSummary.collectAsState()
     val accounts          by viewModel.accounts.collectAsState()
+    val ledgerReport      by viewModel.ledgerAccountabilityReport.collectAsState()
+    val syncStatus        by viewModel.syncStatus.collectAsState()
     val projects          by viewModel.projects.collectAsState()
     val currentProjectId  by viewModel.currentProjectId.collectAsState()
     val currentProject    by viewModel.currentProject.collectAsState()
@@ -135,6 +139,23 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
         allInvestmentsHome.isEmpty() &&
         allDebtsHome.isEmpty() &&
         allBorrowersHome.isEmpty()
+    val latestMoneyActivityAt = remember(
+        accounts,
+        allTransactionsHome,
+        allInvestmentsHome,
+        allDebtsHome,
+        allBorrowersHome,
+        lastRecalcAt,
+    ) {
+        listOf(
+            lastRecalcAt,
+            accounts.maxOfOrNull { maxOf(it.createdAt, it.updatedAt) } ?: 0L,
+            allTransactionsHome.maxOfOrNull { maxOf(it.createdAt, it.updatedAt) } ?: 0L,
+            allInvestmentsHome.maxOfOrNull { maxOf(it.createdAt, it.updatedAt) } ?: 0L,
+            allDebtsHome.maxOfOrNull { maxOf(it.createdAt, it.updatedAt) } ?: 0L,
+            allBorrowersHome.maxOfOrNull { maxOf(it.createdAt, it.updatedAt) } ?: 0L,
+        ).maxOrNull() ?: 0L
+    }
     var showOrphanDialog by remember { mutableStateOf(false) }
 
     if (showAddTxn) {
@@ -155,6 +176,7 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
             bankAccounts    = activeAccountNames,
             investmentNames = allInvestmentsHome.map { it.name },
             debtNames       = allDebtsHome.map { it.name },
+            existingTransactions = allTransactionsHome,
         )
     }
 
@@ -389,18 +411,7 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
         }
 
         val nwText = if (isPrivacy) "••••" else CurrencyFormatter.hero(summary.netWorth, currencyCode, locale)
-        val lastUpdatedLabel = if (lastRecalcAt > 0L) {
-            "Last updated " + android.text.format.DateUtils
-                .getRelativeTimeSpanString(
-                    lastRecalcAt,
-                    System.currentTimeMillis(),
-                    android.text.format.DateUtils.MINUTE_IN_MILLIS,
-                )
-                .toString()
-                .replaceFirstChar { it.lowercase(locale) }
-        } else {
-            "Not recalculated yet"
-        }
+        val lastUpdatedLabel = dashboardFreshnessLabel(latestMoneyActivityAt, isFreshBook, locale)
         LedgerHeroPanel(
             label = "Total net worth",
             value = nwText,
@@ -424,6 +435,15 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
         Spacer(Modifier.height(16.dp))
 
         // ── Net-worth trend chart card (tap → full history) ───────────────────
+        DashboardConfidenceCard(
+            report = ledgerReport,
+            syncStatus = syncStatus,
+            updatedAt = latestMoneyActivityAt,
+            isFreshBook = isFreshBook,
+            onOpenBookCheck = { onNavigateToScreen("settings") },
+        )
+
+        Spacer(Modifier.height(12.dp))
         Spacer(Modifier.height(0.dp))
 
         // ── Quick actions ─────────────────────────────────────────────────────
@@ -448,7 +468,9 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
             DashboardNudges(
                 dueSoonCount = dueSoonCount,
                 recentActivityCount = recentActivityCount,
+                bookCheckCount = ledgerReport.criticalCount + ledgerReport.warningCount,
                 onOpenDues = { onNavigateToScreen("collection_calendar") },
+                onOpenBookCheck = { onNavigateToScreen("settings") },
                 onAddTransaction = {
                     addTxnIncome = false
                     showAddTxn = true
@@ -560,6 +582,104 @@ private fun app.fynlo.data.model.Transaction.linksAccount(account: Account): Boo
         (fromAcctId.isBlank() && fromAcct == account.name) ||
         (toAcctId.isBlank() && toAcct == account.name)
 
+private fun dashboardFreshnessLabel(
+    updatedAt: Long,
+    isFreshBook: Boolean,
+    locale: Locale,
+): String {
+    if (isFreshBook) return "Ready for first entry"
+    if (updatedAt <= 0L) return "Waiting for first update"
+    val label = android.text.format.DateUtils
+        .getRelativeTimeSpanString(
+            updatedAt,
+            System.currentTimeMillis(),
+            android.text.format.DateUtils.MINUTE_IN_MILLIS,
+        )
+        .toString()
+        .replaceFirstChar { it.lowercase(locale) }
+    return "Updated $label"
+}
+
+@Composable
+private fun DashboardConfidenceCard(
+    report: LedgerAccountabilityReport,
+    syncStatus: SyncStatus,
+    updatedAt: Long,
+    isFreshBook: Boolean,
+    onOpenBookCheck: () -> Unit,
+) {
+    val statusColor = when {
+        report.criticalCount > 0 -> SemanticRed
+        report.warningCount > 0 -> SemanticAmber
+        else -> Emerald500
+    }
+    val title = when {
+        isFreshBook -> "Book ready"
+        report.criticalCount > 0 -> "Book check needs attention"
+        report.warningCount > 0 -> "Review ${report.warningCount} money links"
+        else -> "Books checked"
+    }
+    val syncLabel = when (syncStatus) {
+        SyncStatus.Synced -> "Cloud backup synced"
+        SyncStatus.Syncing -> "Cloud backup saving"
+        SyncStatus.Offline -> "Cloud backup waiting for network"
+        SyncStatus.Initialising -> "Cloud backup getting ready"
+        is SyncStatus.Error -> "Cloud backup needs attention"
+    }
+    val freshness = if (updatedAt > 0L) {
+        android.text.format.DateUtils.getRelativeTimeSpanString(
+            updatedAt,
+            System.currentTimeMillis(),
+            android.text.format.DateUtils.MINUTE_IN_MILLIS,
+        ).toString()
+    } else {
+        "No entries yet"
+    }
+    Surface(
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onOpenBookCheck),
+        shape = RoundedCornerShape(20.dp),
+        color = MaterialTheme.colorScheme.surface,
+        border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f)),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(42.dp)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(statusColor.copy(alpha = 0.14f)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = if (report.criticalCount > 0) Icons.Default.Warning else Icons.Default.Verified,
+                    contentDescription = null,
+                    tint = statusColor,
+                )
+            }
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Text(
+                    title,
+                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.ExtraBold),
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                Text(
+                    "$syncLabel - Last activity $freshness",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Text(
+                "${report.score}/100",
+                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.ExtraBold),
+                color = statusColor,
+            )
+        }
+    }
+}
+
 @Composable
 private fun FreshStartCard(
     projectName: String,
@@ -601,10 +721,23 @@ private fun FreshStartCard(
 private fun DashboardNudges(
     dueSoonCount: Int,
     recentActivityCount: Int,
+    bookCheckCount: Int,
     onOpenDues: () -> Unit,
+    onOpenBookCheck: () -> Unit,
     onAddTransaction: () -> Unit,
 ) {
     val items = buildList {
+        if (bookCheckCount > 0) {
+            add(
+                NudgeItem(
+                    title = "$bookCheckCount book checks",
+                    subtitle = "Open Settings to review missing links or duplicates",
+                    icon = Icons.AutoMirrored.Filled.Rule,
+                    color = SemanticAmber,
+                    onClick = onOpenBookCheck,
+                )
+            )
+        }
         if (dueSoonCount > 0) {
             add(
                 NudgeItem(

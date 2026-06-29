@@ -59,6 +59,7 @@ fun SettingsScreen(
     val scope   = rememberCoroutineScope()
     val context = LocalContext.current
     val isPro by app.fynlo.billing.BillingManager.isPro.collectAsState()
+    val showInternalTools = app.fynlo.BuildConfig.DEBUG && app.fynlo.BuildConfig.FLAVOR == "dev"
     // ── Setup-wizard editable prefs (DataStore-backed) ─────────────────────
     val displayNameFlow    by UserPreferences.userDisplayName(context).collectAsState(initial = "")
     var displayName        by remember { mutableStateOf("") }
@@ -126,6 +127,7 @@ fun SettingsScreen(
     var showFormatting by remember { mutableStateOf(false) }
     var showAppInfo by remember { mutableStateOf(false) }
     var showDeveloperTools by remember { mutableStateOf(false) }
+    var showWhatsNew by remember { mutableStateOf(false) }
 
     // ── Export launchers ────────────────────────────────────────────────────
     val jsonLauncher = rememberLauncherForActivityResult(
@@ -622,7 +624,7 @@ fun SettingsScreen(
             onToggle = { showBackupExport = !showBackupExport },
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                if (app.fynlo.BuildConfig.DEBUG) {
+                if (showInternalTools) {
                 // Compact auto-backup status
                 Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
@@ -735,7 +737,7 @@ fun SettingsScreen(
 
                 SettingsDivider()
 
-                if (app.fynlo.BuildConfig.DEBUG) {
+                if (showInternalTools) {
                 // C22 (3.2.67) — bank statement CSV import.
                 // 3.2.70 — discoverable sample for first-time testing. Saves
                 // a 5-row example file to user-chosen location so they can
@@ -821,16 +823,16 @@ fun SettingsScreen(
                 var showLedgerHealth by remember { mutableStateOf(false) }
                 val ledgerHealthSubtitle = when {
                     ledgerReport.criticalCount > 0 || ledgerReport.warningCount > 0 ->
-                        "${ledgerReport.headline} · Score ${ledgerReport.score}/100 · ${ledgerReport.criticalCount} critical · ${ledgerReport.warningCount} warnings"
+                        "${ledgerReport.headline} · Score ${ledgerReport.score}/100 · ${ledgerReport.criticalCount} serious · ${ledgerReport.warningCount} review"
                     ledgerReport.infoCount > 0 ->
-                        "${ledgerReport.headline} · Score ${ledgerReport.score}/100 · ${ledgerReport.infoCount} trace notes"
+                        "${ledgerReport.headline} · Score ${ledgerReport.score}/100 · ${ledgerReport.infoCount} notes"
                     else ->
                         "${ledgerReport.headline} · Score ${ledgerReport.score}/100 · No issues"
                 }
                 SettingsActionRow(
                     icon = Icons.Default.Verified,
                     color = if (ledgerReport.criticalCount > 0) Red else if (ledgerReport.warningCount > 0) Amber else Green,
-                    title = "Ledger health",
+                    title = "Book check",
                     subtitle = ledgerHealthSubtitle
                 ) { showLedgerHealth = true }
 
@@ -847,8 +849,8 @@ fun SettingsScreen(
                 SettingsActionRow(
                     icon = Icons.Default.Verified,
                     color = Green,
-                    title = "Audit trail",
-                    subtitle = "${auditEvents.size} saved money-action events. Review or export accountability history."
+                    title = "Money action history",
+                    subtitle = "${auditEvents.size} saved money actions. Review or export accountability history."
                 ) { showAuditTrail = true }
 
                 if (showAuditTrail) {
@@ -861,7 +863,7 @@ fun SettingsScreen(
                     )
                 }
 
-                if (app.fynlo.BuildConfig.DEBUG) {
+                if (showInternalTools) {
                 SettingsDivider()
 
                 // 3.2.72 — diagnostic: show every balance-mutation site so
@@ -870,8 +872,8 @@ fun SettingsScreen(
                 SettingsActionRow(
                     icon  = Icons.Default.History,
                     color = Carbon500,
-                    title = "Balance change log",
-                    subtitle = "See every account-balance mutation (recurring, sync, manual) since launch"
+                    title = "Balance history",
+                    subtitle = "See every balance change since the app opened"
                 ) { showAuditLog = true }
 
                 if (showAuditLog) {
@@ -890,19 +892,19 @@ fun SettingsScreen(
                 SettingsActionRow(
                     icon  = Icons.Default.CloudOff,
                     color = Amber,
-                    title = "Reset cloud sync to match local",
-                    subtitle = "Wipes Firestore and re-pushes current local data. Use if mystery values keep restoring on launch (see Balance change log)."
+                    title = "Replace cloud backup with this phone",
+                    subtitle = "Use this if old cloud data keeps coming back after launch."
                 ) { showResetCloudConfirm = true }
 
                 if (showResetCloudConfirm) {
                     AlertDialog(
                         onDismissRequest = { showResetCloudConfirm = false },
-                        title = { Text("Reset cloud sync?") },
+                        title = { Text("Replace cloud backup?") },
                         text = {
                             Text(
-                                "This wipes all your Fynlo Ledger data on Firestore (cloud) and re-pushes the current local data as the new canonical version.\n\n" +
-                                "Local data stays untouched. Other devices signed in to the same account will be re-synced from the new cloud state on their next launch.\n\n" +
-                                "Use this only if the Balance change log shows SYNC_PULL_DEBT / _BORROWER entries restoring values you don't recognise."
+                                "This replaces the cloud backup with the data currently on this phone.\n\n" +
+                                "Local data stays untouched. Other devices signed in to the same account will be updated from this new cloud backup on their next launch.\n\n" +
+                                "Use this only when old cloud data keeps restoring values you don't recognise."
                             )
                         },
                         confirmButton = {
@@ -915,14 +917,14 @@ fun SettingsScreen(
                                         showResetCloudConfirm = false
                                         android.widget.Toast.makeText(
                                             context,
-                                            if (ok) "Cloud reset. Force-stop and relaunch to verify no SYNC_PULL entries appear."
+                                            if (ok) "Cloud backup replaced. Close and reopen the app to check it."
                                             else "Reset failed — check your network and try again.",
                                             android.widget.Toast.LENGTH_LONG,
                                         ).show()
                                     }
                                 },
                                 colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
-                            ) { Text(if (resetCloudInFlight) "Resetting…" else "Reset cloud") }
+                            ) { Text(if (resetCloudInFlight) "Replacing..." else "Replace cloud backup") }
                         },
                         dismissButton = {
                             TextButton(onClick = { showResetCloudConfirm = false }) { Text("Cancel") }
@@ -1233,6 +1235,17 @@ fun SettingsScreen(
             // structured Crashlytics non-fatal (so support gets it without
             // the user having to remember to actually send the email), and
             // keeps the email fallback for offline / no-Play-Services cases.
+            if (showWhatsNew) {
+                WhatsNewDialog(onDismiss = { showWhatsNew = false })
+            }
+            SettingsActionRow(
+                icon = Icons.Default.Lightbulb,
+                color = Green,
+                title = "What's new & how to use",
+                subtitle = "Money actions, book check, backups, and safer edits"
+            ) { showWhatsNew = true }
+            SettingsDivider()
+
             var showBugDialog by remember { mutableStateOf(false) }
             if (showBugDialog) {
                 app.fynlo.ui.components.ReportBugDialog(onDismiss = { showBugDialog = false })
@@ -1302,7 +1315,7 @@ fun SettingsScreen(
         }
 
         // ── Developer (debug only) ───────────────────────────────────────────
-        if (app.fynlo.BuildConfig.DEBUG) {
+        if (showInternalTools) {
             Spacer(Modifier.height(16.dp))
             SettingsExpandableCard(
                 title = "Developer",
@@ -1316,6 +1329,7 @@ fun SettingsScreen(
                 var showCleanupConfirm by remember { mutableStateOf(false) }
                 var showRestoreConfirm by remember { mutableStateOf(false) }
                 var showWipeConfirm    by remember { mutableStateOf(false) }
+                var showReleaseChecklist by remember { mutableStateOf(false) }
 
                 if (showSeedConfirm) AlertDialog(
                     onDismissRequest = { showSeedConfirm = false },
@@ -1355,8 +1369,16 @@ fun SettingsScreen(
                     ) { Text("WIPE EVERYTHING") } },
                     dismissButton = { TextButton(onClick = { showWipeConfirm = false }) { Text("Cancel") } }
                 )
+                if (showReleaseChecklist) {
+                    ReleaseChecklistDialog(onDismiss = { showReleaseChecklist = false })
+                }
 
                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    SettingsActionRow(Icons.Default.Checklist, Green, "Release Checklist",
+                        "Build, install, smoke, Play assets, and AAB handoff") {
+                        showReleaseChecklist = true
+                    }
+                    SettingsDivider()
                     SettingsActionRow(Icons.Default.BugReport, Red, "Test Crash (Crashlytics)",
                         "Triggers a fatal crash for Firebase verification") {
                         (context.applicationContext as app.fynlo.FynloApplication).triggerTestCrash()
@@ -1782,87 +1804,107 @@ private fun DataExportDialog(
     onDismiss: () -> Unit,
     onExport: () -> Unit,
 ) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Export Data") },
-        text = {
-            Column(
-                modifier = Modifier.heightIn(max = 520.dp).verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                Text(
-                    "Format",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+    app.fynlo.ui.components.FormDialog(
+        title = "Export Data",
+        onDismiss = onDismiss,
+    ) {
+        app.fynlo.ui.components.FormSectionLabel("Format")
+        Spacer(Modifier.height(8.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            DataExportFormat.entries.forEach { format ->
+                FilterChip(
+                    selected = selectedFormat == format,
+                    onClick = { onFormatChange(format) },
+                    label = { Text(format.label) },
+                    leadingIcon = if (selectedFormat == format) {
+                        { Icon(Icons.Default.Check, null, Modifier.size(16.dp)) }
+                    } else null,
                 )
-                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    DataExportFormat.entries.forEach { format ->
-                        Row(
-                            modifier = Modifier.fillMaxWidth()
-                                .clip(RoundedCornerShape(10.dp))
-                                .clickable { onFormatChange(format) }
-                                .padding(horizontal = 4.dp, vertical = 2.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            RadioButton(
-                                selected = selectedFormat == format,
-                                onClick = { onFormatChange(format) },
+            }
+        }
+
+        Spacer(Modifier.height(18.dp))
+        app.fynlo.ui.components.FormSectionLabel("Section")
+        Spacer(Modifier.height(8.dp))
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            DataExportScope.entries.forEach { scope ->
+                Surface(
+                    onClick = { onScopeChange(scope) },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(14.dp),
+                    color = if (selectedScope == scope) Emerald500.copy(alpha = 0.10f)
+                        else MaterialTheme.colorScheme.surface,
+                    border = BorderStroke(
+                        0.8.dp,
+                        if (selectedScope == scope) Emerald500 else TemplateBorder,
+                    ),
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        RadioButton(
+                            selected = selectedScope == scope,
+                            onClick = { onScopeChange(scope) },
+                        )
+                        Column(Modifier.weight(1f)) {
+                            Text(
+                                scope.label,
+                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
                             )
-                            Text(format.label, style = MaterialTheme.typography.bodyMedium)
+                            Text(
+                                scope.subtitle,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
                         }
                     }
                 }
+            }
+        }
 
+        Spacer(Modifier.height(18.dp))
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.42f),
+        ) {
+            Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(
-                    "Choose what to export",
-                    style = MaterialTheme.typography.labelLarge,
+                    "Preview",
+                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.ExtraBold),
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                Text(
+                    "${selectedScope.label} will be exported as ${selectedFormat.label}.",
+                    style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    DataExportScope.entries.forEach { scope ->
-                        Row(
-                            modifier = Modifier.fillMaxWidth()
-                                .clip(RoundedCornerShape(10.dp))
-                                .clickable { onScopeChange(scope) }
-                                .padding(horizontal = 4.dp, vertical = 2.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            RadioButton(
-                                selected = selectedScope == scope,
-                                onClick = { onScopeChange(scope) },
-                            )
-                            Column(Modifier.weight(1f)) {
-                                Text(
-                                    scope.label,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                )
-                                Text(
-                                    scope.subtitle,
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                )
-                            }
-                        }
-                    }
-                }
+                Text(
+                    "The next screen lets you choose where to save the file.",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
 
-            }
-        },
-        confirmButton = {
-            Button(onClick = onExport) {
-                Icon(Icons.Default.Share, null, Modifier.size(18.dp))
-                Spacer(Modifier.width(8.dp))
-                Text("Export")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
-        },
-    )
+        Spacer(Modifier.height(18.dp))
+        Button(
+            onClick = onExport,
+            modifier = Modifier.fillMaxWidth().height(48.dp),
+            shape = RoundedCornerShape(14.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = Emerald500),
+        ) {
+            Icon(Icons.Default.Share, null, Modifier.size(18.dp))
+            Spacer(Modifier.width(8.dp))
+            Text("Export ${selectedFormat.label}", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold))
+        }
+    }
 }
 
 @Composable
@@ -1908,7 +1950,7 @@ private fun LedgerHealthDialog(
         onDismissRequest = onDismiss,
         title = {
             Column {
-                Text("Ledger health")
+                Text("Book check")
                 Text(
                     "${report.headline} · Score ${report.score}/100",
                     style = MaterialTheme.typography.labelMedium,
@@ -1937,7 +1979,7 @@ private fun LedgerHealthDialog(
                 } else {
                     item {
                         Text(
-                            "No ledger integrity problems found in the current project.",
+                            "No money record problems found in the current project.",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -1984,9 +2026,9 @@ private fun AuditTrailDialog(
         onDismissRequest = onDismiss,
         title = {
             Column {
-                Text("Audit trail")
+                Text("Money action history")
                 Text(
-                    "${events.size} saved money-action events",
+                    "${events.size} saved money actions",
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -2000,7 +2042,7 @@ private fun AuditTrailDialog(
                 if (events.isEmpty()) {
                     item {
                         Text(
-                            "No audit events yet. New adds, edits, deletes, restores, payments, and corrections will appear here.",
+                            "No money actions yet. New adds, edits, deletes, restores, payments, and corrections will appear here.",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -2070,7 +2112,7 @@ private fun AuditEventRow(
                 Text(
                     listOfNotNull(
                         event.accountName.takeIf { it.isNotBlank() },
-                        event.amountDelta.takeIf { kotlin.math.abs(it) > 0.005 }?.let { "Delta ${CurrencyFormatter.detail(it)}" },
+                        event.amountDelta.takeIf { kotlin.math.abs(it) > 0.005 }?.let { "Change ${CurrencyFormatter.detail(it)}" },
                     ).joinToString(" - "),
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -2099,17 +2141,17 @@ private fun LedgerHealthSummary(report: app.fynlo.logic.LedgerAccountabilityRepo
     ) {
         Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                LedgerSummaryMetric("Critical", report.criticalCount.toString(), Red)
-                LedgerSummaryMetric("Warnings", report.warningCount.toString(), Amber)
-                LedgerSummaryMetric("Traces", report.linkedRecords.toString(), Green)
+                LedgerSummaryMetric("Serious", report.criticalCount.toString(), Red)
+                LedgerSummaryMetric("Review", report.warningCount.toString(), Amber)
+                LedgerSummaryMetric("Linked", report.linkedRecords.toString(), Green)
             }
             Text(
-                "Sync: ${report.syncSummary}",
+                "Backup: ${report.syncSummary}",
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Text(
-                "Duplicates: ${report.duplicateCount} · Missing trace: ${report.missingTraceCount}",
+                "Duplicate entries: ${report.duplicateCount} · Missing links: ${report.missingTraceCount}",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -2153,6 +2195,7 @@ private fun LedgerIssueRow(issue: app.fynlo.logic.LedgerIssue) {
         title = issue.title,
         detail = issue.detail,
         accent = color,
+        suggestion = ledgerIssueSuggestion(issue),
     )
 }
 
@@ -2161,6 +2204,7 @@ private fun LedgerInfoCard(
     title: String,
     detail: String,
     accent: Color,
+    suggestion: String? = null,
 ) {
     Surface(
         shape = RoundedCornerShape(14.dp),
@@ -2186,8 +2230,35 @@ private fun LedgerInfoCard(
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+                if (!suggestion.isNullOrBlank()) {
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        "Try this: $suggestion",
+                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                        color = accent,
+                    )
+                }
             }
         }
+    }
+}
+
+private fun ledgerIssueSuggestion(issue: app.fynlo.logic.LedgerIssue): String {
+    val title = issue.title.lowercase()
+    val detail = issue.detail.lowercase()
+    return when {
+        "duplicate" in title || "duplicate" in detail ->
+            "Open History, compare the two entries, and delete only the extra copy."
+        "funding" in title || "investment" in title ->
+            "Open the investment, confirm the source account, then save it again."
+        "receipt link" in title || "debt received" in detail ->
+            "Open the debt record and confirm where the borrowed money was deposited."
+        "payment total" in title || "unpaid total" in detail ->
+            "Open the loan or debt payments and review the latest payment split."
+        "source" in title || "account" in detail ->
+            "Open the original record and choose the correct account from the account picker."
+        else ->
+            "Review this row before changing balances; fix it from the original loan, debt, investment, or transaction screen."
     }
 }
 
@@ -2604,6 +2675,141 @@ private fun BackupRestorePreviewDialog(
             TextButton(onClick = onDismiss) { Text("Cancel") }
         },
     )
+}
+
+@Composable
+private fun WhatsNewDialog(onDismiss: () -> Unit) {
+    app.fynlo.ui.components.FormDialog(
+        title = "What's new",
+        onDismiss = onDismiss,
+    ) {
+        SettingsHelpBlock(
+            icon = Icons.Default.AccountBalanceWallet,
+            title = "Money actions now show their impact",
+            body = "Income, expenses, loans, debts, investments, waivers, and transfers show where money moves before you save.",
+        )
+        SettingsHelpBlock(
+            icon = Icons.Default.Verified,
+            title = "Book check keeps totals trustworthy",
+            body = "Open Book check when you want to review missing traces, old entries, or balance warnings before exporting reports.",
+        )
+        SettingsHelpBlock(
+            icon = Icons.Default.SwapHoriz,
+            title = "Transfers are account-to-account",
+            body = "Transfers should reduce one account and add the same amount to another. Net worth stays unchanged.",
+        )
+        SettingsHelpBlock(
+            icon = Icons.Default.Restore,
+            title = "Backups are safer",
+            body = "Use Export JSON Backup before large edits. Restore previews counts and warnings before replacing data.",
+        )
+        SettingsHelpBlock(
+            icon = Icons.Default.Search,
+            title = "Use history when something looks wrong",
+            body = "Search transactions by account, person, or category, then open details to confirm source, destination, and balance impact.",
+        )
+        Spacer(Modifier.height(18.dp))
+        Button(
+            onClick = onDismiss,
+            modifier = Modifier.fillMaxWidth().height(48.dp),
+            shape = RoundedCornerShape(14.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = Emerald500),
+        ) {
+            Text("Got it", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold))
+        }
+    }
+}
+
+@Composable
+private fun SettingsHelpBlock(
+    icon: ImageVector,
+    title: String,
+    body: String,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.Top,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(38.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(Emerald500.copy(alpha = 0.12f)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(icon, contentDescription = null, modifier = Modifier.size(19.dp), tint = Emerald700)
+        }
+        Column(Modifier.weight(1f)) {
+            Text(
+                title,
+                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.ExtraBold),
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Spacer(Modifier.height(3.dp))
+            Text(
+                body,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+@Composable
+private fun ReleaseChecklistDialog(onDismiss: () -> Unit) {
+    app.fynlo.ui.components.FormDialog(
+        title = "Release Checklist",
+        onDismiss = onDismiss,
+    ) {
+        ReleaseChecklistItem("Run prod debug compile", ":app:compileProdDebugKotlin")
+        ReleaseChecklistItem("Run prod debug unit tests", ":app:testProdDebugUnitTest")
+        ReleaseChecklistItem("Install prod and dev builds on phone", "Confirm app names, icon, login, offline mode, and Settings")
+        ReleaseChecklistItem("Smoke money actions", "Income, expense, transfer, lend, collect, debt, debt payment, invest, withdraw, delete/restore")
+        ReleaseChecklistItem("Check Book Check", "No serious issues before building the Play bundle")
+        ReleaseChecklistItem("Export reports", "Open PDF/CSV once and check layout/readability")
+        ReleaseChecklistItem("Build AAB", "Use a new versionCode and versionName before Play upload")
+        ReleaseChecklistItem("Play Console", "Release notes with language tags, screenshots, feature graphic, privacy/data safety")
+        Spacer(Modifier.height(18.dp))
+        Button(
+            onClick = onDismiss,
+            modifier = Modifier.fillMaxWidth().height(48.dp),
+            shape = RoundedCornerShape(14.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = Emerald500),
+        ) {
+            Text("Done", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold))
+        }
+    }
+}
+
+@Composable
+private fun ReleaseChecklistItem(title: String, detail: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 7.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalAlignment = Alignment.Top,
+    ) {
+        Icon(
+            Icons.Default.CheckCircle,
+            contentDescription = null,
+            modifier = Modifier.size(18.dp).padding(top = 2.dp),
+            tint = Emerald500,
+        )
+        Column(Modifier.weight(1f)) {
+            Text(
+                title,
+                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.ExtraBold),
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Text(
+                detail,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
 }
 
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)

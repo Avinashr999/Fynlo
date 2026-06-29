@@ -1717,3 +1717,90 @@ Next Play upload for this rename line uses `versionCode = 230` and `versionName 
 - Room schema migrated to version 28, Firestore sync reads/writes the new field, and audit trail records `WAIVE_INTEREST` with zero `amountDelta`.
 - Ledger Health now warns if imported/cloud data ever contains a negative waiver or a waiver larger than unpaid interest. This is a guardrail only; it does not silently rewrite balances.
 - Regression coverage confirms borrower and debt waivers leave cash and payment rows untouched while reducing receivable/liability calculations.
+
+## 2026-06-29 - Production User Language and Dev-Only Tools
+
+- Production-facing wording was simplified so regular users see plain terms instead of implementation terms: `Ledger health` -> `Book check`, `Audit trail` -> `Money action history`, `Google Firestore` -> `Google cloud backup`, `P&L` -> `Profit & Loss`, and Crashlytics error text -> `error report`.
+- The Settings developer/QA panel and related diagnostic-only backup tools are now gated to the dev flavor only: `BuildConfig.DEBUG && BuildConfig.FLAVOR == "dev"`. This prevents `prodDebug` phone testing from showing developer tools that Play Store users will never see.
+- Keep this rule for future changes: production UX copy should explain what the user can do and what will happen to their money records; avoid Firebase, Firestore, Crashlytics, schema, migration, journal-only, sync-pull, and similar internal terms in visible user text.
+- Verification passed with `:app:compileProdDebugKotlin` and `:app:testProdDebugUnitTest`.
+
+## 2026-06-29 - Dashboard Freshness and Book Confidence Pass
+
+- Dashboard `Total net worth` freshness now uses the latest money activity timestamp across accounts, transactions, borrowers, debts, and investments, with recalculation time only as a fallback. This fixes stale labels like `Last updated 7 hours ago` after newer money activity.
+- Dashboard now shows a compact book-confidence card with Book Check score, cloud backup state, and last activity. Tapping it routes users to Settings where Book Check lives.
+- Dashboard nudges now include Book Check warnings when missing links or duplicates exist, so data-quality issues are not hidden away in Settings.
+- Add Transaction now warns when the same type/category/amount/account/date already exists. It does not block saving; it gives a human warning before accidental duplicate entry.
+- Book Check issue rows now include `Try this` guidance so users know whether to open History, the loan/debt record, the investment, or the original account-linked record.
+- These changes are visibility and guardrail-only. They do not change balance math, Firestore data shape, or ledger repair behavior.
+
+## 2026-06-29 - Combined Phase 2 Roadmap Memory
+
+The user approved the combined future roadmap below. Do not treat these as completed unless a later journal entry says they were implemented and verified.
+
+### Technical / accountability roadmap
+
+1. Monthly close / lock period for finished months.
+2. Undo window for add/edit/delete/payment actions.
+3. In-app What's New / How to Use section.
+4. Advanced category rules and auto-categorisation.
+5. Ledger timeline showing before/action/after money movement.
+6. Monthly review screen explaining what changed.
+7. Smart mismatch fixer from Book Check.
+8. Backup health center for cloud/local state and conflicts.
+9. Export preview before PDF/Excel save.
+10. Recurring reminders for salary, rent, EMI, subscriptions, dues, and debt payments.
+11. Contact ledger per person.
+12. Attachment support for receipts/proofs.
+13. Balance reconciliation wizard.
+14. Role/privacy/reviewer mode.
+15. Bank/data import assistant with review-before-save.
+16. Personal finance insights.
+17. Goal-based planning.
+18. Loan grace/waiver history improvements.
+19. Offline sync conflict resolver.
+20. Dev-only release checklist screen.
+
+### UI/UX roadmap
+
+1. Unify all money dialogs into one premium bottom-sheet shell.
+2. Replace crowded chips with searchable dropdowns where lists can grow.
+3. Separate Expense and Income dialog experiences.
+4. Give account transfer its own clear dialog.
+5. Improve payment dialogs with principal/interest/waiver/remaining clarity.
+6. Standardise confirmation dialogs.
+7. Standardise card density across dashboard, lists, detail pages, and dialogs.
+8. Improve empty states with clear next actions.
+9. Make Book Check more guided and actionable.
+10. Standardise icons.
+11. Improve validation text under disabled buttons.
+12. Improve global search UX and keyboard spacing.
+13. Polish reports export UX.
+14. Regroup Settings into clearer sections.
+15. Add micro-feedback everywhere.
+
+### Dashboard Book Check direction
+
+- Keep one compact persistent Book Check / book-confidence card on Dashboard.
+- Avoid showing both a confidence card and an intrusive top dialog for the same non-critical warnings; that duplicates attention and can make Dashboard feel alarming.
+- If there are serious issues, show a small high-priority nudge/card that opens Book Check. Use a modal dialog only when the user taps it or when a truly destructive/unsafe action is about to happen.
+
+## 2026-06-29 - Phase 2 Safe UI Foundation Pass
+
+- Added a shared `FynloChoiceDropdown` component for premium form pickers.
+- Replaced crowded category/source chips in Add Transaction with dropdown fields. This is UI-only: transaction creation, account balance movement, Firestore sync, and duplicate warning behavior remain unchanged.
+- Replaced category chips in Budget and Recurring dialogs with the same dropdown pattern.
+- Added Settings -> App Info -> `What's new & how to use`, covering money-action impact, Book Check, account transfers, backups, and history/search.
+- Upgraded the Settings `Export Data` dialog from an older centered alert to the shared bottom-sheet form style and added a preview block before file save.
+- Added a dev-flavor-only Settings -> Developer -> `Release Checklist` dialog covering compile, tests, install, smoke, Book Check, reports, AAB, and Play Console handoff.
+- Verified after each batch with `:app:compileProdDebugKotlin`.
+- Still deferred from Phase 2: monthly close, undo window, smart mismatch fixer, attachments, reconciliation wizard, reviewer mode, offline conflict resolver, and any feature that needs schema/sync semantics plus phone smoke.
+
+## 2026-06-30 - Balance-Safe Edit Preservation and Phone Install
+
+- Fixed a high-risk edit-path bug in loan, debt, and investment dialogs: editing a visible field now preserves hidden accounting fields instead of rebuilding a partial record. This protects paid principal, paid interest, waived interest, default/frozen-interest state, realized/withdrawn investment values, timestamps, and trace fields.
+- Loan/debt/investment source corrections still route through repository methods that reverse the old funding movement and apply the new one. UI dialogs now pass complete records into those methods.
+- Verified `:app:compileProdDebugKotlin`, `:app:testProdDebugUnitTest`, and dev debug compile.
+- Installed both phone variants on connected device `3C15CA0055F00000`: production `app.fynlo` and developer `app.fynlo.dev`, both versionCode `231`; version names `3.2.107` and `3.2.107-dev`.
+- Phone smoke confirmed production dashboard quick actions include `Transfer`, Dashboard freshness shows `Updated 0 minutes ago`, Expenses plus opens an `Add Expense`-only dialog with no Income/Transfer switch, and developer intro opens as `Fynlo Ledger`.
+- Recent device log scan showed no fresh fatal crash lines for the launched app.

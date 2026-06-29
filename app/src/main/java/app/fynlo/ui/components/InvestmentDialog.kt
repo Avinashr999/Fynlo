@@ -408,15 +408,24 @@ fun AddInvestmentDialog(
                         onClick = {
                             if (!submitting) {
                                 submitting = true
+                                val now = System.currentTimeMillis()
                                 val parsedDate = DateUtils.parseInput(date)
-                                val investment = Investment(
-                                    id         = initialInvestment?.id?.takeIf { it.isNotBlank() } ?: app.fynlo.logic.Ids.newId(),
-                                    name       = name.trim(),
-                                    type       = type,
-                                    invested   = amountDouble,
+                                val finalId = initialInvestment?.id?.takeIf { it.isNotBlank() } ?: app.fynlo.logic.Ids.newId()
+                                val investment = (initialInvestment ?: Investment(
+                                    id = finalId,
+                                    name = name.trim(),
+                                    type = type,
+                                    invested = 0.0,
+                                    currentVal = amountDouble,
+                                    date = parsedDate,
+                                )).copy(
+                                    id = finalId,
+                                    name = name.trim(),
+                                    type = type,
+                                    invested = amountDouble,
                                     currentVal = initialInvestment?.currentVal ?: amountDouble,
-                                    date       = parsedDate,
-                                    notes      = notes.trim(),
+                                    date = parsedDate,
+                                    notes = notes.trim(),
                                     sourceType = if (isNew) "" else sourceType,
                                     fundingSource = when {
                                         !isNew && sourceType == SOURCE_ACCOUNT -> selectedAccount?.name.orEmpty()
@@ -428,7 +437,8 @@ fun AddInvestmentDialog(
                                         !isNew && sourceType == SOURCE_ACCOUNT -> ""
                                         else -> initialInvestment?.linkedDebtId.orEmpty()
                                     },
-                                    createdAt = initialInvestment?.createdAt ?: 0L,
+                                    updatedAt = now,
+                                    createdAt = initialInvestment?.createdAt ?: now,
                                 )
 
                                 if (!isNew) {

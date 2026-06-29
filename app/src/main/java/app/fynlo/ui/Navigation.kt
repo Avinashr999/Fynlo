@@ -279,6 +279,7 @@ fun MainNavigation(viewModel: FinanceViewModel) {
             bankAccounts    = navAccounts.map { it.name },
             investmentNames = allInvestments.map { it.name },
             debtNames       = navDebts.map { it.name },
+            existingTransactions = transactionsForReview,
         )
     }
     

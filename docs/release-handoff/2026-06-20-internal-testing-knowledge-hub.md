@@ -48,6 +48,15 @@ Improved ledger cleanup for clean testing.
 </en-IN>
 ```
 
+## Production wording and dev-only tools
+
+Latest rule added 2026-06-29:
+
+- Production users should see plain financial language, not implementation language. Prefer `Book check`, `Money action history`, `Google cloud backup`, `Profit & Loss`, and `error report`.
+- Avoid visible production copy such as `Firestore`, `Crashlytics`, `schema`, `migration`, `journal_only`, `SYNC_PULL`, `developer`, or `QA`, unless the screen is explicitly dev-only.
+- Developer/QA tools in Settings must remain dev-flavor only: `BuildConfig.DEBUG && BuildConfig.FLAVOR == "dev"`. Do not expose these tools in `prodDebug`, because it confuses phone smoke testing and can make a production-flavored build look unfinished.
+- Internal code comments can stay technical. The restriction is for user-visible app text, Play Store screenshots, and release-facing flows.
+
 ## Core accounting and money-action fixes
 
 ### Investment funding and net worth integrity
@@ -599,3 +608,103 @@ When the phone is connected again, run the remaining `test-android-apps` device-
 - Firestore sync includes the waiver field and Room migration 27 -> 28 adds it locally with default `0.0`.
 - Ledger Health should warn, not auto-repair, if a cloud/imported row has negative waived interest or more waived interest than unpaid interest.
 - Keep this separation in future edits: payment means money moved; waiver means interest was forgiven.
+
+## 2026-06-29 - Dashboard freshness and book confidence
+
+- Dashboard freshness must represent latest money activity, not only last recalculation. The current rule takes the newest timestamp from account, transaction, borrower, debt, investment, and recalc data.
+- Dashboard now surfaces a Book Check confidence card with score, cloud backup state, and last activity. This is a visibility layer only; it must not mutate balances.
+- Add Transaction shows a non-blocking warning for likely duplicate rows: same date, same type, same category, same amount, and same source/destination account.
+- Book Check issue rows now include plain-language fix suggestions. Keep this pattern for future ledger warnings: every warning should say where the user can fix it.
+- If future agents add true monthly close, undo windows, or recurring reminders, those need separate data-model work and tests. Do not fake them as UI-only states.
+
+## 2026-06-29 - Phase 2 roadmap memory
+
+The user wants the technical/accountability roadmap and UI/UX roadmap done later as a combined Phase 2. Treat this section as pending product direction, not completed release notes.
+
+Technical/accountability items:
+
+1. Monthly close / lock period.
+2. Undo window.
+3. What's New / How to Use.
+4. Advanced category rules.
+5. Ledger timeline with before/after movement.
+6. Monthly review screen.
+7. Smart mismatch fixer.
+8. Backup health center.
+9. Export preview.
+10. Recurring reminders.
+11. Contact ledger.
+12. Attachments.
+13. Balance reconciliation wizard.
+14. Role/privacy/reviewer mode.
+15. Bank import assistant.
+16. Personal finance insights.
+17. Goal-based planning.
+18. Loan grace/waiver history improvements.
+19. Offline sync conflict resolver.
+20. Dev-only release checklist screen.
+
+UI/UX items:
+
+1. Unified money-dialog shell.
+2. Searchable dropdowns instead of crowded chips.
+3. Separate Expense and Income dialog experiences.
+4. Dedicated account-transfer dialog.
+5. Clearer payment dialogs.
+6. Standard confirmation pattern.
+7. Card density standardisation.
+8. Better empty states.
+9. Guided Book Check.
+10. Consistent icons.
+11. Better validation text.
+12. Better search and keyboard layout.
+13. Reports export polish.
+14. Settings regrouping.
+15. Micro-feedback everywhere.
+
+Dashboard Book Check decision:
+
+- Keep one compact persistent confidence card.
+- Do not show a second automatic top dialog for ordinary warnings; it duplicates the card and makes the dashboard feel noisy.
+- Use a prominent nudge/card for serious issues and open the full Book Check only when the user taps it.
+
+## 2026-06-29 - Phase 2 safe UI foundation pass
+
+Completed safely while the phone was away:
+
+- Added shared `FynloChoiceDropdown`.
+- Add Transaction category/source selection now uses dropdowns instead of crowded chips.
+- Budget and Recurring category selection now use dropdowns instead of chips.
+- Added Settings -> App Info -> `What's new & how to use`.
+- Export Data now uses the shared bottom-sheet form shell and shows a preview summary before Android's save-file screen.
+- Added a dev-flavor-only Settings -> Developer -> `Release Checklist` dialog for future pre-AAB passes.
+- Production debug compile passed after the changes.
+
+Do not mark the full Phase 2 roadmap complete yet. The remaining accountability items need deeper data-model work and phone smoke:
+
+- Monthly close / lock period.
+- Undo window.
+- Smart mismatch fixer.
+- Attachment/proof support.
+- Balance reconciliation wizard.
+- Reviewer/privacy mode.
+- Offline sync conflict resolver.
+- Any automatic repair that would mutate money rows.
+
+## 2026-06-30 - Balance-safe edit preservation and install
+
+Completed:
+
+- Loan, debt, and investment edit dialogs now preserve the full existing record and update only the edited fields. This prevents edits from wiping hidden accounting data such as paid principal, paid interest, waived interest, default/frozen-interest state, realized/withdrawn investment values, timestamps, and trace fields.
+- Investment source edits still go through the repository funding-source update paths, so account-source changes can reverse the old source movement and apply the new source movement.
+- Production dashboard Transfer action is visible again after install.
+- Expenses screen plus button opens an expense-only add dialog; income is no longer offered from that screen.
+
+Verification:
+
+- `:app:compileProdDebugKotlin` passed.
+- `:app:testProdDebugUnitTest` passed.
+- `:app:compileDevDebugKotlin` passed.
+- Installed `app.fynlo` and `app.fynlo.dev` to connected phone `3C15CA0055F00000`.
+- Installed versions: production `3.2.107` / versionCode `231`; developer `3.2.107-dev` / versionCode `231`.
+- ADB UI smoke confirmed production Dashboard has `Transfer`, Dashboard freshness is current, Expenses opens `Add Expense`, and dev intro opens as `Fynlo Ledger`.

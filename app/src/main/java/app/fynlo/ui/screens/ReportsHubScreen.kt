@@ -233,7 +233,7 @@ fun ReportsHubScreen(
             LedgerMetricBand(
                 metrics = listOf(
                     LedgerMetric("Net Worth", nwPrev, if (summary.netWorth >= 0) green else red),
-                    LedgerMetric("P&L", plPrev, plPrevColor),
+                    LedgerMetric("Profit", plPrev, plPrevColor),
                     LedgerMetric("Flow", mfPrev, MaterialTheme.colorScheme.onSurface),
                 ),
                 modifier = Modifier.padding(bottom = 18.dp),
@@ -242,7 +242,7 @@ fun ReportsHubScreen(
             ReportGroup(title = "Business health", count = "2") {
                 LedgerRow(
                     icon = Icons.AutoMirrored.Filled.List,
-                    title = "P&L Statement",
+                    title = "Profit & Loss",
                     subtitle = "Income, expenses, and net profit for the selected period.",
                     value = plPrev,
                     iconTint = green,

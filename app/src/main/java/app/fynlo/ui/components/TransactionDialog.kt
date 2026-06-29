@@ -27,11 +27,10 @@ import app.fynlo.logic.CurrencyUtils
 import app.fynlo.logic.DateUtils
 import app.fynlo.ui.theme.Emerald500
 import app.fynlo.ui.theme.SemanticRed
-import app.fynlo.ui.theme.TemplatePill
 import app.fynlo.ui.theme.TemplateSegmentedSelector
 import java.util.*
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddTransactionDialog(
     onDismiss: () -> Unit,
@@ -62,6 +61,7 @@ fun AddTransactionDialog(
     bankAccounts:    List<String> = emptyList(),
     investmentNames: List<String> = emptyList(),
     debtNames:       List<String> = emptyList(),
+    existingTransactions: List<Transaction> = emptyList(),
     // C13 #5 (3.2.81) — "Repeat monthly?" toggle on the Add dialog. When
     // ON, the caller's onRepeatMonthly callback fires alongside onConfirm
     // with the same transaction, letting the call site insert a parallel
@@ -204,15 +204,13 @@ fun AddTransactionDialog(
                 Text("Category", style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Spacer(Modifier.height(8.dp))
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    categories.forEach { cat ->
-                        TemplatePill(
-                            text = cat,
-                            selected = selectedCategory == cat,
-                            onClick = { selectedCategory = cat },
-                        )
-                    }
-                }
+                FynloChoiceDropdown(
+                    label = "Choose category",
+                    options = categories,
+                    selected = selectedCategory,
+                    onPick = { selectedCategory = it },
+                    placeholder = if (isIncome) "Select income type" else "Select expense type",
+                )
                 if (selectedCategory == "Custom") {
                     Spacer(Modifier.height(10.dp))
                     SoftField(customCategory, "Custom category name") { customCategory = it }
@@ -224,15 +222,15 @@ fun AddTransactionDialog(
                 Text(if (isIncome) "Deposit to" else "Pay from",
                     style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Spacer(Modifier.height(8.dp))
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    sources.forEach { src ->
-                        TemplatePill(
-                            text = src,
-                            selected = selectedSrc == src,
-                            onClick = { selectedSrc = src },
-                        )
-                    }
-                }
+                FynloChoiceDropdown(
+                    label = if (isIncome) "Deposit to" else "Pay from",
+                    options = sources,
+                    selected = selectedSrc,
+                    onPick = {
+                        if (selectedSrc != it) sourceDetailName = ""
+                        selectedSrc = it
+                    },
+                )
                 val sourceLabel = when (selectedSrc) {
                     "Bank" -> "Which bank?"; "Investment" -> "Which investment?"
                     "Debts" -> "Which debt / loan?"; "Custom" -> "Custom source name"; else -> ""
@@ -319,6 +317,34 @@ fun AddTransactionDialog(
                     "Custom" -> sourceDetailName
                     else -> sourceDetailName.ifEmpty { selectedSrc }
                 }
+                val previewCategory =
+                    if (selectedCategory == "Custom") customCategory.trim() else selectedCategory.trim()
+                val parsedPreviewDate = remember(date) {
+                    runCatching { DateUtils.parseInput(date) }.getOrDefault(date)
+                }
+                val duplicateWarning = remember(
+                    amount,
+                    isIncome,
+                    previewCategory,
+                    previewAccount,
+                    parsedPreviewDate,
+                    existingTransactions,
+                ) {
+                    val amt = amount.toDoubleOrNull() ?: return@remember null
+                    if (amt <= 0.0 || previewCategory.isBlank() || previewAccount.isBlank()) return@remember null
+                    val txType = if (isIncome) "income" else "expense"
+                    existingTransactions.firstOrNull { txn ->
+                        txn.type.equals(txType, ignoreCase = true) &&
+                            txn.date == parsedPreviewDate &&
+                            txn.category.equals(previewCategory, ignoreCase = true) &&
+                            kotlin.math.abs(txn.amount - amt) <= 0.005 &&
+                            if (isIncome) {
+                                txn.toAcct.equals(previewAccount, ignoreCase = true)
+                            } else {
+                                txn.fromAcct.equals(previewAccount, ignoreCase = true)
+                            }
+                    }?.let { "A similar $txType already exists on this date. Save only if this is a separate entry." }
+                }
                 if (previewAmount > 0.0 && previewAccount.isNotBlank()) {
                     Spacer(Modifier.height(14.dp))
                     AccountImpactPreview(
@@ -328,6 +354,21 @@ fun AddTransactionDialog(
                             listOf("$previewAccount -${CurrencyFormatter.detail(previewAmount, currencyCode)}")
                         },
                     )
+                }
+                if (duplicateWarning != null) {
+                    Spacer(Modifier.height(10.dp))
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
+                        color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.55f),
+                    ) {
+                        Text(
+                            duplicateWarning,
+                            modifier = Modifier.padding(12.dp),
+                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                            color = MaterialTheme.colorScheme.onErrorContainer,
+                        )
+                    }
                 }
 
                 Spacer(Modifier.height(24.dp))

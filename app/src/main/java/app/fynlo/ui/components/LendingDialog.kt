@@ -299,19 +299,28 @@ fun AddLendingDialog(
                         submitting = true
                         val finalSource = selectedAccount.name
                         val rawId = initialBorrower?.id ?: ""
-                        val borrower = Borrower(
-                            id     = if (rawId.isBlank()) app.fynlo.logic.Ids.newId() else rawId,
+                        val now = System.currentTimeMillis()
+                        val finalId = if (rawId.isBlank()) app.fynlo.logic.Ids.newId() else rawId
+                        val borrower = (initialBorrower ?: Borrower(
+                            id = finalId,
+                            name = selectedPerson?.name ?: "Unknown",
+                            amount = 0.0,
+                            rate = 0.0,
+                            date = DateUtils.parseInput(date),
+                        )).copy(
+                            id = finalId,
                             sourceAccount = selectedAccount.name,
-                            name   = selectedPerson?.name ?: initialBorrower?.name ?: "Unknown",
-                            phone  = selectedPerson?.phone ?: initialBorrower?.phone ?: "",
+                            name = selectedPerson?.name ?: initialBorrower?.name ?: "Unknown",
+                            phone = selectedPerson?.phone ?: initialBorrower?.phone ?: "",
                             amount = amount.toDoubleOrNull() ?: 0.0,
-                            rate   = rate.toDoubleOrNull() ?: 0.0,
-                            date   = DateUtils.parseInput(date),
-                            due    = if (due.isNotEmpty()) DateUtils.parseInput(due) else "",
+                            rate = rate.toDoubleOrNull() ?: 0.0,
+                            date = DateUtils.parseInput(date),
+                            due = if (due.isNotEmpty()) DateUtils.parseInput(due) else "",
                             intType = selectedType,
                             status = initialBorrower?.status ?: "Active",
-                            notes  = notes,
-                            paid   = initialBorrower?.paid ?: 0.0
+                            notes = notes,
+                            updatedAt = now,
+                            createdAt = initialBorrower?.createdAt ?: now,
                         )
                         onConfirm(borrower, finalSource)
                     },

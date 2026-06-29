@@ -48,6 +48,7 @@ fun HomeScreen(viewModel: FinanceViewModel, onNavigateToScreen: (String) -> Unit
     val isSyncReady      by viewModel.isSyncReady.collectAsState()
     val isPrivacy        by viewModel.isPrivacyMode.collectAsState()
     val accounts         by viewModel.accounts.collectAsState()
+    val allTransactions  by viewModel.transactions.collectAsState()
     val locale           = LocalLocale.current.platformLocale
     val currencyCode     = currentProject?.currency ?: "INR"
     val currencySymbol   = app.fynlo.logic.CurrencyUtils.symbolFor(currencyCode)
@@ -73,6 +74,7 @@ fun HomeScreen(viewModel: FinanceViewModel, onNavigateToScreen: (String) -> Unit
             bankAccounts    = accounts.map { it.name },
             investmentNames = allInvestments.map { it.name },
             debtNames       = allDebts.map { it.name },
+            existingTransactions = allTransactions,
         )
     }
 

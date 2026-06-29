@@ -123,6 +123,7 @@ val transactions by viewModel.transactions.collectAsState()
             bankAccounts    = allAccounts.map { it.name },
             investmentNames = allInvestments.map { it.name },
             debtNames       = allDebts.map { it.name },
+            existingTransactions = transactions,
         )
     }
 

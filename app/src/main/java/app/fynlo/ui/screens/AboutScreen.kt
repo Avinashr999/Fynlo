@@ -80,8 +80,8 @@ fun AboutScreen() {
             Icons.Default.CreditCard        to "Track debts you owe to others",
             Icons.AutoMirrored.Filled.TrendingUp to "Monitor investments and growth",
             Icons.Default.PieChart          to "Set budgets and track spending",
-            Icons.Default.Assessment        to "Reports: P&L, net worth, cash flow",
-            Icons.Default.CloudDone         to "Auto-sync to Google Firestore",
+            Icons.Default.Assessment        to "Reports: Profit & Loss, net worth, cash flow",
+            Icons.Default.CloudDone         to "Auto-backup with Google cloud sync",
             Icons.Default.Lock              to "PIN + biometric app lock"
         )
 
@@ -122,8 +122,8 @@ fun AboutScreen() {
             )
             AboutBulletRow(
                 icon = Icons.Default.Route,
-                title = "Ledger health",
-                body = "Review critical issues, trace gaps, duplicates, and money routes from Settings."
+                title = "Book check",
+                body = "Review problems, missing links, duplicate entries, and money routes from Settings."
             )
             AboutBulletRow(
                 icon = Icons.Default.DesignServices,
@@ -152,7 +152,7 @@ fun AboutScreen() {
             AboutStepRow("1", "Create accounts first", "Add cash, bank, and wallet accounts before entering loans, debts, investments, or expenses.")
             AboutStepRow("2", "Pick the real source account", "When lending, investing, or spending, choose the account where money actually moved from.")
             AboutStepRow("3", "Reverse from the original flow", "Delete or restore the original loan, debt, investment, or payment instead of editing generated ledger rows.")
-            AboutStepRow("4", "Check Ledger Health", "Use Settings > Backup & Export > Ledger Health after bulk changes, imports, or manual corrections.")
+            AboutStepRow("4", "Run Book Check", "Use Settings > Backup & Export > Book Check after bulk changes, imports, or manual corrections.")
             AboutStepRow("5", "Back up before real use", "Export reports or sync to your Google account before replacing test data with real records.")
         }
 
@@ -161,7 +161,7 @@ fun AboutScreen() {
         AboutInfoCard(
             icon  = Icons.Default.Shield,
             title = "Privacy & Security",
-            body  = "Your data stays on your device and your personal Google Firestore. We do not collect, sell, or share your financial information with any third parties.",
+            body  = "Your data stays on your device and, if you sign in, your personal Google cloud backup. We do not collect, sell, or share your financial information with any third parties.",
             color = SemanticBlue
         )
 
@@ -171,7 +171,7 @@ fun AboutScreen() {
         AboutInfoCard(
             icon  = Icons.Default.Gavel,
             title = "Legal Disclaimer",
-            body  = "Fynlo Ledger is a manual-entry personal finance ledger for personal use only. It is NOT a banking, lending, or investment advisory service. Always verify your data with official bank statements. The developer is not responsible for any financial decisions made using this app.",
+            body  = "Fynlo Ledger is a manual-entry personal finance ledger for personal use only. It is NOT a banking, lending, or investment advisory service. Always verify your data with official bank statements. Fynlo Ledger is not responsible for financial decisions made using this app.",
             color = SemanticRed
         )
 

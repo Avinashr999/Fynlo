@@ -123,7 +123,7 @@ fun ReportBugDialog(
             }
             is SubmitState.Error   -> {
                 Spacer(Modifier.height(8.dp))
-                Text("Couldn't send via Crashlytics (${s.reason}). Use Email a copy below.",
+                Text("Couldn't send the error report (${s.reason}). Use Email a copy below.",
                     style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error)
             }
         }

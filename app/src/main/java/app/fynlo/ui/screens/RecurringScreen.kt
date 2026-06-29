@@ -252,7 +252,7 @@ private fun RecurringCard(r: RecurringTransaction, isDue: Boolean = false, daysU
         }
 }
 
-@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun AddRecurringDialog(
     onDismiss: () -> Unit,
@@ -349,15 +349,13 @@ private fun AddRecurringDialog(
         Spacer(Modifier.height(14.dp))
         app.fynlo.ui.components.FormSectionLabel("Category")
         Spacer(Modifier.height(8.dp))
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            categories.forEach { cat ->
-                TemplatePill(
-                    text = cat,
-                    selected = selectedCategory == cat,
-                    onClick = { selectedCategory = cat },
-                )
-            }
-        }
+        app.fynlo.ui.components.FynloChoiceDropdown(
+            label = "Choose category",
+            options = categories,
+            selected = selectedCategory,
+            onPick = { selectedCategory = it },
+            placeholder = if (type == "Income") "Select income type" else "Select expense type",
+        )
         if (selectedCategory == "Custom") {
             Spacer(Modifier.height(8.dp))
             OutlinedTextField(
@@ -501,4 +499,3 @@ private fun AddRecurringDialog(
         )
     }
 }
-
