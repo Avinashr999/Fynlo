@@ -580,3 +580,13 @@ When the phone is connected again, run the remaining `test-android-apps` device-
 - Dashboard quick actions now include `Transfer`.
 - Transfer dialog supports both dashboard-started transfer, where source and destination are both chosen, and account-started transfer, where the source account stays preselected.
 - Keep this visible entry point. Account transfer is a core accounting action and should not be hidden behind account edit flows.
+
+## 2026-06-29 - Expenses add flow and loan grace-period rule
+
+- Expenses `+` must open an expense-only dialog. It should not show Income there; income belongs on Dashboard or History-level transaction entry.
+- The shared Add Transaction dialog now has a locked mode (`allowTypeSwitch = false`) for screen-specific flows.
+- For lending grace periods, preserve accounting truth:
+  - Extending a due date is a collection/planning change.
+  - Waiving extra-days interest is a ledger adjustment.
+  - Do not fake this as an interest payment, because that would overstate collected interest income.
+- Future implementation recommendation: add an explicit `Waive interest` action for borrowers/debts that records a non-cash adjustment and subtracts it from interest outstanding while keeping `paidInterest` as real collected/paid interest only.

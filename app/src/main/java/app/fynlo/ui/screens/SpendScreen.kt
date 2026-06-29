@@ -108,9 +108,11 @@ val transactions by viewModel.transactions.collectAsState()
             onConfirm = { txn ->
                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                 viewModel.addTransaction(txn)
-                viewModel.showFeedback(if (txn.type.equals("income", ignoreCase = true)) "Income added" else "Expense added")
+                viewModel.showFeedback("Expense added")
                 showDialog = false
             },
+            initialIsIncome = false,
+            allowTypeSwitch = false,
             rememberLastCategory = { isIncome -> viewModel.rememberLastTransactionCategory(isIncome) },
             onRecordCategory = { isIncome, cat -> viewModel.recordTransactionCategory(isIncome, cat) },
             // 3.2.81 (C13 #5) — when user toggles "Repeat monthly?" ON,

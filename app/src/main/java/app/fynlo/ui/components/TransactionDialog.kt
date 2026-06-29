@@ -37,6 +37,7 @@ fun AddTransactionDialog(
     onDismiss: () -> Unit,
     onConfirm: (Transaction) -> Unit,
     initialIsIncome: Boolean = false,
+    allowTypeSwitch: Boolean = true,
     // C04: optional recency hooks. Default no-ops keep the dialog
     // testable and previewable without a ViewModel; production call
     // sites wire `viewModel::rememberLastTransactionCategory` and
@@ -109,6 +110,10 @@ fun AddTransactionDialog(
     //      previously-typed value re-rendered in the text input below
     //      the chip row. This is the Stage 2.5 fix; without it the
     //      Custom-path recency was silently dropped.
+    LaunchedEffect(initialIsIncome, allowTypeSwitch) {
+        if (!allowTypeSwitch) isIncome = initialIsIncome
+    }
+
     LaunchedEffect(isIncome) {
         val recent = rememberLastCategory(isIncome)
         when {
@@ -132,6 +137,11 @@ fun AddTransactionDialog(
     var sourceDetailName by remember { mutableStateOf("") }
 
     val accent = if (isIncome) Emerald500 else SemanticRed
+    val dialogTitle = when {
+        allowTypeSwitch -> "Add Transaction"
+        isIncome -> "Add Income"
+        else -> "Add Expense"
+    }
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -165,19 +175,21 @@ fun AddTransactionDialog(
                     Spacer(Modifier.height(10.dp))
                 // ── Header ────────────────────────────────────────────────────
                 Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
-                    Text("Add Transaction",
+                    Text(dialogTitle,
                         style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold))
                     IconButton(onClick = onDismiss) { Icon(Icons.Default.Close, "Close") }
                 }
                 Spacer(Modifier.height(16.dp))
 
                 // ── Expense / Income toggle ───────────────────────────────────
-                TemplateSegmentedSelector(
-                    options = listOf("Expense", "Income"),
-                    selectedIndex = if (isIncome) 1 else 0,
-                    onSelected = { index -> isIncome = index == 1 },
-                )
-                Spacer(Modifier.height(24.dp))
+                if (allowTypeSwitch) {
+                    TemplateSegmentedSelector(
+                        options = listOf("Expense", "Income"),
+                        selectedIndex = if (isIncome) 1 else 0,
+                        onSelected = { index -> isIncome = index == 1 },
+                    )
+                    Spacer(Modifier.height(24.dp))
+                }
 
                 // ── Big amount input (hero) ───────────────────────────────────
                 Box(Modifier.fillMaxWidth(), Alignment.Center) {

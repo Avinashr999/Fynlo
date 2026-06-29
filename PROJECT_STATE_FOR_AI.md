@@ -1701,3 +1701,10 @@ Next Play upload for this rename line uses `versionCode = 230` and `versionName 
 - Added a visible `Transfer` quick action to Dashboard.
 - The existing transfer dialog now supports two modes: account-specific transfer with the source preselected, and dashboard-started transfer where the user chooses both source and destination accounts.
 - Transfer still routes through `transferBetweenAccounts(...)`, so it remains balance-sheet-only: one account decreases, another increases, and net worth does not change.
+
+## 2026-06-29 - Expenses Add Flow Locked to Expense
+
+- Phone feedback showed the Expenses screen `+` dialog still exposed both Expense and Income because it reused the generic Add Transaction dialog.
+- `AddTransactionDialog` now supports `allowTypeSwitch = false`. When disabled, it locks the dialog to the caller's `initialIsIncome` value and hides the Expense/Income segmented selector.
+- Expenses now opens the dialog as `Add Expense`, locked to expense-only entry, and always shows `Expense added` feedback.
+- Product rule for loan grace periods: do not solve waived extra-days interest by recording fake interest payments. A future safe implementation should add a distinct non-cash interest-waiver adjustment, so cash, collected interest income, outstanding interest, and audit history remain separate and trustworthy.
