@@ -573,3 +573,10 @@ When the phone is connected again, run the remaining `test-android-apps` device-
 - Fix rule: account statements and global transaction history must order rows by business date, then transaction creation/update time, then id. Do not revert to date-only ordering.
 - Account statements now show date/time and per-row balance impact, matching the transaction-history before/after trace. This is the first place to inspect when a tester asks "why did this account balance change?"
 - Startup now backfills missing transaction `fromAcctId` / `toAcctId` values from current account names when safe. This is a metadata repair only: it must never move money or adjust balances.
+
+## 2026-06-29 - Dashboard transfer discoverability
+
+- User could not find account transfer from Dashboard because the visible quick actions only showed Expense, Income, Lend, and History.
+- Dashboard quick actions now include `Transfer`.
+- Transfer dialog supports both dashboard-started transfer, where source and destination are both chosen, and account-started transfer, where the source account stays preselected.
+- Keep this visible entry point. Account transfer is a core accounting action and should not be hidden behind account edit flows.

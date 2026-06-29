@@ -206,20 +206,19 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
     }
 
     if (showTransferDialog) {
-        val from = transferFromAccount
-        if (from != null) {
-            AccountTransferDialog(
-                from = from,
-                accounts = activeAccounts.filter { it.id != from.id },
-                currencyCode = currencyCode,
-                onDismiss = { showTransferDialog = false },
-                onConfirm = { to, amount ->
+        AccountTransferDialog(
+            from = transferFromAccount,
+            accounts = activeAccounts,
+            currencyCode = currencyCode,
+            onDismiss = { showTransferDialog = false },
+            onConfirm = { from, to, amount ->
+                if (from.id != to.id) {
                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                     viewModel.transferBetweenAccounts(from, to, amount)
                     showTransferDialog = false
-                },
-            )
-        }
+                }
+            },
+        )
     }
 
     if (showOrphanDialog) {
@@ -434,6 +433,10 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
             Row(Modifier.fillMaxWidth(), Arrangement.spacedBy(10.dp)) {
                 NeoAction("Expense", Icons.Default.Remove, SemanticRed, Modifier.weight(1f)) { addTxnIncome = false; showAddTxn = true }
                 NeoAction("Income", Icons.Default.Add, Emerald500, Modifier.weight(1f)) { addTxnIncome = true; showAddTxn = true }
+                NeoAction("Transfer", Icons.Default.SwapHoriz, Emerald500, Modifier.weight(1f)) {
+                    transferFromAccount = null
+                    showTransferDialog = true
+                }
                 NeoAction("Lend", Icons.Default.Handshake, SemanticBlue, Modifier.weight(1f)) { onNavigateToScreen("loans_hub") }
                 NeoAction("History", Icons.Default.History, Carbon500, Modifier.weight(1f)) { onNavigateToScreen("history") }
             }
@@ -945,62 +948,101 @@ private fun AccountManageDialog(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun AccountTransferDialog(
-    from: Account,
+    from: Account?,
     accounts: List<Account>,
     currencyCode: String,
     onDismiss: () -> Unit,
-    onConfirm: (Account, Double) -> Unit,
+    onConfirm: (Account, Account, Double) -> Unit,
 ) {
-    var target by remember(from, accounts) { mutableStateOf(accounts.firstOrNull()) }
+    var source by remember(from, accounts) { mutableStateOf(from ?: accounts.firstOrNull()) }
+    var target by remember(from, accounts) { mutableStateOf(accounts.firstOrNull { it.id != source?.id }) }
     var amountText by remember(from) {
-        mutableStateOf(kotlin.math.abs(from.balance).toBigDecimal().stripTrailingZeros().toPlainString())
+        mutableStateOf(from?.balance?.let { kotlin.math.abs(it).toBigDecimal().stripTrailingZeros().toPlainString() } ?: "")
     }
-    var expanded by remember { mutableStateOf(false) }
-    var submitting by remember(from.id) { mutableStateOf(false) }
+    var sourceExpanded by remember { mutableStateOf(false) }
+    var targetExpanded by remember { mutableStateOf(false) }
+    var submitting by remember(source?.id) { mutableStateOf(false) }
     val amount = amountText.toDoubleOrNull()
-    val isValid = target != null && amount != null && amount > 0.0
+    val transferTargets = remember(accounts, source) { accounts.filter { it.id != source?.id } }
+    val isValid = source != null && target != null && source?.id != target?.id && amount != null && amount > 0.0
+
+    LaunchedEffect(source?.id, accounts) {
+        if (target == null || target?.id == source?.id) {
+            target = accounts.firstOrNull { it.id != source?.id }
+        }
+    }
 
     app.fynlo.ui.components.FormDialog(
-        title = "Transfer balance",
+        title = if (from == null) "Transfer between accounts" else "Transfer balance",
         onDismiss = onDismiss,
     ) {
         app.fynlo.ui.components.FormSectionLabel("From account")
         Spacer(Modifier.height(8.dp))
-        Text(
-            from.name,
-            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
-            color = MaterialTheme.colorScheme.onSurface,
-        )
-        Text(
-            CurrencyFormatter.detail(from.balance, currencyCode, LocalLocale.current.platformLocale),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        if (from != null) {
+            Text(
+                from.name,
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Text(
+                CurrencyFormatter.detail(from.balance, currencyCode, LocalLocale.current.platformLocale),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        } else {
+            ExposedDropdownMenuBox(
+                expanded = sourceExpanded,
+                onExpandedChange = { sourceExpanded = !sourceExpanded },
+            ) {
+                OutlinedTextField(
+                    value = source?.name ?: "",
+                    onValueChange = {},
+                    readOnly = true,
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(sourceExpanded) },
+                    modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, true).fillMaxWidth(),
+                    shape = RoundedCornerShape(14.dp),
+                )
+                ExposedDropdownMenu(
+                    expanded = sourceExpanded,
+                    onDismissRequest = { sourceExpanded = false },
+                ) {
+                    accounts.forEach { account ->
+                        DropdownMenuItem(
+                            text = { Text("${account.name} · ${CurrencyFormatter.detail(account.balance, currencyCode, LocalLocale.current.platformLocale)}") },
+                            onClick = {
+                                source = account
+                                sourceExpanded = false
+                            },
+                        )
+                    }
+                }
+            }
+        }
         Spacer(Modifier.height(16.dp))
         app.fynlo.ui.components.FormSectionLabel("To account")
         Spacer(Modifier.height(8.dp))
         ExposedDropdownMenuBox(
-            expanded = expanded,
-            onExpandedChange = { expanded = !expanded },
+            expanded = targetExpanded,
+            onExpandedChange = { targetExpanded = !targetExpanded },
         ) {
             OutlinedTextField(
                 value = target?.name ?: "",
                 onValueChange = {},
                 readOnly = true,
-                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(targetExpanded) },
                 modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, true).fillMaxWidth(),
                 shape = RoundedCornerShape(14.dp),
             )
             ExposedDropdownMenu(
-                expanded = expanded,
-                onDismissRequest = { expanded = false },
+                expanded = targetExpanded,
+                onDismissRequest = { targetExpanded = false },
             ) {
-                accounts.forEach { account ->
+                transferTargets.forEach { account ->
                     DropdownMenuItem(
-                        text = { Text(account.name) },
+                        text = { Text("${account.name} · ${CurrencyFormatter.detail(account.balance, currencyCode, LocalLocale.current.platformLocale)}") },
                         onClick = {
                             target = account
-                            expanded = false
+                            targetExpanded = false
                         },
                     )
                 }
@@ -1023,13 +1065,19 @@ private fun AccountTransferDialog(
             onClick = {
                 if (!submitting) {
                     submitting = true
-                    target?.let { onConfirm(it, amount ?: 0.0) }
+                    val selectedSource = source
+                    val selectedTarget = target
+                    if (selectedSource != null && selectedTarget != null) {
+                        onConfirm(selectedSource, selectedTarget, amount ?: 0.0)
+                    }
                 }
             },
         )
         app.fynlo.ui.components.DisabledButtonHint(
             when {
+                source == null -> "Choose the account to transfer from"
                 target == null -> "Choose an account to receive the balance"
+                source?.id == target?.id -> "Choose two different accounts"
                 amount == null || amount <= 0.0 -> "Enter a positive amount to continue"
                 else -> null
             }

@@ -1694,3 +1694,10 @@ Next Play upload for this rename line uses `versionCode = 230` and `versionName 
 - Account detail statements now use that ordering, show the transaction date/time, and reuse transaction-history balance-impact rows so before/after account movement is visible in the account ledger itself.
 - Startup now runs `repairTransactionAccountIds()`. It backfills missing `fromAcctId` / `toAcctId` on legacy name-only transaction rows when the account name still exists. This repair does not move money or change balances.
 - Regression coverage added for stable transaction ordering and for the account-id repair being balance-neutral.
+
+## 2026-06-29 - Dashboard Transfer Entry Point
+
+- User could not find account transfer because Dashboard quick actions still showed only Expense, Income, Lend, and History.
+- Added a visible `Transfer` quick action to Dashboard.
+- The existing transfer dialog now supports two modes: account-specific transfer with the source preselected, and dashboard-started transfer where the user chooses both source and destination accounts.
+- Transfer still routes through `transferBetweenAccounts(...)`, so it remains balance-sheet-only: one account decreases, another increases, and net worth does not change.
