@@ -478,17 +478,24 @@ val borrowers by viewModel.borrowers.collectAsState()
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        DetailItem("Principal", CurrencyFormatter.detail(borrower.amount, currencyCode, locale))
-                        DetailItem("Interest",  CurrencyFormatter.detail(interest, currencyCode, locale))
-                        DetailItem("Paid",      CurrencyFormatter.detail(borrower.paid, currencyCode, locale))
+                        DetailItem("Principal due", CurrencyFormatter.detail((borrower.amount - borrower.paidPrincipal).coerceAtLeast(0.0), currencyCode, locale))
+                        DetailItem("Interest due",  CurrencyFormatter.detail(interestOutstanding, currencyCode, locale))
+                        DetailItem("Paid",          CurrencyFormatter.detail(borrower.paid, currencyCode, locale))
                     }
                     if (borrower.interestWaived > 0.0) {
                         Spacer(Modifier.height(8.dp))
-                        Text(
-                            "Interest waived: ${CurrencyFormatter.detail(borrower.interestWaived, currencyCode, locale)}",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = Emerald500,
-                        )
+                        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            Text(
+                                "Accrued interest: ${CurrencyFormatter.detail(interest, currencyCode, locale)}",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            Text(
+                                "Interest waived: ${CurrencyFormatter.detail(borrower.interestWaived, currencyCode, locale)}",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Emerald500,
+                            )
+                        }
                     }
                     Spacer(Modifier.height(12.dp))
                     Row(
