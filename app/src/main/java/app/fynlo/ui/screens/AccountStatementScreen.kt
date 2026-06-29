@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalLocale
 import app.fynlo.FinanceViewModel
 import app.fynlo.logic.CurrencyFormatter
+import app.fynlo.logic.TransactionOrdering
 import app.fynlo.logic.matchesAccount
 import java.util.Locale
 import app.fynlo.ui.theme.*
@@ -42,7 +43,10 @@ fun AccountStatementScreen(
     // (rename-safe), fall back to stored name for legacy orphan rows.
     val accountTransactions = transactions
         .filter { it.matchesAccount(accountId = account?.id ?: "", accountName = accountName) }
-        .sortedByDescending { it.date }
+        .let(TransactionOrdering::newestFirst)
+    val balanceImpactsByTransaction = remember(transactions, accounts) {
+        buildBalanceImpactsByTransaction(transactions, accounts)
+    }
 
     var showEditDialog by remember { mutableStateOf(false) }
 
@@ -113,6 +117,8 @@ fun AccountStatementScreen(
                             // C03b Stage #1b-2 (3.2.88) — id → current name
                             // for rename-reflective sub-label.
                             accountIdToName = accounts.associate { it.id to it.name },
+                            balanceImpacts = balanceImpactsByTransaction[txn.id].orEmpty(),
+                            showTimestamp = true,
                         )
                     }
                 }

@@ -424,6 +424,46 @@ class MoneyActionIdempotencyDataIntegrityTest {
     }
 
     @Test
+    fun `repairing legacy transaction account ids does not move account balances`() = runBlocking {
+        db.dao().insertAccount(Account(id = "family", name = "Family Cash", type = "Cash", balance = 164500.0))
+        db.dao().insertAccount(Account(id = "business", name = "Business Investment", type = "Cash", balance = 2500000.0))
+        db.dao().insertTransaction(
+            Transaction(
+                id = "legacy-family-loan",
+                date = "2026-06-20",
+                type = "Expense",
+                amount = 200000.0,
+                fromAcct = "Family Cash",
+                fromAcctId = "",
+                category = "Lending",
+                desc = "Lent to Ashwini",
+            )
+        )
+        db.dao().insertTransaction(
+            Transaction(
+                id = "legacy-business-receipt",
+                date = "2026-06-20",
+                type = "Income",
+                amount = 675000.0,
+                toAcct = "Business Investment",
+                toAcctId = "",
+                category = "Debt Received",
+                desc = "Debt received",
+            )
+        )
+
+        assertEquals(2, repository.repairTransactionAccountIds())
+        assertEquals(0, repository.repairTransactionAccountIds())
+
+        val familyTxn = db.dao().getTransactionById("legacy-family-loan")!!
+        val businessTxn = db.dao().getTransactionById("legacy-business-receipt")!!
+        assertEquals("family", familyTxn.fromAcctId)
+        assertEquals("business", businessTxn.toAcctId)
+        assertEquals(164500.0, db.dao().getAccountById("family")!!.balance, 0.0001)
+        assertEquals(2500000.0, db.dao().getAccountById("business")!!.balance, 0.0001)
+    }
+
+    @Test
     fun `editing borrower source reverses old account and debits corrected account`() = runBlocking {
         db.dao().insertAccount(Account(id = "acc-family", name = "Family Cash", type = "Cash", balance = 1000.0))
         db.dao().insertAccount(Account(id = "acc-business", name = "Business Investment", type = "Bank", balance = 2000.0))

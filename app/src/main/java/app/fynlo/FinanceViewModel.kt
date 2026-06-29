@@ -72,6 +72,7 @@ class FinanceViewModel @Inject constructor(
             repository.repairDebtFundedInvestmentTransferTraces()
             repository.repairDebtFundedInvestmentJournalTraceRefs()
             repository.repairDebtReceiptAmountMismatches()
+            repository.repairTransactionAccountIds()
             repository.repairAccountBalanceDriftFromLedger()
             repository.fixPaidDoubleCount()
         }

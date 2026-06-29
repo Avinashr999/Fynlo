@@ -30,6 +30,7 @@ import app.fynlo.data.model.Account
 import app.fynlo.data.model.Transaction
 import app.fynlo.logic.CurrencyFormatter
 import app.fynlo.logic.DateUtils
+import app.fynlo.logic.TransactionOrdering
 import app.fynlo.logic.isGeneratedJournalEntry
 import app.fynlo.ui.theme.*
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -77,7 +78,7 @@ fun TransactionHistoryScreen(viewModel: FinanceViewModel) {
             }.getOrDefault("")
             if (to.isNotBlank()) list = list.filter { it.date <= to }
         }
-        list
+        TransactionOrdering.newestFirst(list)
     }
     val balanceImpactsByTransaction = remember(allProjectTransactions, allAccounts) {
         buildBalanceImpactsByTransaction(allProjectTransactions, allAccounts)
@@ -382,7 +383,7 @@ fun TransactionHistoryScreen(viewModel: FinanceViewModel) {
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.padding(top = 14.dp, bottom = 2.dp))
                         }
-                        val dayTxns = byDate[date] ?: emptyList()
+                        val dayTxns = TransactionOrdering.newestFirst(byDate[date] ?: emptyList())
                         itemsIndexedTxns(dayTxns) { idx, transaction ->
                             TransactionItem(
                                 txn         = transaction,
@@ -442,7 +443,7 @@ data class TransactionBalanceImpact(
     val delta: Double,
 )
 
-private fun buildBalanceImpactsByTransaction(
+fun buildBalanceImpactsByTransaction(
     transactions: List<Transaction>,
     accounts: List<Account>,
 ): Map<String, List<TransactionBalanceImpact>> {
@@ -474,11 +475,7 @@ private fun buildBalanceImpactsByTransaction(
         this[key] = (this[key] ?: 0.0) + delta
     }
 
-    val newestFirst = transactions.sortedWith(
-        compareByDescending<Transaction> { it.date }
-            .thenByDescending { maxOf(it.updatedAt, it.createdAt) }
-            .thenByDescending { it.id }
-    )
+    val newestFirst = TransactionOrdering.newestFirst(transactions)
 
     newestFirst.forEach { txn ->
         val deltas = mutableMapOf<String, Double>()
@@ -573,6 +570,7 @@ fun TransactionItem(
     // call sites that haven't wired it yet.
     accountIdToName: Map<String, String> = emptyMap(),
     balanceImpacts: List<TransactionBalanceImpact> = emptyList(),
+    showTimestamp: Boolean = false,
 ) {
     val isExpense  = txn.type.lowercase() == "expense"
     val isIncome   = txn.type.lowercase() == "income"
@@ -724,6 +722,15 @@ fun TransactionItem(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1)
             }
+            if (showTimestamp) {
+                Text(
+                    transactionTimestampLabel(txn),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    modifier = Modifier.padding(top = 2.dp),
+                )
+            }
             val accountTrace = when {
                 txn.category.equals("Lending", ignoreCase = true) && txn.fromAcct.isNotBlank() ->
                     "From ${txn.displayFromAcct(accountIdToName)}"
@@ -789,6 +796,18 @@ fun TransactionItem(
         )
     }
     }
+}
+
+private fun transactionTimestampLabel(txn: Transaction): String {
+    val dateLabel = DateUtils.formatToDisplay(txn.date)
+    val eventMillis = TransactionOrdering.eventMillis(txn)
+    if (eventMillis <= 0L) return dateLabel
+    val timeLabel = runCatching {
+        java.time.Instant.ofEpochMilli(eventMillis)
+            .atZone(java.time.ZoneId.systemDefault())
+            .format(java.time.format.DateTimeFormatter.ofPattern("h:mm a"))
+    }.getOrNull() ?: return dateLabel
+    return "$dateLabel - $timeLabel"
 }
 
 @Composable

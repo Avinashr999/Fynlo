@@ -1685,3 +1685,12 @@ Next Play upload for this rename line uses `versionCode = 230` and `versionName 
 - Ledger Health now raises a critical issue if a transfer routes to the same account on both sides, because that should never be allowed as a real movement.
 - Loans overview cards were changed to show only the requested overview split: `Total Borrowers` / `Total Debtors`, `Principal`, and `Interest`. Individual borrower/debtor detail pages were intentionally left unchanged.
 - Added regression coverage for account transfers: source balance decreases, destination balance increases by the same amount, combined cash remains unchanged, and the saved row is categorized as `Account Transfer`.
+
+## 2026-06-29 - Account Statement Ordering and Legacy Trace Repair
+
+- Production-phone inspection found the current Family Cash balance was mathematically explained by the local ledger: opening audit balance Rs. 1,16,15,000 minus Rs. 1,14,50,500 of outgoing Family Cash rows equals Rs. 1,64,500.
+- The trust issue was visibility: account statement rows were sorted only by date, so same-day activity could appear confusing, and several legacy restored transactions carried account names without immutable account ids.
+- Transaction ordering is now centralized in `TransactionOrdering`: newest-first means business date descending, then creation/update timestamp descending, then id descending.
+- Account detail statements now use that ordering, show the transaction date/time, and reuse transaction-history balance-impact rows so before/after account movement is visible in the account ledger itself.
+- Startup now runs `repairTransactionAccountIds()`. It backfills missing `fromAcctId` / `toAcctId` on legacy name-only transaction rows when the account name still exists. This repair does not move money or change balances.
+- Regression coverage added for stable transaction ordering and for the account-id repair being balance-neutral.

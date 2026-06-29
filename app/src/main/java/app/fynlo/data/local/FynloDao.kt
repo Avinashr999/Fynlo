@@ -190,7 +190,7 @@ interface FynloDao {
 
     // ─── Transactions ─────────────────────────────────────────────────────────
 
-    @Query("SELECT * FROM transactions ORDER BY date DESC")
+    @Query("SELECT * FROM transactions ORDER BY date DESC, CASE WHEN createdAt > 0 THEN createdAt ELSE updatedAt END DESC, updatedAt DESC, id DESC")
     fun getAllTransactions(): Flow<List<Transaction>>
 
     @Query("SELECT * FROM transactions")

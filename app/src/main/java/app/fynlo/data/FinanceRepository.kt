@@ -1149,6 +1149,47 @@ class FinanceRepository(
             txn.tags.split(",").any { it.trim().equals("journal_only", ignoreCase = true) }
 
     /**
+     * Runtime backfill for transactions restored after the schema migration.
+     * It links legacy name-only rows to the current account id without moving
+     * money or changing the transaction amount/type/category.
+     */
+    suspend fun repairTransactionAccountIds(): Int {
+        val accounts = dao.getAllAccountsList()
+        val idByName = accounts.associate { it.name to it.id }
+        if (idByName.isEmpty()) return 0
+
+        val repairedTransactions = dao.getAllTransactionsList().mapNotNull { txn ->
+            val resolvedFrom = if (txn.fromAcctId.isBlank() && txn.fromAcct.isNotBlank()) {
+                idByName[txn.fromAcct].orEmpty()
+            } else {
+                txn.fromAcctId
+            }
+            val resolvedTo = if (txn.toAcctId.isBlank() && txn.toAcct.isNotBlank()) {
+                idByName[txn.toAcct].orEmpty()
+            } else {
+                txn.toAcctId
+            }
+
+            if (resolvedFrom == txn.fromAcctId && resolvedTo == txn.toAcctId) {
+                null
+            } else {
+                txn.copy(
+                    fromAcctId = resolvedFrom,
+                    toAcctId = resolvedTo,
+                    updatedAt = System.currentTimeMillis(),
+                )
+            }
+        }
+        if (repairedTransactions.isEmpty()) return 0
+
+        db.withTransaction {
+            repairedTransactions.forEach { dao.insertTransaction(it) }
+        }
+        repairedTransactions.forEach { txn -> sync { setTransaction(txn) } }
+        return repairedTransactions.size
+    }
+
+    /**
      * Last-resort account reconciliation for stored balance drift. It uses the
      * account CREATE audit as the opening balance, then replays current
      * transaction rows. Rows marked Info or journal_only are ignored because

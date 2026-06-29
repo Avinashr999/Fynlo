@@ -564,3 +564,12 @@ When the phone is connected again, run the remaining `test-android-apps` device-
   - Lent tab: `Total Borrowers`, outstanding borrower principal, outstanding borrower interest.
   - Owed tab: `Total Debtors`, outstanding debt principal, outstanding debt interest.
 - Do not add this split to individual borrower/debtor pages unless a future product request asks for it.
+
+## 2026-06-29 - Account statement ordering and Family Cash investigation
+
+- User reported confusion after opening account details/history: Family Cash had previously looked like Rs. 2,90,000, but production data now showed Rs. 1,64,500.
+- Direct production-phone DB inspection explained the current stored balance: Family Cash opening audit amount was Rs. 1,16,15,000 and the ledger contained Rs. 1,14,50,500 of outgoing Family Cash transactions, leaving Rs. 1,64,500.
+- No random balance rewrite was found in that inspection. The real product problem was traceability: same-day rows were only date-sorted, and legacy restored rows often had account names but blank account ids.
+- Fix rule: account statements and global transaction history must order rows by business date, then transaction creation/update time, then id. Do not revert to date-only ordering.
+- Account statements now show date/time and per-row balance impact, matching the transaction-history before/after trace. This is the first place to inspect when a tester asks "why did this account balance change?"
+- Startup now backfills missing transaction `fromAcctId` / `toAcctId` values from current account names when safe. This is a metadata repair only: it must never move money or adjust balances.
