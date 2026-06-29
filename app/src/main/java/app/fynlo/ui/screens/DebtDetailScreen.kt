@@ -40,6 +40,7 @@ import app.fynlo.logic.displayFromAcct
 import app.fynlo.logic.displayToAcct
 import app.fynlo.ui.components.AddDebtDialog
 import app.fynlo.ui.components.PayDebtDialog
+import app.fynlo.ui.components.ProofAttachmentSection
 import app.fynlo.ui.components.WaiveInterestDialog
 import app.fynlo.ui.theme.Emerald500
 import app.fynlo.ui.theme.LedgerDetailTopBar
@@ -66,6 +67,7 @@ fun DebtDetailScreen(
     val haptic        = LocalHapticFeedback.current
     val debts         by viewModel.debts.collectAsState()
     val allPayments   by viewModel.debtPayments.collectAsState()
+    val proofAttachments by viewModel.proofAttachments.collectAsState()
     val accounts      by viewModel.accounts.collectAsState()
     val transactions  by viewModel.transactions.collectAsState()
     val currentProject by viewModel.currentProject.collectAsState()
@@ -83,6 +85,7 @@ fun DebtDetailScreen(
     val debtPayments = allPayments
         .filter { it.debtId == debtId }
         .sortedByDescending { it.date }
+    val debtProofs = proofAttachments.filter { it.ownerType == "debt" && it.ownerId == debtId }
 
     val interest = InterestEngine.calcIntAccrued(
         debt.amount, debt.rate, debt.date, debt.intType, debt.due, totalPaid = debt.paidPrincipal
@@ -437,6 +440,17 @@ fun DebtDetailScreen(
                         }
                     }
                 }
+            }
+
+            item {
+                ProofAttachmentSection(
+                    title = "Debt proof",
+                    attachments = debtProofs,
+                    onAddProof = { name, type, uri ->
+                        viewModel.addProofAttachment("debt", debt.id, name, type, uri)
+                    },
+                    onDeleteProof = viewModel::deleteProofAttachment,
+                )
             }
 
             if (debt.notes.isNotBlank()) {

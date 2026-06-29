@@ -265,6 +265,38 @@ class FinanceViewModel @Inject constructor(
         }
     }
 
+    fun addProofAttachment(
+        ownerType: String,
+        ownerId: String,
+        displayName: String,
+        mimeType: String,
+        localUri: String,
+        note: String = "",
+    ) {
+        viewModelScope.launch(Dispatchers.IO) {
+            repository.addProofAttachment(
+                ProofAttachment(
+                    id = app.fynlo.logic.Ids.newId(),
+                    ownerType = ownerType,
+                    ownerId = ownerId,
+                    displayName = displayName.ifBlank { "Proof attachment" },
+                    mimeType = mimeType,
+                    localUri = localUri,
+                    note = note,
+                    projectId = pid,
+                )
+            )
+            _feedbackEvents.tryEmit("Proof attached")
+        }
+    }
+
+    fun deleteProofAttachment(id: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            repository.deleteProofAttachment(id)
+            _feedbackEvents.tryEmit("Proof removed")
+        }
+    }
+
     fun exportAuditTrailCsv(): String {
         fun csvCell(value: String): String = "\"${value.replace("\"", "\"\"")}\""
         val dateFormat = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.US)

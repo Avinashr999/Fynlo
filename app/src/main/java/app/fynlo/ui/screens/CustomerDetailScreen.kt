@@ -39,6 +39,7 @@ import app.fynlo.logic.DateUtils
 import app.fynlo.logic.InterestEngine
 import app.fynlo.ui.components.AddLendingDialog
 import app.fynlo.ui.components.CollectPaymentDialog
+import app.fynlo.ui.components.ProofAttachmentSection
 import app.fynlo.ui.components.WaiveInterestDialog
 import java.util.*
 import app.fynlo.ui.theme.*
@@ -57,6 +58,7 @@ fun CustomerDetailScreen(
         val haptic = LocalHapticFeedback.current
 val borrowers by viewModel.borrowers.collectAsState()
     val allPayments by viewModel.payments.collectAsState()
+    val proofAttachments by viewModel.proofAttachments.collectAsState()
     val accounts by viewModel.accounts.collectAsState()
     val currentProject by viewModel.currentProject.collectAsState()
     val currencyCode = currentProject?.currency ?: "INR"
@@ -78,6 +80,7 @@ val borrowers by viewModel.borrowers.collectAsState()
     val loanPayments = allPayments
         .filter { it.loanId == borrowerId }
         .sortedByDescending { it.date }
+    val loanProofs = proofAttachments.filter { it.ownerType == "loan" && it.ownerId == borrowerId }
 
     val interest = if (borrower.status == "Defaulted" && borrower.frozenInterest > 0.0) {
         borrower.frozenInterest
@@ -711,6 +714,17 @@ val borrowers by viewModel.borrowers.collectAsState()
                         }
                     }
                 }
+            }
+
+            item {
+                ProofAttachmentSection(
+                    title = "Loan proof",
+                    attachments = loanProofs,
+                    onAddProof = { name, type, uri ->
+                        viewModel.addProofAttachment("loan", borrower.id, name, type, uri)
+                    },
+                    onDeleteProof = viewModel::deleteProofAttachment,
+                )
             }
 
             if (borrower.notes.isNotBlank()) {

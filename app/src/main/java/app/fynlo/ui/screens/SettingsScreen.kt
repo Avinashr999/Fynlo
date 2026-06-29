@@ -16,6 +16,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
 import androidx.compose.material.icons.automirrored.filled.FormatListBulleted
+import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material3.*
@@ -121,6 +122,7 @@ fun SettingsScreen(
     val monthlyCloses by viewModel.monthlyCloses.collectAsState()
     val openSyncConflicts by viewModel.openSyncConflicts.collectAsState()
     val proofAttachments by viewModel.proofAttachments.collectAsState()
+    val settingsTransactions by viewModel.transactions.collectAsState()
     var showDataExportDialog by remember { mutableStateOf(false) }
     var selectedDataExportScope by remember { mutableStateOf(DataExportScope.WHOLE) }
     var selectedDataExportFormat by remember { mutableStateOf(DataExportFormat.PDF) }
@@ -905,6 +907,8 @@ fun SettingsScreen(
                     MonthlyCloseDialog(
                         month = currentMonthKey,
                         isClosed = currentMonthClosed,
+                        transactions = settingsTransactions.filter { it.date.startsWith(currentMonthKey) },
+                        currencyCode = defaultCurrency,
                         onClose = {
                             viewModel.closeMonth(currentMonthKey, "Closed from Settings")
                             showMonthlyClose = false
@@ -920,7 +924,7 @@ fun SettingsScreen(
                 SettingsDivider()
 
                 SettingsActionRow(
-                    icon = Icons.Default.Undo,
+                    icon = Icons.AutoMirrored.Filled.Undo,
                     color = Blue,
                     title = "Undo last money action",
                     subtitle = "Reverse the last transaction add, edit, or delete within 10 minutes."
@@ -2043,23 +2047,48 @@ private fun SettingsActionRow(
 private fun MonthlyCloseDialog(
     month: String,
     isClosed: Boolean,
+    transactions: List<app.fynlo.data.model.Transaction>,
+    currencyCode: String,
     onClose: () -> Unit,
     onReopen: () -> Unit,
     onDismiss: () -> Unit,
 ) {
+    val income = remember(transactions) {
+        transactions.filter { it.type.equals("Income", ignoreCase = true) && !it.tags.contains("journal_only", ignoreCase = true) }
+            .sumOf { it.amount }
+    }
+    val expense = remember(transactions) {
+        transactions.filter { it.type.equals("Expense", ignoreCase = true) && !it.tags.contains("journal_only", ignoreCase = true) }
+            .sumOf { it.amount }
+    }
+    val transfers = remember(transactions) { transactions.count { it.type.equals("Transfer", ignoreCase = true) } }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(if (isClosed) "Reopen $month?" else "Close $month?") },
         text = {
-            Text(
-                if (isClosed) {
-                    "This unlocks the month so corrections can be made. Close it again after checking Book check."
-                } else {
-                    "This locks the month. Income, expenses, loans, debts, investments, transfers, withdrawals, and waivers dated in this month will be blocked until you reopen it."
-                },
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(
+                    if (isClosed) {
+                        "This unlocks the month so corrections can be made. Close it again after checking Book check."
+                    } else {
+                        "This locks the month. Income, expenses, loans, debts, investments, transfers, withdrawals, and waivers dated in this month will be blocked until you reopen it."
+                    },
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Surface(
+                    shape = RoundedCornerShape(16.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
+                ) {
+                    Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("Month review", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold))
+                        CloseMetricRow("Entries", transactions.size.toString())
+                        CloseMetricRow("Income", CurrencyFormatter.detail(income, currencyCode))
+                        CloseMetricRow("Expense", CurrencyFormatter.detail(expense, currencyCode))
+                        CloseMetricRow("Transfers", transfers.toString())
+                    }
+                }
+            }
         },
         confirmButton = {
             Button(
@@ -2074,6 +2103,14 @@ private fun MonthlyCloseDialog(
             TextButton(onClick = onDismiss) { Text("Cancel") }
         },
     )
+}
+
+@Composable
+private fun CloseMetricRow(label: String, value: String) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        Text(label, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(value, style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold))
+    }
 }
 
 @Composable
@@ -2125,10 +2162,44 @@ private fun SyncConflictDialog(
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
+                                if (conflict.fieldSummary.isNotBlank()) {
+                                    LedgerInfoCard(
+                                        title = "What changed",
+                                        detail = conflict.fieldSummary,
+                                        accent = Amber,
+                                    )
+                                }
                                 Row(
                                     Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.End,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                                 ) {
+                                    ConflictSnapshotCard(
+                                        title = "This phone",
+                                        value = conflict.localJson,
+                                        modifier = Modifier.weight(1f),
+                                    )
+                                    ConflictSnapshotCard(
+                                        title = "Cloud",
+                                        value = conflict.remoteJson,
+                                        modifier = Modifier.weight(1f),
+                                    )
+                                }
+                                Row(
+                                    Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
+                                ) {
+                                    OutlinedButton(
+                                        onClick = { onResolve(conflict.id, "Kept phone copy after review") },
+                                        shape = RoundedCornerShape(12.dp),
+                                    ) {
+                                        Text("Keep phone")
+                                    }
+                                    OutlinedButton(
+                                        onClick = { onResolve(conflict.id, "Kept cloud copy after review") },
+                                        shape = RoundedCornerShape(12.dp),
+                                    ) {
+                                        Text("Keep cloud")
+                                    }
                                     TextButton(
                                         onClick = { onResolve(conflict.id, "Reviewed") },
                                     ) {
@@ -2145,6 +2216,34 @@ private fun SyncConflictDialog(
             TextButton(onClick = onDismiss) { Text("Done") }
         },
     )
+}
+
+@Composable
+private fun ConflictSnapshotCard(
+    title: String,
+    value: String,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        modifier = modifier.heightIn(min = 78.dp),
+        shape = RoundedCornerShape(14.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
+    ) {
+        Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(
+                title,
+                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                color = MaterialTheme.colorScheme.primary,
+            )
+            Text(
+                value.ifBlank { "No saved preview" }.take(260),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 5,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
 }
 
 @Composable
@@ -2180,6 +2279,7 @@ private fun LedgerHealthDialog(
                         onRunSafeRepair = onRunSafeRepair,
                     )
                 }
+                item { ReconciliationGuideCard(report) }
                 if (report.issues.isNotEmpty()) {
                     item { LedgerDialogSectionTitle("Checks to review") }
                     items(report.issues.take(12)) { issue -> LedgerIssueRow(issue) }
@@ -2252,6 +2352,46 @@ private fun app.fynlo.BookRepairResult.toSafeRepairSummary(
         "net worth ${formatDelta(delta.netWorthChange)}, cash ${formatDelta(delta.cashChange)}, investments ${formatDelta(delta.investmentsChange)}"
     }
     return "$repairText. $balanceText."
+}
+
+@Composable
+private fun ReconciliationGuideCard(report: app.fynlo.logic.LedgerAccountabilityReport) {
+    val nextStep = when {
+        report.criticalCount > 0 -> "Run safe repair first, then review every critical item before exporting."
+        report.warningCount > 0 -> "Warnings usually mean older rows are missing trace links. Review them before month close."
+        else -> "No ledger problems found. You can close the month after checking totals."
+    }
+    Surface(
+        color = MaterialTheme.colorScheme.surface,
+        shape = RoundedCornerShape(18.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+    ) {
+        Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("Review path", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold))
+            ReconcileStep("1", "Run safe repair", "Only rebuilds links and totals from records already in your book.")
+            ReconcileStep("2", "Check remaining warnings", "Open the related account, loan, debt, investment, or transaction trail.")
+            ReconcileStep("3", "Close the month", "Lock the reviewed month so old entries cannot accidentally change.")
+            Text(nextStep, style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold), color = Green)
+        }
+    }
+}
+
+@Composable
+private fun ReconcileStep(number: String, title: String, detail: String) {
+    Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.Top) {
+        Surface(shape = CircleShape, color = Green.copy(alpha = 0.12f)) {
+            Text(
+                number,
+                modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.dp),
+                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                color = Green,
+            )
+        }
+        Column(Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold))
+            Text(detail, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
 }
 
 @Composable
@@ -2418,15 +2558,34 @@ private fun AuditEventRow(
                 )
             }
             if (event.afterValue.isNotBlank()) {
-                Text(
-                    event.afterValue,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
+                AuditValueLine("After", event.afterValue)
+            }
+            if (event.beforeValue.isNotBlank()) {
+                AuditValueLine("Before", event.beforeValue)
+            }
+            if (event.reason.isNotBlank()) {
+                AuditValueLine("Reason", event.reason)
             }
         }
+    }
+}
+
+@Composable
+private fun AuditValueLine(label: String, value: String) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            "$label:",
+            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+            color = MaterialTheme.colorScheme.primary,
+        )
+        Text(
+            value,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f),
+        )
     }
 }
 

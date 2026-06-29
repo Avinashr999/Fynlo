@@ -1823,3 +1823,21 @@ The user approved the combined future roadmap below. Do not treat these as compl
 - Sync conflict capture records local-vs-cloud divergence for account and transaction rows instead of silently overwriting without trace. The first UI lets the user review and mark conflicts as reviewed.
 - Backup/restore and reset paths now include monthly closes, proof links, undo records, and conflict records so the new safety tables do not leave stale state behind.
 - Verified `:app:compileProdDebugKotlin` and `:app:testProdDebugUnitTest`.
+
+## 2026-06-30 - Compound Undo, Proof UI, and Guided Ledger Review
+
+- Expanded undo from transaction-only safety into compound money-action bundles for loan create/delete, debt create/delete, repayment creation, debt payment creation, investment create/delete/edit, and investment withdrawal. Undo now restores or reverses the linked account movement and trace rows instead of touching only the visible record.
+- Balance replay helpers skip `journal_only` transactions so split/payment audit rows do not move cash twice during undo/restore.
+- Investment delete undo has an important guard: `deleteInvestmentOnly` records `replayBalancesOnRestore = false` because that delete path does not reverse the original funding balance. Keep this behavior to avoid duplicate cash deduction on restore.
+- Added per-record proof attachment pickers on loan detail, debt detail, and investment holdings. Proofs are persisted as metadata/local URI links and synced/backed up as metadata; the app does not upload the binary file contents yet.
+- Settings -> Sync conflict review now shows side-by-side phone/cloud snapshots with `Keep phone`, `Keep cloud`, and `Mark reviewed` actions. Current stored conflict snapshots are readable strings, not full JSON records, so the keep buttons document the decision instead of applying a true row-level merge.
+- Settings -> Monthly close now shows a month summary with income, expense, transfers, and entry count before close/reopen.
+- Settings -> Book check now includes a guided review card after safe repair so users know whether to repair, review warnings, or close the month.
+- Audit trail rows now show `Before`, `After`, and `Reason` inline for easier traceability.
+- Fresh empty books now show a first-run checklist on Dashboard for Account, Expense, Loans, and Invest setup.
+- Verified `:app:compileProdDebugKotlin`, `:app:testProdDebugUnitTest`, and installed both production/developer debug variants to connected device `3C15CA0055F00000`.
+
+### Remaining later-stage hardening
+
+- A true sync conflict resolver should store structured JSON snapshots in `sync_conflicts`, then apply selected phone/cloud row values. The current review UI is useful for visibility but intentionally does not guess a merge.
+- A full visual sweep of every historical `AlertDialog` remains a separate UI pass. The new/changed safety surfaces use the current premium direction, but older confirmation dialogs still exist across some deep screens.

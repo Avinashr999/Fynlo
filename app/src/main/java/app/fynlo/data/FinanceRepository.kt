@@ -27,6 +27,46 @@ class FinanceRepository(
     private var firestore: FirestoreRepository,
     var syncManager: SyncManager
 ) {
+    @kotlinx.serialization.Serializable
+    private data class LoanUndoBundle(
+        val borrower: Borrower,
+        val transactions: List<Transaction> = emptyList(),
+        val payments: List<Payment> = emptyList(),
+    )
+
+    @kotlinx.serialization.Serializable
+    private data class DebtUndoBundle(
+        val debt: Debt,
+        val transactions: List<Transaction> = emptyList(),
+        val payments: List<DebtPayment> = emptyList(),
+    )
+
+    @kotlinx.serialization.Serializable
+    private data class PaymentUndoBundle(
+        val payment: Payment,
+        val transactions: List<Transaction> = emptyList(),
+    )
+
+    @kotlinx.serialization.Serializable
+    private data class DebtPaymentUndoBundle(
+        val payment: DebtPayment,
+        val transactions: List<Transaction> = emptyList(),
+    )
+
+    @kotlinx.serialization.Serializable
+    private data class InvestmentUndoBundle(
+        val investment: Investment,
+        val transactions: List<Transaction> = emptyList(),
+        val linkedDebt: Debt? = null,
+        val replayBalancesOnRestore: Boolean = true,
+    )
+
+    @kotlinx.serialization.Serializable
+    private data class InvestmentEditUndoBundle(
+        val before: Investment,
+        val createdTransactions: List<Transaction> = emptyList(),
+    )
+
     val syncStatus: StateFlow<SyncStatus> get() = syncManager.status
 
     /** Called after anonymous auth completes — swaps in the real instances. */
@@ -128,6 +168,37 @@ class FinanceRepository(
         } else if (nameFallback.isNotBlank()) {
             dao.updateAccountBalance(nameFallback, delta)
         }
+    }
+
+    private suspend fun applyTransactionBalance(txn: Transaction) {
+        if (txn.tags.contains("journal_only", ignoreCase = true)) return
+        when (txn.type.lowercase()) {
+            "expense" -> applyAccountDelta(txn.fromAcctId, txn.fromAcct, -txn.amount)
+            "income" -> applyAccountDelta(txn.toAcctId, txn.toAcct, txn.amount)
+            "transfer" -> {
+                applyAccountDelta(txn.fromAcctId, txn.fromAcct, -txn.amount)
+                applyAccountDelta(txn.toAcctId, txn.toAcct, txn.amount)
+            }
+        }
+    }
+
+    private suspend fun reverseTransactionBalance(txn: Transaction) {
+        if (txn.tags.contains("journal_only", ignoreCase = true)) return
+        when (txn.type.lowercase()) {
+            "expense" -> applyAccountDelta(txn.fromAcctId, txn.fromAcct, txn.amount)
+            "income" -> applyAccountDelta(txn.toAcctId, txn.toAcct, -txn.amount)
+            "transfer" -> {
+                applyAccountDelta(txn.fromAcctId, txn.fromAcct, txn.amount)
+                applyAccountDelta(txn.toAcctId, txn.toAcct, -txn.amount)
+            }
+        }
+    }
+
+    private suspend fun syncTouchedAccounts(transactions: List<Transaction>) {
+        transactions.flatMap { listOf(it.fromAcct, it.toAcct) }
+            .filter { it.isNotBlank() }
+            .distinct()
+            .forEach { syncAccountByName(it) }
     }
 
     private suspend fun tombstoneRemoteDoc(collection: String, id: String) {
@@ -245,11 +316,150 @@ class FinanceRepository(
                     editTransaction(current, before.copy(updatedAt = now))
                 }
             }
+            "loan" -> when (action.action) {
+                "CREATE" -> dao.getBorrowerById(action.entityId)?.let { deleteBorrower(it) }
+                "DELETE" -> restoreLoanBundle(undoJson.decodeFromString(action.beforeJson))
+                else -> return false
+            }
+            "debt" -> when (action.action) {
+                "CREATE" -> dao.getDebtById(action.entityId)?.let { deleteDebt(it) }
+                "DELETE" -> restoreDebtBundle(undoJson.decodeFromString(action.beforeJson))
+                else -> return false
+            }
+            "payment" -> when (action.action) {
+                "CREATE" -> undoPaymentCreate(undoJson.decodeFromString(action.afterJson))
+                else -> return false
+            }
+            "debt_payment" -> when (action.action) {
+                "CREATE" -> undoDebtPaymentCreate(undoJson.decodeFromString(action.afterJson))
+                else -> return false
+            }
+            "investment" -> when (action.action) {
+                "CREATE" -> undoInvestmentCreate(undoJson.decodeFromString(action.afterJson))
+                "DELETE" -> restoreInvestmentBundle(undoJson.decodeFromString(action.beforeJson))
+                "EDIT" -> undoInvestmentEdit(undoJson.decodeFromString(action.beforeJson))
+                else -> return false
+            }
             else -> return false
         }
         dao.markUndoConsumed(action.id, now)
         recordAudit("UNDO", action.entityType, action.entityId, "Undo: ${action.title}", projectId = action.projectId)
         return true
+    }
+
+    private suspend fun restoreLoanBundle(bundle: LoanUndoBundle) {
+        db.withTransaction {
+            dao.insertBorrower(bundle.borrower.copy(updatedAt = System.currentTimeMillis()))
+            bundle.transactions.forEach {
+                applyTransactionBalance(it)
+                dao.insertTransaction(it.copy(updatedAt = System.currentTimeMillis()))
+            }
+            bundle.payments.forEach { dao.insertPayment(it.copy(updatedAt = System.currentTimeMillis())) }
+            dao.rebuildBorrowerPaidFromPayments()
+        }
+        sync { setBorrower(bundle.borrower) }
+        bundle.transactions.forEach { sync { setTransaction(it) } }
+        bundle.payments.forEach { sync { setPayment(it) } }
+        syncTouchedAccounts(bundle.transactions)
+    }
+
+    private suspend fun restoreDebtBundle(bundle: DebtUndoBundle) {
+        db.withTransaction {
+            dao.insertDebt(bundle.debt.copy(updatedAt = System.currentTimeMillis()))
+            bundle.transactions.forEach {
+                applyTransactionBalance(it)
+                dao.insertTransaction(it.copy(updatedAt = System.currentTimeMillis()))
+            }
+            bundle.payments.forEach { dao.insertDebtPayment(it.copy(updatedAt = System.currentTimeMillis())) }
+            dao.rebuildDebtPaidFromDebtPayments()
+        }
+        sync { setDebt(bundle.debt) }
+        bundle.transactions.forEach { sync { setTransaction(it) } }
+        bundle.payments.forEach { sync { setDebtPayment(it) } }
+        syncTouchedAccounts(bundle.transactions)
+    }
+
+    private suspend fun undoPaymentCreate(bundle: PaymentUndoBundle) {
+        db.withTransaction {
+            bundle.transactions.forEach {
+                reverseTransactionBalance(it)
+                dao.deleteTransaction(it)
+                tombstoneRemoteDoc("transactions", it.id)
+            }
+            dao.deletePayment(bundle.payment)
+            tombstoneRemoteDoc("payments", bundle.payment.id)
+            dao.rebuildBorrowerPaidFromPayments()
+        }
+        bundle.transactions.forEach { sync { deleteTransaction(it.id) } }
+        sync { deletePayment(bundle.payment.id) }
+        syncTouchedAccounts(bundle.transactions)
+    }
+
+    private suspend fun undoDebtPaymentCreate(bundle: DebtPaymentUndoBundle) {
+        db.withTransaction {
+            bundle.transactions.forEach {
+                reverseTransactionBalance(it)
+                dao.deleteTransaction(it)
+                tombstoneRemoteDoc("transactions", it.id)
+            }
+            dao.deleteDebtPayment(bundle.payment)
+            tombstoneRemoteDoc("debt_payments", bundle.payment.id)
+            dao.rebuildDebtPaidFromDebtPayments()
+        }
+        bundle.transactions.forEach { sync { deleteTransaction(it.id) } }
+        sync { deleteDebtPayment(bundle.payment.id) }
+        syncTouchedAccounts(bundle.transactions)
+    }
+
+    private suspend fun undoInvestmentCreate(bundle: InvestmentUndoBundle) {
+        db.withTransaction {
+            bundle.transactions.forEach {
+                reverseTransactionBalance(it)
+                dao.deleteTransaction(it)
+                tombstoneRemoteDoc("transactions", it.id)
+            }
+            bundle.linkedDebt?.let {
+                dao.deleteDebt(it)
+                tombstoneRemoteDoc("debts", it.id)
+            }
+            dao.deleteInvestment(bundle.investment)
+            tombstoneRemoteDoc("investments", bundle.investment.id)
+            dao.rebuildDebtPaidFromDebtPayments()
+        }
+        bundle.transactions.forEach { sync { deleteTransaction(it.id) } }
+        bundle.linkedDebt?.let { sync { deleteDebt(it.id) } }
+        sync { deleteInvestment(bundle.investment.id) }
+        syncTouchedAccounts(bundle.transactions)
+    }
+
+    private suspend fun restoreInvestmentBundle(bundle: InvestmentUndoBundle) {
+        db.withTransaction {
+            bundle.linkedDebt?.let { dao.insertDebt(it.copy(updatedAt = System.currentTimeMillis())) }
+            dao.insertInvestment(bundle.investment.copy(updatedAt = System.currentTimeMillis()))
+            bundle.transactions.forEach {
+                if (bundle.replayBalancesOnRestore) applyTransactionBalance(it)
+                dao.insertTransaction(it.copy(updatedAt = System.currentTimeMillis()))
+            }
+            dao.rebuildDebtPaidFromDebtPayments()
+        }
+        bundle.linkedDebt?.let { sync { setDebt(it) } }
+        sync { setInvestment(bundle.investment) }
+        bundle.transactions.forEach { sync { setTransaction(it) } }
+        syncTouchedAccounts(bundle.transactions)
+    }
+
+    private suspend fun undoInvestmentEdit(bundle: InvestmentEditUndoBundle) {
+        db.withTransaction {
+            bundle.createdTransactions.forEach {
+                reverseTransactionBalance(it)
+                dao.deleteTransaction(it)
+                tombstoneRemoteDoc("transactions", it.id)
+            }
+            dao.insertInvestment(bundle.before.copy(updatedAt = System.currentTimeMillis()))
+        }
+        bundle.createdTransactions.forEach { sync { deleteTransaction(it.id) } }
+        sync { setInvestment(bundle.before) }
+        syncTouchedAccounts(bundle.createdTransactions)
     }
 
     private suspend fun recordAudit(
@@ -845,6 +1055,14 @@ class FinanceRepository(
                 accountName = sourceAccount,
                 projectId = projectId,
             )
+            recordUndo(
+                action = "CREATE",
+                entityType = "loan",
+                entityId = bWithSource.id,
+                title = "Create loan: ${bWithSource.name}",
+                afterJson = undoJson.encodeToString(LoanUndoBundle(borrower = bWithSource, transactions = listOf(t))),
+                projectId = projectId,
+            )
             sync { setBorrower(bWithSource); setTransaction(t) }
         }
         Analytics.loanCreated(hasInterest = borrower.rate > 0.0)
@@ -878,6 +1096,20 @@ class FinanceRepository(
                 dao.deletePayment(p)
                 tombstoneRemoteDoc("payments", p.id)
             }
+            recordUndo(
+                action = "DELETE",
+                entityType = "loan",
+                entityId = borrower.id,
+                title = "Delete loan: ${borrower.name}",
+                beforeJson = undoJson.encodeToString(
+                    LoanUndoBundle(
+                        borrower = borrower,
+                        transactions = linkedTxns,
+                        payments = linkedPayments,
+                    )
+                ),
+                projectId = borrower.projectId,
+            )
             dao.deleteBorrower(borrower)
             tombstoneRemoteDoc("borrowers", borrower.id)
             recordAudit(
@@ -1573,6 +1805,16 @@ class FinanceRepository(
                 accountName = accountName,
                 projectId = projectId,
             )
+            recordUndo(
+                action = "CREATE",
+                entityType = "investment",
+                entityId = i.id,
+                title = "Create investment: ${i.name}",
+                afterJson = undoJson.encodeToString(
+                    InvestmentUndoBundle(investment = i, transactions = listOf(t))
+                ),
+                projectId = projectId,
+            )
             sync { setInvestment(i); setTransaction(t) }
         }
         Analytics.investmentCreated(type = investment.type)
@@ -1600,6 +1842,16 @@ class FinanceRepository(
                 afterValue = "invested=${i.invested}:debt=${debt.name}:debtId=${debt.id}:txn=${t.id}",
                 amountDelta = i.invested,
                 accountName = debt.name,
+                projectId = projectId,
+            )
+            recordUndo(
+                action = "CREATE",
+                entityType = "investment",
+                entityId = i.id,
+                title = "Create investment: ${i.name}",
+                afterJson = undoJson.encodeToString(
+                    InvestmentUndoBundle(investment = i, transactions = listOf(t))
+                ),
                 projectId = projectId,
             )
             sync { setInvestment(i); setTransaction(t) }
@@ -1635,6 +1887,16 @@ class FinanceRepository(
                 accountName = d.name,
                 projectId = projectId,
             )
+            recordUndo(
+                action = "CREATE",
+                entityType = "investment",
+                entityId = i.id,
+                title = "Create investment: ${i.name}",
+                afterJson = undoJson.encodeToString(
+                    InvestmentUndoBundle(investment = i, transactions = listOf(t), linkedDebt = d)
+                ),
+                projectId = projectId,
+            )
             sync { setDebt(d); setInvestment(i); setTransaction(t) }
         }
         Analytics.investmentCreated(type = investment.type)
@@ -1652,9 +1914,23 @@ class FinanceRepository(
         db.withTransaction {
             val current = dao.getInvestmentById(investment.id) ?: return@withTransaction
             // Remove the investment transaction that moved money out of an account
-            val invTxn = dao.getTransactionsByRef(current.id)
-                .firstOrNull { it.category == "Investment" }
-            if (invTxn != null) {
+            val invTxns = dao.getTransactionsByRef(current.id)
+                .filter { it.category == "Investment" }
+            recordUndo(
+                action = "DELETE",
+                entityType = "investment",
+                entityId = current.id,
+                title = "Delete investment: ${current.name}",
+                beforeJson = undoJson.encodeToString(
+                    InvestmentUndoBundle(
+                        investment = current,
+                        transactions = invTxns,
+                        replayBalancesOnRestore = false,
+                    )
+                ),
+                projectId = current.projectId,
+            )
+            invTxns.forEach { invTxn ->
                 dao.deleteTransaction(invTxn)
                 tombstoneRemoteDoc("transactions", invTxn.id)
                 sync { deleteTransaction(invTxn.id) }
@@ -1692,6 +1968,20 @@ class FinanceRepository(
                         .filter { it.category == "Investment" && it.ref.isBlank() }
                         .take(1)
                 }
+            recordUndo(
+                action = "DELETE",
+                entityType = "investment",
+                entityId = current.id,
+                title = "Delete investment: ${current.name}",
+                beforeJson = undoJson.encodeToString(
+                    InvestmentUndoBundle(
+                        investment = current,
+                        transactions = invTxns,
+                        replayBalancesOnRestore = true,
+                    )
+                ),
+                projectId = current.projectId,
+            )
             invTxns.forEach { invTxn ->
                 applyAccountDelta(invTxn.fromAcctId, invTxn.fromAcct, invTxn.amount)
                 fundingSourceToSync = invTxn.fromAcct
@@ -1727,18 +2017,36 @@ class FinanceRepository(
         db.withTransaction {
             val current = dao.getInvestmentById(investment.id) ?: return@withTransaction
             // Delete the investment transaction
-            val invTxn = dao.getTransactionsByRef(current.id)
-                .firstOrNull { it.category == "Investment" }
-            if (invTxn != null) {
+            val invTxns = dao.getTransactionsByRef(current.id)
+                .filter { it.category == "Investment" }
+            val linkedDebt = current.linkedDebtId.takeIf { it.isNotEmpty() }?.let { dao.getDebtById(it) }
+            val linkedDebtTxns = current.linkedDebtId.takeIf { it.isNotEmpty() }
+                ?.let { dao.getTransactionsByRef(it) }
+                .orEmpty()
+            recordUndo(
+                action = "DELETE",
+                entityType = "investment",
+                entityId = current.id,
+                title = "Delete investment: ${current.name}",
+                beforeJson = undoJson.encodeToString(
+                    InvestmentUndoBundle(
+                        investment = current,
+                        transactions = invTxns + linkedDebtTxns,
+                        linkedDebt = linkedDebt,
+                        replayBalancesOnRestore = true,
+                    )
+                ),
+                projectId = current.projectId,
+            )
+            invTxns.forEach { invTxn ->
                 dao.deleteTransaction(invTxn)
                 tombstoneRemoteDoc("transactions", invTxn.id)
                 sync { deleteTransaction(invTxn.id) }
             }
             // Delete the linked debt and its transactions
             if (current.linkedDebtId.isNotEmpty()) {
-                val linkedDebt = dao.getDebtById(current.linkedDebtId)
                 if (linkedDebt != null) {
-                    val debtTxn = dao.getTransactionsByRef(current.linkedDebtId)
+                    val debtTxn = linkedDebtTxns
                         .firstOrNull { it.type.equals("Income", ignoreCase = true) }
                     if (debtTxn != null) {
                         // C03b Stage #1b-1: id-keyed reversal of the income txn
@@ -2009,6 +2317,8 @@ class FinanceRepository(
     ) {
         requireOpenDate(investment.date, investment.projectId)
         debtDetails?.let { requireOpenDate(it.date, it.projectId.ifBlank { investment.projectId }) }
+        val createdTransactions = mutableListOf<Transaction>()
+        var createdDebt: Debt? = null
         db.withTransaction {
             val pid = investment.projectId
             
@@ -2033,6 +2343,7 @@ class FinanceRepository(
                         updatedAt = System.currentTimeMillis()
                     )
                     dao.insertTransaction(t)
+                    createdTransactions += t
                     sync { setTransaction(t) }
                     syncAccountByName(sourceName)
                 }
@@ -2041,6 +2352,7 @@ class FinanceRepository(
                     debtDetails?.let {
                         val d = it.copy(updatedAt = System.currentTimeMillis())
                         dao.insertDebt(d)
+                        createdDebt = d
                         val t = Transaction(
                             id = app.fynlo.logic.Ids.newId(),
                             date = investment.date,
@@ -2054,6 +2366,7 @@ class FinanceRepository(
                             updatedAt = System.currentTimeMillis()
                         )
                         dao.insertTransaction(t)
+                        createdTransactions += t
                         sync { 
                             setDebt(d)
                             setTransaction(t) 
@@ -2074,6 +2387,7 @@ class FinanceRepository(
                         updatedAt = System.currentTimeMillis()
                     )
                     dao.insertTransaction(t)
+                    createdTransactions += t
                     sync { setTransaction(t) }
                 }
             }
@@ -2092,6 +2406,20 @@ class FinanceRepository(
                 setInvestment(investment)
                 setValuation(v)
             }
+            recordUndo(
+                action = "CREATE",
+                entityType = "investment",
+                entityId = investment.id,
+                title = "Create investment: ${investment.name}",
+                afterJson = undoJson.encodeToString(
+                    InvestmentUndoBundle(
+                        investment = investment,
+                        transactions = createdTransactions,
+                        linkedDebt = createdDebt,
+                    )
+                ),
+                projectId = pid,
+            )
         }
     }
 
@@ -2149,6 +2477,14 @@ class FinanceRepository(
                 accountName = destinationAccount,
                 projectId = projectId,
             )
+            recordUndo(
+                action = "CREATE",
+                entityType = "debt",
+                entityId = d.id,
+                title = "Create debt: ${d.name}",
+                afterJson = undoJson.encodeToString(DebtUndoBundle(debt = d, transactions = listOf(t))),
+                projectId = projectId,
+            )
             sync { setDebt(d); setTransaction(t) }
         }
         syncAccountByName(destinationAccount)
@@ -2179,6 +2515,20 @@ class FinanceRepository(
                 dao.deleteDebtPayment(p)
                 tombstoneRemoteDoc("debt_payments", p.id)
             }
+            recordUndo(
+                action = "DELETE",
+                entityType = "debt",
+                entityId = current.id,
+                title = "Delete debt: ${current.name}",
+                beforeJson = undoJson.encodeToString(
+                    DebtUndoBundle(
+                        debt = current,
+                        transactions = linkedTxns,
+                        payments = linkedPayments,
+                    )
+                ),
+                projectId = current.projectId,
+            )
             dao.deleteDebt(current)
             tombstoneRemoteDoc("debts", current.id)
             recordAudit(
@@ -2247,6 +2597,14 @@ class FinanceRepository(
                 accountName = destinationAccount,
                 projectId = projectId,
             )
+            recordUndo(
+                action = "CREATE",
+                entityType = "payment",
+                entityId = p.id,
+                title = "Loan payment: ${p.name}",
+                afterJson = undoJson.encodeToString(PaymentUndoBundle(payment = p, transactions = listOf(t))),
+                projectId = projectId,
+            )
             sync {
                 setPayment(p)
                 setTransaction(t)
@@ -2294,6 +2652,7 @@ class FinanceRepository(
                 createdAt = now
             )
             dao.insertTransaction(t)
+            val paymentTransactions = mutableListOf(t)
 
             // If there's an interest portion, also create a separate "Interest Expense" entry
             // so it shows in P&L as cost of borrowing
@@ -2318,6 +2677,7 @@ class FinanceRepository(
                 // We mark it with a special tag so it's excluded from cash calculations.
                 val journalTxn = intTxn.copy(tags = "journal_only")
                 dao.insertTransaction(journalTxn)
+                paymentTransactions += journalTxn
                 sync { setTransaction(journalTxn) }
             }
 
@@ -2330,6 +2690,16 @@ class FinanceRepository(
                 afterValue = "amount=${p.amount}:from=$sourceAccount:payment=${p.id}:txn=${t.id}:interest=$interestPaid",
                 amountDelta = -p.amount,
                 accountName = sourceAccount,
+                projectId = projectId,
+            )
+            recordUndo(
+                action = "CREATE",
+                entityType = "debt_payment",
+                entityId = p.id,
+                title = "Debt payment: ${p.name}",
+                afterJson = undoJson.encodeToString(
+                    DebtPaymentUndoBundle(payment = p, transactions = paymentTransactions)
+                ),
                 projectId = projectId,
             )
             sync {
@@ -2396,6 +2766,16 @@ class FinanceRepository(
                 updatedAt = System.currentTimeMillis()
             )
             dao.insertTransaction(t)
+            recordUndo(
+                action = "EDIT",
+                entityType = "investment",
+                entityId = investment.id,
+                title = "Investment withdrawal: ${investment.name}",
+                beforeJson = undoJson.encodeToString(
+                    InvestmentEditUndoBundle(before = investment, createdTransactions = listOf(t))
+                ),
+                projectId = investment.projectId,
+            )
             sync { setInvestment(updated); setTransaction(t) }
         }
         syncAccountByName(toAccount)

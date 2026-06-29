@@ -363,6 +363,23 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
         }
 
         // ── Greeting + project switcher ───────────────────────────────────────
+        if (isFreshBook) {
+            FirstRunChecklistCard(
+                onAddAccount = {
+                    accountDialogInitial = null
+                    accountDialogDefaultType = "Bank"
+                    showAccountDialog = true
+                },
+                onAddExpense = {
+                    addTxnIncome = false
+                    showAddTxn = true
+                },
+                onGoLoans = { onNavigateToScreen("loans") },
+                onGoInvest = { onNavigateToScreen("invest") },
+            )
+            Spacer(Modifier.height(12.dp))
+        }
+
         Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
             Text(greeting, style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -803,6 +820,41 @@ private fun SmartNudgeCard(item: NudgeItem) {
                 Text(item.subtitle, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Icon(Icons.AutoMirrored.Default.ArrowForward, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+@Composable
+private fun FirstRunChecklistCard(
+    onAddAccount: () -> Unit,
+    onAddExpense: () -> Unit,
+    onGoLoans: () -> Unit,
+    onGoInvest: () -> Unit,
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp),
+        color = Emerald500.copy(alpha = 0.10f),
+        border = BorderStroke(0.5.dp, Emerald500.copy(alpha = 0.28f)),
+    ) {
+        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Box(Modifier.size(42.dp).clip(RoundedCornerShape(14.dp)).background(Emerald500.copy(alpha = 0.16f)), Alignment.Center) {
+                    Icon(Icons.Default.CheckCircle, null, Modifier.size(22.dp), tint = Emerald600)
+                }
+                Column(Modifier.weight(1f)) {
+                    Text("Start your book", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold))
+                    Text("Add one account first, then record money movement from the right screen.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                GuidedActionChip("Account", Icons.Default.AccountBalanceWallet, Emerald500, Modifier.weight(1f), onAddAccount)
+                GuidedActionChip("Expense", Icons.Default.RemoveCircleOutline, SemanticRed, Modifier.weight(1f), onAddExpense)
+            }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                GuidedActionChip("Loans", Icons.Default.Handshake, SemanticBlue, Modifier.weight(1f), onGoLoans)
+                GuidedActionChip("Invest", Icons.AutoMirrored.Filled.TrendingUp, SemanticAmber, Modifier.weight(1f), onGoInvest)
+            }
         }
     }
 }

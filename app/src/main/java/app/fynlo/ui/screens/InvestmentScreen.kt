@@ -36,6 +36,7 @@ import app.fynlo.data.model.Investment
 import app.fynlo.logic.CurrencyFormatter
 import app.fynlo.logic.DateUtils
 import app.fynlo.ui.components.AddInvestmentDialog
+import app.fynlo.ui.components.ProofAttachmentSection
 
 import app.fynlo.ui.components.InvestmentSaveRequest
 import java.util.Locale
@@ -54,6 +55,7 @@ fun InvestmentScreen(viewModel: FinanceViewModel) {
     val isPrivacy      by viewModel.isPrivacyMode.collectAsState()
     val accounts       by viewModel.accounts.collectAsState()
     val debts          by viewModel.debts.collectAsState()
+    val proofAttachments by viewModel.proofAttachments.collectAsState()
         val haptic = LocalHapticFeedback.current
 val currentProject by viewModel.currentProject.collectAsState()
     val currencyCode   = currentProject?.currency ?: "INR"
@@ -509,7 +511,12 @@ val currentProject by viewModel.currentProject.collectAsState()
                         onWithdraw  = { withdrawingInvest = invest },
                         onEdit   = { editingInvest = invest },
                         onUpdate = { updatingInvest = invest },
-                        onViewHistory = { viewingHistory = invest }
+                        onViewHistory = { viewingHistory = invest },
+                        proofAttachments = proofAttachments.filter { it.ownerType == "investment" && it.ownerId == invest.id },
+                        onAddProof = { name, type, uri ->
+                            viewModel.addProofAttachment("investment", invest.id, name, type, uri)
+                        },
+                        onDeleteProof = viewModel::deleteProofAttachment,
                     )
                     if (index < visibleInvestments.lastIndex) {
                         HorizontalDivider(thickness = 0.5.dp,
@@ -555,7 +562,19 @@ private fun PortfolioMiniMetric(
 }
 
 @Composable
-fun InvestmentCard(invest: Investment, currencyCode: String = "INR", isPrivacy: Boolean = false, onDelete: () -> Unit, onEdit: () -> Unit, onUpdate: () -> Unit, onViewHistory: () -> Unit, onWithdraw: () -> Unit = {}) {
+fun InvestmentCard(
+    invest: Investment,
+    currencyCode: String = "INR",
+    isPrivacy: Boolean = false,
+    onDelete: () -> Unit,
+    onEdit: () -> Unit,
+    onUpdate: () -> Unit,
+    onViewHistory: () -> Unit,
+    onWithdraw: () -> Unit = {},
+    proofAttachments: List<app.fynlo.data.model.ProofAttachment> = emptyList(),
+    onAddProof: (String, String, String) -> Unit = { _, _, _ -> },
+    onDeleteProof: (String) -> Unit = {},
+) {
     val growth = invest.currentVal - (invest.invested - invest.withdrawn)
     val growthPercent = if (invest.invested > 0) (growth / invest.invested) * 100 else 0.0
     val isProfit = growth >= 0
@@ -729,6 +748,14 @@ fun InvestmentCard(invest: Investment, currencyCode: String = "INR", isPrivacy: 
                     }
                 }
             }
+
+            Spacer(Modifier.height(12.dp))
+            ProofAttachmentSection(
+                title = "Investment proof",
+                attachments = proofAttachments,
+                onAddProof = onAddProof,
+                onDeleteProof = onDeleteProof,
+            )
     }
 }
 }

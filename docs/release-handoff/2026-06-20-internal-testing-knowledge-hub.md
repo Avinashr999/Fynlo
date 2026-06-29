@@ -739,3 +739,30 @@ Verification:
 
 - `:app:compileProdDebugKotlin` passed.
 - `:app:testProdDebugUnitTest` passed.
+
+## 2026-06-30 - Compound undo and guided accountability pass
+
+Completed:
+
+- Undo now covers compound money actions, not just simple transactions. Bundles preserve loan/debt/investment records, linked transactions, linked payments, and touched accounts so undo can restore the ledger shape instead of only deleting a visible row.
+- Balance replay helpers skip `journal_only` rows. This is mandatory because split rows such as interest/principal audit lines must not move account balances twice.
+- Investment-only delete undo is special: it restores the holding without replaying the old funding balance because `deleteInvestmentOnly` does not reverse cash at delete time.
+- Added proof attachment UI on loan, debt, and investment detail surfaces. Proof rows store local URI metadata; they are not cloud file uploads.
+- Sync conflict review is now readable and decision-oriented, with phone/cloud comparison and reviewed-resolution actions. Current snapshots are text summaries, so this is not yet a true structured merge engine.
+- Monthly close dialog now shows month totals before close/reopen.
+- Book Check now provides a guided review path after safe repair.
+- Audit trail rows expose before/after/reason fields in the app.
+- Fresh empty books now show a Dashboard first-run checklist.
+
+Verification:
+
+- `:app:compileProdDebugKotlin` passed.
+- `:app:testProdDebugUnitTest` passed.
+- Installed production and developer debug variants to connected phone `3C15CA0055F00000`.
+
+Rules for future agents:
+
+- Do not bypass repository money-action methods for loans, debts, investments, repayments, withdrawals, transfers, or waivers. Those methods now create the trace and undo state.
+- Do not replay `journal_only` rows into account balances.
+- Do not claim sync conflict `Keep phone/cloud` is a real data merge until conflict rows store structured record snapshots.
+- Treat binary proof upload as future scope. Current proof attachments are metadata links.
