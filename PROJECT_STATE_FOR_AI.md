@@ -1677,3 +1677,11 @@ Next Play upload for this rename line uses `versionCode = 230` and `versionName 
 
 - Bumped Play upload version to `versionCode = 231` and `versionName = "3.2.107"` after the investment journal trace repair was committed and pushed.
 - Purpose of this release: deliver the latest ledger trace hardening to Google Play internal testers. Previous direct phone installs do not update testers unless a new AAB is uploaded.
+
+## 2026-06-29 - Account Transfer Neutrality and Loans Overview Split
+
+- Account-to-account transfers are now treated as balance-sheet-only movements with a dedicated `Account Transfer` category. They debit the source account, credit the destination account, and keep audit `amountDelta` at zero so net worth and P&L do not move.
+- Transfer creation paths now write `Account Transfer` instead of the generic type literal `Transfer`; the transaction validator preserves legacy transfer rows by normalizing `type=Transfer/category=Transfer` into `Account Transfer` instead of `Uncategorized`.
+- Ledger Health now raises a critical issue if a transfer routes to the same account on both sides, because that should never be allowed as a real movement.
+- Loans overview cards were changed to show only the requested overview split: `Total Borrowers` / `Total Debtors`, `Principal`, and `Interest`. Individual borrower/debtor detail pages were intentionally left unchanged.
+- Added regression coverage for account transfers: source balance decreases, destination balance increases by the same amount, combined cash remains unchanged, and the saved row is categorized as `Account Transfer`.

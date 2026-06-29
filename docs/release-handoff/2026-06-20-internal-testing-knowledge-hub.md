@@ -554,3 +554,13 @@ When the phone is connected again, run the remaining `test-android-apps` device-
 
 - Bumped the next Google Play internal testing upload to `versionCode = 231` / `versionName = 3.2.107`.
 - This AAB is needed because direct adb installs only update the connected phone; internal testers receive the fix only after a new App Bundle is uploaded and published on the internal testing track.
+
+## 2026-06-29 - Account transfer and loans overview
+
+- Account transfers are not income and not expense. They must reduce the source account and add the same amount to the destination account, leaving total account value and net worth unchanged.
+- The write path now stores transfer rows under `Account Transfer`, while legacy `type=Transfer/category=Transfer` writes are normalized to the same category at the validator boundary.
+- Ledger Health should flag a same-account transfer as critical; this protects against accidental no-route or self-route transfer rows.
+- Loans overview should only split principal and interest at the top hub level:
+  - Lent tab: `Total Borrowers`, outstanding borrower principal, outstanding borrower interest.
+  - Owed tab: `Total Debtors`, outstanding debt principal, outstanding debt interest.
+- Do not add this split to individual borrower/debtor pages unless a future product request asks for it.

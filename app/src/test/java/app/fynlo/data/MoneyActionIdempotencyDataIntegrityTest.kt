@@ -273,6 +273,34 @@ class MoneyActionIdempotencyDataIntegrityTest {
     }
 
     @Test
+    fun `account transfer debits source credits destination and preserves total cash`() = runBlocking {
+        db.dao().insertAccount(Account(id = "cash", name = "Personal Cash", type = "Cash", balance = 1000.0))
+        db.dao().insertAccount(Account(id = "bank", name = "HDFC Bank", type = "Bank", balance = 500.0))
+        val transfer = Transaction(
+            id = "transfer-1",
+            date = "2026-06-15",
+            type = "Transfer",
+            amount = 250.0,
+            fromAcct = "Personal Cash",
+            fromAcctId = "cash",
+            toAcct = "HDFC Bank",
+            toAcctId = "bank",
+            category = "Transfer",
+            desc = "Move cash to bank",
+        )
+
+        repository.insertTransaction(transfer)
+
+        val cash = db.dao().getAccountById("cash")!!
+        val bank = db.dao().getAccountById("bank")!!
+        val saved = db.dao().getTransactionById("transfer-1")!!
+        assertEquals(750.0, cash.balance, 0.0001)
+        assertEquals(750.0, bank.balance, 0.0001)
+        assertEquals(1500.0, cash.balance + bank.balance, 0.0001)
+        assertEquals(Categories.ACCOUNT_TRANSFER, saved.category)
+    }
+
+    @Test
     fun `retrying same borrower disbursal does not debit source account twice`() = runBlocking {
         db.dao().insertAccount(Account(id = "acc-1", name = "Personal Cash", type = "Cash", balance = 1000.0))
         val borrower = Borrower(

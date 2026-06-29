@@ -109,6 +109,22 @@ object LedgerAccountability {
             if (lowerType == "transfer" && (txn.fromAcct.isBlank() || txn.toAcct.isBlank())) {
                 addIssue(LedgerIssueSeverity.CRITICAL, "Transfer missing route", "${txn.category} on ${txn.date} needs both source and destination.", "transaction", txn.id)
             }
+            if (lowerType == "transfer") {
+                val sameAccountId = txn.fromAcctId.isNotBlank() && txn.fromAcctId == txn.toAcctId
+                val sameAccountName = txn.fromAcctId.isBlank() &&
+                    txn.toAcctId.isBlank() &&
+                    txn.fromAcct.isNotBlank() &&
+                    txn.fromAcct.equals(txn.toAcct, ignoreCase = true)
+                if (sameAccountId || sameAccountName) {
+                    addIssue(
+                        LedgerIssueSeverity.CRITICAL,
+                        "Transfer uses same account",
+                        "${txn.category} on ${txn.date} must move between two different accounts.",
+                        "transaction",
+                        txn.id,
+                    )
+                }
+            }
             if (txn.fromAcctId.isNotBlank() && txn.fromAcctId !in accountIds) {
                 addIssue(LedgerIssueSeverity.WARNING, "Source account id not found", "${txn.category} references a missing source account id.", "transaction", txn.id)
             } else if (txn.fromAcctId.isBlank() && txn.fromAcct.isNotBlank() && txn.fromAcct !in accountNames) {

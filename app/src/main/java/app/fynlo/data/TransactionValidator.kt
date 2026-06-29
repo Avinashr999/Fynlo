@@ -16,10 +16,10 @@ import app.fynlo.data.model.Transaction
  *
  * This validator sits at every Transaction write call site
  * (`FinanceRepository.insertTransaction` and the new-side of
- * `FinanceRepository.editTransaction`) and rewrites any of the three
- * forbidden literals to the sentinel `"Uncategorized"`. The user can
- * pick a real category on their next edit; the bad value never reaches
- * SQLite.
+ * `FinanceRepository.editTransaction`) and rewrites forbidden type
+ * literals to safe category values. Expense/Income become the sentinel
+ * `"Uncategorized"`; legacy transfer rows become `Account Transfer` so
+ * account-to-account movement stays traceable without entering P&L.
  *
  * The matching is **case-sensitive and exact** — only the three literal
  * strings are forbidden. Legitimate categories that happen to share a
@@ -60,9 +60,13 @@ object TransactionValidator {
      * Apply this at the boundary of every write — `insertTransaction` and
      * the new-side of `editTransaction`. Other fields untouched.
      */
-    fun sanitize(transaction: Transaction): Transaction =
-        if (transaction.category in FORBIDDEN_CATEGORIES)
-            transaction.copy(category = FALLBACK_CATEGORY)
-        else
-            transaction
+    fun sanitize(transaction: Transaction): Transaction {
+        val category = when {
+            transaction.type.equals("Transfer", ignoreCase = true) &&
+                transaction.category == "Transfer" -> Categories.ACCOUNT_TRANSFER
+            transaction.category in FORBIDDEN_CATEGORIES -> FALLBACK_CATEGORY
+            else -> transaction.category
+        }
+        return if (category == transaction.category) transaction else transaction.copy(category = category)
+    }
 }

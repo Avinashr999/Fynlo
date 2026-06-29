@@ -77,6 +77,21 @@ class TransactionValidatorDataIntegrityTest {
     }
 
     @Test
+    fun `sanitize() keeps account transfers as a traceable transfer category`() {
+        val transfer = Transaction(
+            id = "t1",
+            date = "2026-06-15",
+            type = "Transfer",
+            amount = 250.0,
+            fromAcct = "Cash",
+            toAcct = "Bank",
+            category = "Transfer",
+        )
+
+        assertEquals(Categories.ACCOUNT_TRANSFER, TransactionValidator.sanitize(transfer).category)
+    }
+
+    @Test
     fun `sanitize() returns the SAME instance when category is already valid (no unnecessary allocation)`() {
         val good = Transaction(
             id       = "t1",

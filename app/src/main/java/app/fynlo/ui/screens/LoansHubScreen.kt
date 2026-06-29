@@ -30,6 +30,7 @@ import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.unit.dp
 import app.fynlo.FinanceViewModel
 import app.fynlo.logic.CurrencyFormatter
+import app.fynlo.logic.InterestEngine
 import app.fynlo.ui.components.AddDebtDialog
 import app.fynlo.ui.components.AddLendingDialog
 import app.fynlo.ui.theme.Emerald500
@@ -83,37 +84,49 @@ fun LoansHubScreen(
     // Active-borrower count — mirrors `LendingScreen.isActive`: not settled,
     // not written off, still has outstanding balance (hand loans use `paid`,
     // interest loans use `paidPrincipal`).
-    val activeLentCount = remember(borrowers) {
-        borrowers.count { b ->
+    val activeBorrowers = remember(borrowers) {
+        borrowers.filter { b ->
             b.status !in listOf("Settled", "WrittenOff") && (
                 if (b.rate <= 0) b.paid < b.amount
                 else b.paidPrincipal < b.amount
             )
         }
     }
+    val activeLentCount = activeBorrowers.size
     val activeOwedCount = remember(debts) {
         debts.count { it.paid < it.amount }
     }
-    val todayKey = remember {
-        java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd"))
-    }
-    val overdueLentCount = remember(borrowers, todayKey) {
-        borrowers.count { b ->
-            b.status !in listOf("Settled", "WrittenOff") &&
-                b.due.isNotBlank() &&
-                b.due < todayKey &&
-                (if (b.rate <= 0) b.paid < b.amount else b.paidPrincipal < b.amount)
+    val borrowerPrincipal = remember(activeBorrowers) {
+        activeBorrowers.sumOf { b ->
+            if (b.rate <= 0) (b.amount - b.paid).coerceAtLeast(0.0)
+            else (b.amount - b.paidPrincipal).coerceAtLeast(0.0)
         }
     }
-    val overdueOwedCount = remember(debts, todayKey) {
-        debts.count { it.paid < it.amount && it.due.isNotBlank() && it.due < todayKey }
+    val borrowerInterest = remember(activeBorrowers) {
+        activeBorrowers.sumOf { b ->
+            if (b.rate <= 0) 0.0
+            else {
+                val accrued = if (b.status == "Defaulted" && b.frozenInterest > 0.0) {
+                    b.frozenInterest
+                } else {
+                    InterestEngine.calcIntAccrued(
+                        amount = b.amount,
+                        rate = b.rate,
+                        loanDate = b.date,
+                        intType = b.intType,
+                        dueDate = b.due,
+                        totalPaid = b.paidPrincipal,
+                    )
+                }
+                (accrued - b.paidInterest).coerceAtLeast(0.0)
+            }
+        }
     }
+    val owedPrincipal = summary.totalDebtPrincipal
+    val owedInterest = summary.totalDebtInterest
 
-    // Pick the hero metrics based on which tab is active. financialSummary's
-    // totalReceivables already excludes written-off borrowers; debt total is
-    // principal-remaining + interest-accrued (full liability).
-    val heroAmount = if (tab == 0) summary.totalReceivables
-                     else (summary.totalDebtPrincipal + summary.totalDebtInterest)
+    val principalAmount = if (tab == 0) borrowerPrincipal else owedPrincipal
+    val interestAmount = if (tab == 0) borrowerInterest else owedInterest
     val heroCount  = if (tab == 0) activeLentCount else activeOwedCount
 
     if (showAddLoanDialog) {
@@ -173,20 +186,19 @@ fun LoansHubScreen(
         LedgerMetricBand(
             metrics = listOf(
                 LedgerMetric(
-                    label = if (tab == 0) "Lent" else "Owed",
-                    value = if (isPrivacy) "Hidden" else CurrencyFormatter.detail(heroAmount, currencyCode, locale),
-                    valueColor = if (tab == 0) Emerald500 else SemanticRed,
-                ),
-                LedgerMetric(
-                    label = "Active",
+                    label = if (tab == 0) "Total Borrowers" else "Total Debtors",
                     value = heroCount.toString(),
                     valueColor = MaterialTheme.colorScheme.onSurface,
                 ),
                 LedgerMetric(
-                    label = "Overdue",
-                    value = (if (tab == 0) overdueLentCount else overdueOwedCount).toString(),
-                    valueColor = if ((if (tab == 0) overdueLentCount else overdueOwedCount) > 0) SemanticRed
-                                 else MaterialTheme.colorScheme.onSurfaceVariant,
+                    label = "Principal",
+                    value = if (isPrivacy) "Hidden" else CurrencyFormatter.detail(principalAmount, currencyCode, locale),
+                    valueColor = if (tab == 0) Emerald500 else SemanticRed,
+                ),
+                LedgerMetric(
+                    label = "Interest",
+                    value = if (isPrivacy) "Hidden" else CurrencyFormatter.detail(interestAmount, currencyCode, locale),
+                    valueColor = if (interestAmount > 0.0) SemanticRed else MaterialTheme.colorScheme.onSurfaceVariant,
                 ),
             ),
             modifier = Modifier.padding(horizontal = TemplateScreenPadding, vertical = 8.dp),

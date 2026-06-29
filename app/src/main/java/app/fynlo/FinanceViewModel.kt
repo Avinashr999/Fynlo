@@ -987,7 +987,7 @@ class FinanceViewModel @Inject constructor(
                     toAcct = to.name,
                     fromAcctId = from.id,
                     toAcctId = to.id,
-                    category = "Transfer",
+                    category = app.fynlo.data.Categories.ACCOUNT_TRANSFER,
                     desc = "Transfer from ${from.name} to ${to.name}",
                     projectId = pid,
                     updatedAt = now,
@@ -1142,7 +1142,7 @@ class FinanceViewModel @Inject constructor(
                         amount = result.amount,
                         fromAcct = result.fromAccount,
                         toAcct = result.toAccount,
-                        category = "Transfer",
+                        category = app.fynlo.data.Categories.ACCOUNT_TRANSFER,
                         desc = result.description.ifBlank { "Transfer: ${result.fromAccount} -> ${result.toAccount}" },
                         notes = result.notes,
                         projectId = result.projectId

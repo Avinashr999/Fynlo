@@ -22,6 +22,7 @@ package app.fynlo.data
  * Pure constants — no Context, no I/O, no Room. Unit-testable from JVM.
  */
 object Categories {
+    const val ACCOUNT_TRANSFER: String = "Account Transfer"
 
     /**
      * Cash-inflow categories. Used when the transaction type is `Income`.
@@ -68,7 +69,7 @@ object Categories {
      * money between the user's own accounts and don't belong on either
      * Income or Expense side of the P&L — they're balance-sheet only.
      */
-    val TRANSFER: List<String> = listOf("Transfer")
+    val TRANSFER: List<String> = listOf(ACCOUNT_TRANSFER)
 
     /**
      * Returns the appropriate category list for the given transaction
