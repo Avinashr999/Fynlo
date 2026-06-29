@@ -821,6 +821,8 @@ fun SettingsScreen(
                 SettingsDivider()
 
                 var showLedgerHealth by remember { mutableStateOf(false) }
+                var safeRepairInFlight by remember { mutableStateOf(false) }
+                var safeRepairSummary by remember { mutableStateOf<String?>(null) }
                 val ledgerHealthSubtitle = when {
                     ledgerReport.criticalCount > 0 || ledgerReport.warningCount > 0 ->
                         "${ledgerReport.headline} · Score ${ledgerReport.score}/100 · ${ledgerReport.criticalCount} serious · ${ledgerReport.warningCount} review"
@@ -839,6 +841,23 @@ fun SettingsScreen(
                 if (showLedgerHealth) {
                     LedgerHealthDialog(
                         report = ledgerReport,
+                        repairInFlight = safeRepairInFlight,
+                        repairSummary = safeRepairSummary,
+                        onRunSafeRepair = {
+                            if (!safeRepairInFlight) {
+                                safeRepairInFlight = true
+                                safeRepairSummary = null
+                                viewModel.runSafeBookRepair { result ->
+                                    safeRepairInFlight = false
+                                    safeRepairSummary = result.toSafeRepairSummary(
+                                        formatDelta = ::fmtDelta,
+                                    )
+                                    viewModel.showFeedback(
+                                        if (result.errorMessage == null) "Book repair finished" else "Book repair needs review"
+                                    )
+                                }
+                            }
+                        },
                         onDismiss = { showLedgerHealth = false },
                     )
                 }
@@ -1944,6 +1963,9 @@ private fun SettingsActionRow(
 @Composable
 private fun LedgerHealthDialog(
     report: app.fynlo.logic.LedgerAccountabilityReport,
+    repairInFlight: Boolean,
+    repairSummary: String?,
+    onRunSafeRepair: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     AlertDialog(
@@ -1964,6 +1986,13 @@ private fun LedgerHealthDialog(
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 item { LedgerHealthSummary(report) }
+                item {
+                    LedgerSafeRepairCard(
+                        inFlight = repairInFlight,
+                        summary = repairSummary,
+                        onRunSafeRepair = onRunSafeRepair,
+                    )
+                }
                 if (report.issues.isNotEmpty()) {
                     item { LedgerDialogSectionTitle("Checks to review") }
                     items(report.issues.take(12)) { issue -> LedgerIssueRow(issue) }
@@ -2011,6 +2040,87 @@ private fun LedgerHealthDialog(
             Button(onClick = onDismiss) { Text("Done") }
         },
     )
+}
+
+private fun app.fynlo.BookRepairResult.toSafeRepairSummary(
+    formatDelta: (Double) -> String,
+): String {
+    errorMessage?.let { return "Could not finish: $it" }
+    val parts = buildList {
+        if (deletedResidue > 0) add("$deletedResidue deleted row cleanup")
+        if (debtFundedTransferTraces > 0) add("$debtFundedTransferTraces neutralized investment traces")
+        if (debtFundedJournalRefs > 0) add("$debtFundedJournalRefs investment trail links")
+        if (debtReceiptMismatches > 0) add("$debtReceiptMismatches debt receipt amounts")
+        if (transactionAccountIds > 0) add("$transactionAccountIds account links")
+        if (accountBalanceDrift > 0) add("$accountBalanceDrift account balance repairs")
+    }
+    val delta = recalcDelta
+    if (parts.isEmpty() && delta?.isNoOp != false) {
+        return "No repair needed. Stored balances already match the ledger checks."
+    }
+    val repairText = if (parts.isEmpty()) "No linked-row repairs" else parts.joinToString(", ")
+    val balanceText = if (delta == null) {
+        "balance recalc not run"
+    } else {
+        "net worth ${formatDelta(delta.netWorthChange)}, cash ${formatDelta(delta.cashChange)}, investments ${formatDelta(delta.investmentsChange)}"
+    }
+    return "$repairText. $balanceText."
+}
+
+@Composable
+private fun LedgerSafeRepairCard(
+    inFlight: Boolean,
+    summary: String?,
+    onRunSafeRepair: () -> Unit,
+) {
+    Surface(
+        color = Green.copy(alpha = 0.08f),
+        shape = RoundedCornerShape(18.dp),
+        border = BorderStroke(1.dp, Green.copy(alpha = 0.16f)),
+    ) {
+        Column(
+            Modifier.fillMaxWidth().padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Text(
+                "Safe repair",
+                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+            )
+            Text(
+                "Rechecks deleted rows, money trails, linked account ids, debt receipts, and balance drift using existing ledger records.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            summary?.let {
+                Text(
+                    it,
+                    style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+            }
+            Button(
+                onClick = onRunSafeRepair,
+                enabled = !inFlight,
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Green),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                if (inFlight) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(16.dp),
+                        strokeWidth = 2.dp,
+                        color = MaterialTheme.colorScheme.onPrimary,
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text("Checking...")
+                } else {
+                    Icon(Icons.Default.Build, null, Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Run safe repair")
+                }
+            }
+        }
+    }
 }
 
 @Composable

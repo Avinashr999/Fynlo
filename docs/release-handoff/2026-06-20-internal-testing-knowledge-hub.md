@@ -684,7 +684,7 @@ Do not mark the full Phase 2 roadmap complete yet. The remaining accountability 
 
 - Monthly close / lock period.
 - Undo window.
-- Smart mismatch fixer.
+- Fully automatic smart mismatch fixer.
 - Attachment/proof support.
 - Balance reconciliation wizard.
 - Reviewer/privacy mode.
@@ -704,7 +704,22 @@ Verification:
 
 - `:app:compileProdDebugKotlin` passed.
 - `:app:testProdDebugUnitTest` passed.
+- Installed production and developer debug variants to connected phone `3C15CA0055F00000`.
+- `:app:testProdDebugUnitTest` passed.
 - `:app:compileDevDebugKotlin` passed.
 - Installed `app.fynlo` and `app.fynlo.dev` to connected phone `3C15CA0055F00000`.
 - Installed versions: production `3.2.107` / versionCode `231`; developer `3.2.107-dev` / versionCode `231`.
 - ADB UI smoke confirmed production Dashboard has `Transfer`, Dashboard freshness is current, Expenses opens `Add Expense`, and dev intro opens as `Fynlo Ledger`.
+
+## 2026-06-30 - Book Check safe repair action
+
+Completed:
+
+- Settings -> Book check now includes `Run safe repair`.
+- The action exposes the same conservative cleanup paths that already run at launch, then recalculates balances and shows a clear result message.
+- Safe repair can clean deleted-row residue, debt-funded investment journal traces, debt receipt amount mismatches, missing transaction account ids, account balance drift, and paid-total drift.
+- It intentionally does not create guess-based transactions. If Book Check still reports a semantic issue after this action, the user should review the source loan/debt/investment/account record manually.
+
+Verification:
+
+- `:app:compileProdDebugKotlin` passed.

@@ -637,6 +637,36 @@ class FinanceViewModel @Inject constructor(
         return RecalcDelta(pre, post)
     }
 
+    fun runSafeBookRepair(onComplete: (BookRepairResult) -> Unit) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val result = runCatching {
+                val deletedResidue = repository.repairDeletedAuditResidue()
+                val debtFundedTransferTraces = repository.repairDebtFundedInvestmentTransferTraces()
+                val debtFundedJournalRefs = repository.repairDebtFundedInvestmentJournalTraceRefs()
+                val debtReceiptMismatches = repository.repairDebtReceiptAmountMismatches()
+                val transactionAccountIds = repository.repairTransactionAccountIds()
+                val accountBalanceDrift = repository.repairAccountBalanceDriftFromLedger()
+                repository.fixPaidDoubleCount()
+                val delta = recalculateAllBalancesCapturingDelta()
+
+                BookRepairResult(
+                    deletedResidue = deletedResidue,
+                    debtFundedTransferTraces = debtFundedTransferTraces,
+                    debtFundedJournalRefs = debtFundedJournalRefs,
+                    debtReceiptMismatches = debtReceiptMismatches,
+                    transactionAccountIds = transactionAccountIds,
+                    accountBalanceDrift = accountBalanceDrift,
+                    recalcDelta = delta,
+                )
+            }.getOrElse { error ->
+                BookRepairResult(errorMessage = error.message ?: "Repair could not finish")
+            }
+            kotlinx.coroutines.withContext(Dispatchers.Main) {
+                onComplete(result)
+            }
+        }
+    }
+
     fun addBorrowerWithSource(borrower: Borrower, source: String) {
         viewModelScope.launch(Dispatchers.IO) {
             repository.insertBorrowerWithSource(borrower.copy(projectId = pid), source, pid)
@@ -1552,4 +1582,27 @@ data class RecalcDelta(
         kotlin.math.abs(receivablesChange) < 0.5 &&
         kotlin.math.abs(cashChange) < 0.5 &&
         kotlin.math.abs(investmentsChange) < 0.5
+}
+
+@androidx.compose.runtime.Immutable
+data class BookRepairResult(
+    val deletedResidue: Int = 0,
+    val debtFundedTransferTraces: Int = 0,
+    val debtFundedJournalRefs: Int = 0,
+    val debtReceiptMismatches: Int = 0,
+    val transactionAccountIds: Int = 0,
+    val accountBalanceDrift: Int = 0,
+    val recalcDelta: RecalcDelta? = null,
+    val errorMessage: String? = null,
+) {
+    val repairedItemCount: Int
+        get() = deletedResidue +
+            debtFundedTransferTraces +
+            debtFundedJournalRefs +
+            debtReceiptMismatches +
+            transactionAccountIds +
+            accountBalanceDrift
+
+    val isClean: Boolean
+        get() = errorMessage == null && repairedItemCount == 0 && (recalcDelta?.isNoOp != false)
 }

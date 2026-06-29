@@ -1804,3 +1804,11 @@ The user approved the combined future roadmap below. Do not treat these as compl
 - Installed both phone variants on connected device `3C15CA0055F00000`: production `app.fynlo` and developer `app.fynlo.dev`, both versionCode `231`; version names `3.2.107` and `3.2.107-dev`.
 - Phone smoke confirmed production dashboard quick actions include `Transfer`, Dashboard freshness shows `Updated 0 minutes ago`, Expenses plus opens an `Add Expense`-only dialog with no Income/Transfer switch, and developer intro opens as `Fynlo Ledger`.
 - Recent device log scan showed no fresh fatal crash lines for the launched app.
+
+## 2026-06-30 - Optional Safe Hardening: Book Repair Action
+
+- Added a user-visible `Run safe repair` action inside Settings -> Book check.
+- The repair runs only already-proven cleanup paths: deleted-row residue cleanup, debt-funded investment trace neutralization/relinking, debt receipt amount repair, transaction account-id backfill, account balance drift reconciliation, paid-total rebuild, and final balance recalculation.
+- The result message reports whether linked rows or account balances changed. It does not invent new money actions or make guess-based corrections.
+- This completes the first safe slice of the `Smart mismatch fixer` roadmap. A fully automatic mismatch fixer, monthly close, undo window, attachments, and offline conflict resolver remain later-stage work because they need deeper schema/sync semantics and stronger phone smoke.
+- Verified `:app:compileProdDebugKotlin`, `:app:testProdDebugUnitTest`, and install of both production/developer debug variants to connected device `3C15CA0055F00000`.
