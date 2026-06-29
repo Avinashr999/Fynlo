@@ -47,8 +47,8 @@ fun DebtPayoffScreen(viewModel: FinanceViewModel) {
 
     val totalOwed = remember(activeDebts) {
         activeDebts.sumOf { d ->
-            val interest = InterestEngine.calcIntAccrued(d.amount, d.rate, d.date, d.intType, d.due, d.paid)
-            d.amount + interest - d.paid
+            val interest = InterestEngine.calcIntAccrued(d.amount, d.rate, d.date, d.intType, d.due, totalPaid = d.paidPrincipal)
+            InterestEngine.calcOutstanding(d.amount, interest, d.paidPrincipal, d.paidInterest, d.interestWaived)
         }
     }
 
@@ -56,8 +56,8 @@ fun DebtPayoffScreen(viewModel: FinanceViewModel) {
     // rewrite (key prevents stuck inputs when the debts list churns).
     val planInputs = remember(activeDebts) {
         activeDebts.map { d ->
-            val interest = InterestEngine.calcIntAccrued(d.amount, d.rate, d.date, d.intType, d.due, d.paid)
-            val outstanding = (d.amount + interest - d.paid).coerceAtLeast(0.0)
+            val interest = InterestEngine.calcIntAccrued(d.amount, d.rate, d.date, d.intType, d.due, totalPaid = d.paidPrincipal)
+            val outstanding = InterestEngine.calcOutstanding(d.amount, interest, d.paidPrincipal, d.paidInterest, d.interestWaived)
             DebtPayoffPlanner.DebtInput(
                 id = d.id, name = d.name,
                 outstandingBalance = outstanding,
@@ -309,8 +309,10 @@ private fun PayoffStat(label: String, value: String, color: Color, modifier: Mod
 
 @Composable
 private fun DebtPayoffCard(debt: Debt, currencyCode: String, locale: Locale, isPrivacy: Boolean = false) {
-    val interest    = InterestEngine.calcIntAccrued(debt.amount, debt.rate, debt.date, debt.intType, debt.due, debt.paid)
-    val outstanding = (debt.amount + interest - debt.paid).coerceAtLeast(0.0)
+    val interest    = InterestEngine.calcIntAccrued(debt.amount, debt.rate, debt.date, debt.intType, debt.due, totalPaid = debt.paidPrincipal)
+    val outstanding = InterestEngine.calcOutstanding(
+        debt.amount, interest, debt.paidPrincipal, debt.paidInterest, debt.interestWaived
+    )
     val monthlyRate = debt.rate / 100.0 / 12.0
 
     val today = java.time.LocalDate.now()
@@ -329,7 +331,8 @@ private fun DebtPayoffCard(debt: Debt, currencyCode: String, locale: Locale, isP
         }
     }
 
-    val progress = if (debt.amount > 0) (debt.paid / (debt.amount + interest)).toFloat().coerceIn(0f, 1f) else 0f
+    val progressBase = debt.amount + (interest - debt.interestWaived).coerceAtLeast(0.0)
+    val progress = if (progressBase > 0) (debt.paid / progressBase).toFloat().coerceIn(0f, 1f) else 0f
 
     Column(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {

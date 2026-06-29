@@ -253,6 +253,53 @@ class MoneyActionIdempotencyDataIntegrityTest {
     }
 
     @Test
+    fun `waiving borrower interest reduces receivable without moving cash or paid totals`() = runBlocking {
+        db.dao().insertAccount(Account(id = "acc-1", name = "Personal Cash", type = "Cash", balance = 10000.0))
+        val borrower = Borrower(
+            id = "loan-waive",
+            name = "Grace Borrower",
+            amount = 36500.0,
+            rate = 10.0,
+            date = "2025-06-29",
+            due = "2026-06-29",
+            intType = "Simple Interest",
+            sourceAccount = "Personal Cash",
+        )
+        db.dao().insertBorrower(borrower)
+
+        repository.waiveBorrowerInterest(borrower, 500.0, "Five day grace")
+
+        val updated = db.dao().getBorrowerById("loan-waive")!!
+        assertEquals(500.0, updated.interestWaived, 0.0001)
+        assertEquals(0.0, updated.paid, 0.0001)
+        assertEquals(0.0, updated.paidInterest, 0.0001)
+        assertEquals(10000.0, db.dao().getAccountById("acc-1")!!.balance, 0.0001)
+        assertEquals(1, db.dao().getAllAuditEventsOnce().count { it.action == "WAIVE_INTEREST" && it.entityId == "loan-waive" })
+    }
+
+    @Test
+    fun `waiving debt interest reduces liability without creating payment rows`() = runBlocking {
+        val debt = Debt(
+            id = "debt-waive",
+            name = "Grace Creditor",
+            amount = 36500.0,
+            rate = 10.0,
+            date = "2025-06-29",
+            due = "2026-06-29",
+            intType = "Simple Interest",
+        )
+        db.dao().insertDebt(debt)
+
+        repository.waiveDebtInterest(debt, 700.0, "Creditor grace")
+
+        val updated = db.dao().getDebtById("debt-waive")!!
+        assertEquals(700.0, updated.interestWaived, 0.0001)
+        assertEquals(0.0, updated.paid, 0.0001)
+        assertEquals(0, db.dao().getDebtPaymentsForDebtOnce("debt-waive").size)
+        assertEquals(1, db.dao().getAllAuditEventsOnce().count { it.action == "WAIVE_INTEREST" && it.entityId == "debt-waive" })
+    }
+
+    @Test
     fun `retrying same expense transaction does not debit account twice`() = runBlocking {
         db.dao().insertAccount(Account(id = "acc-1", name = "Personal Cash", type = "Cash", balance = 1000.0))
         val transaction = Transaction(

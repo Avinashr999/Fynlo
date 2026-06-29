@@ -2268,12 +2268,12 @@ class FinanceRepository(
     suspend fun writeOffBorrower(borrower: Borrower, fromAccount: String = "Personal Cash") {
         val outstanding = if (borrower.status == "Defaulted" && borrower.frozenInterest > 0) {
             // Use frozen interest for defaulted borrowers
-            (borrower.amount - borrower.paidPrincipal) + maxOf(0.0, borrower.frozenInterest - borrower.paidInterest)
+            (borrower.amount - borrower.paidPrincipal) + maxOf(0.0, borrower.frozenInterest - borrower.paidInterest - borrower.interestWaived)
         } else {
             val interest = app.fynlo.logic.InterestEngine.calcIntAccrued(
                 borrower.amount, borrower.rate, borrower.date, borrower.intType, borrower.due, borrower.paidPrincipal
             )
-            (borrower.amount - borrower.paidPrincipal) + maxOf(0.0, interest - borrower.paidInterest)
+            (borrower.amount - borrower.paidPrincipal) + maxOf(0.0, interest - borrower.paidInterest - borrower.interestWaived)
         }
 
         // Look up the project's currency for the persisted desc string.
@@ -2304,6 +2304,86 @@ class FinanceRepository(
     }
 
     fun getPaymentsForLoan(loanId: String) = dao.getPaymentsForLoan(loanId)
+
+    suspend fun waiveBorrowerInterest(borrower: Borrower, amount: Double, reason: String) {
+        val targetId = borrower.id
+        var updated: Borrower? = null
+        db.withTransaction {
+            val current = dao.getBorrowerById(targetId) ?: return@withTransaction
+            val accrued = if (current.status == "Defaulted" && current.frozenInterest > 0.0) {
+                current.frozenInterest
+            } else {
+                app.fynlo.logic.InterestEngine.calcIntAccrued(
+                    current.amount,
+                    current.rate,
+                    current.date,
+                    current.intType,
+                    current.due,
+                    totalPaid = current.paidPrincipal,
+                )
+            }
+            val remainingInterest = (accrued - current.paidInterest - current.interestWaived).coerceAtLeast(0.0)
+            val waiver = amount.coerceIn(0.0, remainingInterest)
+            if (waiver <= 0.0) return@withTransaction
+
+            val next = current.copy(
+                interestWaived = current.interestWaived + waiver,
+                updatedAt = System.currentTimeMillis(),
+            )
+            dao.insertBorrower(next)
+            recordAudit(
+                action = "WAIVE_INTEREST",
+                entityType = "loan",
+                entityId = next.id,
+                title = "Interest waived: ${next.name}",
+                beforeValue = "waived=${current.interestWaived}:interestOutstanding=$remainingInterest",
+                afterValue = "waived=${next.interestWaived}:interestOutstanding=${(remainingInterest - waiver).coerceAtLeast(0.0)}",
+                amountDelta = 0.0,
+                projectId = next.projectId,
+                reason = reason.ifBlank { "Interest grace/waiver" },
+            )
+            updated = next
+        }
+        updated?.let { sync { setBorrower(it) } }
+    }
+
+    suspend fun waiveDebtInterest(debt: Debt, amount: Double, reason: String) {
+        val targetId = debt.id
+        var updated: Debt? = null
+        db.withTransaction {
+            val current = dao.getDebtById(targetId) ?: return@withTransaction
+            val accrued = app.fynlo.logic.InterestEngine.calcIntAccrued(
+                current.amount,
+                current.rate,
+                current.date,
+                current.intType,
+                current.due,
+                totalPaid = current.paidPrincipal,
+            )
+            val remainingInterest = (accrued - current.paidInterest - current.interestWaived).coerceAtLeast(0.0)
+            val waiver = amount.coerceIn(0.0, remainingInterest)
+            if (waiver <= 0.0) return@withTransaction
+
+            val next = current.copy(
+                interestWaived = current.interestWaived + waiver,
+                updatedAt = System.currentTimeMillis(),
+            )
+            dao.insertDebt(next)
+            recordAudit(
+                action = "WAIVE_INTEREST",
+                entityType = "debt",
+                entityId = next.id,
+                title = "Debt interest waived: ${next.name}",
+                beforeValue = "waived=${current.interestWaived}:interestOutstanding=$remainingInterest",
+                afterValue = "waived=${next.interestWaived}:interestOutstanding=${(remainingInterest - waiver).coerceAtLeast(0.0)}",
+                amountDelta = 0.0,
+                projectId = next.projectId,
+                reason = reason.ifBlank { "Interest grace/waiver" },
+            )
+            updated = next
+        }
+        updated?.let { sync { setDebt(it) } }
+    }
 
     /**
      * Pushes ALL local Room data to Firestore.

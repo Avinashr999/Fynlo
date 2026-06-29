@@ -283,9 +283,11 @@ fun LendingCard(
     val interest = app.fynlo.logic.InterestEngine.calcIntAccrued(
         amount = borrower.amount, rate = borrower.rate,
         loanDate = borrower.date, intType = borrower.intType,
-        dueDate = borrower.due, totalPaid = borrower.paid
+        dueDate = borrower.due, totalPaid = borrower.paidPrincipal
     )
-    val outstanding = app.fynlo.logic.InterestEngine.calcOutstanding(borrower.amount, interest, borrower.paid)
+    val outstanding = app.fynlo.logic.InterestEngine.calcOutstanding(
+        borrower.amount, interest, borrower.paidPrincipal, borrower.paidInterest, borrower.interestWaived
+    )
 
     Row(
         modifier = Modifier

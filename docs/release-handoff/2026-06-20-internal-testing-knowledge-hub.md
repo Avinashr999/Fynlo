@@ -590,3 +590,12 @@ When the phone is connected again, run the remaining `test-android-apps` device-
   - Waiving extra-days interest is a ledger adjustment.
   - Do not fake this as an interest payment, because that would overstate collected interest income.
 - Future implementation recommendation: add an explicit `Waive interest` action for borrowers/debts that records a non-cash adjustment and subtracts it from interest outstanding while keeping `paidInterest` as real collected/paid interest only.
+
+## 2026-06-29 - Interest waiver implemented
+
+- The grace-period recommendation is now implemented with `interestWaived` on both borrower and debt rows.
+- Waiver is non-cash: no account debit/credit, no payment row, no P&L income/expense, and audit `amountDelta = 0`.
+- Outstanding math is now: principal outstanding plus `max(0, accrued interest - paid interest - waived interest)`.
+- Firestore sync includes the waiver field and Room migration 27 -> 28 adds it locally with default `0.0`.
+- Ledger Health should warn, not auto-repair, if a cloud/imported row has negative waived interest or more waived interest than unpaid interest.
+- Keep this separation in future edits: payment means money moved; waiver means interest was forgiven.

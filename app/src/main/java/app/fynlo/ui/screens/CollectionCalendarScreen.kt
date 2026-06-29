@@ -99,8 +99,10 @@ fun CollectionCalendarScreen(
             .mapNotNull { b ->
                 try {
                     val due = LocalDate.parse(b.due, dbFmt)
-                    val interest = InterestEngine.calcIntAccrued(b.amount, b.rate, b.date, b.intType, b.due, b.paid)
-                    val outstanding = InterestEngine.calcOutstanding(b.amount, interest, b.paid)
+                    val interest = InterestEngine.calcIntAccrued(b.amount, b.rate, b.date, b.intType, b.due, totalPaid = b.paidPrincipal)
+                    val outstanding = InterestEngine.calcOutstanding(
+                        b.amount, interest, b.paidPrincipal, b.paidInterest, b.interestWaived
+                    )
                     DueEntry(
                         id = b.id,
                         title = b.name,

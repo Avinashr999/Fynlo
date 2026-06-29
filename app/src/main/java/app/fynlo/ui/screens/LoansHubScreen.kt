@@ -118,7 +118,7 @@ fun LoansHubScreen(
                         totalPaid = b.paidPrincipal,
                     )
                 }
-                (accrued - b.paidInterest).coerceAtLeast(0.0)
+                (accrued - b.paidInterest - b.interestWaived).coerceAtLeast(0.0)
             }
         }
     }

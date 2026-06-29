@@ -120,7 +120,7 @@ object InterestEngine {
     /**
      * Total outstanding the borrower owes RIGHT NOW.
      *
-     * Formula: (principal - paidPrincipal) + max(0, accruedInterest - paidInterest)
+     * Formula: (principal - paidPrincipal) + max(0, accruedInterest - paidInterest - waivedInterest)
      *
      * paidPrincipal  — only principal repayments (reduces the loan base)
      * paidInterest   — interest already collected (reduces interest outstanding)
@@ -132,10 +132,11 @@ object InterestEngine {
         principal: Double,
         accruedInterest: Double,
         paidPrincipal: Double,
-        paidInterest: Double = 0.0
+        paidInterest: Double = 0.0,
+        waivedInterest: Double = 0.0
     ): Double {
         val principalOutstanding = (principal - paidPrincipal).coerceAtLeast(0.0)
-        val interestOutstanding  = (accruedInterest - paidInterest).coerceAtLeast(0.0)
+        val interestOutstanding  = (accruedInterest - paidInterest - waivedInterest).coerceAtLeast(0.0)
         return principalOutstanding + interestOutstanding
     }
 

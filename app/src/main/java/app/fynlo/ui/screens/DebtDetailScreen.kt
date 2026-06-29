@@ -16,6 +16,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.MoneyOff
 import androidx.compose.material.icons.filled.Payment
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -39,6 +40,7 @@ import app.fynlo.logic.displayFromAcct
 import app.fynlo.logic.displayToAcct
 import app.fynlo.ui.components.AddDebtDialog
 import app.fynlo.ui.components.PayDebtDialog
+import app.fynlo.ui.components.WaiveInterestDialog
 import app.fynlo.ui.theme.Emerald500
 import app.fynlo.ui.theme.LedgerDetailTopBar
 import app.fynlo.ui.theme.SemanticAmber
@@ -83,9 +85,12 @@ fun DebtDetailScreen(
         .sortedByDescending { it.date }
 
     val interest = InterestEngine.calcIntAccrued(
-        debt.amount, debt.rate, debt.date, debt.intType, debt.due, debt.paid
+        debt.amount, debt.rate, debt.date, debt.intType, debt.due, totalPaid = debt.paidPrincipal
     )
-    val totalOutstanding = InterestEngine.calcOutstanding(debt.amount, interest, debt.paid)
+    val interestOutstanding = (interest - debt.paidInterest - debt.interestWaived).coerceAtLeast(0.0)
+    val totalOutstanding = InterestEngine.calcOutstanding(
+        debt.amount, interest, debt.paidPrincipal, debt.paidInterest, debt.interestWaived
+    )
     val accountIdToName = remember(accounts) { accounts.associate { it.id to it.name } }
     val receivedTxn = remember(transactions, debt.id) {
         transactions
@@ -98,6 +103,7 @@ fun DebtDetailScreen(
 
     var showEditDialog    by remember { mutableStateOf(false) }
     var showPayDialog     by remember { mutableStateOf(false) }
+    var showWaiveInterestDialog by remember { mutableStateOf(false) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var showEffectiveRate by remember { mutableStateOf(false) }
     var showPaymentHistory by remember { mutableStateOf(false) }
@@ -122,6 +128,20 @@ fun DebtDetailScreen(
                 viewModel.payDebt(payment, source)
                 showPayDialog = false
             }
+        )
+    }
+    if (showWaiveInterestDialog) {
+        WaiveInterestDialog(
+            title = "Waive Debt Interest",
+            subtitle = "For: ${debt.name}",
+            maxWaivable = interestOutstanding,
+            onDismiss = { showWaiveInterestDialog = false },
+            onConfirm = { amount, reason ->
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                viewModel.waiveDebtInterest(debt, amount, reason)
+                showWaiveInterestDialog = false
+            },
+            currencyCode = currencyCode,
         )
     }
     if (showDeleteConfirm) {
@@ -200,6 +220,14 @@ fun DebtDetailScreen(
                         DetailItem("Interest",  CurrencyFormatter.detail(interest, currencyCode, locale))
                         DetailItem("Paid",      CurrencyFormatter.detail(debt.paid, currencyCode, locale))
                     }
+                    if (debt.interestWaived > 0.0) {
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            "Interest waived: ${CurrencyFormatter.detail(debt.interestWaived, currencyCode, locale)}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Emerald500,
+                        )
+                    }
                     if (receivedInto.isNotBlank() || debt.notes.isNotBlank()) {
                         Spacer(Modifier.height(12.dp))
                         Surface(
@@ -273,6 +301,21 @@ fun DebtDetailScreen(
                         Icon(Icons.Default.Payment, null, Modifier.size(18.dp))
                         Spacer(Modifier.width(8.dp))
                         Text("Make Payment")
+                    }
+                }
+
+                if (debt.rate > 0.0 && interestOutstanding > 0.0) {
+                    item {
+                        OutlinedButton(
+                            onClick = { showWaiveInterestDialog = true },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Emerald500)
+                        ) {
+                            Icon(Icons.Default.MoneyOff, null, Modifier.size(18.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text("Waive Interest")
+                        }
                     }
                 }
 

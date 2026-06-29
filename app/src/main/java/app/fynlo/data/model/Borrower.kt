@@ -42,6 +42,7 @@ data class Borrower(
     val paid: Double = 0.0,           // total paid (paidPrincipal + paidInterest) — kept for compat
     val paidPrincipal: Double = 0.0,  // only principal repayments — reduces loan base
     val paidInterest: Double = 0.0,   // only interest payments — tracks interest collected
+    val interestWaived: Double = 0.0, // non-cash interest forgiven/grace adjustment
     val status: String = "Active",    // Active, Overdue, Defaulted, WrittenOff, Cleared
     val defaultDate: String = "",     // date borrower was marked defaulted
     val frozenInterest: Double = 0.0, // interest frozen at defaultDate — stops accruing

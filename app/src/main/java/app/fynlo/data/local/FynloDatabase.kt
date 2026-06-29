@@ -27,11 +27,18 @@ import app.fynlo.data.model.FlowTemplate
         DeletedRemoteDoc::class,
         AuditEvent::class
     ],
-    version = 27,
+    version = 28,
     exportSchema = true
 )
 abstract class FynloDatabase : RoomDatabase() {
     abstract fun dao(): FynloDao
+}
+
+val MIGRATION_27_28 = object : Migration(27, 28) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE `borrowers` ADD COLUMN `interestWaived` REAL NOT NULL DEFAULT 0.0")
+        db.execSQL("ALTER TABLE `debts` ADD COLUMN `interestWaived` REAL NOT NULL DEFAULT 0.0")
+    }
 }
 
 val MIGRATION_26_27 = object : Migration(26, 27) {

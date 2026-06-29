@@ -279,7 +279,7 @@ class FinanceViewModel @Inject constructor(
                     totalPaid = b.paidPrincipal  // only principal reduces interest base
                 )
             app.fynlo.logic.InterestEngine.calcOutstanding(
-                b.amount, accrued, b.paidPrincipal, b.paidInterest
+                b.amount, accrued, b.paidPrincipal, b.paidInterest, b.interestWaived
             )
         }
 
@@ -291,7 +291,7 @@ class FinanceViewModel @Inject constructor(
             // Derive paidInterest from (paid - paidPrincipal) — more reliable than paidInterest field
             // which can get out of sync when rebuild queries run
             val derivedPaidInterest = (b.paid - b.paidPrincipal).coerceAtLeast(0.0)
-            app.fynlo.logic.InterestEngine.calcOutstanding(b.amount, accrued, b.paidPrincipal, derivedPaidInterest)
+            app.fynlo.logic.InterestEngine.calcOutstanding(b.amount, accrued, b.paidPrincipal, derivedPaidInterest, b.interestWaived)
         }
         // Hand loans: use 'paid' (mirrors isActive check for hand loans)
         // Interest loans are not counted here (they have a separate totalInterestLoans)
@@ -307,7 +307,7 @@ class FinanceViewModel @Inject constructor(
             else app.fynlo.logic.InterestEngine.calcIntAccrued(
                 b.amount, b.rate, b.date, b.intType, b.due, totalPaid = b.paidPrincipal
             )
-            b.name to app.fynlo.logic.InterestEngine.calcOutstanding(b.amount, accrued, b.paidPrincipal, b.paidInterest)
+            b.name to app.fynlo.logic.InterestEngine.calcOutstanding(b.amount, accrued, b.paidPrincipal, b.paidInterest, b.interestWaived)
         }
 
         val handBrwMap = activeBrws.filter { it.rate <= 0 }.associate { b ->
@@ -383,7 +383,7 @@ class FinanceViewModel @Inject constructor(
             else app.fynlo.logic.InterestEngine.calcIntAccrued(
                 b.amount, b.rate, b.date, b.intType, b.due, totalPaid = b.paidPrincipal
             )
-            val outstanding = app.fynlo.logic.InterestEngine.calcOutstanding(b.amount, accrued, b.paidPrincipal, b.paidInterest)
+            val outstanding = app.fynlo.logic.InterestEngine.calcOutstanding(b.amount, accrued, b.paidPrincipal, b.paidInterest, b.interestWaived)
             if (outstanding > 0) {
                 lendCashflows.add(XirrCalculator.Cashflow(outstanding, todayStr))
             }
@@ -927,6 +927,20 @@ class FinanceViewModel @Inject constructor(
     fun payDebt(payment: DebtPayment, source: String) {
         viewModelScope.launch(Dispatchers.IO) {
             repository.insertDebtPaymentWithSource(payment.copy(projectId = pid), source, pid)
+        }
+    }
+
+    fun waiveBorrowerInterest(borrower: Borrower, amount: Double, reason: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            repository.waiveBorrowerInterest(borrower.copy(projectId = pid), amount, reason)
+            showFeedback("Loan interest waived")
+        }
+    }
+
+    fun waiveDebtInterest(debt: Debt, amount: Double, reason: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            repository.waiveDebtInterest(debt.copy(projectId = pid), amount, reason)
+            showFeedback("Debt interest waived")
         }
     }
 

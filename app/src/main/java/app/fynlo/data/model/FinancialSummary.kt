@@ -5,7 +5,7 @@ data class FinancialSummary(
     // ── Balance Sheet ──────────────────────────────────────────────────────────
     val totalCash: Double = 0.0,              // sum of all account balances
     val totalInvestments: Double = 0.0,       // sum of investment currentVal
-    val totalReceivables: Double = 0.0,       // (principal - paidPrincipal) + (interest - paidInterest)
+    val totalReceivables: Double = 0.0,       // (principal - paidPrincipal) + (interest - paidInterest - waivedInterest)
     val totalAssets: Double = 0.0,            // cash + investments + receivables
     val totalDebtPrincipal: Double = 0.0,     // outstanding principal on all debts
     val totalDebtInterest: Double = 0.0,      // accrued interest on all debts

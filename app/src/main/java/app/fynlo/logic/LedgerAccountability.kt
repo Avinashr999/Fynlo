@@ -140,6 +140,19 @@ object LedgerAccountability {
         borrowers.forEach { borrower ->
             val linked = txByRef[borrower.id].orEmpty()
             val fundingTxn = linked.firstOrNull { it.category.equals("Lending", true) || it.type.equals("Expense", true) }
+            val accruedInterest = if (borrower.status == "Defaulted" && borrower.frozenInterest > 0.0) {
+                borrower.frozenInterest
+            } else {
+                InterestEngine.calcIntAccrued(
+                    borrower.amount,
+                    borrower.rate,
+                    borrower.date,
+                    borrower.intType,
+                    borrower.due,
+                    totalPaid = borrower.paidPrincipal,
+                    asOf = today.toString(),
+                )
+            }
             if (borrower.sourceAccount.isBlank() && fundingTxn == null) {
                 addIssue(LedgerIssueSeverity.INFO, "Loan funding trace missing", "${borrower.name} was created before a funding account was linked. Future loans record this automatically.", "loan", borrower.id)
             }
@@ -150,6 +163,16 @@ object LedgerAccountability {
             if (abs(paymentTotal - borrower.paid) > 0.01) {
                 addIssue(LedgerIssueSeverity.CRITICAL, "Loan payment total mismatch", "${borrower.name} paid total does not match payment rows.", "loan", borrower.id)
             }
+            addInterestWaiverIssue(
+                interestWaived = borrower.interestWaived,
+                accruedInterest = accruedInterest,
+                paidInterest = borrower.paidInterest,
+                title = "Loan interest waiver exceeds unpaid interest",
+                detail = "${borrower.name} has more waived interest than its unpaid interest balance.",
+                recordType = "loan",
+                recordId = borrower.id,
+                addIssue = ::addIssue,
+            )
             trails += LedgerMoneyTrail(
                 recordType = "loan",
                 recordId = borrower.id,
@@ -163,6 +186,15 @@ object LedgerAccountability {
         debts.forEach { debt ->
             val linked = txByRef[debt.id].orEmpty()
             val receivedTxn = linked.firstOrNull { it.category.equals("Debt Received", true) }
+            val accruedInterest = InterestEngine.calcIntAccrued(
+                debt.amount,
+                debt.rate,
+                debt.date,
+                debt.intType,
+                debt.due,
+                totalPaid = debt.paidPrincipal,
+                asOf = today.toString(),
+            )
             if (receivedTxn == null) {
                 addIssue(LedgerIssueSeverity.INFO, "Debt receipt trace missing", "${debt.name} has no linked Debt Received row. Future debts record the destination account automatically.", "debt", debt.id)
             } else if (receivedTxn.toAcct.isBlank()) {
@@ -174,6 +206,16 @@ object LedgerAccountability {
             if (abs(paymentTotal - debt.paid) > 0.01) {
                 addIssue(LedgerIssueSeverity.CRITICAL, "Debt payment total mismatch", "${debt.name} paid total does not match payment rows.", "debt", debt.id)
             }
+            addInterestWaiverIssue(
+                interestWaived = debt.interestWaived,
+                accruedInterest = accruedInterest,
+                paidInterest = debt.paidInterest,
+                title = "Debt interest waiver exceeds unpaid interest",
+                detail = "${debt.name} has more waived interest than its unpaid interest balance.",
+                recordType = "debt",
+                recordId = debt.id,
+                addIssue = ::addIssue,
+            )
             trails += LedgerMoneyTrail(
                 recordType = "debt",
                 recordId = debt.id,
@@ -357,6 +399,40 @@ object LedgerAccountability {
         "new_loan" -> "New loan from"
         "account" -> "Account funds from"
         else -> "Funds from"
+    }
+
+    private fun addInterestWaiverIssue(
+        interestWaived: Double,
+        accruedInterest: Double,
+        paidInterest: Double,
+        title: String,
+        detail: String,
+        recordType: String,
+        recordId: String,
+        addIssue: (LedgerIssueSeverity, String, String, String, String) -> Unit,
+    ) {
+        if (interestWaived < -0.01) {
+            addIssue(
+                LedgerIssueSeverity.CRITICAL,
+                "Negative interest waiver",
+                "Interest waiver cannot be negative.",
+                recordType,
+                recordId,
+            )
+            return
+        }
+        if (interestWaived <= 0.01) return
+
+        val maxWaivable = (accruedInterest - paidInterest).coerceAtLeast(0.0)
+        if (interestWaived - maxWaivable > 0.01) {
+            addIssue(
+                LedgerIssueSeverity.WARNING,
+                title,
+                detail,
+                recordType,
+                recordId,
+            )
+        }
     }
 
     private fun syncLabel(status: SyncStatus): String = when (status) {

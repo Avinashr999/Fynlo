@@ -39,6 +39,7 @@ import app.fynlo.logic.DateUtils
 import app.fynlo.logic.InterestEngine
 import app.fynlo.ui.components.AddLendingDialog
 import app.fynlo.ui.components.CollectPaymentDialog
+import app.fynlo.ui.components.WaiveInterestDialog
 import java.util.*
 import app.fynlo.ui.theme.*
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -78,15 +79,24 @@ val borrowers by viewModel.borrowers.collectAsState()
         .filter { it.loanId == borrowerId }
         .sortedByDescending { it.date }
 
-    val interest = InterestEngine.calcIntAccrued(
-        borrower.amount, borrower.rate, borrower.date, borrower.intType, borrower.due, borrower.paid
+    val interest = if (borrower.status == "Defaulted" && borrower.frozenInterest > 0.0) {
+        borrower.frozenInterest
+    } else {
+        InterestEngine.calcIntAccrued(
+            borrower.amount, borrower.rate, borrower.date, borrower.intType, borrower.due,
+            totalPaid = borrower.paidPrincipal
+        )
+    }
+    val interestOutstanding = (interest - borrower.paidInterest - borrower.interestWaived).coerceAtLeast(0.0)
+    val totalOutstanding = InterestEngine.calcOutstanding(
+        borrower.amount, interest, borrower.paidPrincipal, borrower.paidInterest, borrower.interestWaived
     )
-    val totalOutstanding = InterestEngine.calcOutstanding(borrower.amount, interest, borrower.paid)
 
     val context = androidx.compose.ui.platform.LocalContext.current
 
     var showEditDialog    by remember { mutableStateOf(false) }
     var showCollectDialog by remember { mutableStateOf(false) }
+    var showWaiveInterestDialog by remember { mutableStateOf(false) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
     // C12 Stage 3 (3.2.28) — new action surfaces lifted from LendingCard.
     var showReminderPicker by remember { mutableStateOf(false) }
@@ -120,6 +130,21 @@ val borrowers by viewModel.borrowers.collectAsState()
                 viewModel.collectLoanPayment(payment, dest)
                 showCollectDialog = false
             }
+        )
+    }
+
+    if (showWaiveInterestDialog) {
+        WaiveInterestDialog(
+            title = "Waive Interest",
+            subtitle = "For: ${borrower.name}",
+            maxWaivable = interestOutstanding,
+            onDismiss = { showWaiveInterestDialog = false },
+            onConfirm = { amount, reason ->
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                viewModel.waiveBorrowerInterest(borrower, amount, reason)
+                showWaiveInterestDialog = false
+            },
+            currencyCode = currencyCode,
         )
     }
 
@@ -457,6 +482,14 @@ val borrowers by viewModel.borrowers.collectAsState()
                         DetailItem("Interest",  CurrencyFormatter.detail(interest, currencyCode, locale))
                         DetailItem("Paid",      CurrencyFormatter.detail(borrower.paid, currencyCode, locale))
                     }
+                    if (borrower.interestWaived > 0.0) {
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            "Interest waived: ${CurrencyFormatter.detail(borrower.interestWaived, currencyCode, locale)}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Emerald500,
+                        )
+                    }
                     Spacer(Modifier.height(12.dp))
                     Row(
                         modifier = Modifier
@@ -525,6 +558,21 @@ val borrowers by viewModel.borrowers.collectAsState()
                     Icon(Icons.Default.NotificationsActive, null, Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
                     Text("Send Reminder")
+                }
+            }
+
+            if (borrower.rate > 0.0 && interestOutstanding > 0.0) {
+                item {
+                    OutlinedButton(
+                        onClick = { showWaiveInterestDialog = true },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Emerald500)
+                    ) {
+                        Icon(Icons.Default.MoneyOff, null, Modifier.size(18.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text("Waive Interest")
+                    }
                 }
             }
 

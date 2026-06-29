@@ -27,7 +27,7 @@ object DebtLiabilityCalculator {
         )
         return Liability(
             principal = (debt.amount - debt.paidPrincipal).coerceAtLeast(0.0),
-            interest = (accruedInterest - debt.paidInterest).coerceAtLeast(0.0),
+            interest = (accruedInterest - debt.paidInterest - debt.interestWaived).coerceAtLeast(0.0),
         )
     }
 }

@@ -69,7 +69,7 @@ fun CollectPaymentDialog(
         )
     }
     val interestOutstanding = remember(accruedInterest, borrower) {
-        (accruedInterest - borrower.paidInterest).coerceAtLeast(0.0)
+        (accruedInterest - borrower.paidInterest - borrower.interestWaived).coerceAtLeast(0.0)
     }
     val principalOutstanding = remember(borrower) {
         (borrower.amount - borrower.paidPrincipal).coerceAtLeast(0.0)
@@ -140,6 +140,16 @@ fun CollectPaymentDialog(
                                 Text(CurrencyFormatter.detail(interestOutstanding, currencyCode, locale),
                                     style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
                                     color = SemanticAmber)
+                            }
+                            if (borrower.interestWaived > 0.0) {
+                                Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
+                                    Text("Waived", style = MaterialTheme.typography.bodySmall)
+                                    Text(
+                                        CurrencyFormatter.detail(borrower.interestWaived, currencyCode, locale),
+                                        style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
+                                        color = Emerald500
+                                    )
+                                }
                             }
                         }
                         HorizontalDivider(Modifier.padding(vertical = 4.dp))
@@ -355,7 +365,7 @@ fun PayDebtDialog(
             totalPaid = debt.paidPrincipal
         )
     }
-    val interestOutstanding  = (accruedInterest - debt.paidInterest).coerceAtLeast(0.0)
+    val interestOutstanding  = (accruedInterest - debt.paidInterest - debt.interestWaived).coerceAtLeast(0.0)
     val principalOutstanding = (debt.amount - debt.paidPrincipal).coerceAtLeast(0.0)
     val totalOutstanding     = interestOutstanding + principalOutstanding
 
@@ -417,6 +427,16 @@ fun PayDebtDialog(
                                 Text(CurrencyFormatter.detail(interestOutstanding, currencyCode, locale),
                                     style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
                                     color = MaterialTheme.colorScheme.error)
+                            }
+                            if (debt.interestWaived > 0.0) {
+                                Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
+                                    Text("Waived", style = MaterialTheme.typography.bodySmall)
+                                    Text(
+                                        CurrencyFormatter.detail(debt.interestWaived, currencyCode, locale),
+                                        style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
+                                        color = Emerald500
+                                    )
+                                }
                             }
                         }
                         HorizontalDivider(Modifier.padding(vertical = 4.dp))
@@ -567,6 +587,105 @@ fun PayDebtDialog(
                         colors  = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
                     ) { Text("Pay ${CurrencyFormatter.detail(totalAmount, currencyCode, locale)}") }
                 }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun WaiveInterestDialog(
+    title: String,
+    subtitle: String,
+    maxWaivable: Double,
+    onDismiss: () -> Unit,
+    onConfirm: (Double, String) -> Unit,
+    currencyCode: String = "INR",
+) {
+    val locale = LocalLocale.current.platformLocale
+    var amountText by remember(maxWaivable) { mutableStateOf(String.format(locale, "%.0f", maxWaivable)) }
+    var reason by remember { mutableStateOf("Grace period waived") }
+    var submitting by remember { mutableStateOf(false) }
+    val amount = amountText.toDoubleOrNull() ?: 0.0
+    val isValid = amount > 0.0 && amount <= maxWaivable
+
+    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        Surface(
+            modifier = Modifier.fillMaxWidth(0.95f).padding(vertical = 16.dp).imePadding(),
+            shape = MaterialTheme.shapes.extraLarge,
+            color = MaterialTheme.colorScheme.surface,
+            tonalElevation = 6.dp,
+        ) {
+            Column(modifier = Modifier.padding(24.dp).verticalScroll(rememberScrollState())) {
+                Text(title, style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold))
+                Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary)
+                Spacer(Modifier.height(14.dp))
+
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(14.dp),
+                    color = Emerald500.copy(alpha = 0.10f),
+                ) {
+                    Column(Modifier.padding(14.dp)) {
+                        Text("Available to waive", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(
+                            CurrencyFormatter.detail(maxWaivable, currencyCode, locale),
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                            color = Emerald500,
+                        )
+                    }
+                }
+                Spacer(Modifier.height(14.dp))
+
+                OutlinedTextField(
+                    value = amountText,
+                    onValueChange = { amountText = it },
+                    label = { Text("Waiver amount") },
+                    prefix = { Text(CurrencyUtils.symbolFor(currencyCode)) },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.fillMaxWidth(),
+                    isError = amount > maxWaivable,
+                )
+                if (amount > maxWaivable) {
+                    Text(
+                        "Amount cannot exceed unpaid interest.",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.padding(top = 4.dp),
+                    )
+                }
+                Spacer(Modifier.height(12.dp))
+                OutlinedTextField(
+                    value = reason,
+                    onValueChange = { reason = it },
+                    label = { Text("Reason") },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(Modifier.height(22.dp))
+
+                Row(Modifier.fillMaxWidth(), Arrangement.End, Alignment.CenterVertically) {
+                    TextButton(onClick = onDismiss) { Text("Cancel") }
+                    Spacer(Modifier.width(8.dp))
+                    Button(
+                        onClick = {
+                            if (submitting || !isValid) return@Button
+                            submitting = true
+                            onConfirm(amount, reason)
+                        },
+                        enabled = isValid && !submitting,
+                        shape = RoundedCornerShape(14.dp),
+                    ) {
+                        Text("Waive Interest")
+                    }
+                }
+                DisabledButtonHint(
+                    when {
+                        maxWaivable <= 0.0 -> "No unpaid interest to waive"
+                        amount <= 0.0 -> "Enter an amount to continue"
+                        amount > maxWaivable -> "Reduce the amount to unpaid interest"
+                        else -> null
+                    }
+                )
             }
         }
     }

@@ -1708,3 +1708,12 @@ Next Play upload for this rename line uses `versionCode = 230` and `versionName 
 - `AddTransactionDialog` now supports `allowTypeSwitch = false`. When disabled, it locks the dialog to the caller's `initialIsIncome` value and hides the Expense/Income segmented selector.
 - Expenses now opens the dialog as `Add Expense`, locked to expense-only entry, and always shows `Expense added` feedback.
 - Product rule for loan grace periods: do not solve waived extra-days interest by recording fake interest payments. A future safe implementation should add a distinct non-cash interest-waiver adjustment, so cash, collected interest income, outstanding interest, and audit history remain separate and trustworthy.
+
+## 2026-06-29 - Interest Waiver / Grace Period Ledger Adjustment
+
+- Loan and debt grace-period interest is now modeled as `interestWaived`, a non-cash adjustment stored separately from real repayments.
+- Waiving interest reduces only unpaid interest outstanding. It does not change account balances, does not create payment rows, does not increase paid totals, and does not count as interest income or interest expense.
+- Borrower and debt detail screens expose a `Waive Interest` action only when unpaid interest exists. Payment dialogs show already-waived interest in the outstanding summary so users can see why the remaining due is lower.
+- Room schema migrated to version 28, Firestore sync reads/writes the new field, and audit trail records `WAIVE_INTEREST` with zero `amountDelta`.
+- Ledger Health now warns if imported/cloud data ever contains a negative waiver or a waiver larger than unpaid interest. This is a guardrail only; it does not silently rewrite balances.
+- Regression coverage confirms borrower and debt waivers leave cash and payment rows untouched while reducing receivable/liability calculations.

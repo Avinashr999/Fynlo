@@ -305,9 +305,11 @@ fun DebtCard(
     val interest = InterestEngine.calcIntAccrued(
         amount = debt.amount, rate = debt.rate,
         loanDate = debt.date, intType = debt.intType,
-        dueDate = debt.due, totalPaid = debt.paid
+        dueDate = debt.due, totalPaid = debt.paidPrincipal
     )
-    val outstanding = InterestEngine.calcOutstanding(debt.amount, interest, debt.paid)
+    val outstanding = InterestEngine.calcOutstanding(
+        debt.amount, interest, debt.paidPrincipal, debt.paidInterest, debt.interestWaived
+    )
 
     Row(
         modifier = Modifier
