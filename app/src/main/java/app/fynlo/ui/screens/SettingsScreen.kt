@@ -34,6 +34,8 @@ import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.core.net.toUri
 import app.fynlo.FinanceViewModel
 import app.fynlo.data.UserPreferences
@@ -125,6 +127,10 @@ fun SettingsScreen(
     val openSyncConflicts by viewModel.openSyncConflicts.collectAsState()
     val proofAttachments by viewModel.proofAttachments.collectAsState()
     val settingsTransactions by viewModel.transactions.collectAsState()
+    val settingsBorrowers by viewModel.borrowers.collectAsState()
+    val settingsDebts by viewModel.debts.collectAsState()
+    val settingsInvestments by viewModel.investments.collectAsState()
+    val settingsSyncStatus by viewModel.syncStatus.collectAsState()
     var showDataExportDialog by remember { mutableStateOf(false) }
     var selectedDataExportScope by remember { mutableStateOf(DataExportScope.WHOLE) }
     var selectedDataExportFormat by remember { mutableStateOf(DataExportFormat.PDF) }
@@ -135,6 +141,7 @@ fun SettingsScreen(
     var showAppInfo by remember { mutableStateOf(false) }
     var showDeveloperTools by remember { mutableStateOf(false) }
     var showWhatsNew by remember { mutableStateOf(false) }
+    var showTrustSafety by remember { mutableStateOf(false) }
 
     // ── Export launchers ────────────────────────────────────────────────────
     val jsonLauncher = rememberLauncherForActivityResult(
@@ -305,6 +312,9 @@ fun SettingsScreen(
         )
         return
     }
+    if (showWhatsNew) {
+        WhatsNewDialog(onDismiss = { showWhatsNew = false })
+    }
 
     // C22 (3.2.66) — backup-encryption dialogs.
     if (showExportPwdDialog) {
@@ -457,6 +467,16 @@ fun SettingsScreen(
             encryptedBackups = encryptOnExport,
         )
         Spacer(Modifier.height(18.dp))
+
+        SettingsCard {
+            SettingsActionRow(
+                icon = Icons.Default.Lightbulb,
+                color = Green,
+                title = "What's new & how to use",
+                subtitle = "A quick guide to safe money entries, Book Check, backups, and history"
+            ) { showWhatsNew = true }
+        }
+        Spacer(Modifier.height(16.dp))
 
         if (app.fynlo.billing.FeatureFlags.BILLING_ENABLED) {
             Row(
@@ -624,7 +644,7 @@ fun SettingsScreen(
         // ── Backup & Export ──────────────────────────────────────────────────
         SettingsExpandableCard(
             title = "Backup & Export",
-            subtitle = "Backups, reports, imports, and repair tools",
+            subtitle = "Backups, reports, imports, and restore",
             icon = Icons.Default.Backup,
             color = Blue,
             expanded = showBackupExport,
@@ -792,7 +812,20 @@ fun SettingsScreen(
                     }
                 }
 
-                SettingsDivider()
+            }
+        }
+
+        Spacer(Modifier.height(16.dp))
+
+        SettingsExpandableCard(
+            title = "Trust & Safety",
+            subtitle = "Book check, proof, close, undo, and release readiness",
+            icon = Icons.Default.Verified,
+            color = Green,
+            expanded = showTrustSafety,
+            onToggle = { showTrustSafety = !showTrustSafety },
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
 
                 // C02 step 4: capture the before/after summary so the result
                 // dialog can show actual deltas instead of a fire-and-forget Toast.
@@ -956,14 +989,86 @@ fun SettingsScreen(
 
                 SettingsDivider()
 
+                var showProofVault by remember { mutableStateOf(false) }
+                val proofGaps = remember(
+                    proofAttachments,
+                    settingsTransactions,
+                    settingsBorrowers,
+                    settingsDebts,
+                    settingsInvestments,
+                ) {
+                    buildProofGaps(
+                        attachments = proofAttachments,
+                        transactions = settingsTransactions,
+                        borrowers = settingsBorrowers,
+                        debts = settingsDebts,
+                        investments = settingsInvestments,
+                    )
+                }
                 SettingsActionRow(
                     icon = Icons.Default.AttachFile,
-                    color = Carbon500,
+                    color = if (proofGaps.isEmpty()) Green else Amber,
                     title = "Proof records",
-                    subtitle = "${proofAttachments.size} saved proof links for receipts, screenshots, and documents."
+                    subtitle = if (proofGaps.isEmpty()) {
+                        "${proofAttachments.size} saved proof links. No large proof gaps found."
+                    } else {
+                        "${proofAttachments.size} saved proof links - ${proofGaps.size} entries should be reviewed."
+                    }
+                ) { showProofVault = true }
+
+                if (showProofVault) {
+                    ProofVaultDialog(
+                        attachments = proofAttachments,
+                        proofGaps = proofGaps,
+                        onDismiss = { showProofVault = false },
+                    )
+                }
+
+                SettingsDivider()
+
+                var showLaunchReadiness by remember { mutableStateOf(false) }
+                val previousMonthKey = remember { java.time.YearMonth.now().minusMonths(1).toString() }
+                val previousMonthClosed = monthlyCloses.any { it.month == previousMonthKey && it.status == "Closed" }
+                val launchBlockers = remember(
+                    ledgerReport,
+                    proofGaps,
+                    settingsSyncStatus,
+                    previousMonthClosed,
                 ) {
-                    viewModel.showFeedback(
-                        if (proofAttachments.isEmpty()) "No proof links saved yet" else "${proofAttachments.size} proof links saved"
+                    buildLaunchReadinessItems(
+                        ledgerReport = ledgerReport,
+                        proofGapCount = proofGaps.size,
+                        syncStatus = settingsSyncStatus,
+                        previousMonthClosed = previousMonthClosed,
+                    ).count { !it.ready }
+                }
+                SettingsActionRow(
+                    icon = Icons.Default.Verified,
+                    color = if (launchBlockers == 0) Green else Amber,
+                    title = "Launch readiness",
+                    subtitle = if (launchBlockers == 0) {
+                        "Ledger, backup, reports, imports, alerts, and close checks look ready."
+                    } else {
+                        "$launchBlockers checks need attention before a confident release."
+                    },
+                ) { showLaunchReadiness = true }
+
+                if (showLaunchReadiness) {
+                    LaunchReadinessDialog(
+                        ledgerReport = ledgerReport,
+                        proofGapCount = proofGaps.size,
+                        syncStatus = settingsSyncStatus,
+                        previousMonth = previousMonthKey,
+                        previousMonthClosed = previousMonthClosed,
+                        onClosePreviousMonth = {
+                            if (!previousMonthClosed && ledgerReport.criticalCount == 0) {
+                                viewModel.closeMonth(previousMonthKey, "Closed by monthly close assistant")
+                                viewModel.showFeedback("$previousMonthKey closed")
+                            } else {
+                                viewModel.showFeedback("Review Book check before closing")
+                            }
+                        },
+                        onDismiss = { showLaunchReadiness = false },
                     )
                 }
 
@@ -1317,17 +1422,6 @@ fun SettingsScreen(
             // structured Crashlytics non-fatal (so support gets it without
             // the user having to remember to actually send the email), and
             // keeps the email fallback for offline / no-Play-Services cases.
-            if (showWhatsNew) {
-                WhatsNewDialog(onDismiss = { showWhatsNew = false })
-            }
-            SettingsActionRow(
-                icon = Icons.Default.Lightbulb,
-                color = Green,
-                title = "What's new & how to use",
-                subtitle = "Money actions, book check, backups, and safer edits"
-            ) { showWhatsNew = true }
-            SettingsDivider()
-
             var showBugDialog by remember { mutableStateOf(false) }
             if (showBugDialog) {
                 app.fynlo.ui.components.ReportBugDialog(onDismiss = { showBugDialog = false })
@@ -1560,20 +1654,39 @@ fun SettingsScreen(
 
         // Blocking progress while the wipe runs — restart kills the process.
         if (isResetting) {
-            AlertDialog(
+            Dialog(
                 onDismissRequest = { },
-                confirmButton = { },
-                title = { Text("Resetting…") },
-                text = {
+                properties = DialogProperties(
+                    dismissOnBackPress = false,
+                    dismissOnClickOutside = false,
+                ),
+            ) {
+                Surface(
+                    shape = RoundedCornerShape(28.dp),
+                    color = MaterialTheme.colorScheme.surface,
+                    tonalElevation = 8.dp,
+                    shadowElevation = 18.dp,
+                ) {
                     Row(
+                        modifier = Modifier.padding(24.dp),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
                     ) {
-                        CircularProgressIndicator(Modifier.size(24.dp), color = Red)
-                        Text("Erasing all data and restarting")
+                        CircularProgressIndicator(Modifier.size(26.dp), color = Emerald500)
+                        Column {
+                            Text(
+                                "Resetting...",
+                                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                            )
+                            Text(
+                                "Erasing all data and restarting",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
                     }
                 }
-            )
+            }
         }
 
         Spacer(Modifier.height(24.dp))
@@ -2204,6 +2317,388 @@ private fun readableConflictPreview(value: String): String {
         .ifBlank { value.take(260) }
 }
 
+private data class ProofGap(
+    val title: String,
+    val detail: String,
+    val suggestion: String,
+    val accent: Color,
+)
+
+private fun buildProofGaps(
+    attachments: List<app.fynlo.data.model.ProofAttachment>,
+    transactions: List<app.fynlo.data.model.Transaction>,
+    borrowers: List<app.fynlo.data.model.Borrower>,
+    debts: List<app.fynlo.data.model.Debt>,
+    investments: List<app.fynlo.data.model.Investment>,
+): List<ProofGap> {
+    val proofKeys = attachments
+        .map { it.ownerType.lowercase() to it.ownerId }
+        .toSet()
+    fun hasProof(ownerType: String, ownerId: String): Boolean =
+        ownerType.lowercase() to ownerId in proofKeys
+
+    val loanGaps = borrowers
+        .filter { it.amount >= 50_000.0 && !hasProof("loan", it.id) && !hasProof("borrower", it.id) }
+        .map {
+            ProofGap(
+                title = "Loan proof missing",
+                detail = "${it.name} - ${CurrencyFormatter.detail(it.amount)} lent on ${it.date}",
+                suggestion = "Open the loan statement and attach the receipt, bank screenshot, or agreement.",
+                accent = Amber,
+            )
+        }
+    val debtGaps = debts
+        .filter { it.amount >= 50_000.0 && !hasProof("debt", it.id) }
+        .map {
+            ProofGap(
+                title = "Debt proof missing",
+                detail = "${it.name} - ${CurrencyFormatter.detail(it.amount)} received on ${it.date}",
+                suggestion = "Open the debt statement and attach proof showing where the money came from.",
+                accent = Amber,
+            )
+        }
+    val investmentGaps = investments
+        .filter { it.invested >= 50_000.0 && !hasProof("investment", it.id) }
+        .map {
+            ProofGap(
+                title = "Investment proof missing",
+                detail = "${it.name} - ${CurrencyFormatter.detail(it.invested)} invested on ${it.date}",
+                suggestion = "Open the investment and attach the purchase proof or account statement.",
+                accent = Amber,
+            )
+        }
+    val largeTransactionGaps = transactions
+        .filter {
+            kotlin.math.abs(it.amount) >= 50_000.0 &&
+                it.tags.split(',').none { tag -> tag.trim().equals("journal_only", ignoreCase = true) } &&
+                !hasProof("transaction", it.id)
+        }
+        .sortedWith(compareByDescending<app.fynlo.data.model.Transaction> { it.date }.thenByDescending { it.updatedAt })
+        .take(8)
+        .map {
+            val account = when (it.type.lowercase()) {
+                "income" -> it.toAcct
+                "expense" -> it.fromAcct
+                else -> listOf(it.fromAcct, it.toAcct).filter { account -> account.isNotBlank() }.joinToString(" -> ")
+            }.ifBlank { "account not selected" }
+            ProofGap(
+                title = "Large transaction to review",
+                detail = "${it.category} - ${CurrencyFormatter.detail(it.amount)} on ${it.date} - $account",
+                suggestion = "Keep supporting proof. If this belongs to a loan, debt, or investment, attach proof on that detail screen.",
+                accent = Carbon500,
+            )
+        }
+
+    return (loanGaps + debtGaps + investmentGaps + largeTransactionGaps)
+        .sortedBy { it.title }
+}
+
+@Composable
+private fun ProofVaultDialog(
+    attachments: List<app.fynlo.data.model.ProofAttachment>,
+    proofGaps: List<ProofGap>,
+    onDismiss: () -> Unit,
+) {
+    FormDialog(
+        title = "Proof vault",
+        subtitle = "${attachments.size} saved links - ${proofGaps.size} review gaps",
+        onDismiss = onDismiss,
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Surface(
+                shape = RoundedCornerShape(18.dp),
+                color = Green.copy(alpha = 0.08f),
+                border = BorderStroke(1.dp, Green.copy(alpha = 0.16f)),
+            ) {
+                Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(
+                        "Proof holding",
+                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                    )
+                    Text(
+                        "Use this to review receipts, screenshots, agreements, and high-value entries that deserve proof before closing a month. Older gaps are review prompts, not balance errors.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                ProofVaultMetric("Saved", attachments.size.toString(), Green, Modifier.weight(1f))
+                ProofVaultMetric("Review", proofGaps.size.toString(), if (proofGaps.isEmpty()) Green else Amber, Modifier.weight(1f))
+            }
+
+            if (proofGaps.isNotEmpty()) {
+                LedgerDialogSectionTitle("Needs proof review")
+                proofGaps.take(12).forEach { gap ->
+                    LedgerInfoCard(
+                        title = gap.title,
+                        detail = gap.detail,
+                        accent = gap.accent,
+                        suggestion = gap.suggestion,
+                    )
+                }
+                if (proofGaps.size > 12) {
+                    Text(
+                        "+${proofGaps.size - 12} older proof gaps kept for review",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            } else {
+                Text(
+                    "No large proof gaps found. Existing proof links are still visible below.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+
+            LedgerDialogSectionTitle("Saved proof links")
+            if (attachments.isEmpty()) {
+                Text(
+                    "No proof links saved yet. Add proof from loan, debt, and investment detail screens.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            } else {
+                attachments
+                    .sortedByDescending { it.updatedAt }
+                    .take(20)
+                    .forEach { proof ->
+                        ProofAttachmentRow(proof)
+                    }
+                if (attachments.size > 20) {
+                    Text(
+                        "+${attachments.size - 20} older proof links",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+
+            Button(
+                onClick = onDismiss,
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(containerColor = Emerald500),
+                shape = RoundedCornerShape(14.dp),
+            ) { Text("Done") }
+        }
+    }
+}
+
+@Composable
+private fun ProofVaultMetric(label: String, value: String, color: Color, modifier: Modifier = Modifier) {
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(16.dp),
+        color = color.copy(alpha = 0.08f),
+        border = BorderStroke(1.dp, color.copy(alpha = 0.16f)),
+    ) {
+        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(value, style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold), color = color)
+            Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+@Composable
+private fun ProofAttachmentRow(proof: app.fynlo.data.model.ProofAttachment) {
+    LedgerInfoCard(
+        title = proof.displayName.ifBlank { "Saved proof" },
+        detail = buildString {
+            append(proof.ownerType.replaceFirstChar { it.uppercase() })
+            append(" proof")
+            if (proof.mimeType.isNotBlank()) append(" - ${proof.mimeType}")
+            if (proof.note.isNotBlank()) append(" - ${proof.note}")
+        },
+        accent = Green,
+        suggestion = "Open the related ${proof.ownerType.lowercase()} detail screen to review or replace this proof.",
+    )
+}
+
+private data class LaunchReadinessItem(
+    val title: String,
+    val detail: String,
+    val ready: Boolean,
+    val accent: Color,
+)
+
+private fun buildLaunchReadinessItems(
+    ledgerReport: app.fynlo.logic.LedgerAccountabilityReport,
+    proofGapCount: Int,
+    syncStatus: app.fynlo.data.SyncStatus,
+    previousMonthClosed: Boolean,
+): List<LaunchReadinessItem> {
+    val syncReady = syncStatus is app.fynlo.data.SyncStatus.Synced
+    val bookReady = ledgerReport.criticalCount == 0 && ledgerReport.warningCount == 0
+    val noCritical = ledgerReport.criticalCount == 0
+    return listOf(
+        LaunchReadinessItem(
+            "Personal ledger treatment",
+            "Income, expense, transfer, loan, debt, investment, and waiver rows are explained separately so transfers do not look like profit.",
+            ready = true,
+            accent = Green,
+        ),
+        LaunchReadinessItem(
+            "Automatic monthly close",
+            if (previousMonthClosed) "Previous month is already locked." else "Previous month can be closed from this assistant after Book check is clean.",
+            ready = previousMonthClosed || noCritical,
+            accent = if (previousMonthClosed || noCritical) Green else Amber,
+        ),
+        LaunchReadinessItem(
+            "Smart alerts",
+            "Dashboard brings due recurring entries, budget limit alerts, proof gaps, and Book check problems into one review surface.",
+            ready = true,
+            accent = Green,
+        ),
+        LaunchReadinessItem(
+            "Clean Play Store onboarding",
+            "First-run screens explain ledger separation, lending, debt, investments, sync, exports, and backups without developer wording.",
+            ready = true,
+            accent = Green,
+        ),
+        LaunchReadinessItem(
+            "Reports 2.0",
+            "Reports hub has range filters, compact metric previews, PDF export, P&L, net worth, money flow, monthly summary, debt payoff, and EMI routes.",
+            ready = bookReady,
+            accent = if (bookReady) Green else Amber,
+        ),
+        LaunchReadinessItem(
+            "Import automation",
+            "CSV import supports file picking, column mapping, preview, and account selection before bulk adding rows.",
+            ready = true,
+            accent = Green,
+        ),
+        LaunchReadinessItem(
+            "Backup confidence",
+            if (syncReady) "Cloud backup is synced and manual encrypted backup/export tools are available." else "Cloud backup is not fully synced yet. Wait for sync before release smoke.",
+            ready = syncReady,
+            accent = if (syncReady) Green else Amber,
+        ),
+        LaunchReadinessItem(
+            "Security polish",
+            "PIN/biometric lock, encrypted backup option, privacy/legal copy, and safe reset warnings are available.",
+            ready = true,
+            accent = Green,
+        ),
+        LaunchReadinessItem(
+            "Business mode",
+            "Projects keep separate books, and business-style investment/project categories are already supported.",
+            ready = true,
+            accent = Green,
+        ),
+        LaunchReadinessItem(
+            "Smart explanations",
+            "Book check explains why each issue matters and what to do next without depending on any AI service.",
+            ready = true,
+            accent = Green,
+        ),
+        LaunchReadinessItem(
+            "Release quality system",
+            "Use compile, unit tests, phone smoke, Book check, Proof vault, backup/export, and Play internal testing before promotion.",
+            ready = ledgerReport.criticalCount == 0 && proofGapCount == 0,
+            accent = if (ledgerReport.criticalCount == 0 && proofGapCount == 0) Green else Amber,
+        ),
+    )
+}
+
+@Composable
+private fun LaunchReadinessDialog(
+    ledgerReport: app.fynlo.logic.LedgerAccountabilityReport,
+    proofGapCount: Int,
+    syncStatus: app.fynlo.data.SyncStatus,
+    previousMonth: String,
+    previousMonthClosed: Boolean,
+    onClosePreviousMonth: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val items = remember(ledgerReport, proofGapCount, syncStatus, previousMonthClosed) {
+        buildLaunchReadinessItems(
+            ledgerReport = ledgerReport,
+            proofGapCount = proofGapCount,
+            syncStatus = syncStatus,
+            previousMonthClosed = previousMonthClosed,
+        )
+    }
+    val reviewCount = items.count { !it.ready }
+    FormDialog(
+        title = "Launch readiness",
+        subtitle = if (reviewCount == 0) "All checks look ready" else "$reviewCount checks need review",
+        onDismiss = onDismiss,
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Surface(
+                shape = RoundedCornerShape(18.dp),
+                color = if (reviewCount == 0) Green.copy(alpha = 0.08f) else Amber.copy(alpha = 0.08f),
+                border = BorderStroke(1.dp, if (reviewCount == 0) Green.copy(alpha = 0.16f) else Amber.copy(alpha = 0.18f)),
+            ) {
+                Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(
+                        if (reviewCount == 0) "Release confidence is high" else "Release needs a short review",
+                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                    )
+                    Text(
+                        "This checks the practical launch areas: ledger trust, close status, backup, reports, imports, security, business mode, and support readiness.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+
+            LedgerDialogSectionTitle("Monthly close assistant")
+            LedgerInfoCard(
+                title = previousMonth,
+                detail = if (previousMonthClosed) {
+                    "Previous month is already closed."
+                } else {
+                    "Close this month after reviewing Book check. Closing prevents accidental changes to older records."
+                },
+                accent = if (previousMonthClosed) Green else Amber,
+                suggestion = if (previousMonthClosed) {
+                    "No action needed."
+                } else if (ledgerReport.criticalCount == 0) {
+                    "Tap Close previous month if your totals look correct."
+                } else {
+                    "Fix serious Book check items before closing."
+                },
+            )
+            Button(
+                onClick = onClosePreviousMonth,
+                enabled = !previousMonthClosed && ledgerReport.criticalCount == 0,
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(14.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Green),
+            ) {
+                Icon(Icons.Default.Lock, null, Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text(if (previousMonthClosed) "Already closed" else "Close previous month")
+            }
+
+            LedgerDialogSectionTitle("Release checks")
+            items.forEach { item ->
+                LaunchReadinessRow(item)
+            }
+
+            Button(
+                onClick = onDismiss,
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(containerColor = Emerald500),
+                shape = RoundedCornerShape(14.dp),
+            ) { Text("Done") }
+        }
+    }
+}
+
+@Composable
+private fun LaunchReadinessRow(item: LaunchReadinessItem) {
+    LedgerInfoCard(
+        title = "${if (item.ready) "Ready" else "Review"} - ${item.title}",
+        detail = item.detail,
+        accent = item.accent,
+        suggestion = if (item.ready) "Keep this in the release smoke checklist." else "Review this before promoting the next build.",
+    )
+}
+
 @Composable
 private fun LedgerHealthDialog(
     report: app.fynlo.logic.LedgerAccountabilityReport,
@@ -2224,6 +2719,7 @@ private fun LedgerHealthDialog(
                 summary = repairSummary,
                 onRunSafeRepair = onRunSafeRepair,
             )
+            RepairCoverageCard(report)
             ReconciliationGuideCard(report)
             if (report.issues.isNotEmpty()) {
                 LedgerDialogSectionTitle("Checks to review")
@@ -2295,6 +2791,65 @@ private fun app.fynlo.BookRepairResult.toSafeRepairSummary(
         "net worth ${formatDelta(delta.netWorthChange)}, cash ${formatDelta(delta.cashChange)}, investments ${formatDelta(delta.investmentsChange)}"
     }
     return "$repairText. $balanceText."
+}
+
+@Composable
+private fun RepairCoverageCard(report: app.fynlo.logic.LedgerAccountabilityReport) {
+    val autoHelpCount = remember(report.issues) { report.issues.count { canSafeRepairHelp(it) } }
+    val manualCount = (report.issues.size - autoHelpCount).coerceAtLeast(0)
+    Surface(
+        color = MaterialTheme.colorScheme.surface,
+        shape = RoundedCornerShape(18.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+    ) {
+        Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(
+                "What repair can do",
+                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+            )
+            Text(
+                "Auto repair can rebuild known links, neutral investment transfer traces, debt receipt amount mismatches, and balance drift when the evidence is already in your book.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                "It will not guess missing accounts, change dates, delete suspected duplicates, or decide which person/record is correct.",
+                style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
+                color = Amber,
+            )
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                RepairCoveragePill("May help", autoHelpCount.toString(), Green, Modifier.weight(1f))
+                RepairCoveragePill("Manual", manualCount.toString(), Amber, Modifier.weight(1f))
+            }
+        }
+    }
+}
+
+@Composable
+private fun RepairCoveragePill(label: String, value: String, color: Color, modifier: Modifier = Modifier) {
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(14.dp),
+        color = color.copy(alpha = 0.08f),
+    ) {
+        Row(
+            Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(value, style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.ExtraBold), color = color)
+        }
+    }
+}
+
+private fun canSafeRepairHelp(issue: app.fynlo.logic.LedgerIssue): Boolean {
+    val text = "${issue.title} ${issue.detail}".lowercase()
+    return "receipt amount mismatch" in text ||
+        "debt-funded investment" in text ||
+        "balance drift" in text ||
+        "account id" in text ||
+        "ledger trace duplicate" in text
 }
 
 @Composable
@@ -2582,6 +3137,7 @@ private fun LedgerIssueRow(issue: app.fynlo.logic.LedgerIssue) {
         title = issue.title,
         detail = issue.detail,
         accent = color,
+        explanation = ledgerIssueExplanation(issue),
         suggestion = ledgerIssueSuggestion(issue),
     )
 }
@@ -2591,6 +3147,7 @@ private fun LedgerInfoCard(
     title: String,
     detail: String,
     accent: Color,
+    explanation: String? = null,
     suggestion: String? = null,
 ) {
     Surface(
@@ -2617,6 +3174,14 @@ private fun LedgerInfoCard(
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+                if (!explanation.isNullOrBlank()) {
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        "Why it matters: $explanation",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
                 if (!suggestion.isNullOrBlank()) {
                     Spacer(Modifier.height(6.dp))
                     Text(
@@ -2627,6 +3192,39 @@ private fun LedgerInfoCard(
                 }
             }
         }
+    }
+}
+
+private fun ledgerIssueExplanation(issue: app.fynlo.logic.LedgerIssue): String {
+    val title = issue.title.lowercase()
+    val detail = issue.detail.lowercase()
+    return when {
+        "duplicate" in title || "duplicate" in detail ->
+            "Two similar money rows can double-count cash, expenses, income, or repayments."
+        "invalid" in title || "amount" in title && "mismatch" !in title ->
+            "A money row with a bad amount cannot represent a real account movement."
+        "transfer" in title && "same account" in detail ->
+            "A transfer must reduce one account and add another. Same-account transfers should not change the ledger."
+        "transfer" in title || "route" in title ->
+            "Transfers need both sides so net worth stays unchanged and account histories stay clear."
+        "source" in title || "destination" in title || "account" in title ->
+            "Without a clear account, the app cannot prove where the money came from or went."
+        "payment total" in title || "unpaid total" in detail ->
+            "The statement total and payment rows disagree, so the remaining loan or debt balance may be wrong."
+        "receipt amount mismatch" in title || "receipt amount" in detail ->
+            "The debt principal and deposited transaction disagree, so debt and account cash can drift apart."
+        "receipt link" in title || "debt received" in detail ->
+            "The debt exists, but the app cannot trace the money into an account."
+        "investment" in title && "funding" in title ->
+            "The holding exists, but the app cannot prove which account or debt funded it."
+        "investment" in title && "debt" in title ->
+            "Debt-funded investments need a neutral trace so they do not incorrectly change account cash."
+        "orphan" in title ->
+            "A payment without its parent record cannot be trusted in borrower or debt totals."
+        "older" in title || "old" in detail ->
+            "Older open records may need review so due status, interest, and reports stay meaningful."
+        else ->
+            "This item affects traceability. Fixing it makes account balances and reports easier to trust."
     }
 }
 

@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -87,8 +88,15 @@ fun DatePickerField(
         onValueChange = {},
         label         = { Text(if (optional) "$label (optional)" else label) },
         trailingIcon  = {
-            IconButton(onClick = { showPicker = true }) {
-                Icon(Icons.Default.CalendarMonth, contentDescription = "Pick date")
+            Row {
+                if (optional && value.isNotBlank()) {
+                    IconButton(onClick = { onValueChange("") }) {
+                        Icon(Icons.Default.Close, contentDescription = "Clear date")
+                    }
+                }
+                IconButton(onClick = { showPicker = true }) {
+                    Icon(Icons.Default.CalendarMonth, contentDescription = "Pick date")
+                }
             }
         },
         readOnly      = true,

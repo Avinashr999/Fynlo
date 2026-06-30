@@ -489,7 +489,8 @@ When the phone is connected again, run the remaining `test-android-apps` device-
 
 - Confirmed Privacy Policy, Account/Data Deletion, legal index, and Terms pages use the visible `Fynlo Ledger` brand.
 - Updated About screen legal links to the public GitHub Pages privacy, terms, and data deletion URLs.
-- Removed developer-only publishing placeholders from `docs/terms.md`; Terms still needs owner/lawyer factual review before monetized production launch, especially subscription and acceptance wording.
+- Removed developer-only publishing placeholders from `docs/terms.md`.
+- Legal page factual pass completed for visible brand, package name, public URLs, privacy/data deletion links, Firebase/Google disclosures, and support contact consistency. Owner/lawyer review is still recommended before monetized production launch, especially subscription, refund, liability, and acceptance wording.
 
 ## 2026-06-24 - Phone QA date picker polish
 
@@ -715,12 +716,73 @@ Verification:
 
 - `:app:compileProdDebugKotlin` passed.
 - `:app:testProdDebugUnitTest` passed.
+
+## 2026-06-30 - Loan/debt statement date visibility
+
+Completed:
+
+- Borrower detail now shows `Loan date` and `Due date` in the top statement area.
+- Debt detail now shows `Taken date` and `Due date` in the top statement area.
+- If a due date is blank, the detail screen says `No due date` instead of hiding the row.
+- Confirmed product interpretation: Invest summary uses the shared soft ledger panel; data is local-first on the phone and cloud-synced to Firestore only when signed in.
+
+Manual smoke when phone reconnects:
+
+1. Open one borrower with a due date. Confirm Loan date and Due date are visible near the balance.
+2. Open one borrower without a due date. Confirm Due date says `No due date`.
+3. Repeat both checks for one debt/debtor.
+4. Open Invest and confirm the portfolio summary card still feels like the soft ledger-panel style.
+
+Verification:
+
+- `:app:compileProdDebugKotlin` passed.
+- `:app:testProdDebugUnitTest` passed.
 - Installed production and developer debug variants to connected phone `3C15CA0055F00000`.
 - `:app:testProdDebugUnitTest` passed.
 - `:app:compileDevDebugKotlin` passed.
 - Installed `app.fynlo` and `app.fynlo.dev` to connected phone `3C15CA0055F00000`.
 - Installed versions: production `3.2.107` / versionCode `231`; developer `3.2.107-dev` / versionCode `231`.
 - ADB UI smoke confirmed production Dashboard has `Transfer`, Dashboard freshness is current, Expenses opens `Add Expense`, and dev intro opens as `Fynlo Ledger`.
+
+## 2026-06-30 - Dashboard account density and ledger trail clarity
+
+Completed:
+
+- Dashboard account rows were tightened so the account section consumes less vertical space without making balances hard to read.
+- Removed the visible pencil beside account balances. Tap opens the statement; long-press keeps account editing reachable without cluttering the balance line.
+- Transaction history and account statement rows now use clearer movement language: `Paid from`, `Received into`, `Lent from`, `Funded from`, and `From -> To`.
+- Running balance language now says `Balance after`, making each row easier to audit.
+
+Manual smoke when phone reconnects:
+
+1. On Dashboard, tap an account row and confirm it opens the account statement.
+2. Long-press a dashboard account row and confirm account edit is still reachable.
+3. Open account statement/history and confirm rows show clear source/destination language.
+4. Confirm running balance rows read `Before`, `Change`, and `Balance after`.
+
+Verification:
+
+- `:app:compileProdDebugKotlin` passed.
+- `:app:testProdDebugUnitTest` passed.
+
+## 2026-06-30 - Global Search keyboard and top spacing polish
+
+Completed:
+
+- Global Search custom top bar was reduced from the overly tall spacing that matched the old EMI Calculator problem.
+- Empty and no-result states now sit closer to the search controls instead of leaving a large blank top area.
+- The screen uses keyboard-aware scroll/padding, and the keyboard search action clears focus so results are easier to inspect.
+
+Manual smoke when phone reconnects:
+
+1. Open Global Search and confirm the top area no longer feels overly airy.
+2. Tap the search box, type two characters, and press the keyboard search/check action. Confirm the keyboard dismisses.
+3. Search a loan/debt/transaction and confirm results remain visible above the keyboard.
+
+Verification:
+
+- `:app:compileProdDebugKotlin` passed.
+- `:app:testProdDebugUnitTest` passed.
 
 ## 2026-06-30 - Book Check safe repair action
 
@@ -820,3 +882,266 @@ Completed:
 Future rule:
 
 - Never save an existing account balance as a plain account update. Any balance change must create a ledger-visible correction transaction, otherwise Book Check/repair will eventually expose the mismatch.
+
+## 2026-06-30 - Phase status clarification
+
+Not remaining blockers:
+
+- Contact Book base work is present: add/edit/delete, import from system contacts, search, contact IDs, empty states, loan/debt linking, and feedback messages. A future per-contact money timeline can be added later, but the base contact book is not unfinished Phase 2 work.
+- History/accountability surfaces are present: Money action history, transaction/account history ordering, before/after balance impact, audit details, and CSV export paths.
+- Investment valuation history is already on the premium dialog style and has improved contrast.
+- The old `AlertDialog` remaining in Settings is intentional: the non-dismissible `Resetting...` progress lock while Reset All Data wipes local/cloud state and restarts the app. Keep this unless the reset flow itself is redesigned.
+
+## 2026-06-30 - Contact money history and reset progress polish
+
+Completed:
+
+- Contact Book now has a per-person money history sheet opened by tapping a contact row or choosing `Money history` from the row menu.
+- The sheet summarizes money lent to that person, money owed to that person, current receivable, and current payable.
+- The timeline includes linked loans, debts, loan repayments, and debt payments. Matching uses `peopleId`, then phone digits, then exact name fallback for older records.
+- Reset All Data progress now uses the premium rounded dialog style while staying non-dismissible during the active wipe/restart.
+
+Verification:
+
+- `:app:compileProdDebugKotlin` passed.
+
+## 2026-06-30 - Dashboard accountability guidance
+
+Completed:
+
+- Dashboard now explains today's net-worth movement in layman terms using income minus expense, while calling out transfers separately so account-to-account movement is not mistaken for income or expense.
+- Dashboard now has a monthly review card with income, expense, net flow, and entry count. It opens Monthly Summary for the deeper view.
+- Smart duplicate warning is present in Add Transaction for same date/type/category/amount/account entries.
+- First-use Dashboard guidance remains the setup path for fresh books.
+- Sync conflict review already compares phone/cloud snapshots and lets the user choose the final source for structured account/transaction conflicts.
+
+Verification:
+
+- `:app:compileProdDebugKotlin` passed.
+
+## 2026-06-30 - Automation and daily-use improvements
+
+Completed:
+
+- Dashboard now has an automation review card for recurring entries due now, budget alerts, and large entries that still need proof review.
+- Add Transaction now suggests a category from description/history patterns when the user leaves the category blank.
+- Add Transaction now shows a large-entry proof reminder for rows of `₹50,000` or more.
+- Add Transaction feedback now points users to the Undo path in Settings.
+- The broader 15-item user request is represented by existing and new surfaces: reminders, recurring entries, duplicate prevention, reconciliation/Book Check, auto category suggestion, contact history, one-tap payments/waivers, daily/monthly summary, risk alerts, proof prompts, smart search, undo safety, cloud status, and reset safety.
+
+Verification:
+
+- `:app:compileProdDebugKotlin` passed.
+
+## 2026-06-30 - Running balance timelines
+
+Completed:
+
+- Account statements now show the selected account's own running balance impact for each row.
+- Single-account transaction impacts now render as a visible `Before / Change / After` strip instead of a small inline trace.
+- This makes balance movement explainable without changing ledger data.
+
+Verification:
+
+- `:app:compileProdDebugKotlin` passed.
+
+## 2026-06-30 - Proof vault and smart Book Check explanations
+
+Completed:
+
+- Settings -> Proof records now opens a Proof vault review dialog.
+- The dialog shows saved proof links and high-value proof gaps across loans, debts, investments, and large transactions.
+- Proof vault does not mutate ledger data. It points the user back to the relevant detail screen to attach or replace proof.
+- Book Check issue rows now include a plain-language `Why it matters` explanation plus the existing practical next step.
+- Book Check now includes repair coverage guidance: safe repair can rebuild evidence-backed links/totals, but it must not guess missing accounts, delete duplicates, or decide which record is correct.
+
+Verification:
+
+- `:app:compileProdDebugKotlin` passed.
+
+## 2026-06-30 - Launch readiness assistant
+
+Completed:
+
+- Settings -> Backup & Export now has a `Launch readiness` review tool.
+- It summarizes personal ledger treatment, close readiness, smart alerts, clean onboarding, Reports 2.0, CSV import automation, backup confidence, security polish, business mode, plain-language explanations, and release quality.
+- Previous-month close is handled as a deliberate assistant action, not a silent automatic background lock. The close button is enabled only when no serious Book check issue is present and the previous month is not already closed.
+- This is the release-facing checklist to run before Play internal testing promotion together with compile, unit tests, phone smoke, Book check, Proof vault, backup/export, and Play Console review.
+- To reduce Settings crowding, file actions remain under `Backup & Export`, while ledger trust actions now live under `Trust & Safety`.
+
+Verification:
+
+- `:app:compileProdDebugKotlin` passed.
+
+## 2026-06-30 - Technical hardening cleanup
+
+Completed:
+
+- Retired stale NetWorthWidget TODO references from the active project state. The widget was removed in 3.2.79, so there is no live widget currency bug to fix.
+- Removed the throwing `allSnapshots` accessor from `AccountRepository`; project-scoped `getNetWorthSnapshots(pid)` remains the supported path.
+- Replaced the throwing `allValuations` accessor in `InvestmentRepository` with the real DAO flow.
+- Aligned Terms contact, dispute, notice, and tax-invoice email references to `fynloapp.support@gmail.com`, matching the public Privacy Policy/support contact.
+- Enabled release/benchmark `ndk.debugSymbolLevel = SYMBOL_TABLE` so future release builds attempt native-symbol packaging.
+
+Native symbol note:
+
+- `:app:bundleProdRelease`, `:app:extractProdReleaseNativeDebugMetadata`, and `:app:extractProdReleaseNativeSymbolTables` pass. The generated native-symbol metadata folders are empty because the packaged native libraries are third-party dependency libraries without local debug metadata. Play's native-symbol warning can remain informational unless a future release adds first-party NDK code or a dependency ships symbols.
+
+Verification:
+
+- `:app:compileProdDebugKotlin` passed.
+- `:app:testProdDebugUnitTest` passed.
+- `:app:bundleProdRelease` passed.
+
+## 2026-06-30 - Dashboard and Investment screen de-clutter
+
+Completed:
+
+- Dashboard now keeps the first screen focused on total net worth, quick actions, and accounts. Book Check confidence is still visible when a fresh book needs guidance or when warnings/critical issues exist, but the healthy-state card no longer takes prime space.
+- Automation review now appears only when there is something actionable: due recurring entries, budget alerts, or large rows without proof.
+- Daily/monthly movement explanations are grouped under `Money movement` lower on the dashboard and only render when there is actual activity.
+- Investment allocation focuses on the top three visible types and explains when smaller types are grouped into the portfolio total.
+- Investment holding cards are calmer: current value, invested amount, gain/loss, source trace, and Update/Withdraw remain immediately visible; CAGR, withdrawals, notes, and proof attachments are under `Details and proof`.
+
+Verification:
+
+- `:app:compileProdDebugKotlin` passed.
+- `:app:testProdDebugUnitTest` passed before the final spacing-only cleanup; compile passed again after that cleanup.
+
+## 2026-06-30 - Dashboard proof reminder and Invest density follow-up
+
+Completed:
+
+- Dashboard proof reminders now use a recent-action window: high-value transaction proof gaps from the last 45 days only. Older proof gaps are still visible in Settings -> Proof records, but they are not treated as urgent dashboard work.
+- Proof records copy now clarifies that older proof gaps are review prompts, not balance errors.
+- Dashboard money movement now renders as a compact Today/Month strip instead of two stacked explanatory cards, reducing first-screen height.
+- Investment holding cards were compressed again: smaller icon, single-line type/date metadata, direct value/gain row, one-line funding trace, and a shorter `Details` expander.
+
+Verification:
+
+- `:app:compileProdDebugKotlin` passed.
+- `:app:testProdDebugUnitTest` passed.
+
+## 2026-06-30 - Dashboard movement wrap fix and investment ledger rows
+
+Completed:
+
+- Fixed the Money movement count wrap issue by using the section-title count slot instead of a separate squeezed row item.
+- Month movement now shows both inflow and outflow in the card detail so the net number has context.
+- Invest now uses a compact portfolio summary instead of the tall hero panel.
+- Holding rows no longer show large repeated Update/Withdraw buttons. Those actions moved into the holding menu with Details & proof, Valuation History, Edit, and Delete.
+
+Verification:
+
+- `:app:compileProdDebugKotlin` passed.
+- `:app:testProdDebugUnitTest` passed.
+- Prod and dev debug variants were installed to the connected phone.
+
+## 2026-06-30 - Interest-only payment period rollover
+
+Completed:
+
+- Borrower and debt interest-only payments now automatically restart the interest period from the next day when the paid interest fully settles the amount due through the payment date.
+- The rule is deliberately narrow: no principal component, full interest due covered, active/non-cleared record, and valid ledger date.
+- The payment and transaction rows remain as history; only the borrower/debt interest period state advances.
+- Rebuild/repair now counts interest payments only from the current interest period, while principal payments continue to count across the whole record lifetime.
+- Undo for the newly-created payment restores the original borrower/debt snapshot, including the previous interest start date.
+
+Manual smoke when phone reconnects:
+
+1. Create or pick an active borrower with interest due.
+2. Collect `Interest Only` for the full interest due today. Confirm the borrower date moves to tomorrow and current interest becomes zero.
+3. Repeat with a partial interest amount. Confirm the borrower date does not move.
+4. Repeat the full-interest flow for a debt payment. Confirm the debtor/debt date moves to tomorrow and current interest becomes zero.
+5. Check account balance, transaction history, and audit trail for the payment row.
+
+Verification:
+
+- `:app:compileProdDebugKotlin` passed.
+- `:app:testProdDebugUnitTest` passed.
+- Phone install pending because the phone was disconnected.
+
+## 2026-06-30 - Optional due-date clear and help entry placement
+
+Completed:
+
+- Optional date fields now expose a clear action once a date is selected.
+- Loan and debt forms can now remove an accidentally entered due date while keeping the start/taken date.
+- `What's new & how to use` moved to a top-level Settings help row for easier discovery.
+- The drawer/hamburger menu was intentionally not expanded with this help item; Settings is the cleaner reachable home for support content.
+
+Manual smoke when phone reconnects:
+
+1. Open Add Loan, pick a Due date, then tap the clear icon. Confirm the due date becomes blank and the loan can save with only the Lending date.
+2. Repeat in Add Debt for Due Date.
+3. Open Settings and confirm `What's new & how to use` is visible near the top without opening App Info.
+
+Verification:
+
+- `:app:compileProdDebugKotlin` passed.
+
+## 2026-06-30 - EMI calculator keyboard/layout polish
+
+Completed:
+
+- EMI Calculator now has keyboard-aware scrolling so the numeric keyboard does not trap the result area as badly.
+- Tenure's keyboard check action dismisses focus/keyboard.
+- A compact Monthly EMI preview appears inside the form as soon as the principal, rate, and tenure are valid, keeping the main answer visible while typing.
+- The content now has slightly better top spacing below the shared app bar.
+
+Manual smoke when phone reconnects:
+
+1. Open EMI Calculator from the menu.
+2. Enter principal, annual rate, and tenure. Confirm the compact EMI preview appears before closing the keyboard.
+3. Tap the keyboard check button while Tenure is focused. Confirm the keyboard closes.
+4. Confirm the full result cards and amortization section are readable after the keyboard closes.
+
+Verification:
+
+- `:app:compileProdDebugKotlin` passed.
+- `:app:testProdDebugUnitTest` passed.
+- Phone install pending because the phone was disconnected.
+
+## 2026-06-30 - Dashboard account density and ledger trail clarity
+
+Completed:
+
+- Dashboard account rows were tightened with smaller icons, reduced vertical padding, and no visible pencil competing with the balance.
+- Tapping an account row opens the account statement; long-press keeps account editing reachable without cluttering the row.
+- Transaction history and account statement rows now describe money movement in plain ledger language such as `Paid from`, `Received into`, `Lent from`, `Funded from`, and `From -> To`.
+- Running-balance copy now says `Balance after` instead of the vague `After`.
+
+Verification:
+
+- `:app:compileProdDebugKotlin` passed.
+- `:app:testProdDebugUnitTest` passed.
+
+## 2026-06-30 - Global Search keyboard and top spacing polish
+
+Completed:
+
+- Global Search now uses a shorter custom top bar and less empty-state top padding.
+- The screen is keyboard-aware, so the keyboard no longer leaves the search experience feeling like the EMI calculator did before its polish pass.
+- Pressing the keyboard search action clears focus so results are easier to read.
+
+Verification:
+
+- `:app:compileProdDebugKotlin` passed.
+- `:app:testProdDebugUnitTest` passed.
+
+## 2026-06-30 - Internal testing build 3.2.108
+
+Completed:
+
+- Version bumped to `3.2.108` with `versionCode 232`; developer builds report `3.2.108-dev`.
+- Production and developer debug variants were installed to the connected phone.
+- Installed package metadata confirmed `app.fynlo` is `3.2.108` and `app.fynlo.dev` is `3.2.108-dev`.
+- Production release AAB rebuilt at `app/build/outputs/bundle/prodRelease/app-prod-release.aab`.
+
+Verification:
+
+- `:app:compileProdDebugKotlin` passed.
+- `:app:testProdDebugUnitTest` passed.
+- `:app:bundleProdRelease` passed.
+- `:app:installProdDebug` and `:app:installDevDebug` passed.
+- Unit test result XML showed 413 tests with 0 failures/errors.

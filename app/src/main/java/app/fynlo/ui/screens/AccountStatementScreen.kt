@@ -100,6 +100,10 @@ fun AccountStatementScreen(
             } else {
                 LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     items(accountTransactions, key = { it.id }) { txn ->
+                        val focusedImpacts = balanceImpactsByTransaction[txn.id]
+                            .orEmpty()
+                            .filter { it.accountName == accountName }
+                            .ifEmpty { balanceImpactsByTransaction[txn.id].orEmpty() }
                         TransactionItem(
                             txn            = txn,
                             currencyCode   = currencyCode,
@@ -117,7 +121,7 @@ fun AccountStatementScreen(
                             // C03b Stage #1b-2 (3.2.88) — id → current name
                             // for rename-reflective sub-label.
                             accountIdToName = accounts.associate { it.id to it.name },
-                            balanceImpacts = balanceImpactsByTransaction[txn.id].orEmpty(),
+                            balanceImpacts = focusedImpacts,
                             showTimestamp = true,
                         )
                     }

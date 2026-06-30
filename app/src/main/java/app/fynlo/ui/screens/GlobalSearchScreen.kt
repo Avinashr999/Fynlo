@@ -7,6 +7,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
@@ -21,8 +23,10 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import app.fynlo.FinanceViewModel
 import app.fynlo.data.UserPreferences
@@ -63,6 +67,7 @@ fun GlobalSearchScreen(
     val investments  by viewModel.investments.collectAsState()
     val currentProject by viewModel.currentProject.collectAsState()
     val currencyCode = currentProject?.currency ?: "INR"
+    val focusManager = LocalFocusManager.current
 
     val recentSearches by UserPreferences.recentSearches(context).collectAsState(initial = emptyList())
 
@@ -148,7 +153,7 @@ fun GlobalSearchScreen(
     Scaffold(
         topBar = {
             Surface(
-                modifier = Modifier.fillMaxWidth().statusBarsPadding().height(76.dp),
+                modifier = Modifier.fillMaxWidth().statusBarsPadding().height(66.dp),
                 color = MaterialTheme.colorScheme.surface,
                 tonalElevation = 0.dp,
             ) {
@@ -183,6 +188,8 @@ fun GlobalSearchScreen(
                         modifier      = Modifier.weight(1f).focusRequester(focusRequester),
                         shape         = RoundedCornerShape(16.dp),
                         leadingIcon   = { Icon(Icons.Default.Search, null, tint = Emerald500) },
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                        keyboardActions = KeyboardActions(onSearch = { focusManager.clearFocus() }),
                         trailingIcon  = {
                             if (query.isNotBlank()) {
                                 IconButton(onClick = { query = "" }) {
@@ -202,7 +209,13 @@ fun GlobalSearchScreen(
             }
         }
     ) { padding ->
-        Column(modifier = Modifier.fillMaxSize().padding(padding)) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .imeNestedScroll()
+                .imePadding()
+        ) {
             // C22 (3.2.58) — type filter row. Always visible so users can
             // pre-narrow before typing OR re-narrow after seeing too many
             // results. FlowRow handles wrapping on narrow screens.
@@ -269,7 +282,7 @@ fun GlobalSearchScreen(
                     } else {
                         item {
                             Column(
-                                modifier            = Modifier.fillMaxWidth().padding(top = 64.dp),
+                                modifier            = Modifier.fillMaxWidth().padding(top = 24.dp),
                                 horizontalAlignment = Alignment.CenterHorizontally
                             ) {
                                 Icon(Icons.Default.Search, null, Modifier.size(64.dp),
@@ -288,7 +301,7 @@ fun GlobalSearchScreen(
                 } else if (results.isEmpty()) {
                     item {
                         Column(
-                            modifier            = Modifier.fillMaxWidth().padding(top = 64.dp),
+                            modifier            = Modifier.fillMaxWidth().padding(top = 24.dp),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             Icon(Icons.Default.SearchOff, null, Modifier.size(64.dp),

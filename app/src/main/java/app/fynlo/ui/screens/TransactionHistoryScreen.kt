@@ -723,19 +723,7 @@ fun TransactionItem(
                     modifier = Modifier.padding(top = 2.dp),
                 )
             }
-            val accountTrace = when {
-                txn.category.equals("Lending", ignoreCase = true) && txn.fromAcct.isNotBlank() ->
-                    "From ${txn.displayFromAcct(accountIdToName)}"
-                txn.category.equals("Loan Repayment", ignoreCase = true) && txn.toAcct.isNotBlank() ->
-                    "To ${txn.displayToAcct(accountIdToName)}"
-                txn.category.equals("Debt Received", ignoreCase = true) && txn.toAcct.isNotBlank() ->
-                    "Into ${txn.displayToAcct(accountIdToName)}"
-                txn.category.equals("Debt Repayment", ignoreCase = true) && txn.fromAcct.isNotBlank() ->
-                    "From ${txn.displayFromAcct(accountIdToName)}"
-                txn.category.equals("Investment", ignoreCase = true) && txn.fromAcct.isNotBlank() ->
-                    "From ${txn.displayFromAcct(accountIdToName)}"
-                else -> ""
-            }
+            val accountTrace = transactionAccountTrace(txn, accountIdToName)
             if (accountTrace.isNotBlank() && accountTrace != sub) {
                 Text(
                     accountTrace,
@@ -756,20 +744,28 @@ fun TransactionItem(
                 }
             }
             if (balanceImpacts.isNotEmpty()) {
-                val impactText = if (isPrivacy) {
-                    "Balance: hidden"
+                if (balanceImpacts.size == 1) {
+                    RunningBalanceStrip(
+                        impact = balanceImpacts.first(),
+                        currencyCode = currencyCode,
+                        isPrivacy = isPrivacy,
+                    )
                 } else {
-                    balanceImpacts.take(2).joinToString(" | ") { impact ->
-                        "${impact.accountName}: ${CurrencyFormatter.detail(impact.before, currencyCode, locale)} -> ${CurrencyFormatter.detail(impact.after, currencyCode, locale)}"
+                    val impactText = if (isPrivacy) {
+                        "Balance: hidden"
+                    } else {
+                        balanceImpacts.take(2).joinToString(" | ") { impact ->
+                            "${impact.accountName} after ${CurrencyFormatter.detail(impact.after, currencyCode, locale)}"
+                        }
                     }
+                    Text(
+                        impactText,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 2,
+                        modifier = Modifier.padding(top = 3.dp),
+                    )
                 }
-                Text(
-                    impactText,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 2,
-                    modifier = Modifier.padding(top = 3.dp),
-                )
             }
         }
 
@@ -787,6 +783,117 @@ fun TransactionItem(
             color = rowColor
         )
     }
+    }
+}
+
+@Composable
+private fun RunningBalanceStrip(
+    impact: TransactionBalanceImpact,
+    currencyCode: String,
+    isPrivacy: Boolean,
+) {
+    val locale = LocalLocale.current.platformLocale
+    val deltaColor = when {
+        impact.delta > 0.005 -> Emerald500
+        impact.delta < -0.005 -> SemanticRed
+        else -> MaterialTheme.colorScheme.onSurfaceVariant
+    }
+    val changeText = if (isPrivacy) {
+        "Hidden"
+    } else if (impact.delta < -0.005) {
+        CurrencyFormatter.negative(abs(impact.delta), currencyCode, locale)
+    } else {
+        "+${CurrencyFormatter.detail(impact.delta, currencyCode, locale)}"
+    }
+
+    Surface(
+        modifier = Modifier
+            .padding(top = 8.dp)
+            .fillMaxWidth(),
+        shape = RoundedCornerShape(14.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.42f),
+        border = androidx.compose.foundation.BorderStroke(
+            0.5.dp,
+            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f),
+        ),
+    ) {
+        Row(
+            Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            RunningBalanceMetric(
+                label = "Before",
+                value = if (isPrivacy) "Hidden" else CurrencyFormatter.detail(impact.before, currencyCode, locale),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.weight(1f),
+            )
+            RunningBalanceMetric(
+                label = "Change",
+                value = changeText,
+                color = deltaColor,
+                modifier = Modifier.weight(1f),
+            )
+            RunningBalanceMetric(
+                label = "Balance after",
+                value = if (isPrivacy) "Hidden" else CurrencyFormatter.detail(impact.after, currencyCode, locale),
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.weight(1f),
+            )
+        }
+    }
+}
+
+@Composable
+private fun RunningBalanceMetric(
+    label: String,
+    value: String,
+    color: androidx.compose.ui.graphics.Color,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Text(
+            label,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+        )
+        Text(
+            value,
+            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+            color = color,
+            maxLines = 1,
+        )
+    }
+}
+
+private fun transactionAccountTrace(
+    txn: Transaction,
+    accountIdToName: Map<String, String>,
+): String {
+    val from = txn.displayFromAcct(accountIdToName).takeIf { it.isNotBlank() }
+    val to = txn.displayToAcct(accountIdToName).takeIf { it.isNotBlank() }
+    return when (txn.type.lowercase()) {
+        "transfer" -> when {
+            from != null && to != null -> "From $from -> To $to"
+            from != null -> "From $from"
+            to != null -> "To $to"
+            else -> ""
+        }
+        "expense" -> when {
+            from != null && txn.category.equals("Investment", ignoreCase = true) -> "Funded from $from"
+            from != null && txn.category.equals("Lending", ignoreCase = true) -> "Lent from $from"
+            from != null && txn.category.equals("Debt Repayment", ignoreCase = true) -> "Paid from $from"
+            from != null -> "Paid from $from"
+            else -> ""
+        }
+        "income" -> when {
+            to != null && txn.category.equals("Loan Repayment", ignoreCase = true) -> "Collected into $to"
+            to != null && txn.category.equals("Debt Received", ignoreCase = true) -> "Received into $to"
+            to != null -> "Received into $to"
+            else -> ""
+        }
+        else -> ""
     }
 }
 

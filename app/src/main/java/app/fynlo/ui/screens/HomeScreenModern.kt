@@ -2,8 +2,10 @@ package app.fynlo.ui.screens
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -96,6 +98,9 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
     val allDebtsHome by viewModel.debts.collectAsState()
     val allBorrowersHome by viewModel.borrowers.collectAsState()
     val allTransactionsHome by viewModel.transactions.collectAsState()
+    val budgetsHome by viewModel.budgets.collectAsState()
+    val recurringHome by viewModel.recurringTransactions.collectAsState()
+    val proofAttachmentsHome by viewModel.proofAttachments.collectAsState()
     val activeAccounts = remember(accounts) { accounts.filterNot { it.isClosedAccount() } }
     val activeAccountNames = remember(activeAccounts) { activeAccounts.map { it.name } }
     val cashInHandBreakdown = remember(activeAccounts) {
@@ -134,6 +139,28 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
         allBorrowersHome.count { it.status != "Cleared" && isDueSoon(it.due) } +
             allDebtsHome.count { it.status != "Cleared" && isDueSoon(it.due) }
     }
+    val todayMovement = remember(allTransactionsHome, today) {
+        allTransactionsHome.moneyMovementForDate(today)
+    }
+    val monthMovement = remember(allTransactionsHome, today) {
+        val month = java.time.YearMonth.from(today)
+        allTransactionsHome.moneyMovementForMonth(month)
+    }
+    val automationSummary = remember(
+        allTransactionsHome,
+        budgetsHome,
+        recurringHome,
+        proofAttachmentsHome,
+        today,
+    ) {
+        buildAutomationSummary(
+            transactions = allTransactionsHome,
+            budgets = budgetsHome,
+            recurring = recurringHome,
+            proofs = proofAttachmentsHome,
+            today = today,
+        )
+    }
     val isFreshBook = activeAccounts.isEmpty() &&
         allTransactionsHome.isEmpty() &&
         allInvestmentsHome.isEmpty() &&
@@ -164,7 +191,8 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
             onConfirm = { txn ->
                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                 viewModel.addTransaction(txn)
-                viewModel.showFeedback(if (txn.type.equals("income", ignoreCase = true)) "Income added" else "Expense added")
+                val savedLabel = if (txn.type.equals("income", ignoreCase = true)) "Income added" else "Expense added"
+                viewModel.showFeedback("$savedLabel. Undo is available from Settings")
                 showAddTxn = false
             },
             rememberLastCategory = { isIncome -> viewModel.rememberLastTransactionCategory(isIncome) },
@@ -449,19 +477,32 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
             }
         }
 
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(12.dp))
 
         // ── Net-worth trend chart card (tap → full history) ───────────────────
-        DashboardConfidenceCard(
-            report = ledgerReport,
-            syncStatus = syncStatus,
-            updatedAt = latestMoneyActivityAt,
-            isFreshBook = isFreshBook,
-            onOpenBookCheck = { onNavigateToScreen("settings") },
-        )
+        val bookNeedsReview = ledgerReport.criticalCount + ledgerReport.warningCount > 0
+        if (isFreshBook || bookNeedsReview) {
+            DashboardConfidenceCard(
+                report = ledgerReport,
+                syncStatus = syncStatus,
+                updatedAt = latestMoneyActivityAt,
+                isFreshBook = isFreshBook,
+                onOpenBookCheck = { onNavigateToScreen("settings") },
+            )
+            Spacer(Modifier.height(12.dp))
+        }
 
-        Spacer(Modifier.height(12.dp))
-        Spacer(Modifier.height(0.dp))
+        if (!isFreshBook) {
+            if (automationSummary.needsAttention > 0) {
+                AutomationAssistantCard(
+                    summary = automationSummary,
+                    onOpenRecurring = { onNavigateToScreen("recurring") },
+                    onOpenBudgets = { onNavigateToScreen("budgets") },
+                    onOpenProofRecords = { onNavigateToScreen("settings") },
+                )
+                Spacer(Modifier.height(12.dp))
+            }
+        }
 
         // ── Quick actions ─────────────────────────────────────────────────────
         LedgerPanel {
@@ -542,9 +583,9 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
                         balance = fmt(entry.value),
                         icon = iconFor(entry.key),
                         onClick = { onNavigateToScreen("statement/${entry.key}") },
-                        onEdit = account?.let {
+                        onEdit = account?.let { account ->
                             {
-                                accountDialogInitial = it
+                                accountDialogInitial = account
                                 showAccountDialog = true
                             }
                         },
@@ -556,6 +597,19 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
         Spacer(Modifier.height(14.dp))
 
         // ── Insights ──────────────────────────────────────────────────────────
+        if (!isFreshBook && (todayMovement.entries > 0 || monthMovement.entries > 0)) {
+            DashboardMovementStrip(
+                todayMovement = todayMovement,
+                monthMovement = monthMovement,
+                currencyCode = currencyCode,
+                locale = locale,
+                isPrivacy = isPrivacy,
+                onOpenHistory = { onNavigateToScreen("history") },
+                onOpenMonthly = { onNavigateToScreen("monthly") },
+            )
+            Spacer(Modifier.height(12.dp))
+        }
+
         LedgerPanel {
             LedgerSectionTitle("Insights")
             Spacer(Modifier.height(4.dp))
@@ -598,6 +652,414 @@ private fun app.fynlo.data.model.Transaction.linksAccount(account: Account): Boo
         toAcctId == account.id ||
         (fromAcctId.isBlank() && fromAcct == account.name) ||
         (toAcctId.isBlank() && toAcct == account.name)
+
+private data class MoneyMovementSummary(
+    val income: Double,
+    val expense: Double,
+    val transfers: Double,
+    val entries: Int,
+) {
+    val netFlow: Double get() = income - expense
+}
+
+private data class AutomationSummary(
+    val recurringDue: Int,
+    val budgetAlerts: Int,
+    val recentLargeEntriesWithoutProof: Int,
+) {
+    val needsAttention: Int get() = recurringDue + budgetAlerts + recentLargeEntriesWithoutProof
+}
+
+private fun buildAutomationSummary(
+    transactions: List<app.fynlo.data.model.Transaction>,
+    budgets: List<app.fynlo.data.model.Budget>,
+    recurring: List<app.fynlo.data.model.RecurringTransaction>,
+    proofs: List<app.fynlo.data.model.ProofAttachment>,
+    today: java.time.LocalDate,
+): AutomationSummary {
+    val recurringDue = recurring.count { it.isActive && !today.isBefore(nextRecurringDueDate(it, today)) }
+    val currentMonth = java.time.YearMonth.from(today)
+    val monthlyExpenseByCategory = transactions
+        .filter { it.type.equals("Expense", ignoreCase = true) && it.tags != "journal_only" }
+        .filter { txn -> runCatching { java.time.YearMonth.from(java.time.LocalDate.parse(txn.date)) }.getOrNull() == currentMonth }
+        .groupBy { it.category.trim().lowercase() }
+        .mapValues { (_, rows) -> rows.sumOf { it.amount } }
+    val budgetAlerts = budgets.count { budget ->
+        val spent = monthlyExpenseByCategory[budget.category.trim().lowercase()] ?: 0.0
+        budget.limitAmount > 0.0 && spent / budget.limitAmount * 100.0 >= budget.alertThresholdPct
+    }
+    val proofOwnerIds = proofs.map { it.ownerId }.toSet()
+    val recentProofWindowStart = today.minusDays(45)
+    val recentLargeEntriesWithoutProof = transactions.count { txn ->
+        val txnDate = runCatching { java.time.LocalDate.parse(txn.date) }.getOrNull()
+        txn.amount >= 50_000.0 &&
+            txn.tags.split(',').none { tag -> tag.trim().equals("journal_only", ignoreCase = true) } &&
+            txn.id !in proofOwnerIds &&
+            txnDate != null &&
+            !txnDate.isBefore(recentProofWindowStart)
+    }
+    return AutomationSummary(
+        recurringDue = recurringDue,
+        budgetAlerts = budgetAlerts,
+        recentLargeEntriesWithoutProof = recentLargeEntriesWithoutProof,
+    )
+}
+
+private fun nextRecurringDueDate(
+    recurring: app.fynlo.data.model.RecurringTransaction,
+    today: java.time.LocalDate,
+): java.time.LocalDate {
+    val base = runCatching { java.time.LocalDate.parse(recurring.lastRun) }.getOrNull()
+        ?: today.withDayOfMonth(recurring.dayOfMonth.coerceIn(1, today.lengthOfMonth()))
+    return when (recurring.frequency) {
+        "Daily" -> base.plusDays(1)
+        "Weekly" -> base.plusWeeks(1)
+        "Yearly" -> base.plusYears(1)
+        else -> {
+            val next = base.plusMonths(1)
+            next.withDayOfMonth(recurring.dayOfMonth.coerceIn(1, next.lengthOfMonth()))
+        }
+    }
+}
+
+private fun List<app.fynlo.data.model.Transaction>.moneyMovementForDate(
+    date: java.time.LocalDate,
+): MoneyMovementSummary = moneyMovement { txn ->
+    runCatching { java.time.LocalDate.parse(txn.date) }.getOrNull() == date
+}
+
+private fun List<app.fynlo.data.model.Transaction>.moneyMovementForMonth(
+    month: java.time.YearMonth,
+): MoneyMovementSummary = moneyMovement { txn ->
+    runCatching { java.time.YearMonth.from(java.time.LocalDate.parse(txn.date)) }.getOrNull() == month
+}
+
+private fun List<app.fynlo.data.model.Transaction>.moneyMovement(
+    include: (app.fynlo.data.model.Transaction) -> Boolean,
+): MoneyMovementSummary {
+    val scoped = filter(include)
+    val income = scoped
+        .filter { it.type.equals("Income", ignoreCase = true) }
+        .sumOf { it.amount }
+    val expense = scoped
+        .filter { it.type.equals("Expense", ignoreCase = true) }
+        .sumOf { it.amount }
+    val transfers = scoped
+        .filter { it.type.equals("Transfer", ignoreCase = true) }
+        .sumOf { it.amount }
+    return MoneyMovementSummary(
+        income = income,
+        expense = expense,
+        transfers = transfers,
+        entries = scoped.size,
+    )
+}
+
+@Composable
+private fun DashboardMovementStrip(
+    todayMovement: MoneyMovementSummary,
+    monthMovement: MoneyMovementSummary,
+    currencyCode: String,
+    locale: Locale,
+    isPrivacy: Boolean,
+    onOpenHistory: () -> Unit,
+    onOpenMonthly: () -> Unit,
+) {
+    LedgerPanel {
+        LedgerSectionTitle("Money movement", count = "${monthMovement.entries} this month")
+        Spacer(Modifier.height(8.dp))
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            MovementMiniCard(
+                title = "Today net",
+                value = if (isPrivacy) "Hidden" else CurrencyFormatter.listRow(todayMovement.netFlow, currencyCode, locale),
+                detail = "${todayMovement.entries} entries",
+                color = if (todayMovement.netFlow < 0) SemanticRed else Emerald500,
+                modifier = Modifier.weight(1f),
+                onClick = onOpenHistory,
+            )
+            MovementMiniCard(
+                title = "Month net",
+                value = if (isPrivacy) "Hidden" else CurrencyFormatter.listRow(monthMovement.netFlow, currencyCode, locale),
+                detail = if (isPrivacy) {
+                    "Hidden"
+                } else {
+                    "In ${CurrencyFormatter.listRow(monthMovement.income, currencyCode, locale)} / Out ${CurrencyFormatter.listRow(monthMovement.expense, currencyCode, locale)}"
+                },
+                color = if (monthMovement.netFlow < 0) SemanticRed else Emerald500,
+                modifier = Modifier.weight(1f),
+                onClick = onOpenMonthly,
+            )
+        }
+    }
+}
+
+@Composable
+private fun MovementMiniCard(
+    title: String,
+    value: String,
+    detail: String,
+    color: Color,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+) {
+    Surface(
+        onClick = onClick,
+        modifier = modifier,
+        shape = RoundedCornerShape(16.dp),
+        color = color.copy(alpha = 0.08f),
+        border = BorderStroke(0.5.dp, color.copy(alpha = 0.20f)),
+    ) {
+        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+            Text(title, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(value, style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.ExtraBold), color = color, maxLines = 1)
+            Text(detail, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+        }
+    }
+}
+
+@Composable
+private fun TodayNetWorthMovementCard(
+    movement: MoneyMovementSummary,
+    currencyCode: String,
+    locale: Locale,
+    isPrivacy: Boolean,
+    onOpenHistory: () -> Unit,
+) {
+    val netText = if (isPrivacy) "••••" else CurrencyFormatter.listRow(movement.netFlow, currencyCode, locale)
+    val title = when {
+        movement.entries == 0 -> "No money changes today"
+        movement.netFlow > 0.005 -> "Net worth moved up today"
+        movement.netFlow < -0.005 -> "Net worth moved down today"
+        else -> "Net worth is steady today"
+    }
+    val detail = when {
+        movement.entries == 0 -> "Add income, expense, loans, debts, or transfers and the reason will appear here."
+        movement.transfers > 0.0 -> "Income and expenses changed by $netText. Transfers are tracked separately because they move money between accounts."
+        else -> "Income minus expenses changed by $netText across ${movement.entries} entry${if (movement.entries == 1) "" else "ies"}."
+    }
+    Surface(
+        onClick = onOpenHistory,
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        color = MaterialTheme.colorScheme.surface,
+        border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f)),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(42.dp)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(Emerald500.copy(alpha = 0.12f)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(Icons.Default.Insights, null, tint = Emerald500)
+            }
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    title,
+                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.ExtraBold),
+                )
+                Text(
+                    detail,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Icon(Icons.AutoMirrored.Default.ArrowForward, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+@Composable
+private fun MonthlyReviewCard(
+    movement: MoneyMovementSummary,
+    currencyCode: String,
+    locale: Locale,
+    isPrivacy: Boolean,
+    onOpenMonthly: () -> Unit,
+) {
+    fun money(value: Double): String =
+        if (isPrivacy) "••••" else CurrencyFormatter.listRow(value, currencyCode, locale)
+
+    Surface(
+        onClick = onOpenMonthly,
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.30f),
+        border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f)),
+    ) {
+        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column {
+                    Text(
+                        "Review this month",
+                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.ExtraBold),
+                    )
+                    Text(
+                        "${movement.entries} ledger entries recorded",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Icon(Icons.AutoMirrored.Default.ArrowForward, null, tint = Emerald500)
+            }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                MonthlyReviewMetric("Income", money(movement.income), Emerald500, Modifier.weight(1f))
+                MonthlyReviewMetric("Expense", money(movement.expense), SemanticRed, Modifier.weight(1f))
+                MonthlyReviewMetric("Net", money(movement.netFlow), if (movement.netFlow < 0) SemanticRed else Emerald500, Modifier.weight(1f))
+            }
+        }
+    }
+}
+
+@Composable
+private fun MonthlyReviewMetric(
+    label: String,
+    value: String,
+    color: Color,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(14.dp),
+        color = color.copy(alpha = 0.10f),
+    ) {
+        Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(value, style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold), color = color, maxLines = 1)
+        }
+    }
+}
+
+@Composable
+private fun AutomationAssistantCard(
+    summary: AutomationSummary,
+    onOpenRecurring: () -> Unit,
+    onOpenBudgets: () -> Unit,
+    onOpenProofRecords: () -> Unit,
+) {
+    val needsAttention = summary.needsAttention > 0
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(22.dp),
+        color = if (needsAttention) SemanticAmber.copy(alpha = 0.10f) else Emerald500.copy(alpha = 0.08f),
+        border = BorderStroke(
+            0.5.dp,
+            if (needsAttention) SemanticAmber.copy(alpha = 0.30f) else Emerald500.copy(alpha = 0.22f),
+        ),
+    ) {
+        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column {
+                    Text(
+                        if (needsAttention) "Automation needs review" else "Automation is quiet",
+                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.ExtraBold),
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                    Text(
+                        if (needsAttention) "${summary.needsAttention} useful check${if (summary.needsAttention == 1) "" else "s"} waiting"
+                        else "Recurring, budgets, and proof reminders are clear",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Icon(
+                    imageVector = if (needsAttention) Icons.Default.NotificationsActive else Icons.Default.TaskAlt,
+                    contentDescription = null,
+                    tint = if (needsAttention) SemanticAmber else Emerald500,
+                )
+            }
+
+            AutomationSignalRow(
+                icon = Icons.Default.Repeat,
+                title = "Recurring entries",
+                value = summary.recurringDue,
+                clearText = "No entries due",
+                alertText = "due now",
+                color = Emerald500,
+                onClick = onOpenRecurring,
+            )
+            AutomationSignalRow(
+                icon = Icons.Default.PieChart,
+                title = "Budget watch",
+                value = summary.budgetAlerts,
+                clearText = "Budgets on track",
+                alertText = "limit alerts",
+                color = SemanticAmber,
+                onClick = onOpenBudgets,
+            )
+            AutomationSignalRow(
+                icon = Icons.Default.Description,
+                title = "Proof reminders",
+                value = summary.recentLargeEntriesWithoutProof,
+                clearText = "Recent entries covered",
+                alertText = "recent large entries",
+                color = SemanticBlue,
+                onClick = onOpenProofRecords,
+            )
+        }
+    }
+}
+
+@Composable
+private fun AutomationSignalRow(
+    icon: ImageVector,
+    title: String,
+    value: Int,
+    clearText: String,
+    alertText: String,
+    color: Color,
+    onClick: () -> Unit,
+) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.72f),
+        border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f)),
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Surface(shape = RoundedCornerShape(12.dp), color = color.copy(alpha = 0.12f)) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    modifier = Modifier.padding(8.dp).size(18.dp),
+                    tint = color,
+                )
+            }
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    title,
+                    style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                Text(
+                    if (value == 0) clearText else "$value $alertText",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = if (value == 0) MaterialTheme.colorScheme.onSurfaceVariant else color,
+                )
+            }
+            Icon(Icons.AutoMirrored.Default.ArrowForward, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
 
 private fun dashboardFreshnessLabel(
     updatedAt: Long,
@@ -935,6 +1397,7 @@ private fun NeoAction(label: String, icon: ImageVector, color: Color, modifier: 
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun NeoAccountRow(
     name: String,
@@ -944,24 +1407,44 @@ private fun NeoAccountRow(
     onEdit: (() -> Unit)? = null,
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 14.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = onEdit,
+            )
+            .padding(vertical = 10.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-            Box(Modifier.size(40.dp).clip(CircleShape).background(Emerald500.copy(alpha = 0.10f)), Alignment.Center) {
-                Icon(icon, null, Modifier.size(20.dp), tint = Emerald500)
+        Row(
+            modifier = Modifier.weight(1f),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Box(Modifier.size(34.dp).clip(CircleShape).background(Emerald500.copy(alpha = 0.10f)), Alignment.Center) {
+                Icon(icon, null, Modifier.size(18.dp), tint = Emerald500)
             }
-            Text(name, style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium))
-        }
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(balance, style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold))
-            if (onEdit != null) {
-                IconButton(onClick = onEdit, modifier = Modifier.size(36.dp)) {
-                    Icon(Icons.Default.Edit, contentDescription = "Edit Account", modifier = Modifier.size(18.dp))
-                }
+            Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
+                Text(
+                    name,
+                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                    maxLines = 1,
+                )
+                Text(
+                    "Tap for statement",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                )
             }
         }
+        Spacer(Modifier.width(12.dp))
+        Text(
+            balance,
+            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.ExtraBold),
+            maxLines = 1,
+        )
     }
 }
 

@@ -73,15 +73,17 @@ interface FynloDao {
     // every borrower with `paid > 0` has at least one payment row, so SUM is
     // never NULL for those.
     @Query("""UPDATE borrowers SET
-        paid          = COALESCE((SELECT SUM(amount) FROM payments WHERE loanId = borrowers.id), 0),
+        paid          = COALESCE((SELECT SUM(CASE WHEN type='Interest Only' THEN 0 WHEN principal > 0 THEN principal ELSE amount END) FROM payments WHERE loanId = borrowers.id), 0)
+                      + COALESCE((SELECT SUM(CASE WHEN type='Interest Only' AND interest=0 THEN amount ELSE interest END) FROM payments WHERE loanId = borrowers.id AND date >= borrowers.date), 0),
         paidPrincipal = COALESCE((SELECT SUM(CASE WHEN type='Interest Only' THEN 0 WHEN principal > 0 THEN principal ELSE amount END) FROM payments WHERE loanId = borrowers.id), 0),
-        paidInterest  = COALESCE((SELECT SUM(CASE WHEN type='Interest Only' AND interest=0 THEN amount ELSE interest END) FROM payments WHERE loanId = borrowers.id), 0)""")
+        paidInterest  = COALESCE((SELECT SUM(CASE WHEN type='Interest Only' AND interest=0 THEN amount ELSE interest END) FROM payments WHERE loanId = borrowers.id AND date >= borrowers.date), 0)""")
     suspend fun rebuildBorrowerPaidFromPayments()
 
     @Query("""UPDATE debts SET
-        paid          = COALESCE((SELECT SUM(amount) FROM debt_payments WHERE debtId = debts.id), 0),
+        paid          = COALESCE((SELECT SUM(CASE WHEN type='Interest Only' THEN 0 WHEN principal > 0 THEN principal ELSE amount END) FROM debt_payments WHERE debtId = debts.id), 0)
+                      + COALESCE((SELECT SUM(CASE WHEN type='Interest Only' AND interest=0 THEN amount ELSE interest END) FROM debt_payments WHERE debtId = debts.id AND date >= debts.date), 0),
         paidPrincipal = COALESCE((SELECT SUM(CASE WHEN type='Interest Only' THEN 0 WHEN principal > 0 THEN principal ELSE amount END) FROM debt_payments WHERE debtId = debts.id), 0),
-        paidInterest  = COALESCE((SELECT SUM(CASE WHEN type='Interest Only' AND interest=0 THEN amount ELSE interest END) FROM debt_payments WHERE debtId = debts.id), 0)""")
+        paidInterest  = COALESCE((SELECT SUM(CASE WHEN type='Interest Only' AND interest=0 THEN amount ELSE interest END) FROM debt_payments WHERE debtId = debts.id AND date >= debts.date), 0)""")
     suspend fun rebuildDebtPaidFromDebtPayments()
 
     // recalculateDebtPaid removed by C01 Sprint 1 Stage 2 (twin of

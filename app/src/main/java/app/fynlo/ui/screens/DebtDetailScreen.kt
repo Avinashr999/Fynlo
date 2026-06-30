@@ -277,18 +277,30 @@ fun DebtDetailScreen(
                             }
                         }
                     }
+                    Spacer(Modifier.height(8.dp))
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f))
+                            .padding(horizontal = 14.dp, vertical = 10.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        DetailItem(
+                            "Taken date",
+                            DateUtils.formatToDisplay(debt.date),
+                            modifier = Modifier.weight(1f),
+                        )
+                        DetailItem(
+                            "Due date",
+                            debt.due.takeIf { it.isNotBlank() }?.let { DateUtils.formatToDisplay(it) } ?: "No due date",
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
                     if (debt.rate > 0) {
                         Spacer(Modifier.height(8.dp))
                         Text(
                             "Rate: ${debt.rate}% • ${app.fynlo.logic.InterestEngine.label(debt.intType)}",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    if (debt.due.isNotBlank()) {
-                        Spacer(Modifier.height(4.dp))
-                        Text(
-                            "Due ${DateUtils.formatToDisplay(debt.due)}",
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )

@@ -1,11 +1,13 @@
 package app.fynlo.ui.screens
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -15,7 +17,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalLocale
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -62,10 +66,12 @@ import app.fynlo.ui.theme.*
  *
  * Per UX_AUDIT C12-C15 P1 backlog — this commit closes the visual half.
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun LoanCalculatorScreen(viewModel: FinanceViewModel? = null) {
     val locale = LocalLocale.current.platformLocale
+    val focusManager = LocalFocusManager.current
+    val scrollState = rememberScrollState()
     val currentProjectState = viewModel?.currentProject?.collectAsState()
     val currentProject = currentProjectState?.value
     val currencyCode = currentProject?.currency ?: "INR"
@@ -182,7 +188,11 @@ fun LoanCalculatorScreen(viewModel: FinanceViewModel? = null) {
         scheduleGranularity = "Yearly"
     }
 
-    Column(modifier = Modifier.fillMaxSize()) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .imeNestedScroll()
+    ) {
         PremiumScreenHeader(
             title = "EMI Calculator",
             subtitle = "Plan your EMI before borrowing",
@@ -194,8 +204,14 @@ fun LoanCalculatorScreen(viewModel: FinanceViewModel? = null) {
                 }
             }
         )
-        Column(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp).verticalScroll(rememberScrollState()).imePadding()) {
-            Spacer(Modifier.height(8.dp))
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 16.dp)
+                .verticalScroll(scrollState)
+                .imePadding()
+        ) {
+            Spacer(Modifier.height(14.dp))
 
             // ── Input card ────────────────────────────────────────────────
             Column(
@@ -207,14 +223,14 @@ fun LoanCalculatorScreen(viewModel: FinanceViewModel? = null) {
                 OutlinedTextField(
                     value = principal, onValueChange = { principal = it },
                     label = { Text("Principal Amount ($currencySymbol)") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Next),
                     modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp), singleLine = true
                 )
 
                 OutlinedTextField(
                     value = rate, onValueChange = { rate = it },
                     label = { Text("Annual Interest Rate (%)") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Next),
                     modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp), singleLine = true
                 )
 
@@ -231,7 +247,8 @@ fun LoanCalculatorScreen(viewModel: FinanceViewModel? = null) {
                     OutlinedTextField(
                         value = tenure, onValueChange = { tenure = it },
                         label = { Text("Tenure") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
+                        keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
                         modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp), singleLine = true
                     )
                     val tenureUnits = listOf("Months", "Years")
@@ -241,6 +258,37 @@ fun LoanCalculatorScreen(viewModel: FinanceViewModel? = null) {
                         onSelected = { idx -> tenureUnit = tenureUnits[idx] },
                         modifier = Modifier.width(156.dp),
                     )
+                }
+
+                if (result != null) {
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(18.dp),
+                        color = Emerald500.copy(alpha = 0.10f),
+                        border = BorderStroke(1.dp, Emerald500.copy(alpha = 0.18f)),
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Column {
+                                Text(
+                                    "Monthly EMI",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                                Text(
+                                    CurrencyFormatter.detail(result.emi, currencyCode, locale),
+                                    style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.ExtraBold),
+                                    color = Emerald700,
+                                )
+                            }
+                            TextButton(onClick = { focusManager.clearFocus() }) {
+                                Text("View details")
+                            }
+                        }
+                    }
                 }
 
                 ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = !expanded }) {

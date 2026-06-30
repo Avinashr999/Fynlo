@@ -14,6 +14,7 @@ import app.fynlo.data.model.Payment
 import app.fynlo.data.model.Transaction
 import app.fynlo.data.remote.FirestoreRepository
 import app.fynlo.data.remote.SyncManager
+import app.fynlo.logic.InterestEngine
 import com.google.firebase.FirebaseApp
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -645,6 +646,54 @@ class MoneyActionIdempotencyDataIntegrityTest {
     }
 
     @Test
+    fun `full interest only loan payment rolls interest start to next day`() = runBlocking {
+        db.dao().insertAccount(Account(id = "acc-1", name = "Personal Cash", type = "Cash", balance = 1000.0))
+        db.dao().insertBorrower(Borrower(id = "loan-1", name = "Ravi", amount = 100000.0, rate = 12.0, date = "2026-01-01"))
+        val interestDue = InterestEngine.calcIntAccrued(100000.0, 12.0, "2026-01-01", "Simple Interest", asOf = "2026-02-01")
+        val payment = Payment(
+            id = "pay-interest",
+            loanId = "loan-1",
+            name = "Ravi",
+            date = "2026-02-01",
+            type = "Interest Only",
+            amount = interestDue,
+            interest = interestDue,
+        )
+
+        repository.insertPaymentWithDest(payment, "Personal Cash", "personal")
+
+        val updated = db.dao().getBorrowerById("loan-1")!!
+        assertEquals("2026-02-02", updated.date)
+        assertEquals(0.0, updated.paidInterest, 0.0001)
+        assertEquals(0.0, updated.paidPrincipal, 0.0001)
+        assertEquals(1000.0 + interestDue, db.dao().getAccountById("acc-1")!!.balance, 0.0001)
+        assertEquals(1, db.dao().getPaymentsForLoanOnce("loan-1").size)
+    }
+
+    @Test
+    fun `partial interest only loan payment does not roll interest start`() = runBlocking {
+        db.dao().insertAccount(Account(id = "acc-1", name = "Personal Cash", type = "Cash", balance = 1000.0))
+        db.dao().insertBorrower(Borrower(id = "loan-1", name = "Ravi", amount = 100000.0, rate = 12.0, date = "2026-01-01"))
+        val interestDue = InterestEngine.calcIntAccrued(100000.0, 12.0, "2026-01-01", "Simple Interest", asOf = "2026-02-01")
+        val partial = interestDue / 2.0
+        val payment = Payment(
+            id = "pay-partial",
+            loanId = "loan-1",
+            name = "Ravi",
+            date = "2026-02-01",
+            type = "Interest Only",
+            amount = partial,
+            interest = partial,
+        )
+
+        repository.insertPaymentWithDest(payment, "Personal Cash", "personal")
+
+        val updated = db.dao().getBorrowerById("loan-1")!!
+        assertEquals("2026-01-01", updated.date)
+        assertEquals(partial, updated.paidInterest, 0.0001)
+    }
+
+    @Test
     fun `retrying same debt repayment does not debit source account twice`() = runBlocking {
         db.dao().insertAccount(Account(id = "acc-1", name = "Personal Cash", type = "Cash", balance = 1000.0))
         db.dao().insertDebt(Debt(id = "debt-1", name = "Lender", amount = 100.0, rate = 0.0, date = "2026-06-15"))
@@ -663,6 +712,31 @@ class MoneyActionIdempotencyDataIntegrityTest {
         assertEquals(900.0, db.dao().getAccountById("acc-1")!!.balance, 0.0001)
         assertEquals(1, db.dao().getDebtPaymentsForDebtOnce("debt-1").size)
         assertEquals(1, db.dao().getTransactionsByRef("debt-1").count { it.category == "Debt Repayment" })
+    }
+
+    @Test
+    fun `full interest only debt payment rolls interest start to next day`() = runBlocking {
+        db.dao().insertAccount(Account(id = "acc-1", name = "Personal Cash", type = "Cash", balance = 5000.0))
+        db.dao().insertDebt(Debt(id = "debt-1", name = "Lender", amount = 100000.0, rate = 12.0, date = "2026-01-01"))
+        val interestDue = InterestEngine.calcIntAccrued(100000.0, 12.0, "2026-01-01", "Simple Interest", asOf = "2026-02-01")
+        val payment = DebtPayment(
+            id = "debt-pay-interest",
+            debtId = "debt-1",
+            name = "Lender",
+            date = "2026-02-01",
+            type = "Interest Only",
+            amount = interestDue,
+            interest = interestDue,
+        )
+
+        repository.insertDebtPaymentWithSource(payment, "Personal Cash", "personal")
+
+        val updated = db.dao().getDebtById("debt-1")!!
+        assertEquals("2026-02-02", updated.date)
+        assertEquals(0.0, updated.paidInterest, 0.0001)
+        assertEquals(0.0, updated.paidPrincipal, 0.0001)
+        assertEquals(5000.0 - interestDue, db.dao().getAccountById("acc-1")!!.balance, 0.0001)
+        assertEquals(1, db.dao().getDebtPaymentsForDebtOnce("debt-1").size)
     }
 
     @Test

@@ -15,8 +15,7 @@ class InvestmentRepository constructor(
     private val firestore: FirestoreRepository
 ) {
     val allInvestments: Flow<List<Investment>> = dao.getAllInvestments()
-    val allValuations: Flow<List<InvestmentValuation>>
-        get() = throw UnsupportedOperationException("Use getValuationsForInvestment(id) instead")
+    val allValuations: Flow<List<InvestmentValuation>> = dao.getAllValuations()
 
     private inline fun <T> recordOnFail(op: String, block: () -> T): T = try {
         block()

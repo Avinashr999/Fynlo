@@ -262,7 +262,7 @@ Founding Lifetime pricing can change for new buyers; existing founding lifetime 
 
 ### 10.7 Taxes
 
-All listed prices include applicable GST. Tax invoices are available on request for GST-registered business users (email avinash999.reddy@gmail.com).
+All listed prices include applicable GST. Tax invoices are available on request for GST-registered business users (email fynloapp.support@gmail.com).
 
 ### 10.8 Payment data
 
@@ -452,7 +452,7 @@ Subject to Section 16.3 and Section 16.4, the courts of **Kakinada, Andhra Prade
 
 Before filing any legal proceeding, you agree to first:
 
-1. Notify us in writing of your dispute at avinash999.reddy@gmail.com (subject: "Fynlo Ledger Dispute") with a detailed description of the issue
+1. Notify us in writing of your dispute at fynloapp.support@gmail.com (subject: "Fynlo Ledger Dispute") with a detailed description of the issue
 2. Allow us 30 days to respond and attempt resolution in good faith
 
 If we cannot resolve the matter within 30 days, you may proceed with formal legal action.
@@ -489,7 +489,7 @@ You may not assign these Terms without our written consent. We may assign these 
 
 ### 17.5 Notices
 
-We may give you notice via in-app message, email to your registered address, or posting at https://avinashr999.github.io/Fynlo/terms/. You may give us notice at avinash999.reddy@gmail.com.
+We may give you notice via in-app message, email to your registered address, or posting at https://avinashr999.github.io/Fynlo/terms/. You may give us notice at fynloapp.support@gmail.com.
 
 ### 17.6 Headings
 
@@ -505,7 +505,7 @@ These Terms are written in English. If a translation differs from the English ve
 
 For questions about these Terms:
 
-- **Email:** avinash999.reddy@gmail.com
+- **Email:** fynloapp.support@gmail.com
   - Subject "Fynlo Ledger Legal" for legal questions
   - Subject "Fynlo Ledger Dispute" for formal disputes
   - Subject "Fynlo Ledger Refund" for refund requests

@@ -35,9 +35,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import app.fynlo.FinanceViewModel
+import app.fynlo.data.model.Borrower
+import app.fynlo.data.model.Debt
+import app.fynlo.data.model.DebtPayment
+import app.fynlo.data.model.Payment
 import app.fynlo.data.model.Person
+import app.fynlo.logic.DebtLiabilityCalculator
+import app.fynlo.logic.InterestEngine
 import app.fynlo.ui.components.FynloConfirmDialog
 import app.fynlo.ui.theme.*
+import java.text.NumberFormat
+import java.util.Locale
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
@@ -108,6 +116,10 @@ fun PeopleScreen(viewModel: FinanceViewModel) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val scope = rememberCoroutineScope()
     val people by viewModel.people.collectAsState()
+    val borrowers by viewModel.borrowers.collectAsState()
+    val debts by viewModel.debts.collectAsState()
+    val payments by viewModel.payments.collectAsState()
+    val debtPayments by viewModel.debtPayments.collectAsState()
     var searchQuery by remember { mutableStateOf("") }
 
     // C22 (3.2.71) — contacts import state. `loadedContacts` non-null
@@ -155,6 +167,7 @@ fun PeopleScreen(viewModel: FinanceViewModel) {
     }
     var showAddDialog by remember { mutableStateOf(false) }
     var editingPerson by remember { mutableStateOf<Person?>(null) }
+    var historyPerson by remember { mutableStateOf<Person?>(null) }
 
     if (showAddDialog || editingPerson != null) {
         AddPersonDialog(
@@ -170,6 +183,17 @@ fun PeopleScreen(viewModel: FinanceViewModel) {
                 }
                 showAddDialog = false; editingPerson = null
             }
+        )
+    }
+
+    historyPerson?.let { person ->
+        PersonMoneyHistoryDialog(
+            person = person,
+            borrowers = borrowers,
+            debts = debts,
+            payments = payments,
+            debtPayments = debtPayments,
+            onDismiss = { historyPerson = null },
         )
     }
 
@@ -267,6 +291,7 @@ fun PeopleScreen(viewModel: FinanceViewModel) {
                 itemsIndexed(filteredPeople, key = { _, p -> p.id }) { index, person ->
                     PersonCard(
                         person   = person,
+                        onOpenHistory = { historyPerson = person },
                         onEdit   = { editingPerson = person },
                         onDelete = {
                             viewModel.deletePerson(person)
@@ -295,7 +320,7 @@ fun PeopleScreen(viewModel: FinanceViewModel) {
 // ── PersonCard ────────────────────────────────────────────────────────────────
 
 @Composable
-fun PersonCard(person: Person, onEdit: () -> Unit, onDelete: () -> Unit) {
+fun PersonCard(person: Person, onOpenHistory: () -> Unit, onEdit: () -> Unit, onDelete: () -> Unit) {
     var menuOpen by remember { mutableStateOf(false) }
     val haptic = LocalHapticFeedback.current
     var showDeleteConfirm by remember { mutableStateOf(false) }
@@ -321,7 +346,11 @@ fun PersonCard(person: Person, onEdit: () -> Unit, onDelete: () -> Unit) {
     }
 
         Row(
-            modifier              = Modifier.fillMaxWidth().padding(vertical = 14.dp),
+            modifier              = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(14.dp))
+                .clickable(onClick = onOpenHistory)
+                .padding(vertical = 14.dp),
             verticalAlignment     = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
@@ -382,6 +411,7 @@ fun PersonCard(person: Person, onEdit: () -> Unit, onDelete: () -> Unit) {
                     Icon(Icons.Default.MoreVert, "More", tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                    DropdownMenuItem(text = { Text("Money history") }, onClick = { menuOpen = false; onOpenHistory() })
                     DropdownMenuItem(text = { Text("Edit") }, onClick = { menuOpen = false; onEdit() })
                     DropdownMenuItem(text = { Text("Delete", color = SemanticRed) },
                         onClick = { menuOpen = false; haptic.performHapticFeedback(HapticFeedbackType.LongPress); showDeleteConfirm = true })
@@ -391,6 +421,220 @@ fun PersonCard(person: Person, onEdit: () -> Unit, onDelete: () -> Unit) {
 }
 
 // ── AddPersonDialog ───────────────────────────────────────────────────────────
+
+private data class PersonMoneyEntry(
+    val date: String,
+    val createdAt: Long,
+    val title: String,
+    val subtitle: String,
+    val amount: Double,
+    val positive: Boolean,
+)
+
+private fun personMatches(person: Person, peopleId: String, name: String, phone: String = ""): Boolean {
+    if (peopleId.isNotBlank() && peopleId == person.id) return true
+    val personPhone = person.phone.filter(Char::isDigit)
+    val rowPhone = phone.filter(Char::isDigit)
+    if (personPhone.isNotBlank() && rowPhone.isNotBlank() && personPhone == rowPhone) return true
+    return name.equals(person.name, ignoreCase = true)
+}
+
+private fun moneyFormat(amount: Double): String {
+    val fmt = NumberFormat.getCurrencyInstance(Locale("en", "IN"))
+    fmt.maximumFractionDigits = 0
+    return fmt.format(amount)
+}
+
+@Composable
+private fun PersonMoneyHistoryDialog(
+    person: Person,
+    borrowers: List<Borrower>,
+    debts: List<Debt>,
+    payments: List<Payment>,
+    debtPayments: List<DebtPayment>,
+    onDismiss: () -> Unit,
+) {
+    val personLoans = remember(person, borrowers) {
+        borrowers.filter { personMatches(person, it.peopleId, it.name, it.phone) }
+    }
+    val personDebts = remember(person, debts) {
+        debts.filter { personMatches(person, it.peopleId, it.name, it.phone) }
+    }
+    val loanIds = remember(personLoans) { personLoans.map { it.id }.toSet() }
+    val debtIds = remember(personDebts) { personDebts.map { it.id }.toSet() }
+    val personPayments = remember(payments, loanIds) { payments.filter { it.loanId in loanIds } }
+    val personDebtPayments = remember(debtPayments, debtIds) { debtPayments.filter { it.debtId in debtIds } }
+
+    val totalLent = personLoans.sumOf { it.amount }
+    val totalBorrowed = personDebts.sumOf { it.amount }
+    val receivableNow = personLoans.sumOf { loan ->
+        if (loan.status == "WrittenOff") 0.0 else {
+            val interest = if (loan.status == "Defaulted" && loan.frozenInterest > 0.0) loan.frozenInterest
+            else InterestEngine.calcIntAccrued(
+                loan.amount,
+                loan.rate,
+                loan.date,
+                loan.intType,
+                loan.due,
+                totalPaid = loan.paidPrincipal,
+            )
+            InterestEngine.calcOutstanding(
+                loan.amount,
+                interest,
+                loan.paidPrincipal,
+                loan.paidInterest,
+                loan.interestWaived,
+            )
+        }
+    }
+    val payableNow = personDebts.sumOf { DebtLiabilityCalculator.outstanding(it).total }
+    val entries = remember(personLoans, personDebts, personPayments, personDebtPayments) {
+        buildList {
+            personLoans.forEach { loan ->
+                add(PersonMoneyEntry(
+                    date = loan.date,
+                    createdAt = loan.createdAt,
+                    title = "Loan given",
+                    subtitle = listOfNotNull(
+                        loan.sourceAccount.takeIf { it.isNotBlank() }?.let { "From $it" },
+                        loan.intType.takeIf { it.isNotBlank() },
+                        loan.status.takeIf { it.isNotBlank() },
+                    ).joinToString(" • "),
+                    amount = loan.amount,
+                    positive = true,
+                ))
+            }
+            personPayments.forEach { payment ->
+                add(PersonMoneyEntry(
+                    date = payment.date,
+                    createdAt = payment.createdAt,
+                    title = "Loan repayment received",
+                    subtitle = listOf(payment.type, payment.mode, payment.notes).filter { it.isNotBlank() }.joinToString(" • "),
+                    amount = payment.amount,
+                    positive = false,
+                ))
+            }
+            personDebts.forEach { debt ->
+                add(PersonMoneyEntry(
+                    date = debt.date,
+                    createdAt = debt.createdAt,
+                    title = "Debt taken",
+                    subtitle = listOf(debt.type, debt.status, debt.notes).filter { it.isNotBlank() }.joinToString(" • "),
+                    amount = debt.amount,
+                    positive = false,
+                ))
+            }
+            personDebtPayments.forEach { payment ->
+                add(PersonMoneyEntry(
+                    date = payment.date,
+                    createdAt = payment.createdAt,
+                    title = "Debt payment made",
+                    subtitle = listOf(payment.type, payment.mode, payment.notes).filter { it.isNotBlank() }.joinToString(" • "),
+                    amount = payment.amount,
+                    positive = true,
+                ))
+            }
+        }.sortedWith(compareByDescending<PersonMoneyEntry> { it.date }.thenByDescending { it.createdAt })
+    }
+
+    app.fynlo.ui.components.FormDialog(
+        title = "${person.name} history",
+        subtitle = "Loans, debts, and payments linked to this contact",
+        onDismiss = onDismiss,
+    ) {
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+            PersonHistoryMetric("You lent", moneyFormat(totalLent), Modifier.weight(1f))
+            PersonHistoryMetric("You owe", moneyFormat(totalBorrowed), Modifier.weight(1f))
+        }
+        Spacer(Modifier.height(10.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+            PersonHistoryMetric("Receivable", moneyFormat(receivableNow), Modifier.weight(1f), Emerald600)
+            PersonHistoryMetric("Payable", moneyFormat(payableNow), Modifier.weight(1f), SemanticRed)
+        }
+
+        Spacer(Modifier.height(16.dp))
+        app.fynlo.ui.components.FormSectionLabel("Timeline")
+        Spacer(Modifier.height(8.dp))
+        if (entries.isEmpty()) {
+            Text(
+                "No loan or debt records are linked to this contact yet.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(vertical = 18.dp),
+            )
+        } else {
+            LazyColumn(
+                modifier = Modifier.fillMaxWidth().heightIn(max = 420.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                items(entries) { entry -> PersonHistoryRow(entry) }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PersonHistoryMetric(
+    label: String,
+    value: String,
+    modifier: Modifier = Modifier,
+    valueColor: Color = MaterialTheme.colorScheme.onSurface,
+) {
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(14.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+    ) {
+        Column(Modifier.padding(12.dp)) {
+            Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(value, style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold), color = valueColor)
+        }
+    }
+}
+
+@Composable
+private fun PersonHistoryRow(entry: PersonMoneyEntry) {
+    Surface(
+        shape = RoundedCornerShape(14.dp),
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 1.dp,
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.12f)),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Surface(
+                shape = RoundedCornerShape(10.dp),
+                color = if (entry.positive) Emerald500.copy(alpha = 0.12f) else SemanticRed.copy(alpha = 0.10f),
+                modifier = Modifier.size(38.dp),
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        Icons.Default.Person,
+                        contentDescription = null,
+                        tint = if (entry.positive) Emerald600 else SemanticRed,
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
+            }
+            Column(Modifier.weight(1f)) {
+                Text(entry.title, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold))
+                Text(
+                    listOf(entry.date, entry.subtitle).filter { it.isNotBlank() }.joinToString(" • "),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Text(
+                moneyFormat(entry.amount),
+                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                color = if (entry.positive) Emerald600 else SemanticRed,
+            )
+        }
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

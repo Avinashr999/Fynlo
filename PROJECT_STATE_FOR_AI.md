@@ -1158,7 +1158,7 @@ These remain in the C12-C15 P1 backlog and will land in a dedicated EMI-Calculat
 
 **Implementation gotcha (logged for Stage 4):** Parallel agents touching shared composables (e.g., `TransactionItem`, `PortfolioBreakdownSheet`) can leave the Kotlin incremental compile cache in a stale state — agents 1-2 changed a signature, agent 3 sees the old cached signature and fails to compile its file. `./gradlew --stop && ./gradlew ... --rerun-tasks` resolves. Build was clean after one such stop+rerun.
 
-**NetWorthWidget TODO (Agent C):** widget hardcodes `"INR"` with a `// TODO: widget should read default-currency pref from DataStore` comment — runs outside Composable scope, can't easily read user pref. Tracked as Task #22 for later.
+**NetWorthWidget status:** retired in 3.2.79 at user request. The old DataStore currency TODO is closed because the widget source, manifest receiver, widget metadata, layout, and drawable were removed.
 
 **Data-integrity gate state:** unchanged at **112 tests across 9 classes**, 0 failures.
 
@@ -1873,3 +1873,147 @@ The user approved the combined future roadmap below. Do not treat these as compl
 - Account statement quick-balance edit now also passes the account id.
 - Safe account-balance repair now treats older direct `Account edited:` audit deltas as legacy balance-correction/opening deltas. This lets repair recover books where an older direct account edit was already made before this fix.
 - Future rule: account balance changes must always become ledger-visible correction entries. Do not call plain account save/upsert for an existing account when the balance field changed.
+
+## 2026-06-30 - Phase Status Clarification: Contact Book, History, Reset Progress
+
+- Contact Book is not an open Phase 2 blocker. The current surface includes add/edit/delete, system contact import, search, empty states, contact IDs, loan/debt linking, and feedback messages. Future improvement can add deeper per-contact financial timelines, but the base contact book work is already present.
+- Money action history and account history are not open Phase 2 blockers. They now show ordered entries, before/after balance impact, audit before/after/reason fields, and CSV export where applicable.
+- Investment valuation history was already migrated to the premium dialog language and improved for contrast.
+- The only known old `AlertDialog` left is the intentional non-dismissible `Resetting...` progress lock during Reset All Data. It stays because dismissing that dialog while the app is wiping local/cloud state and restarting would be unsafe.
+- If future UI work touches Reset All Data, redesign the reset workflow first; do not simply replace the progress lock with a dismissible sheet.
+
+## 2026-06-30 - Contact Money History and Reset Progress Visual Update
+
+- Contact Book rows now open a per-person money history sheet. It summarizes `You lent`, `You owe`, `Receivable`, and `Payable`, then lists linked loan, debt, loan-repayment, and debt-payment timeline rows.
+- Contact matching uses `peopleId` first, then phone digits, then exact name fallback. This keeps newer linked records reliable while still surfacing useful legacy rows.
+- Contact rows are tappable, and the overflow menu includes `Money history`.
+- Reset All Data progress was moved from the old Material `AlertDialog` shell to a premium rounded blocking dialog. It remains non-dismissible by back press or outside tap because the wipe/restart operation must not be interrupted.
+
+## 2026-06-30 - Dashboard Accountability Guidance
+
+- Dashboard now surfaces a plain-language `Net worth moved...` explanation card. It summarizes today's income/expense net movement and clearly treats account transfers as separate money movement, not income or expense.
+- Dashboard now includes a `Review this month` card with monthly income, expense, net flow, and entry count. It links directly to the Monthly Summary screen for the full review.
+- Add Transaction already contains the smart duplicate warning: same type, date, category, amount, and account now shows a possible-duplicate message before saving.
+- Fresh-book guidance remains on Dashboard as the first-use setup path: add account, expense, loans, and investments.
+- Sync Conflict Review already shows phone/cloud snapshots with `Keep phone`, `Keep cloud`, and `Mark reviewed`, backed by structured account/transaction conflict snapshots.
+
+## 2026-06-30 - Automation and Daily-Use Improvements
+
+- Dashboard now includes an `Automation needs review` card that brings recurring entries due now, budget limit alerts, and large ledger rows without proof into one place. Each row opens the relevant screen so the user does not need to search settings.
+- Add Transaction now has a description field before the date and uses description/history keywords to suggest a category when the user has not already chosen one.
+- Add Transaction now reminds the user to attach proof for large entries (`>= ₹50,000`) after saving, so proof discipline becomes part of the daily flow instead of a hidden feature.
+- Add Transaction save feedback now tells the user that Undo is available from Settings.
+- Existing features covered by the 15-improvement request remain active: reminders, recurring templates, duplicate prevention, Book Check/repair, contact ledger history, collect/pay/waive flows, monthly review, smart search, undo safety, sync status, and reset safety.
+
+## 2026-06-30 - Running Balance Timelines
+
+- Account statement rows now focus the balance impact for the account being viewed instead of showing both sides of a transfer when only one account statement is open.
+- Transaction rows with one clear account impact now show a visible running-balance strip: `Before`, `Change`, and `After`.
+- The running balance is reconstructed from current account balances by replaying transaction impacts backward in the shared transaction ordering contract: business date, then created/updated time, then id.
+- This is a visibility/trust feature only; it does not mutate balances or Firestore data.
+
+## 2026-06-30 - Proof Vault and Smart Book Check Explanations
+
+- Settings -> Proof records is now a real Proof vault instead of a toast. It shows saved proof links and highlights high-value loans, debts, investments, and transactions that should be reviewed for proof.
+- Proof vault is intentionally read/review-only. Attachments still belong on the loan, debt, and investment detail screens so proof stays close to the record it supports.
+- Settings -> Book check now explains each audit issue in plain language with a `Why it matters` line and a practical next step.
+- Book check now includes a repair coverage card that separates what safe repair may help with from what still needs manual confirmation. Safe repair must not guess missing accounts, delete suspected duplicates, or choose the "correct" person/record by itself.
+- Verification: `:app:compileProdDebugKotlin` passed.
+
+## 2026-06-30 - Launch Readiness Assistant
+
+- Settings -> Backup & Export now includes `Launch readiness`, a plain-language release confidence checklist.
+- The assistant covers personal ledger treatment, monthly close, smart alerts, Play Store onboarding, Reports 2.0, import automation, backup confidence, security polish, business mode, smart explanations without AI dependency, and release quality.
+- Automatic monthly close is implemented as a close assistant, not a silent background lock. It detects the previous month, checks Book check critical state, and offers an explicit `Close previous month` action only when serious ledger issues are clear.
+- The assistant is informational and action-guided. It does not mutate money rows except when the user explicitly taps the close-month action.
+- Settings was split for clarity after the section became crowded: `Backup & Export` now holds file/import/export/restore actions, while `Trust & Safety` holds Book check, recalculation, audit history, monthly close, undo, sync conflicts, proof records, launch readiness, and dev-only repair tools.
+
+## 2026-06-30 - Technical Hardening Cleanup
+
+- Retired the stale NetWorthWidget currency TODO from active project state. The widget was already removed in 3.2.79, so there is no live widget surface to fix.
+- Removed the deprecated throwing `AccountRepository.allSnapshots` accessor. Project-scoped `getNetWorthSnapshots(pid)` remains the supported path.
+- Replaced the deprecated throwing `InvestmentRepository.allValuations` accessor with the real DAO valuation flow.
+- Terms contact/dispute/notice/tax-invoice email references now use `fynloapp.support@gmail.com`, matching the public privacy/support contact.
+- Release and benchmark builds now set `ndk.debugSymbolLevel = SYMBOL_TABLE`. Release bundle and native-symbol extraction tasks pass, but symbol output is empty because current native libraries come from third-party dependencies without local debug metadata.
+- Verification: `:app:compileProdDebugKotlin`, `:app:testProdDebugUnitTest`, `:app:bundleProdRelease`, `:app:extractProdReleaseNativeDebugMetadata`, and `:app:extractProdReleaseNativeSymbolTables` passed.
+
+## 2026-06-30 - Dashboard and Investment Screen De-Clutter
+
+- Dashboard was visually crowded after the accountability/automation additions. The confidence card now appears in the prime area only for a fresh book or when Book Check has warnings/critical issues.
+- The automation card now appears only when it has actionable recurring, budget, or proof work. Quiet automation no longer consumes first-screen space.
+- Dashboard quick actions stay immediately below the net-worth hero, and money-movement explanations are grouped lower as a `Money movement` section when there is actual daily/monthly activity.
+- Investment allocation now shows the top three types first, with a clear note when smaller types are grouped into the portfolio total.
+- Investment holding cards now prioritize current value, invested amount, gain/loss, source account/debt, and Update/Withdraw actions. CAGR, withdrawals, notes, and proof attachments moved under an expandable `Details and proof` section.
+- Data-integrity touch: no. Regression test included: N/A. Verification: `:app:compileProdDebugKotlin` and `:app:testProdDebugUnitTest` passed for the UI pass.
+
+## 2026-06-30 - Dashboard Proof Reminder and Invest Density Follow-Up
+
+- Dashboard proof reminders now count only recent high-value transaction gaps from the last 45 days. Older proof gaps remain available in Settings -> Proof records, but they no longer appear as urgent dashboard work.
+- The Proof records dialog copy now explains that older proof gaps are review prompts, not balance errors.
+- Dashboard money movement was compressed from stacked explanation cards into a compact Today/Month strip to reduce first-screen height.
+- Investment holding cards were tightened again: smaller icon, shorter type/date metadata, no nested value panel, one-line funding trace, and a shorter `Details` expander.
+- Data-integrity touch: no. Verification: `:app:compileProdDebugKotlin` and `:app:testProdDebugUnitTest` passed.
+
+## 2026-06-30 - Dashboard Movement Wrap Fix and Investment Ledger Rows
+
+- Fixed a dashboard layout bug where the Money movement count could wrap vertically one character per line. The section now uses the shared `LedgerSectionTitle` count slot and the month card shows both money in and money out.
+- Replaced the large Invest portfolio hero with a compact portfolio summary so holdings begin higher on the screen.
+- Converted investment holding actions into the three-dot menu: Update value, Withdraw, Details & proof, Valuation History, Edit, and Delete. The row itself now stays focused on value, invested amount, gain/loss, and funding source.
+- Data-integrity touch: no. Verification: `:app:compileProdDebugKotlin` and `:app:testProdDebugUnitTest` passed before install; production and developer debug APKs were installed on the connected phone.
+
+## 2026-06-30 - Interest-Only Payment Period Rollover
+
+- Loan and debt interest-only payments now close the current interest period only when the payment settles the full interest due through that payment date and principal is unchanged.
+- When the rule applies, the borrower/debt interest start date moves to the next day, `paidInterest` and `interestWaived` reset for the new period, and the payment/transaction rows remain as the audit trail.
+- Partial interest payments, mixed principal+interest payments, defaulted/written-off loans, and cleared debts do not roll the date automatically.
+- The rebuild queries now count interest paid only inside the current interest period, while principal paid still comes from all payment rows. This keeps recalculation/repair from bringing old settled-period interest back after restart.
+- Undo for newly-created loan/debt payments restores the borrower/debt snapshot captured before the payment, so an automatic rollover can be reversed safely.
+- Data-integrity touch: yes. Regression tests added for borrower full-interest rollover, borrower partial-interest no-roll, and debt full-interest rollover. Verification: `:app:compileProdDebugKotlin` and `:app:testProdDebugUnitTest` passed. Phone install pending because the phone was disconnected.
+
+## 2026-06-30 - EMI Calculator Keyboard and Layout Polish
+
+- EMI Calculator now uses keyboard-aware nested scrolling so focused fields and results behave better while the numeric keyboard is open.
+- Numeric fields use the keyboard done action where needed; pressing the keyboard check on Tenure clears focus and dismisses the keyboard.
+- A compact `Monthly EMI` preview appears inside the form once valid inputs are entered, so the result is visible even before the user hides the keyboard.
+- Added a little more breathing room under the screen header to avoid the cramped top-of-page feel seen on phone screenshots.
+- Data-integrity touch: no. Verification: `:app:compileProdDebugKotlin` and `:app:testProdDebugUnitTest` passed. Phone install pending because the phone was disconnected.
+
+## 2026-06-30 - Optional Due Date Clear and Help Entry Placement
+
+- Shared `DatePickerField` now shows a clear action for optional date fields after a date has been selected.
+- This fixes loan and debt forms where a user could accidentally set a due date but had no direct way to remove it and keep only the start/taken date.
+- Settings now surfaces `What's new & how to use` near the top as a normal help row instead of hiding it inside the expanded App Info section.
+- The hamburger menu was intentionally left clean; the guide is reachable from Settings without making the main navigation feel crowded.
+- Data-integrity touch: no. Verification: `:app:compileProdDebugKotlin` and `:app:testProdDebugUnitTest` passed.
+
+## 2026-06-30 - Loan and Debt Statement Date Visibility
+
+- Borrower detail now shows an explicit statement strip for `Loan date` and `Due date` near the current balance, principal due, interest due, paid, and disbursed-from account.
+- Debt detail now mirrors the same treatment with `Taken date` and `Due date`.
+- Open-ended records display `No due date`, making it clear the due date is intentionally blank rather than missing from the UI.
+- Investment portfolio summary remains on the shared soft ledger panel surface, not a heavy dark hero card.
+- Storage model reminder: signed-in users have both local phone storage (Room/DataStore) and Firestore cloud sync; offline users have local phone storage plus manual export/restore backups only.
+- Data-integrity touch: no. Verification: `:app:compileProdDebugKotlin` and `:app:testProdDebugUnitTest` passed.
+
+## 2026-06-30 - Dashboard Account Density and Ledger Trail Clarity
+
+- Dashboard account rows are now denser and cleaner: smaller account icon, reduced row padding, no visible pencil beside the balance, and the whole row opens the account statement.
+- Account edit remains reachable through long-press from the dashboard row and through the account/statement context, avoiding a noisy balance line while preserving control.
+- Transaction history and account statement rows now explain money movement in plain ledger terms such as `Paid from`, `Received into`, `Lent from`, `Funded from`, or `From -> To`.
+- Running balance labels now say `Balance after` instead of the vague `After`, so users can quickly understand the account balance after each transaction.
+- Data-integrity touch: no. Verification: `:app:compileProdDebugKotlin` and `:app:testProdDebugUnitTest` passed.
+
+## 2026-06-30 - Global Search Keyboard and Top Spacing Polish
+
+- Global Search now mirrors the EMI Calculator polish: the custom search top bar is shorter, empty/no-result states no longer start with a large top gap, and the screen uses keyboard-aware scroll/padding while the keyboard is open.
+- Pressing the keyboard search action now clears focus so the keyboard can dismiss and results become easier to read.
+- Data-integrity touch: no. Verification: `:app:compileProdDebugKotlin` and `:app:testProdDebugUnitTest` passed.
+
+## 2026-06-30 - Internal Testing Build 3.2.108
+
+- Version bumped to `3.2.108` with `versionCode 232`; developer builds report `3.2.108-dev`.
+- Production and developer debug variants were installed on the connected phone and verified through package metadata: `app.fynlo` -> `3.2.108`, `app.fynlo.dev` -> `3.2.108-dev`.
+- Production release AAB rebuilt for internal testing at `app/build/outputs/bundle/prodRelease/app-prod-release.aab`.
+- Verification passed: `:app:compileProdDebugKotlin`, `:app:testProdDebugUnitTest`, `:app:bundleProdRelease`, `:app:installProdDebug`, and `:app:installDevDebug`.
+- Unit test result XML showed 413 tests with 0 failures/errors.
+- Release lint found no active warnings/errors; only stale baseline notes remain for removed/changed baseline entries.

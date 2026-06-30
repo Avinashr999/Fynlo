@@ -502,6 +502,26 @@ val borrowers by viewModel.borrowers.collectAsState()
                             )
                         }
                     }
+                    Spacer(Modifier.height(8.dp))
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f))
+                            .padding(horizontal = 14.dp, vertical = 10.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        DetailItem(
+                            "Loan date",
+                            DateUtils.formatToDisplay(borrower.date),
+                            modifier = Modifier.weight(1f),
+                        )
+                        DetailItem(
+                            "Due date",
+                            borrower.due.takeIf { it.isNotBlank() }?.let { DateUtils.formatToDisplay(it) } ?: "No due date",
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
                     if (borrower.rate > 0) {
                         Spacer(Modifier.height(8.dp))
                         Text(
@@ -823,8 +843,8 @@ fun PaymentItem(payment: Payment, currencyCode: String, locale: Locale) {
 }
 
 @Composable
-fun DetailItem(label: String, value: String) {
-    Column {
+fun DetailItem(label: String, value: String, modifier: Modifier = Modifier) {
+    Column(modifier = modifier) {
         Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Text(value, style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold))
     }

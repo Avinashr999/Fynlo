@@ -265,6 +265,15 @@ fun AddTransactionDialog(
                 Spacer(Modifier.height(20.dp))
 
                 // ── Date pill ─────────────────────────────────────────────────
+                SoftField(desc, "Description (optional)") { next ->
+                    desc = next
+                    val suggestion = suggestTransactionCategory(next, existingTransactions, isIncome)
+                    if (suggestion.isNotBlank() && selectedCategory.isBlank() && suggestion in categories) {
+                        selectedCategory = suggestion
+                    }
+                }
+
+                Spacer(Modifier.height(12.dp))
                 DatePickerField(value = date, onValueChange = { date = it }, label = "Date")
 
                 Spacer(Modifier.height(12.dp))
@@ -367,6 +376,21 @@ fun AddTransactionDialog(
                             modifier = Modifier.padding(12.dp),
                             style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
                             color = MaterialTheme.colorScheme.onErrorContainer,
+                        )
+                    }
+                }
+                if (previewAmount >= 50_000.0) {
+                    Spacer(Modifier.height(10.dp))
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
+                        color = Emerald500.copy(alpha = 0.10f),
+                    ) {
+                        Text(
+                            "Large entry: after saving, attach proof from the related loan, debt, investment, or account history when available.",
+                            modifier = Modifier.padding(12.dp),
+                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                            color = Emerald500,
                         )
                     }
                 }
@@ -479,6 +503,61 @@ fun AccountImpactPreview(lines: List<String>) {
             }
         }
     }
+}
+
+private fun suggestTransactionCategory(
+    description: String,
+    history: List<Transaction>,
+    isIncome: Boolean,
+): String {
+    val text = description.trim()
+    if (text.length < 3) return ""
+
+    val historical = history
+        .filter { it.type.equals(if (isIncome) "Income" else "Expense", ignoreCase = true) }
+        .filter { it.category.isNotBlank() && !it.category.equals("Uncategorized", ignoreCase = true) }
+        .filter { txn ->
+            val old = txn.desc.trim()
+            old.length >= 3 && (old.contains(text, ignoreCase = true) || text.contains(old, ignoreCase = true))
+        }
+        .groupBy { it.category }
+        .maxByOrNull { it.value.size }
+        ?.key
+    if (!historical.isNullOrBlank()) return historical
+
+    val keywords = if (isIncome) {
+        mapOf(
+            "salary" to "Salary",
+            "freelance" to "Freelance",
+            "refund" to "Refund",
+            "dividend" to "Dividend",
+            "interest" to "Interest",
+            "rent" to "Rent",
+        )
+    } else {
+        mapOf(
+            "zomato" to "Food",
+            "swiggy" to "Food",
+            "grocery" to "Food",
+            "petrol" to "Fuel",
+            "diesel" to "Fuel",
+            "fuel" to "Fuel",
+            "amazon" to "Shopping",
+            "flipkart" to "Shopping",
+            "uber" to "Transport",
+            "ola" to "Transport",
+            "electricity" to "Bills",
+            "jio" to "Bills",
+            "airtel" to "Bills",
+            "netflix" to "Entertainment",
+            "spotify" to "Entertainment",
+            "emi" to "Debt Repayment",
+            "interest" to "Interest Expense",
+        )
+    }
+    return keywords.firstNotNullOfOrNull { (keyword, category) ->
+        category.takeIf { text.contains(keyword, ignoreCase = true) }
+    }.orEmpty()
 }
 
 @Composable

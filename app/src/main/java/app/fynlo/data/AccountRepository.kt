@@ -15,8 +15,6 @@ class AccountRepository constructor(
     private val firestore: FirestoreRepository
 ) {
     val allAccounts: Flow<List<Account>> = dao.getAllAccounts()
-    val allSnapshots: Flow<List<NetWorthSnapshot>>
-        get() = throw UnsupportedOperationException("Use getNetWorthSnapshots(pid) instead")
 
     private inline fun <T> recordOnFail(op: String, block: () -> T): T = try {
         block()

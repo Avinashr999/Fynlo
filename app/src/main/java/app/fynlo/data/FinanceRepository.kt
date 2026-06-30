@@ -20,6 +20,8 @@ import androidx.room.withTransaction
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 
 class FinanceRepository(
     val dao: FynloDao,
@@ -45,12 +47,14 @@ class FinanceRepository(
     private data class PaymentUndoBundle(
         val payment: Payment,
         val transactions: List<Transaction> = emptyList(),
+        val borrowerBefore: Borrower? = null,
     )
 
     @kotlinx.serialization.Serializable
     private data class DebtPaymentUndoBundle(
         val payment: DebtPayment,
         val transactions: List<Transaction> = emptyList(),
+        val debtBefore: Debt? = null,
     )
 
     @kotlinx.serialization.Serializable
@@ -68,6 +72,8 @@ class FinanceRepository(
     )
 
     val syncStatus: StateFlow<SyncStatus> get() = syncManager.status
+
+    private val ledgerDateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
 
     /** Called after anonymous auth completes — swaps in the real instances. */
     fun updateRemote(newFirestore: FirestoreRepository, newSync: SyncManager) {
@@ -442,9 +448,11 @@ class FinanceRepository(
             dao.deletePayment(bundle.payment)
             tombstoneRemoteDoc("payments", bundle.payment.id)
             dao.rebuildBorrowerPaidFromPayments()
+            bundle.borrowerBefore?.let { dao.insertBorrower(it.copy(updatedAt = System.currentTimeMillis())) }
         }
         bundle.transactions.forEach { sync { deleteTransaction(it.id) } }
         sync { deletePayment(bundle.payment.id) }
+        bundle.borrowerBefore?.let { sync { setBorrower(it) } }
         syncTouchedAccounts(bundle.transactions)
     }
 
@@ -458,9 +466,11 @@ class FinanceRepository(
             dao.deleteDebtPayment(bundle.payment)
             tombstoneRemoteDoc("debt_payments", bundle.payment.id)
             dao.rebuildDebtPaidFromDebtPayments()
+            bundle.debtBefore?.let { dao.insertDebt(it.copy(updatedAt = System.currentTimeMillis())) }
         }
         bundle.transactions.forEach { sync { deleteTransaction(it.id) } }
         sync { deleteDebtPayment(bundle.payment.id) }
+        bundle.debtBefore?.let { sync { setDebt(it) } }
         syncTouchedAccounts(bundle.transactions)
     }
 
@@ -547,6 +557,72 @@ class FinanceRepository(
 
     private fun Transaction.auditSummary(): String =
         "${type}:${category}:${amount}:${fromAcct}->${toAcct}:${date}:${desc}"
+
+    private fun nextLedgerDay(date: String): String? = runCatching {
+        LocalDate.parse(date, ledgerDateFormatter).plusDays(1).format(ledgerDateFormatter)
+    }.getOrNull()
+
+    private fun borrowerInterestDueThrough(borrower: Borrower, asOf: String): Double {
+        val accrued = if (borrower.status == "Defaulted" && borrower.frozenInterest > 0.0) {
+            borrower.frozenInterest
+        } else {
+            app.fynlo.logic.InterestEngine.calcIntAccrued(
+                borrower.amount,
+                borrower.rate,
+                borrower.date,
+                borrower.intType,
+                borrower.due,
+                totalPaid = borrower.paidPrincipal,
+                asOf = asOf,
+            )
+        }
+        return (accrued - borrower.paidInterest - borrower.interestWaived).coerceAtLeast(0.0)
+    }
+
+    private fun debtInterestDueThrough(debt: Debt, asOf: String): Double {
+        val accrued = app.fynlo.logic.InterestEngine.calcIntAccrued(
+            debt.amount,
+            debt.rate,
+            debt.date,
+            debt.intType,
+            debt.due,
+            totalPaid = debt.paidPrincipal,
+            asOf = asOf,
+        )
+        return (accrued - debt.paidInterest - debt.interestWaived).coerceAtLeast(0.0)
+    }
+
+    private fun paymentInterestComponent(payment: Payment): Double =
+        when {
+            payment.interest > 0.0 -> payment.interest
+            payment.type.equals("Interest Only", ignoreCase = true) -> payment.amount
+            else -> 0.0
+        }.coerceAtLeast(0.0)
+
+    private fun paymentInterestComponent(payment: DebtPayment): Double =
+        when {
+            payment.interest > 0.0 -> payment.interest
+            payment.type.equals("Interest Only", ignoreCase = true) -> payment.amount
+            else -> 0.0
+        }.coerceAtLeast(0.0)
+
+    private fun shouldRollBorrowerInterestPeriod(borrower: Borrower, payment: Payment): Boolean {
+        if (borrower.status == "Defaulted" || borrower.status == "WrittenOff") return false
+        if (payment.principal > 0.01) return false
+        val interestPaid = paymentInterestComponent(payment)
+        if (interestPaid <= 0.01) return false
+        val due = borrowerInterestDueThrough(borrower, payment.date)
+        return due > 0.01 && (due - interestPaid).coerceAtLeast(0.0) <= 1.0
+    }
+
+    private fun shouldRollDebtInterestPeriod(debt: Debt, payment: DebtPayment): Boolean {
+        if (debt.status == "Cleared") return false
+        if (payment.principal > 0.01) return false
+        val interestPaid = paymentInterestComponent(payment)
+        if (interestPaid <= 0.01) return false
+        val due = debtInterestDueThrough(debt, payment.date)
+        return due > 0.01 && (due - interestPaid).coerceAtLeast(0.0) <= 1.0
+    }
 
     private suspend fun Transaction.withResolvedAccountIds(): Transaction {
         // Resolve up front so the lookup closure passed to the pure helper
@@ -2624,6 +2700,10 @@ class FinanceRepository(
         db.withTransaction {
             if (dao.getPaymentById(payment.id) != null) return@withTransaction
             val now = System.currentTimeMillis()
+            val borrowerBefore = dao.getBorrowerById(payment.loanId)
+            val shouldRollInterestPeriod = borrowerBefore?.let {
+                shouldRollBorrowerInterestPeriod(it, payment)
+            } ?: false
             val p = payment.copy(projectId = projectId, updatedAt = now, createdAt = if (payment.createdAt == 0L) now else payment.createdAt)
             dao.insertPayment(p)
             Analytics.paymentCollected()
@@ -2636,6 +2716,18 @@ class FinanceRepository(
             // decisions/2026-05-26-c01-fix-strategy.md Stage 2). The Payment
             // row was just inserted above, so the rebuild query picks it up.
             dao.rebuildBorrowerPaidFromPayments()
+            val rolledDate = if (shouldRollInterestPeriod) nextLedgerDay(payment.date) else null
+            if (borrowerBefore != null && rolledDate != null) {
+                val rebuilt = dao.getBorrowerById(payment.loanId) ?: borrowerBefore
+                val rolled = rebuilt.copy(
+                    date = rolledDate,
+                    paid = rebuilt.paidPrincipal,
+                    paidInterest = 0.0,
+                    interestWaived = 0.0,
+                    updatedAt = now,
+                )
+                dao.insertBorrower(rolled)
+            }
 
             // Main repayment transaction (full amount received)
             val t = Transaction(
@@ -2665,13 +2757,18 @@ class FinanceRepository(
                 amountDelta = p.amount,
                 accountName = destinationAccount,
                 projectId = projectId,
+                reason = if (rolledDate != null) {
+                    "Interest settled through ${payment.date}; interest starts again from $rolledDate"
+                } else "",
             )
             recordUndo(
                 action = "CREATE",
                 entityType = "payment",
                 entityId = p.id,
                 title = "Loan payment: ${p.name}",
-                afterJson = undoJson.encodeToString(PaymentUndoBundle(payment = p, transactions = listOf(t))),
+                afterJson = undoJson.encodeToString(
+                    PaymentUndoBundle(payment = p, transactions = listOf(t), borrowerBefore = borrowerBefore)
+                ),
                 projectId = projectId,
             )
             sync {
@@ -2687,6 +2784,10 @@ class FinanceRepository(
         db.withTransaction {
             if (dao.getDebtPaymentById(payment.id) != null) return@withTransaction
             val now = System.currentTimeMillis()
+            val debtBefore = dao.getDebtById(payment.debtId)
+            val shouldRollInterestPeriod = debtBefore?.let {
+                shouldRollDebtInterestPeriod(it, payment)
+            } ?: false
             val p = payment.copy(projectId = projectId, updatedAt = now, createdAt = if (payment.createdAt == 0L) now else payment.createdAt)
             dao.insertDebtPayment(p)
 
@@ -2699,6 +2800,18 @@ class FinanceRepository(
             // DebtPayment row was just inserted above, so the rebuild picks
             // it up.
             dao.rebuildDebtPaidFromDebtPayments()
+            val rolledDate = if (shouldRollInterestPeriod) nextLedgerDay(payment.date) else null
+            if (debtBefore != null && rolledDate != null) {
+                val rebuilt = dao.getDebtById(payment.debtId) ?: debtBefore
+                val rolled = rebuilt.copy(
+                    date = rolledDate,
+                    paid = rebuilt.paidPrincipal,
+                    paidInterest = 0.0,
+                    interestWaived = 0.0,
+                    updatedAt = now,
+                )
+                dao.insertDebt(rolled)
+            }
 
             // interestPaid is still needed below for the auto-split
             // "Interest Expense" Transaction (an interest-only debt payment
@@ -2760,6 +2873,9 @@ class FinanceRepository(
                 amountDelta = -p.amount,
                 accountName = sourceAccount,
                 projectId = projectId,
+                reason = if (rolledDate != null) {
+                    "Interest settled through ${payment.date}; interest starts again from $rolledDate"
+                } else "",
             )
             recordUndo(
                 action = "CREATE",
@@ -2767,7 +2883,7 @@ class FinanceRepository(
                 entityId = p.id,
                 title = "Debt payment: ${p.name}",
                 afterJson = undoJson.encodeToString(
-                    DebtPaymentUndoBundle(payment = p, transactions = paymentTransactions)
+                    DebtPaymentUndoBundle(payment = p, transactions = paymentTransactions, debtBefore = debtBefore)
                 ),
                 projectId = projectId,
             )
