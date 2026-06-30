@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 29,
-    "identityHash": "7a243f3ccd7f64ce8ad23a5897447f36",
+    "identityHash": "40c60a33fc52a1ac779c07e0db8a7121",
     "entities": [
       {
         "tableName": "borrowers",
@@ -1515,7 +1515,19 @@
           "columnNames": [
             "id"
           ]
-        }
+        },
+        "indices": [
+          {
+            "name": "idx_monthly_closes_project_month",
+            "unique": false,
+            "columnNames": [
+              "projectId",
+              "month"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `idx_monthly_closes_project_month` ON `${TABLE_NAME}` (`projectId`, `month`)"
+          }
+        ]
       },
       {
         "tableName": "undo_actions",
@@ -1599,7 +1611,20 @@
           "columnNames": [
             "id"
           ]
-        }
+        },
+        "indices": [
+          {
+            "name": "idx_undo_actions_active",
+            "unique": false,
+            "columnNames": [
+              "projectId",
+              "expiresAt",
+              "consumedAt"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `idx_undo_actions_active` ON `${TABLE_NAME}` (`projectId`, `expiresAt`, `consumedAt`)"
+          }
+        ]
       },
       {
         "tableName": "proof_attachments",
@@ -1677,7 +1702,19 @@
           "columnNames": [
             "id"
           ]
-        }
+        },
+        "indices": [
+          {
+            "name": "idx_proof_attachments_owner",
+            "unique": false,
+            "columnNames": [
+              "ownerType",
+              "ownerId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `idx_proof_attachments_owner` ON `${TABLE_NAME}` (`ownerType`, `ownerId`)"
+          }
+        ]
       },
       {
         "tableName": "sync_conflicts",
@@ -1755,12 +1792,25 @@
           "columnNames": [
             "id"
           ]
-        }
+        },
+        "indices": [
+          {
+            "name": "idx_sync_conflicts_open",
+            "unique": false,
+            "columnNames": [
+              "projectId",
+              "resolution",
+              "createdAt"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `idx_sync_conflicts_open` ON `${TABLE_NAME}` (`projectId`, `resolution`, `createdAt`)"
+          }
+        ]
       }
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '7a243f3ccd7f64ce8ad23a5897447f36')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '40c60a33fc52a1ac779c07e0db8a7121')"
     ]
   }
 }

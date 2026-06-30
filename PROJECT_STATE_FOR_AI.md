@@ -1856,3 +1856,11 @@ The user approved the combined future roadmap below. Do not treat these as compl
 - Settings -> Reset All Data still keeps the old `AlertDialog` only for the non-dismissible `Resetting...` progress lock while data is actively being erased and the app is about to restart. Do not replace it with a dismissible sheet unless the reset workflow is redesigned.
 - Search check now leaves only that intentional progress dialog under `AlertDialog(`.
 - Verified `:app:compileProdDebugKotlin`, `:app:testProdDebugUnitTest`, and installed production/developer debug variants to the connected phone.
+
+## 2026-06-30 - Launch Crash Fix: Room v29 Index Alignment
+
+- Fixed a startup crash after schema version 29: `MIGRATION_28_29` created indexes for monthly closes, undo actions, proof attachments, and sync conflicts, but the matching Room entities did not declare those indexes.
+- Added the corresponding `@Entity(indices = [...])` declarations to `MonthlyClose`, `UndoAction`, `ProofAttachment`, and `SyncConflict`. This is safer than removing the SQL indexes because some tester devices may already have migrated databases with those indexes.
+- Regenerated Room schema `29.json`; its identity hash changed because the expected schema now correctly includes the v29 indexes.
+- Added migration-test coverage for v28 -> v29 and extended the full Room reopen migration chain through v29, so this exact schema/entity mismatch fails before a future install.
+- Future rule: whenever a migration creates or drops an index, update both the SQL migration and the Room entity annotation together, then regenerate schemas and run the migration test.

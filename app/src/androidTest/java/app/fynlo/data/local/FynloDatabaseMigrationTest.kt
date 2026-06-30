@@ -381,7 +381,7 @@ class FynloDatabaseMigrationTest {
                 MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20,
                 MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23,
                 MIGRATION_23_24, MIGRATION_24_25, MIGRATION_25_26,
-                MIGRATION_26_27,
+                MIGRATION_26_27, MIGRATION_27_28, MIGRATION_28_29,
             )
             .build()
         try {
@@ -392,6 +392,19 @@ class FynloDatabaseMigrationTest {
         } finally {
             db.close()
         }
+    }
+
+    @Test
+    @Throws(IOException::class)
+    fun migrate28to29_phaseTwoTablesMatchRoomSchema() {
+        helper.createDatabase(TEST_DB, 28).close()
+
+        helper.runMigrationsAndValidate(
+            TEST_DB,
+            29,
+            true,
+            MIGRATION_28_29,
+        ).close()
     }
 
     @Test

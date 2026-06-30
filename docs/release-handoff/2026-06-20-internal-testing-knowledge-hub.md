@@ -792,3 +792,17 @@ Verification:
 - `:app:compileProdDebugKotlin` passed.
 - `:app:testProdDebugUnitTest` passed.
 - Installed production and developer debug variants to the connected phone.
+
+## 2026-06-30 - Room v29 launch crash fix
+
+Completed:
+
+- Fixed the app-closing-on-launch issue caused by Room schema validation for v29 safety tables.
+- `MIGRATION_28_29` created four indexes, but the Room entity annotations did not list them. Room rejected the database at startup with a `Migration didn't properly handle: monthly_closes` error.
+- Added matching index declarations to `MonthlyClose`, `UndoAction`, `ProofAttachment`, and `SyncConflict`.
+- Regenerated Room schema `29.json`.
+- Added Android migration test coverage for v28 -> v29 and extended the full migration reopen test through v29.
+
+Future rule:
+
+- If a migration creates an index, the matching Room entity must declare the same index name and columns. Do not rely on SQL-only indexes; Room validates the entity schema on launch.
