@@ -1864,3 +1864,12 @@ The user approved the combined future roadmap below. Do not treat these as compl
 - Regenerated Room schema `29.json`; its identity hash changed because the expected schema now correctly includes the v29 indexes.
 - Added migration-test coverage for v28 -> v29 and extended the full Room reopen migration chain through v29, so this exact schema/entity mismatch fails before a future install.
 - Future rule: whenever a migration creates or drops an index, update both the SQL migration and the Room entity annotation together, then regenerate schemas and run the migration test.
+
+## 2026-06-30 - Account Balance Edit Ledger Correction
+
+- Root cause investigated on the connected production database: Kalyani's account had an audit-only balance edit from `0` to `200000`, followed by a real `Lending` transaction of `200000` to Muhammed dated `2026-02-01`. The safe repair rebuilt balances from ledger transactions and ignored the old direct edit, so Kalyani's account became `-200000`.
+- Account balance edits from the dashboard account dialog now preserve metadata separately and route balance changes through `quickEditBalance`, creating a real `Balance Correction` transaction instead of silently changing the stored account balance.
+- `quickEditBalance` now accepts the immutable account id and writes `fromAcctId` / `toAcctId` on the correction transaction, making balance corrections safer across account renames.
+- Account statement quick-balance edit now also passes the account id.
+- Safe account-balance repair now treats older direct `Account edited:` audit deltas as legacy balance-correction/opening deltas. This lets repair recover books where an older direct account edit was already made before this fix.
+- Future rule: account balance changes must always become ledger-visible correction entries. Do not call plain account save/upsert for an existing account when the balance field changed.

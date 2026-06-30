@@ -57,7 +57,7 @@ fun AccountStatementScreen(
             currencySymbol = currencySymbol,
             onDismiss      = { showEditDialog = false },
             onConfirm      = { newBalance ->
-                viewModel.quickEditBalance(accountName, newBalance, account.balance)
+                viewModel.quickEditBalance(accountName, newBalance, account.balance, account.id)
                 showEditDialog = false
             }
         )

@@ -1655,6 +1655,7 @@ class FinanceRepository(
                     account = account,
                     openingBalance = openingAudit.amountDelta,
                     transactions = transactions,
+                    auditEvents = auditEvents,
                 )
                 val delta = expected - account.balance
                 if (kotlin.math.abs(delta) <= 0.005) return@forEach
@@ -1689,8 +1690,16 @@ class FinanceRepository(
         account: Account,
         openingBalance: Double,
         transactions: List<Transaction>,
+        auditEvents: List<AuditEvent>,
     ): Double {
-        var balance = openingBalance
+        var balance = openingBalance + auditEvents
+            .filter { event ->
+                event.action == "EDIT" &&
+                    event.entityType == "account" &&
+                    event.title.startsWith("Account edited:") &&
+                    (event.entityId == account.id || event.accountName == account.name)
+            }
+            .sumOf { it.amountDelta }
         transactions.forEach { txn ->
             if (txn.type.equals("Info", ignoreCase = true)) return@forEach
             if (txn.tags.split(",").any { it.trim().equals("journal_only", ignoreCase = true) }) return@forEach
@@ -1775,11 +1784,16 @@ class FinanceRepository(
         }
     }
 
-        /** Directly set account balance (for corrections). Creates a balancing transaction. */
-    suspend fun quickEditBalance(accountName: String, newBalance: Double, oldBalance: Double) {
+    /** Directly set account balance for corrections by writing a balancing transaction. */
+    suspend fun quickEditBalance(
+        accountName: String,
+        newBalance: Double,
+        oldBalance: Double,
+        accountId: String = "",
+    ) {
         db.withTransaction {
             val diff = newBalance - oldBalance
-            dao.updateAccountBalance(accountName, diff)
+            applyAccountDelta(accountId, accountName, diff)
             // 3.2.72 — manual balance edit audit entry.
             app.fynlo.logic.BalanceAuditLog.record(
                 source  = app.fynlo.logic.BalanceAuditLog.Source.QUICK_EDIT_BALANCE,
@@ -1795,7 +1809,9 @@ class FinanceRepository(
                 category = "Balance Correction",
                 desc     = "Manual balance adjustment",
                 toAcct   = if (diff >= 0) accountName else "",
+                toAcctId = if (diff >= 0) accountId else "",
                 fromAcct = if (diff < 0) accountName else "",
+                fromAcctId = if (diff < 0) accountId else "",
                 projectId = "personal",
                 updatedAt = System.currentTimeMillis()
             )

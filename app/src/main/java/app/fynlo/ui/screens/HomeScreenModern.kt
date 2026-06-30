@@ -200,7 +200,7 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
             onDismiss = { showAccountDialog = false },
             onConfirm = { account ->
                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                viewModel.saveAccount(account)
+                viewModel.saveAccountFromDialog(initial, account)
                 showAccountDialog = false
             },
             onTransfer = initial?.let { account ->
@@ -1042,6 +1042,13 @@ private fun AccountManageDialog(
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(14.dp),
+        )
+        Text(
+            if (initial == null) "Opening balance for this account."
+            else "Changing this creates a balance correction entry.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = 6.dp),
         )
         if (initial != null) {
             Spacer(Modifier.height(18.dp))

@@ -806,3 +806,17 @@ Completed:
 Future rule:
 
 - If a migration creates an index, the matching Room entity must declare the same index name and columns. Do not rely on SQL-only indexes; Room validates the entity schema on launch.
+
+## 2026-06-30 - Account balance edit correction
+
+Completed:
+
+- Investigated Kalyani's negative cash case on the production phone database. The cash add was an older direct account balance edit, while the loan to Muhammed was a real ledger transaction. Safe repair replayed only ledger rows, so it kept the loan deduction and dropped the direct edit effect.
+- Dashboard account edits now route balance changes through `quickEditBalance`, creating a visible `Balance Correction` transaction.
+- Balance corrections now carry the account id in addition to the account name.
+- Account statement quick-balance edit also passes the account id.
+- Safe repair now recognizes legacy `Account edited:` audit deltas so older direct balance edits can be preserved during balance replay.
+
+Future rule:
+
+- Never save an existing account balance as a plain account update. Any balance change must create a ledger-visible correction transaction, otherwise Book Check/repair will eventually expose the mismatch.

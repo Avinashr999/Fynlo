@@ -1068,9 +1068,42 @@ class FinanceViewModel @Inject constructor(
         viewModelScope.launch(Dispatchers.IO) { repository.deleteBudget(budget) }
     }
 
-    fun quickEditBalance(accountName: String, newBalance: Double, oldBalance: Double) {
+    fun quickEditBalance(accountName: String, newBalance: Double, oldBalance: Double, accountId: String = "") {
         viewModelScope.launch(Dispatchers.IO) {
-            repository.quickEditBalance(accountName, newBalance, oldBalance)
+            repository.quickEditBalance(accountName, newBalance, oldBalance, accountId)
+        }
+    }
+
+    fun saveAccountFromDialog(previous: Account?, account: Account) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val now = System.currentTimeMillis()
+            if (previous == null) {
+                repository.upsertAccount(
+                    account.copy(
+                        projectId = pid,
+                        updatedAt = now,
+                        createdAt = if (account.createdAt > 0L) account.createdAt else now,
+                    )
+                )
+                return@launch
+            }
+
+            val metadataAccount = account.copy(
+                balance = previous.balance,
+                projectId = pid,
+                updatedAt = now,
+                createdAt = if (account.createdAt > 0L) account.createdAt else previous.createdAt,
+            )
+            repository.upsertAccount(metadataAccount)
+
+            if (kotlin.math.abs(account.balance - previous.balance) > 0.005) {
+                repository.quickEditBalance(
+                    accountName = account.name,
+                    newBalance = account.balance,
+                    oldBalance = previous.balance,
+                    accountId = account.id,
+                )
+            }
         }
     }
 
