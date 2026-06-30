@@ -13,6 +13,8 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.tasks.await
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 
 /**
  * Listens to Firestore snapshot updates for all collections and writes
@@ -31,6 +33,7 @@ class SyncManager(
 
     private val _status = MutableStateFlow<SyncStatus>(SyncStatus.Initialising)
     val status: StateFlow<SyncStatus> = _status
+    private val conflictJson = Json { encodeDefaults = true; ignoreUnknownKeys = true }
 
     /** Classifies a Firestore listener error — avoids false orange on transient network blips. */
     private fun handleErr(err: FirebaseFirestoreException?) {
@@ -54,6 +57,12 @@ class SyncManager(
         runCatching { doc.reference.delete().await() }
     }
 
+    private fun conflictSnapshot(value: Any): String = when (value) {
+        is Account -> conflictJson.encodeToString(value)
+        is Transaction -> conflictJson.encodeToString(value)
+        else -> value.toString()
+    }.take(12_000)
+
     private suspend fun recordConflict(
         collection: String,
         entityId: String,
@@ -69,8 +78,8 @@ class SyncManager(
                 collection = collection,
                 entityId = entityId,
                 fieldSummary = fieldSummary.take(220),
-                localJson = localValue.toString().take(4_000),
-                remoteJson = remoteValue.toString().take(4_000),
+                localJson = conflictSnapshot(localValue),
+                remoteJson = conflictSnapshot(remoteValue),
                 projectId = projectId.ifBlank { "personal" },
                 updatedAt = now,
                 createdAt = now,

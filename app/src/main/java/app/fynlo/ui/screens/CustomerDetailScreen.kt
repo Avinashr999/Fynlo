@@ -39,6 +39,7 @@ import app.fynlo.logic.DateUtils
 import app.fynlo.logic.InterestEngine
 import app.fynlo.ui.components.AddLendingDialog
 import app.fynlo.ui.components.CollectPaymentDialog
+import app.fynlo.ui.components.FynloConfirmDialog
 import app.fynlo.ui.components.ProofAttachmentSection
 import app.fynlo.ui.components.WaiveInterestDialog
 import java.util.*
@@ -152,33 +153,21 @@ val borrowers by viewModel.borrowers.collectAsState()
     }
 
     if (showDeleteConfirm) {
-        AlertDialog(
-            onDismissRequest = { showDeleteConfirm = false },
-            title = { Text("Delete Borrower?") },
-            text = {
-                Text(
-                    "This will permanently delete ${borrower.name} and all their payment records. " +
-                    "This cannot be undone."
-                )
+        FynloConfirmDialog(
+            title = "Delete borrower?",
+            message = "This will delete ${borrower.name} and all payment records linked to this loan. The account balance will be reversed.",
+            confirmText = "Delete",
+            destructive = true,
+            onDismiss = { showDeleteConfirm = false },
+            onConfirm = {
+                if (!deleteInProgress) {
+                    deleteInProgress = true
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    viewModel.deleteBorrower(borrower)
+                    showDeleteConfirm = false
+                    onNavigateBack()
+                }
             },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        if (!deleteInProgress) {
-                            deleteInProgress = true
-                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                            viewModel.deleteBorrower(borrower)
-                            showDeleteConfirm = false
-                            onNavigateBack()
-                        }
-                    },
-                    enabled = !deleteInProgress,
-                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
-                ) { Text("Delete") }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDeleteConfirm = false }) { Text("Cancel") }
-            }
         )
     }
 
@@ -372,32 +361,21 @@ val borrowers by viewModel.borrowers.collectAsState()
 
     // C12 Stage 3 — Write Off confirmation (lifted from LendingScreen).
     if (showWriteOffConfirm) {
-        AlertDialog(
-            onDismissRequest = { showWriteOffConfirm = false },
-            title = { Text("Write Off Bad Debt?") },
-            text = {
-                Text(
-                    "This will create a Bad Debt expense in your P&L and remove ${borrower.name} from receivables. Cannot be undone.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error
-                )
+        FynloConfirmDialog(
+            title = "Write off bad debt?",
+            message = "This creates a Bad Debt expense and removes ${borrower.name} from receivables. Use this only when the amount is no longer recoverable.",
+            confirmText = "Write off",
+            destructive = true,
+            onDismiss = { showWriteOffConfirm = false },
+            onConfirm = {
+                if (!writeOffInProgress) {
+                    writeOffInProgress = true
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    viewModel.writeOffBorrower(borrower)
+                    showWriteOffConfirm = false
+                    onNavigateBack()
+                }
             },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        if (!writeOffInProgress) {
-                            writeOffInProgress = true
-                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                            viewModel.writeOffBorrower(borrower)
-                            showWriteOffConfirm = false
-                            onNavigateBack()
-                        }
-                    },
-                    enabled = !writeOffInProgress,
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
-                ) { Text("Write Off") }
-            },
-            dismissButton = { TextButton(onClick = { showWriteOffConfirm = false }) { Text("Cancel") } }
         )
     }
 

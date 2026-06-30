@@ -29,6 +29,7 @@ import app.fynlo.logic.CurrencyFormatter
 import app.fynlo.logic.isGeneratedJournalEntry
 import app.fynlo.logic.toRecurringTemplate
 import app.fynlo.ui.components.AddTransactionDialog
+import app.fynlo.ui.components.FynloConfirmDialog
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
@@ -365,35 +366,30 @@ private fun ExpenseRow(
     val isManagedEntry = txn.isGeneratedJournalEntry()
 
     if (showManagedEntry) {
-        AlertDialog(
-            onDismissRequest = { showManagedEntry = false },
-            title = { Text("Managed entry") },
-            text = {
-                Text("This is generated from a loan or debt action. Edit or delete the original loan/debt payment to keep the ledger balanced.")
-            },
-            confirmButton = {
-                Button(onClick = { showManagedEntry = false }) { Text("OK") }
-            }
+        FynloConfirmDialog(
+            title = "Managed entry",
+            message = "This is generated from a loan or debt action. Edit or delete the original loan/debt payment to keep the ledger balanced.",
+            confirmText = "OK",
+            showDismissButton = false,
+            onDismiss = { showManagedEntry = false },
+            onConfirm = { showManagedEntry = false },
         )
     }
     if (showDeleteConfirm && !isManagedEntry) {
-        AlertDialog(
-            onDismissRequest = { showDeleteConfirm = false },
-            title = { Text("Delete Expense?") },
-            text  = { Text("Delete ${CurrencyFormatter.detail(txn.amount, currencyCode, locale)} ${txn.category}? This will reverse the account balance.") },
-            confirmButton = {
-                Button(onClick = {
-                    if (!deleteInProgress) {
-                        deleteInProgress = true
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        onDelete()
-                        showDeleteConfirm = false
-                    }
-                },
-                    enabled = !deleteInProgress,
-                    colors = ButtonDefaults.buttonColors(containerColor = SemanticRed)) { Text("Delete") }
+        FynloConfirmDialog(
+            title = "Delete expense?",
+            message = "Delete ${CurrencyFormatter.detail(txn.amount, currencyCode, locale)} ${txn.category}? This will reverse the account balance.",
+            confirmText = "Delete",
+            destructive = true,
+            onDismiss = { showDeleteConfirm = false },
+            onConfirm = {
+                if (!deleteInProgress) {
+                    deleteInProgress = true
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onDelete()
+                    showDeleteConfirm = false
+                }
             },
-            dismissButton = { TextButton(onClick = { showDeleteConfirm = false }) { Text("Cancel") } }
         )
     }
     if (showEditDialog && !isManagedEntry) {

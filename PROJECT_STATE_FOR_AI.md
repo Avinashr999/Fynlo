@@ -1841,3 +1841,11 @@ The user approved the combined future roadmap below. Do not treat these as compl
 
 - A true sync conflict resolver should store structured JSON snapshots in `sync_conflicts`, then apply selected phone/cloud row values. The current review UI is useful for visibility but intentionally does not guess a merge.
 - A full visual sweep of every historical `AlertDialog` remains a separate UI pass. The new/changed safety surfaces use the current premium direction, but older confirmation dialogs still exist across some deep screens.
+
+## 2026-06-30 - Structured Sync Merge and Core Dialog Sweep
+
+- Structured sync conflict merge is now implemented for account and transaction conflicts. Conflict capture stores JSON snapshots instead of raw `toString()` text, and Settings -> Sync conflict review now applies `Keep phone` / `Keep cloud` choices to the actual local row before marking the conflict resolved.
+- Conflict snapshot previews hide noisy internal ids/timestamps so non-technical users can compare the meaningful fields.
+- Added `FynloConfirmDialog` as the shared premium confirmation shell and made `FormDialog` subtitle configurable for non-save surfaces.
+- Migrated core money-action/history confirmations away from old `AlertDialog`: loan delete/write-off, debt delete, investment delete, valuation history, transaction history bulk/single delete, managed-entry warning, expense delete, budget delete, and goal delete.
+- Remaining old `AlertDialog` calls are mostly lower-risk settings/profile/project/people/recurring/navigation dialogs. Future UI passes should migrate simple confirmations to `FynloConfirmDialog` and large review surfaces to `FormDialog` or a custom premium sheet.

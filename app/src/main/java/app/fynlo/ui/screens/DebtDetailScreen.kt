@@ -40,6 +40,7 @@ import app.fynlo.logic.displayFromAcct
 import app.fynlo.logic.displayToAcct
 import app.fynlo.ui.components.AddDebtDialog
 import app.fynlo.ui.components.PayDebtDialog
+import app.fynlo.ui.components.FynloConfirmDialog
 import app.fynlo.ui.components.ProofAttachmentSection
 import app.fynlo.ui.components.WaiveInterestDialog
 import app.fynlo.ui.theme.Emerald500
@@ -148,26 +149,21 @@ fun DebtDetailScreen(
         )
     }
     if (showDeleteConfirm) {
-        AlertDialog(
-            onDismissRequest = { showDeleteConfirm = false },
-            title = { Text("Delete debt?") },
-            text  = { Text("This will permanently delete \"${debt.name}\" and reverse the linked account entries. This cannot be undone.") },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        if (!deleteInProgress) {
-                            deleteInProgress = true
-                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                            viewModel.deleteDebt(debt)
-                            showDeleteConfirm = false
-                            onNavigateBack()
-                        }
-                    },
-                    enabled = !deleteInProgress,
-                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
-                ) { Text("Delete") }
+        FynloConfirmDialog(
+            title = "Delete debt?",
+            message = "This will delete ${debt.name} and reverse the linked account entries. Use this only when the debt was entered by mistake.",
+            confirmText = "Delete",
+            destructive = true,
+            onDismiss = { showDeleteConfirm = false },
+            onConfirm = {
+                if (!deleteInProgress) {
+                    deleteInProgress = true
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    viewModel.deleteDebt(debt)
+                    showDeleteConfirm = false
+                    onNavigateBack()
+                }
             },
-            dismissButton = { TextButton(onClick = { showDeleteConfirm = false }) { Text("Cancel") } }
         )
     }
 

@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import app.fynlo.FinanceViewModel
 import app.fynlo.data.model.Budget
 import app.fynlo.logic.CurrencyFormatter
+import app.fynlo.ui.components.FynloConfirmDialog
 import java.time.LocalDate
 import java.util.Locale
 import app.fynlo.ui.theme.*
@@ -223,19 +224,17 @@ fun BudgetCard(
     val haptic = LocalHapticFeedback.current
     var showDeleteConfirm by remember { mutableStateOf(false) }
     if (showDeleteConfirm) {
-        AlertDialog(
-            onDismissRequest = { showDeleteConfirm = false },
-            title = { Text("Delete budget?") },
-            text  = { Text("Remove the \"${budget.category}\" budget? This cannot be undone.") },
-            confirmButton = {
-                TextButton(onClick = {
-                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                    onDelete()
-                    showDeleteConfirm = false
-                },
-                    colors = ButtonDefaults.textButtonColors(contentColor = SemanticRed)) { Text("Delete") }
+        FynloConfirmDialog(
+            title = "Delete budget?",
+            message = "Remove the \"${budget.category}\" budget? This cannot be undone.",
+            confirmText = "Delete",
+            destructive = true,
+            onDismiss = { showDeleteConfirm = false },
+            onConfirm = {
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                onDelete()
+                showDeleteConfirm = false
             },
-            dismissButton = { TextButton(onClick = { showDeleteConfirm = false }) { Text("Cancel") } }
         )
     }
     val progress     = (actualSpent / budget.limitAmount).toFloat().coerceIn(0f, 1f)

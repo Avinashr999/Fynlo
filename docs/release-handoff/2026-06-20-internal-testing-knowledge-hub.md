@@ -59,6 +59,17 @@ Latest rule added 2026-06-29:
 
 ## Core accounting and money-action fixes
 
+### 2026-06-30 structured sync conflict merge
+
+The first sync conflict UI only recorded a review decision. The 2026-06-30 follow-up changed conflict capture for account and transaction rows to store structured JSON snapshots. `Keep phone` and `Keep cloud` now apply the selected snapshot locally, write an audit entry, and sync that selected row back to cloud.
+
+Rules for future agents:
+
+- Do not downgrade conflict snapshots back to `toString()` text.
+- Keep conflict preview copy readable for normal users; hide internal ids/timestamps where possible.
+- Only account and transaction conflicts currently have true structured apply support. Add other collections deliberately with model-specific repair/sync behavior.
+- Mark reviewed remains a no-change acknowledgement.
+
 ### Investment funding and net worth integrity
 
 Issue found: adding/deleting/restoring an investment could increase net worth while Personal Cash stayed unchanged. The specific observed issue was net worth moving upward without an actual income or cash movement.

@@ -2158,7 +2158,7 @@ private fun SyncConflictDialog(
                                     style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
                                 )
                                 Text(
-                                    "A cloud copy and this phone both changed this item while offline. Review the related record before marking it resolved.",
+                                    "A cloud copy and this phone both changed this item while offline. Choose which copy should become the final ledger record.",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
@@ -2189,13 +2189,13 @@ private fun SyncConflictDialog(
                                     horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
                                 ) {
                                     OutlinedButton(
-                                        onClick = { onResolve(conflict.id, "Kept phone copy after review") },
+                                        onClick = { onResolve(conflict.id, "KeepPhone") },
                                         shape = RoundedCornerShape(12.dp),
                                     ) {
                                         Text("Keep phone")
                                     }
                                     OutlinedButton(
-                                        onClick = { onResolve(conflict.id, "Kept cloud copy after review") },
+                                        onClick = { onResolve(conflict.id, "KeepCloud") },
                                         shape = RoundedCornerShape(12.dp),
                                     ) {
                                         Text("Keep cloud")
@@ -2224,6 +2224,7 @@ private fun ConflictSnapshotCard(
     value: String,
     modifier: Modifier = Modifier,
 ) {
+    val preview = remember(value) { readableConflictPreview(value) }
     Surface(
         modifier = modifier.heightIn(min = 78.dp),
         shape = RoundedCornerShape(14.dp),
@@ -2236,7 +2237,7 @@ private fun ConflictSnapshotCard(
                 color = MaterialTheme.colorScheme.primary,
             )
             Text(
-                value.ifBlank { "No saved preview" }.take(260),
+                preview,
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 5,
@@ -2244,6 +2245,25 @@ private fun ConflictSnapshotCard(
             )
         }
     }
+}
+
+private fun readableConflictPreview(value: String): String {
+    if (value.isBlank()) return "No saved preview"
+    return value
+        .trim()
+        .removePrefix("{")
+        .removeSuffix("}")
+        .split("\",\"")
+        .map { it.replace("\"", "").replace("\\/", "/").replace(":", ": ") }
+        .filterNot { item ->
+            item.startsWith("id: ") ||
+                item.startsWith("projectId: ") ||
+                item.startsWith("createdAt: ") ||
+                item.startsWith("updatedAt: ")
+        }
+        .take(5)
+        .joinToString("\n")
+        .ifBlank { value.take(260) }
 }
 
 @Composable

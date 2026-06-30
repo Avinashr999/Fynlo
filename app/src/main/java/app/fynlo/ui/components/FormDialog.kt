@@ -54,6 +54,7 @@ import app.fynlo.ui.theme.Emerald700
 fun FormDialog(
     title: String,
     onDismiss: () -> Unit,
+    subtitle: String = "Review the details before saving",
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Dialog(
@@ -102,7 +103,7 @@ fun FormDialog(
                                 color = MaterialTheme.colorScheme.onSurface,
                             )
                             Text(
-                                "Review the details before saving",
+                                subtitle,
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )

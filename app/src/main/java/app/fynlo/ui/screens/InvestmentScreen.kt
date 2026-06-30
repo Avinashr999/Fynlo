@@ -36,6 +36,7 @@ import app.fynlo.data.model.Investment
 import app.fynlo.logic.CurrencyFormatter
 import app.fynlo.logic.DateUtils
 import app.fynlo.ui.components.AddInvestmentDialog
+import app.fynlo.ui.components.FormDialog
 import app.fynlo.ui.components.ProofAttachmentSection
 
 import app.fynlo.ui.components.InvestmentSaveRequest
@@ -220,10 +221,11 @@ val currentProject by viewModel.currentProject.collectAsState()
 
     deletingInvest?.let { inv ->
         var deleteInProgress by remember(inv.id) { mutableStateOf(false) }
-        AlertDialog(
-            onDismissRequest = { deletingInvest = null },
-            title = { Text("Delete Investment") },
-            text = {
+        FormDialog(
+            title = "Delete investment",
+            subtitle = "Choose how the ledger should reverse this record",
+            onDismiss = { deletingInvest = null },
+        ) {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text(
                         "${inv.name}  •  ${CurrencyFormatter.detail(inv.invested, currencyCode)}",
@@ -311,10 +313,7 @@ val currentProject by viewModel.currentProject.collectAsState()
                         }
                     }
                 }
-            },
-            confirmButton = {},  // all actions in text area
-            dismissButton = {}
-        )
+        }
     }
 
     viewingHistory?.let { invest ->
@@ -1013,12 +1012,11 @@ fun ValuationHistoryDialog(
     valuations: List<app.fynlo.data.model.InvestmentValuation>,
     onDismiss: () -> Unit
 ) {
-    AlertDialog(
-        modifier = Modifier.fillMaxWidth(0.95f),
-        properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false),
-        onDismissRequest = onDismiss,
-        title = { Text("Valuation History", color = MaterialTheme.colorScheme.onSurface) },
-        text = {
+    FormDialog(
+        title = "Valuation history",
+        subtitle = "Track market value changes over time",
+        onDismiss = onDismiss,
+    ) {
             Column(Modifier.fillMaxWidth()) {
                 Text(
                     investment.name,
@@ -1074,8 +1072,8 @@ fun ValuationHistoryDialog(
                         Spacer(Modifier.height(12.dp))
                     }
 
-                    LazyColumn(modifier = Modifier.heightIn(max = 400.dp)) {
-                        items(valuations) { v ->
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        valuations.forEach { v ->
                             Row(
                                 modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
                                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -1104,9 +1102,7 @@ fun ValuationHistoryDialog(
                     }
                 }
             }
-        },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("Close") } }
-    )
+        }
 }
 
 /**

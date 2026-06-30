@@ -261,7 +261,12 @@ class FinanceViewModel @Inject constructor(
     fun resolveSyncConflict(id: String, resolution: String) {
         viewModelScope.launch(Dispatchers.IO) {
             repository.resolveSyncConflict(id, resolution)
-            _feedbackEvents.tryEmit("Conflict marked as $resolution")
+            val message = when (resolution) {
+                "KeepPhone" -> "Phone copy kept and synced"
+                "KeepCloud" -> "Cloud copy applied to this phone"
+                else -> "Conflict marked as reviewed"
+            }
+            _feedbackEvents.tryEmit(message)
         }
     }
 

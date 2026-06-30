@@ -32,6 +32,7 @@ import app.fynlo.logic.CurrencyFormatter
 import app.fynlo.logic.DateUtils
 import app.fynlo.logic.TransactionOrdering
 import app.fynlo.logic.isGeneratedJournalEntry
+import app.fynlo.ui.components.FynloConfirmDialog
 import app.fynlo.ui.theme.*
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -95,28 +96,23 @@ fun TransactionHistoryScreen(viewModel: FinanceViewModel) {
     var bulkDeleteInProgress by remember { mutableStateOf(false) }
 
     if (showBulkDeleteConfirm) {
-        AlertDialog(
-            onDismissRequest = { showBulkDeleteConfirm = false },
-            title = { Text("Delete ${app.fynlo.logic.pluralize(selectedIds.size, "transaction")}?") },
-            text  = { Text("This will permanently delete the selected transactions and reverse their account balances.") },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        if (bulkDeleteInProgress) return@Button
-                        bulkDeleteInProgress = true
-                        val toDelete = filteredHistory.filter { it.id in selectedIds }
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress); viewModel.deleteTransactions(toDelete)
-                        selectedIds = emptySet()
-                        selectionMode = false
-                        showBulkDeleteConfirm = false
-                        bulkDeleteInProgress = false
-                    },
-                    enabled = !bulkDeleteInProgress,
-                    colors = ButtonDefaults.buttonColors(containerColor = SemanticRed),
-                    shape = RoundedCornerShape(14.dp)
-                ) { Text("Delete All") }
+        FynloConfirmDialog(
+            title = "Delete ${app.fynlo.logic.pluralize(selectedIds.size, "transaction")}?",
+            message = "This will permanently delete the selected transactions and reverse their account balances.",
+            confirmText = "Delete All",
+            destructive = true,
+            onDismiss = { showBulkDeleteConfirm = false },
+            onConfirm = {
+                if (bulkDeleteInProgress) return@FynloConfirmDialog
+                bulkDeleteInProgress = true
+                val toDelete = filteredHistory.filter { it.id in selectedIds }
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                viewModel.deleteTransactions(toDelete)
+                selectedIds = emptySet()
+                selectionMode = false
+                showBulkDeleteConfirm = false
+                bulkDeleteInProgress = false
             },
-            dismissButton = { TextButton(onClick = { showBulkDeleteConfirm = false }) { Text("Cancel") } }
         )
     }
 
@@ -587,13 +583,13 @@ fun TransactionItem(
     val isManagedEntry = txn.isGeneratedJournalEntry()
 
     if (showManagedEntry) {
-        AlertDialog(
-            onDismissRequest = { showManagedEntry = false },
-            title = { Text("Managed entry") },
-            text = {
-                Text("This entry is generated from a loan or debt action. Edit or delete the original payment so linked totals stay correct.")
-            },
-            confirmButton = { Button(onClick = { showManagedEntry = false }) { Text("OK") } }
+        FynloConfirmDialog(
+            title = "Managed entry",
+            message = "This entry is generated from a loan or debt action. Edit or delete the original payment so linked totals stay correct.",
+            confirmText = "OK",
+            showDismissButton = false,
+            onDismiss = { showManagedEntry = false },
+            onConfirm = { showManagedEntry = false },
         )
     }
     if (showEditDialog && !isManagedEntry) {
@@ -605,23 +601,19 @@ fun TransactionItem(
         )
     }
     if (showDeleteConfirm && !isManagedEntry) {
-        AlertDialog(
-            onDismissRequest = { showDeleteConfirm = false },
-            title = { Text("Delete transaction?") },
-            text  = { Text("Delete ${CurrencyFormatter.detail(txn.amount, currencyCode, locale)} ${txn.category}? This reverses the account balance.") },
-            confirmButton = {
-                Button(onClick = {
-                    if (!deleteInProgress) {
-                        deleteInProgress = true
-                        showDeleteConfirm = false
-                        onDelete()
-                    }
-                },
-                    enabled = !deleteInProgress,
-                    colors = ButtonDefaults.buttonColors(containerColor = SemanticRed),
-                    shape = RoundedCornerShape(14.dp)) { Text("Delete") }
+        FynloConfirmDialog(
+            title = "Delete transaction?",
+            message = "Delete ${CurrencyFormatter.detail(txn.amount, currencyCode, locale)} ${txn.category}? This reverses the account balance.",
+            confirmText = "Delete",
+            destructive = true,
+            onDismiss = { showDeleteConfirm = false },
+            onConfirm = {
+                if (!deleteInProgress) {
+                    deleteInProgress = true
+                    showDeleteConfirm = false
+                    onDelete()
+                }
             },
-            dismissButton = { TextButton(onClick = { showDeleteConfirm = false }) { Text("Cancel") } }
         )
     }
 

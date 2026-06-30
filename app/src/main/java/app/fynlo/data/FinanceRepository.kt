@@ -297,7 +297,60 @@ class FinanceRepository(
     }
 
     suspend fun resolveSyncConflict(id: String, resolution: String) {
-        dao.resolveSyncConflict(id, resolution, System.currentTimeMillis())
+        val now = System.currentTimeMillis()
+        val conflict = dao.getSyncConflictById(id)
+        if (conflict != null) {
+            val selectedJson = when (resolution) {
+                "KeepPhone" -> conflict.localJson
+                "KeepCloud" -> conflict.remoteJson
+                else -> ""
+            }
+            if (selectedJson.isNotBlank()) {
+                applySyncConflictSnapshot(conflict, selectedJson, now)
+            }
+        }
+        val label = when (resolution) {
+            "KeepPhone" -> "Kept phone copy"
+            "KeepCloud" -> "Kept cloud copy"
+            else -> resolution
+        }
+        dao.resolveSyncConflict(id, label, now)
+    }
+
+    private suspend fun applySyncConflictSnapshot(conflict: SyncConflict, snapshotJson: String, now: Long) {
+        when (conflict.collection) {
+            "accounts" -> {
+                val account = runCatching { undoJson.decodeFromString<Account>(snapshotJson) }.getOrNull() ?: return
+                val saved = account.copy(updatedAt = now)
+                dao.insertAccount(saved)
+                recordAudit(
+                    action = "SYNC_RESOLVE",
+                    entityType = "account",
+                    entityId = saved.id,
+                    title = "Sync conflict resolved: ${saved.name}",
+                    afterValue = "${saved.name} ${CurrencyFormatter.detail(saved.balance)}",
+                    reason = "Applied ${conflict.collection} ${conflict.entityId}",
+                    projectId = saved.projectId,
+                )
+                sync { setAccount(saved) }
+            }
+            "transactions" -> {
+                val txn = runCatching { undoJson.decodeFromString<Transaction>(snapshotJson) }.getOrNull() ?: return
+                val saved = txn.copy(updatedAt = now).withResolvedAccountIds()
+                dao.insertTransaction(saved)
+                repairAccountBalanceDriftFromLedger()
+                recordAudit(
+                    action = "SYNC_RESOLVE",
+                    entityType = "transaction",
+                    entityId = saved.id,
+                    title = "Sync conflict resolved: ${saved.desc.ifBlank { saved.category }}",
+                    afterValue = "${saved.type} ${CurrencyFormatter.detail(saved.amount)}",
+                    reason = "Applied ${conflict.collection} ${conflict.entityId}",
+                    projectId = saved.projectId,
+                )
+                sync { setTransaction(saved) }
+            }
+        }
     }
 
     suspend fun undoLastMoneyAction(): Boolean {
