@@ -39,6 +39,8 @@ import app.fynlo.FinanceViewModel
 import app.fynlo.data.UserPreferences
 import app.fynlo.logic.CurrencyFormatter
 import app.fynlo.logic.CurrencyUtils
+import app.fynlo.ui.components.FynloConfirmDialog
+import app.fynlo.ui.components.FormDialog
 import app.fynlo.ui.theme.ThemeController
 import app.fynlo.ui.theme.*
 import kotlinx.coroutines.Dispatchers
@@ -395,13 +397,13 @@ fun SettingsScreen(
     }
 
     restorePreviewError?.let { message ->
-        AlertDialog(
-            onDismissRequest = { restorePreviewError = null },
-            title = { Text("Backup cannot be restored") },
-            text = { Text(message) },
-            confirmButton = {
-                TextButton(onClick = { restorePreviewError = null }) { Text("OK") }
-            },
+        FynloConfirmDialog(
+            title = "Backup cannot be restored",
+            message = message,
+            confirmText = "OK",
+            showDismissButton = false,
+            onDismiss = { restorePreviewError = null },
+            onConfirm = { restorePreviewError = null },
         )
     }
 
@@ -999,69 +1001,47 @@ fun SettingsScreen(
                 ) { showResetCloudConfirm = true }
 
                 if (showResetCloudConfirm) {
-                    AlertDialog(
-                        onDismissRequest = { showResetCloudConfirm = false },
-                        title = { Text("Replace cloud backup?") },
-                        text = {
-                            Text(
-                                "This replaces the cloud backup with the data currently on this phone.\n\n" +
-                                "Local data stays untouched. Other devices signed in to the same account will be updated from this new cloud backup on their next launch.\n\n" +
-                                "Use this only when old cloud data keeps restoring values you don't recognise."
-                            )
+                    FynloConfirmDialog(
+                        title = "Replace cloud backup?",
+                        message = "This replaces the cloud backup with the data currently on this phone. Local data stays untouched. Other devices signed in to the same account will update from this phone on their next launch.",
+                        confirmText = if (resetCloudInFlight) "Replacing..." else "Replace cloud backup",
+                        destructive = true,
+                        onDismiss = { if (!resetCloudInFlight) showResetCloudConfirm = false },
+                        onConfirm = {
+                            if (resetCloudInFlight) return@FynloConfirmDialog
+                            resetCloudInFlight = true
+                            viewModel.resetCloudSyncToLocal { ok ->
+                                resetCloudInFlight = false
+                                showResetCloudConfirm = false
+                                android.widget.Toast.makeText(
+                                    context,
+                                    if (ok) "Cloud backup replaced. Close and reopen the app to check it."
+                                    else "Reset failed - check your network and try again.",
+                                    android.widget.Toast.LENGTH_LONG,
+                                ).show()
+                            }
                         },
-                        confirmButton = {
-                            TextButton(
-                                onClick = {
-                                    if (resetCloudInFlight) return@TextButton
-                                    resetCloudInFlight = true
-                                    viewModel.resetCloudSyncToLocal { ok ->
-                                        resetCloudInFlight = false
-                                        showResetCloudConfirm = false
-                                        android.widget.Toast.makeText(
-                                            context,
-                                            if (ok) "Cloud backup replaced. Close and reopen the app to check it."
-                                            else "Reset failed — check your network and try again.",
-                                            android.widget.Toast.LENGTH_LONG,
-                                        ).show()
-                                    }
-                                },
-                                colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
-                            ) { Text(if (resetCloudInFlight) "Replacing..." else "Replace cloud backup") }
-                        },
-                        dismissButton = {
-                            TextButton(onClick = { showResetCloudConfirm = false }) { Text("Cancel") }
-                        }
                     )
                 }
                 }
 
                 recalcDelta?.let { delta ->
-                    AlertDialog(
-                        onDismissRequest = { recalcDelta = null },
-                        title = { Text("Balances recalculated") },
-                        text = {
-                            if (delta.isNoOp) {
-                                Text(
-                                    "Your data was already up to date — every total stayed the same. " +
-                                    "This is the normal outcome after the C01 fix landed; " +
-                                    "the recalc is now safe to run any time."
-                                )
-                            } else {
-                                Column {
-                                    Text(
-                                        "Net worth: ${fmtMoney(delta.before.netWorth)} → " +
-                                        "${fmtMoney(delta.after.netWorth)} (${fmtDelta(delta.netWorthChange)})"
-                                    )
-                                    Spacer(Modifier.height(6.dp))
-                                    Text("Receivables: ${fmtDelta(delta.receivablesChange)}")
-                                    Text("Cash: ${fmtDelta(delta.cashChange)}")
-                                    Text("Investments (current value): ${fmtDelta(delta.investmentsChange)}")
-                                }
-                            }
+                    FynloConfirmDialog(
+                        title = "Balances recalculated",
+                        message = if (delta.isNoOp) {
+                            "Your data was already up to date. Every total stayed the same, and the recalc is safe to run any time."
+                        } else {
+                            "Net worth: ${fmtMoney(delta.before.netWorth)} -> ${fmtMoney(delta.after.netWorth)} (${fmtDelta(delta.netWorthChange)})"
                         },
-                        confirmButton = {
-                            TextButton(onClick = { recalcDelta = null }) { Text("OK") }
-                        },
+                        confirmText = "OK",
+                        showDismissButton = false,
+                        onDismiss = { recalcDelta = null },
+                        onConfirm = { recalcDelta = null },
+                        supportingContent = if (delta.isNoOp) null else {{
+                            Text("Receivables: ${fmtDelta(delta.receivablesChange)}")
+                            Text("Cash: ${fmtDelta(delta.cashChange)}")
+                            Text("Investments (current value): ${fmtDelta(delta.investmentsChange)}")
+                        }},
                     )
                 }
             }
@@ -1433,43 +1413,36 @@ fun SettingsScreen(
                 var showWipeConfirm    by remember { mutableStateOf(false) }
                 var showReleaseChecklist by remember { mutableStateOf(false) }
 
-                if (showSeedConfirm) AlertDialog(
-                    onDismissRequest = { showSeedConfirm = false },
-                    title = { Text("Load Test Data?") },
-                    text  = { Text("Warning: this will delete all existing data and replace it with QA test data.") },
-                    confirmButton = { Button(onClick = { viewModel.loadDummyData(); showSeedConfirm = false },
-                        colors = ButtonDefaults.buttonColors(containerColor = Red)
-                    ) { Text("Load") } },
-                    dismissButton = { TextButton(onClick = { showSeedConfirm = false }) { Text("Cancel") } }
+                if (showSeedConfirm) FynloConfirmDialog(
+                    title = "Load Test Data?",
+                    message = "This will delete all existing data and replace it with QA test data.",
+                    confirmText = "Load",
+                    destructive = true,
+                    onDismiss = { showSeedConfirm = false },
+                    onConfirm = { viewModel.loadDummyData(); showSeedConfirm = false },
                 )
-                if (showCleanupConfirm) AlertDialog(
-                    onDismissRequest = { showCleanupConfirm = false },
-                    title = { Text("Cleanup Seeder Data?") },
-                    text  = { Text("Removes all QA test data from the app and Firestore.") },
-                    // C18 (3.2.20) — destructive action confirm button gets the
-                    // Red treatment for parity with Load Test Data / Wipe ALL.
-                    // Pre-3.2.20 this was a default-coloured Button, which the
-                    // audit flagged as inconsistent destructive-dialog colour.
-                    confirmButton = { Button(onClick = { viewModel.cleanupSeeederData(); showCleanupConfirm = false },
-                        colors = ButtonDefaults.buttonColors(containerColor = Red)
-                    ) { Text("Cleanup") } },
-                    dismissButton = { TextButton(onClick = { showCleanupConfirm = false }) { Text("Cancel") } }
+                if (showCleanupConfirm) FynloConfirmDialog(
+                    title = "Cleanup Seeder Data?",
+                    message = "Removes all QA test data from the app and Firestore.",
+                    confirmText = "Cleanup",
+                    destructive = true,
+                    onDismiss = { showCleanupConfirm = false },
+                    onConfirm = { viewModel.cleanupSeeederData(); showCleanupConfirm = false },
                 )
-                if (showRestoreConfirm) AlertDialog(
-                    onDismissRequest = { showRestoreConfirm = false },
-                    title = { Text("Restore Real Data?") },
-                    text  = { Text("Clears all transactions and restores Personal Cash ₹3,962 + HDFC Bank ₹1,22,500.") },
-                    confirmButton = { Button(onClick = { viewModel.restoreRealData(); showRestoreConfirm = false }) { Text("Restore") } },
-                    dismissButton = { TextButton(onClick = { showRestoreConfirm = false }) { Text("Cancel") } }
+                if (showRestoreConfirm) FynloConfirmDialog(
+                    title = "Restore Real Data?",
+                    message = "Clears all transactions and restores Personal Cash INR 3,962 plus HDFC Bank INR 1,22,500.",
+                    confirmText = "Restore",
+                    onDismiss = { showRestoreConfirm = false },
+                    onConfirm = { viewModel.restoreRealData(); showRestoreConfirm = false },
                 )
-                if (showWipeConfirm) AlertDialog(
-                    onDismissRequest = { showWipeConfirm = false },
-                    title = { Text("Wipe ALL Data?") },
-                    text  = { Text("Permanent destruction: this will delete everything from this phone and Google Cloud. This cannot be undone.") },
-                    confirmButton = { Button(onClick = { viewModel.wipeAllData(); showWipeConfirm = false },
-                        colors = ButtonDefaults.buttonColors(containerColor = Red)
-                    ) { Text("WIPE EVERYTHING") } },
-                    dismissButton = { TextButton(onClick = { showWipeConfirm = false }) { Text("Cancel") } }
+                if (showWipeConfirm) FynloConfirmDialog(
+                    title = "Wipe ALL Data?",
+                    message = "Permanent destruction: this will delete everything from this phone and Google Cloud. This cannot be undone.",
+                    confirmText = "WIPE EVERYTHING",
+                    destructive = true,
+                    onDismiss = { showWipeConfirm = false },
+                    onConfirm = { viewModel.wipeAllData(); showWipeConfirm = false },
                 )
                 if (showReleaseChecklist) {
                     ReleaseChecklistDialog(onDismiss = { showReleaseChecklist = false })
@@ -1567,34 +1540,21 @@ fun SettingsScreen(
 
         // Confirmation warning — shown after the PIN gate (if any).
         if (showResetWarning) {
-            AlertDialog(
-                onDismissRequest = { showResetWarning = false },
-                icon  = { Icon(Icons.Default.Warning, null, tint = Red) },
-                title = { Text("Reset All Data?") },
-                text  = {
-                    Text(
-                        "This will permanently delete ALL your data — transactions, " +
-                        "loans, debts, investments, accounts, budgets and goals. " +
-                        "This cannot be undone."
-                    )
+            FynloConfirmDialog(
+                title = "Reset All Data?",
+                message = "This will permanently delete ALL your data - transactions, loans, debts, investments, accounts, budgets and goals. This cannot be undone.",
+                confirmText = "Yes, Reset Everything",
+                destructive = true,
+                onDismiss = { showResetWarning = false },
+                onConfirm = {
+                    showResetWarning = false
+                    isResetting = true
+                    val authManager =
+                        (context.applicationContext as app.fynlo.FynloApplication).authManager
+                    viewModel.resetAllData(context, authManager) {
+                        app.fynlo.util.AppRestarter.restart(context)
+                    }
                 },
-                confirmButton = {
-                    Button(
-                        onClick = {
-                            showResetWarning = false
-                            isResetting = true
-                            val authManager =
-                                (context.applicationContext as app.fynlo.FynloApplication).authManager
-                            viewModel.resetAllData(context, authManager) {
-                                app.fynlo.util.AppRestarter.restart(context)
-                            }
-                        },
-                        colors = ButtonDefaults.buttonColors(containerColor = Red)
-                    ) { Text("Yes, Reset Everything") }
-                },
-                dismissButton = {
-                    TextButton(onClick = { showResetWarning = false }) { Text("Cancel") }
-                }
             )
         }
 
@@ -2062,20 +2022,18 @@ private fun MonthlyCloseDialog(
             .sumOf { it.amount }
     }
     val transfers = remember(transactions) { transactions.count { it.type.equals("Transfer", ignoreCase = true) } }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(if (isClosed) "Reopen $month?" else "Close $month?") },
-        text = {
+    FynloConfirmDialog(
+        title = if (isClosed) "Reopen $month?" else "Close $month?",
+        message = if (isClosed) {
+            "This unlocks the month so corrections can be made. Close it again after checking Book check."
+        } else {
+            "This locks the month. Money actions dated in this month will be blocked until you reopen it."
+        },
+        confirmText = if (isClosed) "Reopen Month" else "Close Month",
+        onDismiss = onDismiss,
+        onConfirm = if (isClosed) onReopen else onClose,
+        supportingContent = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text(
-                    if (isClosed) {
-                        "This unlocks the month so corrections can be made. Close it again after checking Book check."
-                    } else {
-                        "This locks the month. Income, expenses, loans, debts, investments, transfers, withdrawals, and waivers dated in this month will be blocked until you reopen it."
-                    },
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
                 Surface(
                     shape = RoundedCornerShape(16.dp),
                     color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
@@ -2089,18 +2047,6 @@ private fun MonthlyCloseDialog(
                     }
                 }
             }
-        },
-        confirmButton = {
-            Button(
-                onClick = if (isClosed) onReopen else onClose,
-                colors = ButtonDefaults.buttonColors(containerColor = if (isClosed) Amber else Emerald500),
-                shape = RoundedCornerShape(14.dp),
-            ) {
-                Text(if (isClosed) "Reopen Month" else "Close Month")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
         },
     )
 }
@@ -2119,103 +2065,95 @@ private fun SyncConflictDialog(
     onResolve: (String, String) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = {
-            Column {
-                Text("Sync conflict review")
-                Text(
-                    if (conflicts.isEmpty()) "No open conflicts" else "${conflicts.size} item${if (conflicts.size == 1) "" else "s"} need review",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        },
-        text = {
-            if (conflicts.isEmpty()) {
-                Text(
-                    "Offline and cloud data are aligned right now.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            } else {
-                LazyColumn(
-                    modifier = Modifier.heightIn(max = 420.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
-                    items(conflicts, key = { it.id }) { conflict ->
-                        Surface(
-                            shape = RoundedCornerShape(16.dp),
-                            color = MaterialTheme.colorScheme.surface,
-                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+    FormDialog(
+        title = "Sync conflict review",
+        subtitle = if (conflicts.isEmpty()) "No open conflicts" else "${conflicts.size} item${if (conflicts.size == 1) "" else "s"} need review",
+        onDismiss = onDismiss,
+    ) {
+        if (conflicts.isEmpty()) {
+            Text(
+                "Offline and cloud data are aligned right now.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        } else {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                conflicts.forEach { conflict ->
+                    Surface(
+                        shape = RoundedCornerShape(16.dp),
+                        color = MaterialTheme.colorScheme.surface,
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                    ) {
+                        Column(
+                            Modifier.padding(14.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
-                            Column(
-                                Modifier.padding(14.dp),
-                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                            Text(
+                                "${conflict.collection.replace('_', ' ').replaceFirstChar { it.uppercase() }} conflict",
+                                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                            )
+                            Text(
+                                "A cloud copy and this phone both changed this item while offline. Choose which copy should become the final ledger record.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            if (conflict.fieldSummary.isNotBlank()) {
+                                LedgerInfoCard(
+                                    title = "What changed",
+                                    detail = conflict.fieldSummary,
+                                    accent = Amber,
+                                )
+                            }
+                            Row(
+                                Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
                             ) {
-                                Text(
-                                    "${conflict.collection.replace('_', ' ').replaceFirstChar { it.uppercase() }} conflict",
-                                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                                ConflictSnapshotCard(
+                                    title = "This phone",
+                                    value = conflict.localJson,
+                                    modifier = Modifier.weight(1f),
                                 )
-                                Text(
-                                    "A cloud copy and this phone both changed this item while offline. Choose which copy should become the final ledger record.",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                ConflictSnapshotCard(
+                                    title = "Cloud",
+                                    value = conflict.remoteJson,
+                                    modifier = Modifier.weight(1f),
                                 )
-                                if (conflict.fieldSummary.isNotBlank()) {
-                                    LedgerInfoCard(
-                                        title = "What changed",
-                                        detail = conflict.fieldSummary,
-                                        accent = Amber,
-                                    )
-                                }
-                                Row(
-                                    Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            }
+                            Row(
+                                Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
+                            ) {
+                                OutlinedButton(
+                                    onClick = { onResolve(conflict.id, "KeepPhone") },
+                                    shape = RoundedCornerShape(12.dp),
                                 ) {
-                                    ConflictSnapshotCard(
-                                        title = "This phone",
-                                        value = conflict.localJson,
-                                        modifier = Modifier.weight(1f),
-                                    )
-                                    ConflictSnapshotCard(
-                                        title = "Cloud",
-                                        value = conflict.remoteJson,
-                                        modifier = Modifier.weight(1f),
-                                    )
+                                    Text("Keep phone")
                                 }
-                                Row(
-                                    Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
+                                OutlinedButton(
+                                    onClick = { onResolve(conflict.id, "KeepCloud") },
+                                    shape = RoundedCornerShape(12.dp),
                                 ) {
-                                    OutlinedButton(
-                                        onClick = { onResolve(conflict.id, "KeepPhone") },
-                                        shape = RoundedCornerShape(12.dp),
-                                    ) {
-                                        Text("Keep phone")
-                                    }
-                                    OutlinedButton(
-                                        onClick = { onResolve(conflict.id, "KeepCloud") },
-                                        shape = RoundedCornerShape(12.dp),
-                                    ) {
-                                        Text("Keep cloud")
-                                    }
-                                    TextButton(
-                                        onClick = { onResolve(conflict.id, "Reviewed") },
-                                    ) {
-                                        Text("Mark reviewed")
-                                    }
+                                    Text("Keep cloud")
+                                }
+                                TextButton(
+                                    onClick = { onResolve(conflict.id, "Reviewed") },
+                                ) {
+                                    Text("Mark reviewed")
                                 }
                             }
                         }
                     }
                 }
             }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) { Text("Done") }
-        },
-    )
+        }
+        Spacer(Modifier.height(8.dp))
+        Button(
+            onClick = onDismiss,
+            modifier = Modifier.fillMaxWidth(),
+            colors = ButtonDefaults.buttonColors(containerColor = Emerald500),
+            shape = RoundedCornerShape(14.dp),
+        ) { Text("Done") }
+    }
 }
 
 @Composable
@@ -2274,79 +2212,64 @@ private fun LedgerHealthDialog(
     onRunSafeRepair: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = {
-            Column {
-                Text("Book check")
+    FormDialog(
+        title = "Book check",
+        subtitle = "${report.headline} - Score ${report.score}/100",
+        onDismiss = onDismiss,
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            LedgerHealthSummary(report)
+            LedgerSafeRepairCard(
+                inFlight = repairInFlight,
+                summary = repairSummary,
+                onRunSafeRepair = onRunSafeRepair,
+            )
+            ReconciliationGuideCard(report)
+            if (report.issues.isNotEmpty()) {
+                LedgerDialogSectionTitle("Checks to review")
+                report.issues.take(12).forEach { issue -> LedgerIssueRow(issue) }
+                if (report.issues.size > 12) {
+                    Text(
+                        "+${report.issues.size - 12} more checks",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            } else {
                 Text(
-                    "${report.headline} · Score ${report.score}/100",
-                    style = MaterialTheme.typography.labelMedium,
+                    "No money record problems found in the current project.",
+                    style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-        },
-        text = {
-            LazyColumn(
-                modifier = Modifier.fillMaxWidth().heightIn(max = 520.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                item { LedgerHealthSummary(report) }
-                item {
-                    LedgerSafeRepairCard(
-                        inFlight = repairInFlight,
-                        summary = repairSummary,
-                        onRunSafeRepair = onRunSafeRepair,
+            if (report.duplicates.isNotEmpty()) {
+                LedgerDialogSectionTitle("Possible duplicates")
+                report.duplicates.take(5).forEach { duplicate ->
+                    LedgerInfoCard(
+                        title = duplicate.title,
+                        detail = duplicate.detail,
+                        accent = Amber,
                     )
                 }
-                item { ReconciliationGuideCard(report) }
-                if (report.issues.isNotEmpty()) {
-                    item { LedgerDialogSectionTitle("Checks to review") }
-                    items(report.issues.take(12)) { issue -> LedgerIssueRow(issue) }
-                    if (report.issues.size > 12) {
-                        item {
-                            Text(
-                                "+${report.issues.size - 12} more checks",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                    }
-                } else {
-                    item {
-                        Text(
-                            "No money record problems found in the current project.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                }
-                if (report.duplicates.isNotEmpty()) {
-                    item { LedgerDialogSectionTitle("Possible duplicates") }
-                    items(report.duplicates.take(5)) { duplicate ->
-                        LedgerInfoCard(
-                            title = duplicate.title,
-                            detail = duplicate.detail,
-                            accent = Amber,
-                        )
-                    }
-                }
-                if (report.trails.isNotEmpty()) {
-                    item { LedgerDialogSectionTitle("Money trails") }
-                    items(report.trails.take(8)) { trail ->
-                        LedgerInfoCard(
-                            title = "${trail.referenceId} · ${trail.title}",
-                            detail = trail.route,
-                            accent = Green,
-                        )
-                    }
+            }
+            if (report.trails.isNotEmpty()) {
+                LedgerDialogSectionTitle("Money trails")
+                report.trails.take(8).forEach { trail ->
+                    LedgerInfoCard(
+                        title = "${trail.referenceId} - ${trail.title}",
+                        detail = trail.route,
+                        accent = Green,
+                    )
                 }
             }
-        },
-        confirmButton = {
-            Button(onClick = onDismiss) { Text("Done") }
-        },
-    )
+            Button(
+                onClick = onDismiss,
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(containerColor = Emerald500),
+                shape = RoundedCornerShape(14.dp),
+            ) { Text("Done") }
+        }
+    }
 }
 
 private fun app.fynlo.BookRepairResult.toSafeRepairSummary(
@@ -2479,54 +2402,42 @@ private fun AuditTrailDialog(
     val dateFormat = remember {
         java.text.SimpleDateFormat("dd-MM-yyyy HH:mm", java.util.Locale.US)
     }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = {
-            Column {
-                Text("Money action history")
+    FormDialog(
+        title = "Money action history",
+        subtitle = "${events.size} saved money actions",
+        onDismiss = onDismiss,
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            if (events.isEmpty()) {
                 Text(
-                    "${events.size} saved money actions",
-                    style = MaterialTheme.typography.labelMedium,
+                    "No money actions yet. New adds, edits, deletes, restores, payments, and corrections will appear here.",
+                    style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-            }
-        },
-        text = {
-            LazyColumn(
-                modifier = Modifier.fillMaxWidth().heightIn(max = 520.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                if (events.isEmpty()) {
-                    item {
-                        Text(
-                            "No money actions yet. New adds, edits, deletes, restores, payments, and corrections will appear here.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                } else {
-                    items(events.take(30)) { event ->
-                        AuditEventRow(event, dateFormat)
-                    }
-                    if (events.size > 30) {
-                        item {
-                            Text(
-                                "+${events.size - 30} older events. Export CSV to review everything.",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                    }
+            } else {
+                events.take(30).forEach { event ->
+                    AuditEventRow(event, dateFormat)
+                }
+                if (events.size > 30) {
+                    Text(
+                        "+${events.size - 30} older events. Export CSV to review everything.",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
             }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Close") }
-        },
-        confirmButton = {
-            Button(onClick = onExport, enabled = events.isNotEmpty()) { Text("Export CSV") }
-        },
-    )
+            Spacer(Modifier.height(8.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                TextButton(onClick = onDismiss) { Text("Close") }
+                Spacer(Modifier.width(8.dp))
+                Button(onClick = onExport, enabled = events.isNotEmpty()) { Text("Export CSV") }
+            }
+        }
+    }
 }
 
 @Composable
@@ -3096,61 +3007,60 @@ private fun BackupRestorePreviewDialog(
     onDismiss: () -> Unit,
     onConfirm: () -> Unit,
 ) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Restore backup?") },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text(
-                    "This will replace the data currently on this device.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    preview.counts.filter { it.second > 0 }.forEach { (label, count) ->
-                        Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
-                            Text(label, style = MaterialTheme.typography.bodySmall)
-                            Text(
-                                count.toString(),
-                                style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
-                            )
-                        }
-                    }
-                }
-                if (preview.warnings.isEmpty()) {
-                    AssistChip(
-                        onClick = {},
-                        label = { Text("Integrity check passed", style = MaterialTheme.typography.labelSmall) },
-                        leadingIcon = { Icon(Icons.Default.Verified, null, Modifier.size(16.dp), tint = Emerald500) },
-                    )
-                } else {
-                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    FormDialog(
+        title = "Restore backup?",
+        subtitle = "This will replace the data currently on this device.",
+        onDismiss = onDismiss,
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                preview.counts.filter { it.second > 0 }.forEach { (label, count) ->
+                    Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
+                        Text(label, style = MaterialTheme.typography.bodySmall)
                         Text(
-                            "Review warnings",
-                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
-                            color = SemanticAmber,
+                            count.toString(),
+                            style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
                         )
-                        preview.warnings.take(4).forEach { warning ->
-                            Text(
-                                warning,
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
                     }
                 }
             }
-        },
-        confirmButton = {
-            Button(
-                onClick = onConfirm,
-                colors = ButtonDefaults.buttonColors(containerColor = SemanticRed),
-            ) { Text("Replace data") }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
-        },
-    )
+            if (preview.warnings.isEmpty()) {
+                AssistChip(
+                    onClick = {},
+                    label = { Text("Integrity check passed", style = MaterialTheme.typography.labelSmall) },
+                    leadingIcon = { Icon(Icons.Default.Verified, null, Modifier.size(16.dp), tint = Emerald500) },
+                )
+            } else {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(
+                        "Review warnings",
+                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                        color = SemanticAmber,
+                    )
+                    preview.warnings.take(4).forEach { warning ->
+                        Text(
+                            warning,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                TextButton(onClick = onDismiss) { Text("Cancel") }
+                Spacer(Modifier.width(8.dp))
+                Button(
+                    onClick = onConfirm,
+                    colors = ButtonDefaults.buttonColors(containerColor = SemanticRed),
+                ) { Text("Replace data") }
+            }
+        }
+    }
 }
 
 @Composable

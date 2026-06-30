@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.dp
 import app.fynlo.FynloApplication
 import app.fynlo.billing.BillingManager
 import app.fynlo.data.PinManager
+import app.fynlo.ui.components.FynloConfirmDialog
 import app.fynlo.ui.screens.PinMode
 import app.fynlo.ui.theme.*
 
@@ -67,23 +68,18 @@ fun ProfileScreen(
 
     // Remove PIN confirmation dialog
     if (showRemovePinConfirm) {
-        AlertDialog(
-            onDismissRequest = { showRemovePinConfirm = false },
-            title = { Text("Remove PIN?") },
-            text  = { Text("The app will no longer be locked when you switch away. Biometric unlock will also be disabled.") },
-            confirmButton = {
-                TextButton(onClick = {
-                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                    pinManager.clearPin()
-                    pinSet = false
-                    biometricEnabled = false
-                    showRemovePinConfirm = false
-                }, colors = ButtonDefaults.textButtonColors(contentColor = SemanticRed)) {
-                    Text("Remove")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showRemovePinConfirm = false }) { Text("Cancel") }
+        FynloConfirmDialog(
+            title = "Remove PIN?",
+            message = "The app will no longer be locked when you switch away. Biometric unlock will also be disabled.",
+            confirmText = "Remove",
+            destructive = true,
+            onDismiss = { showRemovePinConfirm = false },
+            onConfirm = {
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                pinManager.clearPin()
+                pinSet = false
+                biometricEnabled = false
+                showRemovePinConfirm = false
             }
         )
     }
@@ -362,32 +358,26 @@ fun ProfileScreen(
         }
 
         if (showDeleteConfirm && viewModel != null) {
-            AlertDialog(
-                onDismissRequest = { showDeleteConfirm = false },
-                title = { Text("Delete account permanently?") },
-                text  = { Text("This erases ALL your data from this device and the cloud, and deletes your Fynlo Ledger account. This cannot be undone. Export a backup first if you might want your data later.") },
-                confirmButton = {
-                    TextButton(
-                        onClick = {
-                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                            showDeleteConfirm = false
-                            deleting = true
-                            viewModel.deleteAccountPermanently(app.authManager) { fullyDeleted ->
-                                deleting = false
-                                if (fullyDeleted) {
-                                    android.widget.Toast.makeText(context, "Account deleted", android.widget.Toast.LENGTH_LONG).show()
-                                } else {
-                                    android.widget.Toast.makeText(context, "Data wiped. Please sign in again to finish deleting your account.", android.widget.Toast.LENGTH_LONG).show()
-                                }
-                                app.authManager.signOut()
-                                onLogout()
-                            }
-                        },
-                        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
-                    ) { Text("Delete forever") }
-                },
-                dismissButton = {
-                    TextButton(onClick = { showDeleteConfirm = false }) { Text("Cancel") }
+            FynloConfirmDialog(
+                title = "Delete account permanently?",
+                message = "This erases ALL your data from this device and the cloud, and deletes your Fynlo Ledger account. This cannot be undone. Export a backup first if you might want your data later.",
+                confirmText = "Delete forever",
+                destructive = true,
+                onDismiss = { showDeleteConfirm = false },
+                onConfirm = {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    showDeleteConfirm = false
+                    deleting = true
+                    viewModel.deleteAccountPermanently(app.authManager) { fullyDeleted ->
+                        deleting = false
+                        if (fullyDeleted) {
+                            android.widget.Toast.makeText(context, "Account deleted", android.widget.Toast.LENGTH_LONG).show()
+                        } else {
+                            android.widget.Toast.makeText(context, "Data wiped. Please sign in again to finish deleting your account.", android.widget.Toast.LENGTH_LONG).show()
+                        }
+                        app.authManager.signOut()
+                        onLogout()
+                    }
                 }
             )
         }

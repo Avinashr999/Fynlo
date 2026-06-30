@@ -777,3 +777,18 @@ Rules for future agents:
 - Do not replay `journal_only` rows into account balances.
 - Do not claim sync conflict `Keep phone/cloud` is a real data merge until conflict rows store structured record snapshots.
 - Treat binary proof upload as future scope. Current proof attachments are metadata links.
+
+## 2026-06-30 - Lower-risk dialog cleanup
+
+Completed:
+
+- Converted lower-risk legacy dialogs to the premium confirmation/form sheet direction across navigation review prompts, contacts, recurring entries, profile security/account deletion, projects, customer reminder, and Settings review/repair/export surfaces.
+- Settings -> Book check, Sync conflict review, Monthly close, Audit trail, and Restore backup preview now use the shared `FormDialog` shell.
+- Settings destructive confirms now use `FynloConfirmDialog`.
+- The only remaining `AlertDialog` is the non-dismissible reset progress indicator during active data wipe/restart. Keep it modal unless the reset flow itself changes.
+
+Verification:
+
+- `:app:compileProdDebugKotlin` passed.
+- `:app:testProdDebugUnitTest` passed.
+- Installed production and developer debug variants to the connected phone.

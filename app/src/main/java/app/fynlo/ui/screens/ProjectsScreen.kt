@@ -19,6 +19,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.fynlo.FinanceViewModel
 import app.fynlo.data.model.Project
+import app.fynlo.ui.components.FynloConfirmDialog
 import app.fynlo.ui.theme.Emerald500
 import app.fynlo.ui.theme.PremiumScreenHeader
 import java.time.LocalDate
@@ -55,46 +56,40 @@ fun ProjectsScreen(viewModel: FinanceViewModel, onNavigateToUpgrade: () -> Unit 
     // confirm so accidental long-presses on the overflow menu don't litter.
     var duplicateTarget by remember { mutableStateOf<Project?>(null) }
     duplicateTarget?.let { proj ->
-        AlertDialog(
-            onDismissRequest = { duplicateTarget = null },
-            title = { Text("Duplicate project?") },
-            text  = { Text("Create a copy of \"${proj.name}\"? Only the project shell (name, icon, color, currency, description) is copied — transactions / budgets / goals stay with the original.") },
-            confirmButton = {
-                TextButton(onClick = {
-                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                    viewModel.createProject(
-                        proj.copy(
-                            id = app.fynlo.logic.Ids.newId(),
-                            name = "${proj.name} (copy)",
-                            createdAt = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")),
-                            updatedAt = 0L,
-                        )
+        FynloConfirmDialog(
+            title = "Duplicate project?",
+            message = "Create a copy of \"${proj.name}\"? Only the project shell is copied. Transactions, budgets, and goals stay with the original.",
+            confirmText = "Duplicate",
+            onDismiss = { duplicateTarget = null },
+            onConfirm = {
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                viewModel.createProject(
+                    proj.copy(
+                        id = app.fynlo.logic.Ids.newId(),
+                        name = "${proj.name} (copy)",
+                        createdAt = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")),
+                        updatedAt = 0L,
                     )
-                    viewModel.showFeedback("Project duplicated")
-                    duplicateTarget = null
-                }) { Text("Duplicate") }
+                )
+                viewModel.showFeedback("Project duplicated")
+                duplicateTarget = null
             },
-            dismissButton = {
-                TextButton(onClick = { duplicateTarget = null }) { Text("Cancel") }
-            }
         )
     }
 
     deleteTarget?.let { proj ->
-        AlertDialog(
-            onDismissRequest = { deleteTarget = null },
-            title = { Text("Delete project?") },
-            text  = { Text("All data tagged to \"${proj.name}\" will remain but won't be visible in any project. This cannot be undone.") },
-            confirmButton = {
-                TextButton(onClick = {
-                    haptic.performHapticFeedback(HapticFeedbackType.LongPress); viewModel.deleteProject(proj)
-                    viewModel.showFeedback("Project deleted")
-                    deleteTarget = null
-                }) { Text("Delete", color = MaterialTheme.colorScheme.error) }
+        FynloConfirmDialog(
+            title = "Delete project?",
+            message = "All data tagged to \"${proj.name}\" will remain but won't be visible in any project. This cannot be undone.",
+            confirmText = "Delete",
+            destructive = true,
+            onDismiss = { deleteTarget = null },
+            onConfirm = {
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                viewModel.deleteProject(proj)
+                viewModel.showFeedback("Project deleted")
+                deleteTarget = null
             },
-            dismissButton = {
-                TextButton(onClick = { deleteTarget = null }) { Text("Cancel") }
-            }
         )
     }
 

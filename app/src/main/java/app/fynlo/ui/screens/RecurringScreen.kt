@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import app.fynlo.FinanceViewModel
 import app.fynlo.data.Categories
 import app.fynlo.data.model.RecurringTransaction
+import app.fynlo.ui.components.FynloConfirmDialog
 import app.fynlo.ui.theme.*
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -204,19 +205,17 @@ private fun RecurringCard(r: RecurringTransaction, isDue: Boolean = false, daysU
     val haptic = LocalHapticFeedback.current
     var showDeleteConfirm by remember { mutableStateOf(false) }
     if (showDeleteConfirm) {
-        AlertDialog(
-            onDismissRequest = { showDeleteConfirm = false },
-            title = { Text("Delete recurring entry?") },
-            text  = { Text("Stop auto-logging \"${r.name}\"? Past transactions it created are kept. This cannot be undone.") },
-            confirmButton = {
-                TextButton(onClick = {
-                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                    onDelete()
-                    showDeleteConfirm = false
-                },
-                    colors = ButtonDefaults.textButtonColors(contentColor = SemanticRed)) { Text("Delete") }
+        FynloConfirmDialog(
+            title = "Delete recurring entry?",
+            message = "Stop auto-logging \"${r.name}\"? Past transactions it created are kept. This cannot be undone.",
+            confirmText = "Delete",
+            destructive = true,
+            onDismiss = { showDeleteConfirm = false },
+            onConfirm = {
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                onDelete()
+                showDeleteConfirm = false
             },
-            dismissButton = { TextButton(onClick = { showDeleteConfirm = false }) { Text("Cancel") } }
         )
     }
         Row(Modifier.fillMaxWidth().animateContentSize().padding(vertical = 14.dp), Arrangement.SpaceBetween, Alignment.CenterVertically) {

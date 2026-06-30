@@ -40,6 +40,7 @@ import app.fynlo.logic.InterestEngine
 import app.fynlo.ui.components.AddLendingDialog
 import app.fynlo.ui.components.CollectPaymentDialog
 import app.fynlo.ui.components.FynloConfirmDialog
+import app.fynlo.ui.components.FormDialog
 import app.fynlo.ui.components.ProofAttachmentSection
 import app.fynlo.ui.components.WaiveInterestDialog
 import java.util.*
@@ -233,29 +234,43 @@ val borrowers by viewModel.borrowers.collectAsState()
             append(". Please repay soon. -Fynlo Ledger")
         }
 
-        AlertDialog(
-            onDismissRequest = { showReminderPicker = false },
-            title = { Text("Send Reminder") },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    if (phone.isBlank()) {
-                        Text(
-                            "No phone number on file. Tap Edit (top right) to add one before sending reminders.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    } else {
-                        Text("Send to $phone", style = MaterialTheme.typography.bodyMedium)
-                        Text(
-                            "WhatsApp uses the full message; SMS is trimmed to the essentials.",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-            },
-            confirmButton = {
+        FormDialog(
+            title = "Send Reminder",
+            subtitle = if (phone.isBlank()) "Add a phone number before sending reminders." else "Send to $phone",
+            onDismiss = { showReminderPicker = false },
+        ) {
+            if (phone.isBlank()) {
+                Text(
+                    "No phone number on file. Tap Edit to add one before sending reminders.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            } else {
+                Text(
+                    "WhatsApp uses the full message. SMS is trimmed to the essentials.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                TextButton(onClick = { showReminderPicker = false }) { Text("Close") }
                 if (phone.isNotBlank()) {
+                    TextButton(onClick = {
+                        context.startActivity(
+                            android.content.Intent(android.content.Intent.ACTION_SENDTO,
+                                "smsto:$intlPhone".toUri()
+                            ).apply { putExtra("sms_body", smsMsg) }
+                        )
+                        showReminderPicker = false
+                    }) {
+                        Icon(Icons.Default.Sms, null, Modifier.size(16.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text("SMS")
+                    }
                     TextButton(onClick = {
                         val uri = "https://wa.me/$intlPhone?text=${android.net.Uri.encode(waMsg)}".toUri()
                         try {
@@ -275,27 +290,8 @@ val borrowers by viewModel.borrowers.collectAsState()
                         Text("WhatsApp")
                     }
                 }
-            },
-            dismissButton = {
-                Row {
-                    if (phone.isNotBlank()) {
-                        TextButton(onClick = {
-                            context.startActivity(
-                                android.content.Intent(android.content.Intent.ACTION_SENDTO,
-                                    "smsto:$intlPhone".toUri()
-                                ).apply { putExtra("sms_body", smsMsg) }
-                            )
-                            showReminderPicker = false
-                        }) {
-                            Icon(Icons.Default.Sms, null, Modifier.size(16.dp))
-                            Spacer(Modifier.width(6.dp))
-                            Text("SMS")
-                        }
-                    }
-                    TextButton(onClick = { showReminderPicker = false }) { Text("Close") }
-                }
             }
-        )
+        }
     }
 
     // C12 Stage 3 — Mark NPA / Restore confirmation (lifted from LendingScreen).

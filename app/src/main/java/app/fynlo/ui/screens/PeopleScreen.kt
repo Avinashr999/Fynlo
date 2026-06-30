@@ -36,6 +36,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import app.fynlo.FinanceViewModel
 import app.fynlo.data.model.Person
+import app.fynlo.ui.components.FynloConfirmDialog
 import app.fynlo.ui.theme.*
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -299,15 +300,16 @@ fun PersonCard(person: Person, onEdit: () -> Unit, onDelete: () -> Unit) {
     val haptic = LocalHapticFeedback.current
     var showDeleteConfirm by remember { mutableStateOf(false) }
     if (showDeleteConfirm) {
-        AlertDialog(
-            onDismissRequest = { showDeleteConfirm = false },
-            title = { Text("Delete contact?") },
-            text  = { Text("Remove \"${person.name}\" from your contact book? Loans already linked to this contact are not affected. This cannot be undone.") },
-            confirmButton = {
-                TextButton(onClick = { onDelete(); showDeleteConfirm = false },
-                    colors = ButtonDefaults.textButtonColors(contentColor = SemanticRed)) { Text("Delete") }
+        FynloConfirmDialog(
+            title = "Delete contact?",
+            message = "Remove \"${person.name}\" from your contact book? Loans already linked to this contact are not affected. This cannot be undone.",
+            confirmText = "Delete",
+            destructive = true,
+            onDismiss = { showDeleteConfirm = false },
+            onConfirm = {
+                onDelete()
+                showDeleteConfirm = false
             },
-            dismissButton = { TextButton(onClick = { showDeleteConfirm = false }) { Text("Cancel") } }
         )
     }
     // Parse stored phone for clean display

@@ -1166,49 +1166,13 @@ private fun FynloReviewDialog(
     onDismiss: () -> Unit,
     onRateNow: () -> Unit,
 ) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        icon = {
-            Box(
-                modifier = Modifier
-                    .size(54.dp)
-                    .clip(RoundedCornerShape(18.dp))
-                    .background(Emerald500.copy(alpha = 0.14f)),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(Icons.Default.Star, contentDescription = null, tint = Emerald500)
-            }
-        },
-        title = {
-            Text(
-                "Enjoying Fynlo Ledger?",
-                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold),
-            )
-        },
-        text = {
-            Text(
-                "A quick Play Store review helps other people find Fynlo Ledger and tells us what to polish next.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        },
-        confirmButton = {
-            Button(
-                onClick = onRateNow,
-                shape = RoundedCornerShape(14.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Emerald500),
-            ) {
-                Icon(Icons.Default.Star, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.width(8.dp))
-                Text("Rate now")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Remind me later")
-            }
-        },
-        shape = RoundedCornerShape(24.dp),
+    FynloConfirmDialog(
+        title = "Enjoying Fynlo Ledger?",
+        message = "A quick Play Store review helps other people find Fynlo Ledger and tells us what to polish next.",
+        confirmText = "Rate now",
+        dismissText = "Remind me later",
+        onDismiss = onDismiss,
+        onConfirm = onRateNow,
     )
 }
 

@@ -1849,3 +1849,10 @@ The user approved the combined future roadmap below. Do not treat these as compl
 - Added `FynloConfirmDialog` as the shared premium confirmation shell and made `FormDialog` subtitle configurable for non-save surfaces.
 - Migrated core money-action/history confirmations away from old `AlertDialog`: loan delete/write-off, debt delete, investment delete, valuation history, transaction history bulk/single delete, managed-entry warning, expense delete, budget delete, and goal delete.
 - Remaining old `AlertDialog` calls are mostly lower-risk settings/profile/project/people/recurring/navigation dialogs. Future UI passes should migrate simple confirmations to `FynloConfirmDialog` and large review surfaces to `FormDialog` or a custom premium sheet.
+
+## 2026-06-30 - Lower-Risk Dialog Sweep
+
+- Migrated the remaining lower-risk confirmation/review dialogs to the premium dialog language: Play review prompt, contact delete, recurring delete, profile PIN/account delete, project duplicate/delete, loan reminder picker, Settings cloud replace/recalc/dev QA/reset warning, monthly close, sync conflict review, Book check, audit trail, and restore backup preview.
+- Settings -> Reset All Data still keeps the old `AlertDialog` only for the non-dismissible `Resetting...` progress lock while data is actively being erased and the app is about to restart. Do not replace it with a dismissible sheet unless the reset workflow is redesigned.
+- Search check now leaves only that intentional progress dialog under `AlertDialog(`.
+- Verified `:app:compileProdDebugKotlin`, `:app:testProdDebugUnitTest`, and installed production/developer debug variants to the connected phone.
