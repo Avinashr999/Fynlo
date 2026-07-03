@@ -65,7 +65,12 @@ fun HomeScreen(viewModel: FinanceViewModel, onNavigateToScreen: (String) -> Unit
         val allDebts by viewModel.debts.collectAsState()
         AddTransactionDialog(
             onDismiss = { showAddTxn = false },
-            onConfirm = { txn -> haptic.performHapticFeedback(HapticFeedbackType.LongPress); viewModel.addTransaction(txn); showAddTxn = false },
+            onConfirm = { txn ->
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                viewModel.addTransaction(txn)
+                viewModel.showFeedback(if (txn.type.equals("income", ignoreCase = true)) "Income added" else "Expense added")
+                showAddTxn = false
+            },
             rememberLastCategory = { isIncome -> viewModel.rememberLastTransactionCategory(isIncome) },
             onRecordCategory = { isIncome, cat -> viewModel.recordTransactionCategory(isIncome, cat) },
             // 3.2.81 (C13 #5) — "Repeat monthly?" → also create a recurring template.
@@ -144,7 +149,7 @@ fun HomeScreen(viewModel: FinanceViewModel, onNavigateToScreen: (String) -> Unit
         Box(Modifier.fillMaxSize(), Alignment.Center) {
             Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 CircularProgressIndicator(color = Emerald500)
-                Text("Syncing your data...", style = MaterialTheme.typography.bodyMedium,
+                Text("Checking cloud backup...", style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
@@ -434,7 +439,7 @@ private fun QuickAction(label: String, icon: ImageVector, color: Color, modifier
 }
 
 @Composable
-private fun MetricCard(label: String, value: String, color: Color, modifier: Modifier, subValue: String? = null, onClick: () -> Unit) {
+private fun MetricCard(label: String, value: String, color: Color, modifier: Modifier, subValue: String?= null, onClick: () -> Unit) {
     Card(modifier.clickable(onClick = onClick), RoundedCornerShape(16.dp),
         CardDefaults.cardColors(containerColor = color.copy(alpha = 0.07f)),
         border = androidx.compose.foundation.BorderStroke(1.dp, color.copy(alpha = 0.15f))

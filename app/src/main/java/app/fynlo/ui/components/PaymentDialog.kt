@@ -31,10 +31,11 @@ import app.fynlo.logic.CurrencyFormatter
 import app.fynlo.logic.CurrencyUtils
 import app.fynlo.logic.DateUtils
 import app.fynlo.logic.InterestEngine
+import app.fynlo.logic.InterestPolicy
 import java.util.*
 import app.fynlo.ui.theme.*
 
-// ─── Collect Loan Repayment ─────────────────────────────────────────────────
+// --- Collect Loan Repayment -------------------------------------------------
 
 private fun preferredMoneyAccount(accountOptions: List<Account>): Account {
     val realAccounts = accountOptions.filterNot {
@@ -52,6 +53,7 @@ private fun preferredMoneyAccount(accountOptions: List<Account>): Account {
 @Composable
 fun CollectPaymentDialog(
     borrower: Borrower,
+    payments: List<Payment> = emptyList(),
     accounts: List<Account>,
     onDismiss: () -> Unit,
     onConfirm: (Payment, String) -> Unit,
@@ -60,17 +62,16 @@ fun CollectPaymentDialog(
     val today = java.time.LocalDate.now()
     val locale = LocalLocale.current.platformLocale
 
-    // Calculate accrued interest and outstanding using new split fields
-    val accruedInterest = remember(borrower) {
-        if (borrower.status == "Defaulted" && borrower.frozenInterest > 0) borrower.frozenInterest
-        else InterestEngine.calcIntAccrued(
-            borrower.amount, borrower.rate, borrower.date,
-            borrower.intType, borrower.due, totalPaid = borrower.paidPrincipal
-        )
+    // Accrued interest keeps running from the loan date; collected interest is separate.
+    val interestBreakdown = remember(borrower, payments) {
+        if (payments.isEmpty()) {
+            app.fynlo.logic.InterestPolicy.borrowerBreakdown(borrower)
+        } else {
+            app.fynlo.logic.InterestPolicy.borrowerBreakdown(borrower, payments)
+        }
     }
-    val interestOutstanding = remember(accruedInterest, borrower) {
-        (accruedInterest - borrower.paidInterest - borrower.interestWaived).coerceAtLeast(0.0)
-    }
+    val accruedInterest = interestBreakdown.accrued
+    val interestOutstanding = interestBreakdown.due
     val principalOutstanding = remember(borrower) {
         (borrower.amount - borrower.paidPrincipal).coerceAtLeast(0.0)
     }
@@ -83,6 +84,7 @@ fun CollectPaymentDialog(
     var notes by remember { mutableStateOf("") }
     var expanded by remember { mutableStateOf(false) }
     var submitting by remember { mutableStateOf(false) }
+    var interestAllocationType by remember { mutableStateOf(InterestPolicy.CURRENT_PERIOD_INTEREST) }
 
     val accountOptions = if (accounts.isNotEmpty()) accounts
     else listOf(Account(id = "cash", name = "Personal Cash", type = "Cash", balance = 0.0))
@@ -90,6 +92,13 @@ fun CollectPaymentDialog(
     val interestVal  = interestStr.toDoubleOrNull()  ?: 0.0
     val totalAmount  = principalVal + interestVal
     val isValid      = totalAmount > 0.0
+    val periodMayNeedReview = remember(interestVal, interestOutstanding, accruedInterest, interestBreakdown.paid) {
+        val paidAheadAfter = (interestBreakdown.paid + interestVal - accruedInterest).coerceAtLeast(0.0)
+        interestVal > 0.0 && (
+            interestVal + 0.01 >= interestOutstanding ||
+                paidAheadAfter > 0.01
+        )
+    }
     val preferredAccount = remember(accountOptions) { preferredMoneyAccount(accountOptions) }
     var selectedAccount by remember(accountOptions) { mutableStateOf(preferredAccount) }
     var accountManuallyPicked by remember(accountOptions) { mutableStateOf(false) }
@@ -118,7 +127,7 @@ fun CollectPaymentDialog(
                     color = MaterialTheme.colorScheme.primary)
                 Spacer(Modifier.height(12.dp))
 
-                // ── Outstanding summary ──────────────────────────────────────
+                // -- Outstanding summary --------------------------------------
                 Surface(
                     shape = RoundedCornerShape(12.dp),
                     color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
@@ -135,21 +144,45 @@ fun CollectPaymentDialog(
                         }
                         if (borrower.rate > 0) {
                             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
+                                Text("Accrued interest", style = MaterialTheme.typography.bodySmall)
+                                Text(CurrencyFormatter.interest(accruedInterest, currencyCode, locale),
+                                    style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold))
+                            }
+                            Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
+                                Text("Interest collected", style = MaterialTheme.typography.bodySmall)
+                                Text(CurrencyFormatter.interest(interestBreakdown.paid, currencyCode, locale),
+                                    style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
+                                    color = Emerald500)
+                            }
+                            Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
                                 Text("Interest (${borrower.rate}% ${InterestEngine.label(borrower.intType)})",
                                     style = MaterialTheme.typography.bodySmall)
-                                Text(CurrencyFormatter.detail(interestOutstanding, currencyCode, locale),
+                                Text(CurrencyFormatter.interest(interestOutstanding, currencyCode, locale),
                                     style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
                                     color = SemanticAmber)
                             }
                             if (borrower.interestWaived > 0.0) {
                                 Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
-                                    Text("Waived", style = MaterialTheme.typography.bodySmall)
+                                    Text("Reduced / waived", style = MaterialTheme.typography.bodySmall)
                                     Text(
-                                        CurrencyFormatter.detail(borrower.interestWaived, currencyCode, locale),
+                                        "-${CurrencyFormatter.interest(borrower.interestWaived, currencyCode, locale)}",
                                         style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
-                                        color = Emerald500
+                                        color = MaterialTheme.colorScheme.primary
                                     )
                                 }
+                            }
+                            Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
+                                Text("Paid ahead", style = MaterialTheme.typography.bodySmall)
+                                Text(CurrencyFormatter.interest(interestBreakdown.paidAhead, currencyCode, locale),
+                                    style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
+                                    color = Emerald500)
+                            }
+                            if (interestBreakdown.paidAhead > 0.01) {
+                                Text(
+                                    "Interest due is zero until accrued interest catches up. Accrual still continues from the original loan date.",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
                             }
                         }
                         HorizontalDivider(Modifier.padding(vertical = 4.dp))
@@ -163,7 +196,7 @@ fun CollectPaymentDialog(
                 }
                 Spacer(Modifier.height(16.dp))
 
-                // ── Auto-suggest buttons ─────────────────────────────────────
+                // -- Auto-suggest buttons -------------------------------------
                 // Interest Only: show when interest is outstanding
                 if (borrower.rate > 0 && interestOutstanding > 0) {
                     Button(
@@ -176,7 +209,7 @@ fun CollectPaymentDialog(
                     ) {
                         Icon(Icons.Default.AutoAwesome, null, Modifier.size(16.dp))
                         Spacer(Modifier.width(6.dp))
-                        Text("Interest Only — ${CurrencyFormatter.detail(interestOutstanding, currencyCode, locale)}")
+                        Text("Interest Only - ${CurrencyFormatter.interest(interestOutstanding, currencyCode, locale)}")
                     }
                     Spacer(Modifier.height(4.dp))
                 }
@@ -192,12 +225,12 @@ fun CollectPaymentDialog(
                     ) {
                         Icon(Icons.Default.AutoAwesome, null, Modifier.size(16.dp))
                         Spacer(Modifier.width(6.dp))
-                        Text("Full Settlement — ${CurrencyFormatter.detail(totalOutstanding, currencyCode, locale)}")
+                        Text("Full Settlement - ${CurrencyFormatter.detail(totalOutstanding, currencyCode, locale)}")
                     }
                     Spacer(Modifier.height(12.dp))
                 }
 
-                // ── Split entry fields ───────────────────────────────────────
+                // -- Split entry fields ---------------------------------------
                 Text("Payment Breakdown", style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Spacer(Modifier.height(8.dp))
@@ -231,7 +264,7 @@ fun CollectPaymentDialog(
                     )
                 }
 
-                // ── Total ────────────────────────────────────────────────────
+                // -- Total ----------------------------------------------------
                 if (totalAmount > 0) {
                     Spacer(Modifier.height(8.dp))
                     Row(Modifier.fillMaxWidth(), Arrangement.End) {
@@ -245,7 +278,29 @@ fun CollectPaymentDialog(
                 }
                 Spacer(Modifier.height(12.dp))
 
-                // ── Destination account ──────────────────────────────────────
+                // -- Destination account --------------------------------------
+                if (interestVal > 0.0) {
+                    InterestPeriodSelector(
+                        selected = interestAllocationType,
+                        onSelected = { interestAllocationType = it },
+                        currentStartDate = borrower.date,
+                        isDebt = false,
+                    )
+                    Spacer(Modifier.height(10.dp))
+                    InterestImpactPreview(
+                        allocationType = interestAllocationType,
+                        accrued = accruedInterest,
+                        dueAfter = (accruedInterest - interestBreakdown.paid - interestVal - borrower.interestWaived).coerceAtLeast(0.0),
+                        paidAheadAfter = (interestBreakdown.paid + interestVal - accruedInterest).coerceAtLeast(0.0),
+                        currencyCode = currencyCode,
+                    )
+                    if (periodMayNeedReview) {
+                        Spacer(Modifier.height(8.dp))
+                        PeriodCompletionNotice()
+                    }
+                    Spacer(Modifier.height(12.dp))
+                }
+
                 ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = !expanded }) {
                     OutlinedTextField(
                         value = selectedAccount.name,
@@ -253,7 +308,7 @@ fun CollectPaymentDialog(
                         readOnly = true,
                         label = { Text("Deposit into account") },
                         supportingText = {
-                            Text("${selectedAccount.type}  •  Balance: ${CurrencyFormatter.detail(selectedAccount.balance, currencyCode, locale)}",
+                            Text("${selectedAccount.type}  *  Balance: ${CurrencyFormatter.exact(selectedAccount.balance, currencyCode, locale)}",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.primary)
                         },
@@ -280,7 +335,7 @@ fun CollectPaymentDialog(
                                                     color = MaterialTheme.colorScheme.onSurfaceVariant)
                                             }
                                         }
-                                        Text(CurrencyFormatter.detail(acct.balance, currencyCode, locale),
+                                        Text(CurrencyFormatter.exact(acct.balance, currencyCode, locale),
                                             style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                                             color = if (acct.balance >= 0) Emerald500 else MaterialTheme.colorScheme.error)
                                     }
@@ -330,6 +385,9 @@ fun CollectPaymentDialog(
                                 amount    = totalAmount,
                                 principal = principalVal,
                                 interest  = interestVal,
+                                interestPeriodStartDate = InterestPolicy.periodStartFor(interestAllocationType, borrower.date),
+                                interestPeriodEndDate = InterestPolicy.periodEndFor(interestAllocationType, borrower.date, DateUtils.parseInput(date)),
+                                interestAllocationType = InterestPolicy.allocationFor(principalVal, interestVal, interestAllocationType),
                                 notes     = notes
                             )
                             onConfirm(payment, selectedAccount.name)
@@ -337,9 +395,9 @@ fun CollectPaymentDialog(
                         enabled = isValid && !submitting,
                         shape = RoundedCornerShape(14.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = app.fynlo.ui.theme.Emerald500)
-                    ) { Text("Confirm ${CurrencyFormatter.detail(totalAmount, currencyCode, locale)}") }
+                    ) { Text("Record ${CurrencyFormatter.detail(totalAmount, currencyCode, locale)}") }
                 }
-                // C17 (3.2.42) — both PaymentDialog action buttons gate on
+                // C17 (3.2.42) - both PaymentDialog action buttons gate on
                 // totalAmount > 0; surface that as an inline hint when zero.
                 DisabledButtonHint(if (isValid) null else "Enter an amount to continue")
             }
@@ -347,25 +405,28 @@ fun CollectPaymentDialog(
     }
 }
 
-// ─── Pay Debt ───────────────────────────────────────────────────────────────
+// --- Pay Debt ---------------------------------------------------------------
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PayDebtDialog(
     debt: Debt,
+    payments: List<DebtPayment> = emptyList(),
     accounts: List<Account>,
     onDismiss: () -> Unit,
     onConfirm: (DebtPayment, String) -> Unit,
     currencyCode: String = "INR",
 ) {
     val locale = LocalLocale.current.platformLocale
-    val accruedInterest = remember(debt) {
-        InterestEngine.calcIntAccrued(
-            debt.amount, debt.rate, debt.date, debt.intType, debt.due,
-            totalPaid = debt.paidPrincipal
-        )
+    val interestBreakdown = remember(debt, payments) {
+        if (payments.isEmpty()) {
+            app.fynlo.logic.InterestPolicy.debtBreakdown(debt)
+        } else {
+            app.fynlo.logic.InterestPolicy.debtBreakdown(debt, payments)
+        }
     }
-    val interestOutstanding  = (accruedInterest - debt.paidInterest - debt.interestWaived).coerceAtLeast(0.0)
+    val accruedInterest = interestBreakdown.accrued
+    val interestOutstanding = interestBreakdown.due
     val principalOutstanding = (debt.amount - debt.paidPrincipal).coerceAtLeast(0.0)
     val totalOutstanding     = interestOutstanding + principalOutstanding
 
@@ -375,6 +436,7 @@ fun PayDebtDialog(
     var notes    by remember { mutableStateOf("") }
     var expanded by remember { mutableStateOf(false) }
     var submitting by remember { mutableStateOf(false) }
+    var interestAllocationType by remember { mutableStateOf(InterestPolicy.CURRENT_PERIOD_INTEREST) }
 
     val accountOptions = if (accounts.isNotEmpty()) accounts
     else listOf(Account(id = "cash", name = "Personal Cash", type = "Cash", balance = 0.0))
@@ -383,6 +445,13 @@ fun PayDebtDialog(
     val interestVal  = interestStr.toDoubleOrNull()  ?: 0.0
     val totalAmount  = principalVal + interestVal
     val isValid      = totalAmount > 0.0
+    val periodMayNeedReview = remember(interestVal, interestOutstanding, accruedInterest, interestBreakdown.paid) {
+        val paidAheadAfter = (interestBreakdown.paid + interestVal - accruedInterest).coerceAtLeast(0.0)
+        interestVal > 0.0 && (
+            interestVal + 0.01 >= interestOutstanding ||
+                paidAheadAfter > 0.01
+        )
+    }
     val preferredAccount = remember(accountOptions) { preferredMoneyAccount(accountOptions) }
     var selectedAccount by remember(accountOptions) { mutableStateOf(preferredAccount) }
     var accountManuallyPicked by remember(accountOptions) { mutableStateOf(false) }
@@ -423,20 +492,44 @@ fun PayDebtDialog(
                         }
                         if (debt.rate > 0) {
                             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
+                                Text("Accrued interest", style = MaterialTheme.typography.bodySmall)
+                                Text(CurrencyFormatter.interest(accruedInterest, currencyCode, locale),
+                                    style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold))
+                            }
+                            Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
+                                Text("Interest paid", style = MaterialTheme.typography.bodySmall)
+                                Text(CurrencyFormatter.interest(interestBreakdown.paid, currencyCode, locale),
+                                    style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
+                                    color = MaterialTheme.colorScheme.error)
+                            }
+                            Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
                                 Text("Interest (${debt.rate}%)", style = MaterialTheme.typography.bodySmall)
-                                Text(CurrencyFormatter.detail(interestOutstanding, currencyCode, locale),
+                                Text(CurrencyFormatter.interest(interestOutstanding, currencyCode, locale),
                                     style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
                                     color = MaterialTheme.colorScheme.error)
                             }
                             if (debt.interestWaived > 0.0) {
                                 Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
-                                    Text("Waived", style = MaterialTheme.typography.bodySmall)
+                                    Text("Reduced / waived", style = MaterialTheme.typography.bodySmall)
                                     Text(
-                                        CurrencyFormatter.detail(debt.interestWaived, currencyCode, locale),
+                                        "-${CurrencyFormatter.interest(debt.interestWaived, currencyCode, locale)}",
                                         style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
-                                        color = Emerald500
+                                        color = MaterialTheme.colorScheme.primary
                                     )
                                 }
+                            }
+                            Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
+                                Text("Paid ahead", style = MaterialTheme.typography.bodySmall)
+                                Text(CurrencyFormatter.interest(interestBreakdown.paidAhead, currencyCode, locale),
+                                    style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
+                                    color = Emerald500)
+                            }
+                            if (interestBreakdown.paidAhead > 0.01) {
+                                Text(
+                                    "Interest due is zero until accrued interest catches up. Accrual still continues from the original debt date.",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
                             }
                         }
                         HorizontalDivider(Modifier.padding(vertical = 4.dp))
@@ -456,11 +549,11 @@ fun PayDebtDialog(
                     }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(10.dp)) {
                         Icon(Icons.Default.AutoAwesome, null, Modifier.size(16.dp))
                         Spacer(Modifier.width(6.dp))
-                        Text("Interest Only — ${CurrencyFormatter.detail(interestOutstanding, currencyCode, locale)}")
+                        Text("Interest Only - ${CurrencyFormatter.interest(interestOutstanding, currencyCode, locale)}")
                     }
                     Spacer(Modifier.height(4.dp))
                 }
-                // Full Settlement — always show when any amount is outstanding
+                // Full Settlement - always show when any amount is outstanding
                 if (totalOutstanding > 0) {
                     Button(onClick = {
                         interestStr  = String.format(locale, "%.0f", interestOutstanding)
@@ -469,7 +562,7 @@ fun PayDebtDialog(
                     colors = ButtonDefaults.filledTonalButtonColors(containerColor = Emerald500.copy(alpha = 0.15f))) {
                         Icon(Icons.Default.AutoAwesome, null, Modifier.size(16.dp), tint = Emerald500)
                         Spacer(Modifier.width(6.dp))
-                        Text("Full Settlement — ${CurrencyFormatter.detail(totalOutstanding, currencyCode, locale)}", color = Emerald500)
+                        Text("Full Settlement - ${CurrencyFormatter.detail(totalOutstanding, currencyCode, locale)}", color = Emerald500)
                     }
                     Spacer(Modifier.height(4.dp))
                 }
@@ -505,11 +598,33 @@ fun PayDebtDialog(
                 }
                 Spacer(Modifier.height(12.dp))
 
+                if (interestVal > 0.0) {
+                    InterestPeriodSelector(
+                        selected = interestAllocationType,
+                        onSelected = { interestAllocationType = it },
+                        currentStartDate = debt.date,
+                        isDebt = true,
+                    )
+                    Spacer(Modifier.height(10.dp))
+                    InterestImpactPreview(
+                        allocationType = interestAllocationType,
+                        accrued = accruedInterest,
+                        dueAfter = (accruedInterest - interestBreakdown.paid - interestVal - debt.interestWaived).coerceAtLeast(0.0),
+                        paidAheadAfter = (interestBreakdown.paid + interestVal - accruedInterest).coerceAtLeast(0.0),
+                        currencyCode = currencyCode,
+                    )
+                    if (periodMayNeedReview) {
+                        Spacer(Modifier.height(8.dp))
+                        PeriodCompletionNotice()
+                    }
+                    Spacer(Modifier.height(12.dp))
+                }
+
                 ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = !expanded }) {
                     OutlinedTextField(value = selectedAccount.name, onValueChange = {}, readOnly = true,
                         label = { Text("Pay from account") },
                         supportingText = {
-                            Text("${selectedAccount.type}  •  Balance: ${CurrencyFormatter.detail(selectedAccount.balance, currencyCode, locale)}",
+                            Text("${selectedAccount.type}  *  Balance: ${CurrencyFormatter.exact(selectedAccount.balance, currencyCode, locale)}",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.primary)
                         },
@@ -535,7 +650,7 @@ fun PayDebtDialog(
                                                     color = MaterialTheme.colorScheme.onSurfaceVariant)
                                             }
                                         }
-                                        Text(CurrencyFormatter.detail(acct.balance, currencyCode, locale),
+                                        Text(CurrencyFormatter.exact(acct.balance, currencyCode, locale),
                                             style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                                             color = if (acct.balance >= 0) Emerald500 else MaterialTheme.colorScheme.error)
                                     }
@@ -578,16 +693,134 @@ fun PayDebtDialog(
                                 amount    = totalAmount,
                                 principal = principalVal,
                                 interest  = interestVal,
+                                interestPeriodStartDate = InterestPolicy.periodStartFor(interestAllocationType, debt.date),
+                                interestPeriodEndDate = InterestPolicy.periodEndFor(interestAllocationType, debt.date, DateUtils.parseInput(date)),
+                                interestAllocationType = InterestPolicy.allocationFor(principalVal, interestVal, interestAllocationType),
                                 notes     = notes
                             )
                             onConfirm(payment, selectedAccount.name)
                         },
                         enabled = isValid && !submitting,
                         shape   = RoundedCornerShape(14.dp),
-                        colors  = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                        colors  = ButtonDefaults.buttonColors(containerColor = app.fynlo.ui.theme.Emerald500)
                     ) { Text("Pay ${CurrencyFormatter.detail(totalAmount, currencyCode, locale)}") }
                 }
             }
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun InterestPeriodSelector(
+    selected: String,
+    onSelected: (String) -> Unit,
+    currentStartDate: String,
+    isDebt: Boolean,
+) {
+    val options = listOf(
+        InterestPolicy.CURRENT_PERIOD_INTEREST to "This loan period",
+        InterestPolicy.OLD_PERIOD_INTEREST to "Older interest",
+        InterestPolicy.ADVANCE_INTEREST to "Paid in advance",
+        InterestPolicy.EXTRA_INTEREST to "Extra note",
+    )
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            "Which interest is this?",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        FlowRow(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            options.forEach { (value, label) ->
+                FilterChip(
+                    selected = selected == value,
+                    onClick = { onSelected(value) },
+                    label = { Text(label) },
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = Emerald500,
+                        selectedLabelColor = Color.White,
+                    ),
+                )
+            }
+        }
+        val subject = if (isDebt) "debt" else "loan"
+        val help = when (selected) {
+            InterestPolicy.OLD_PERIOD_INTEREST -> "Keeps this for an older period. It will not reduce interest due from ${DateUtils.formatToDisplay(currentStartDate)}."
+            InterestPolicy.ADVANCE_INTEREST -> "Saves this as interest paid in advance for this $subject. Interest due stays zero until time catches up."
+            InterestPolicy.EXTRA_INTEREST -> "Saves this as an extra interest note. It will not reduce interest due now."
+            else -> "Uses this against interest due from ${DateUtils.formatToDisplay(currentStartDate)}."
+        }
+        Text(help, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+@Composable
+private fun InterestImpactPreview(
+    allocationType: String,
+    accrued: Double,
+    dueAfter: Double,
+    paidAheadAfter: Double,
+    currencyCode: String,
+) {
+    val locale = LocalLocale.current.platformLocale
+    val affectsCurrentPeriod = allocationType in setOf(
+        InterestPolicy.CURRENT_PERIOD_INTEREST,
+        InterestPolicy.ADVANCE_INTEREST,
+    )
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+    ) {
+        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
+                Text("Interest built up", style = MaterialTheme.typography.labelSmall)
+                Text(CurrencyFormatter.interest(accrued, currencyCode, locale), style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold))
+            }
+            if (affectsCurrentPeriod) {
+                Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
+                    Text("Interest due after save", style = MaterialTheme.typography.labelSmall)
+                    Text(CurrencyFormatter.interest(dueAfter, currencyCode, locale), style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold))
+                }
+                if (paidAheadAfter > 0.01) {
+                    Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
+                        Text("Paid ahead after save", style = MaterialTheme.typography.labelSmall)
+                        Text(CurrencyFormatter.interest(paidAheadAfter, currencyCode, locale), style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold), color = Emerald500)
+                    }
+                }
+            } else {
+                Text(
+                    "This amount stays in payment history and will not change interest due now.",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun PeriodCompletionNotice() {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        color = app.fynlo.ui.theme.SemanticAmber.copy(alpha = 0.12f),
+    ) {
+        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(
+                "Check this interest payment",
+                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                color = app.fynlo.ui.theme.SemanticAmber,
+            )
+            Text(
+                "If it fully covers interest due, pays ahead, or belongs to an older period, choose the right option here. Loan and debt dates are never changed silently.",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }
@@ -629,7 +862,7 @@ fun WaiveInterestDialog(
                     Column(Modifier.padding(14.dp)) {
                         Text("Available to waive", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Text(
-                            CurrencyFormatter.detail(maxWaivable, currencyCode, locale),
+                            CurrencyFormatter.interest(maxWaivable, currencyCode, locale),
                             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                             color = Emerald500,
                         )

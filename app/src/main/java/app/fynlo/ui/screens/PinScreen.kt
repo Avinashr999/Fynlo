@@ -50,7 +50,7 @@ fun biometricStatus(context: android.content.Context): Int {
 fun PinScreen(
     mode: PinMode = PinMode.ENTER,
     onSuccess: () -> Unit,
-    onSkip: (() -> Unit)? = null
+    onSkip: (() -> Unit)?= null
 ) {
     val context = LocalContext.current
     val haptic  = LocalHapticFeedback.current

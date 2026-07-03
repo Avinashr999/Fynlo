@@ -74,16 +74,16 @@ interface FynloDao {
     // never NULL for those.
     @Query("""UPDATE borrowers SET
         paid          = COALESCE((SELECT SUM(CASE WHEN type='Interest Only' THEN 0 WHEN principal > 0 THEN principal ELSE amount END) FROM payments WHERE loanId = borrowers.id), 0)
-                      + COALESCE((SELECT SUM(CASE WHEN type='Interest Only' AND interest=0 THEN amount ELSE interest END) FROM payments WHERE loanId = borrowers.id AND date >= borrowers.date), 0),
+                      + COALESCE((SELECT SUM(CASE WHEN type='Interest Only' AND interest=0 THEN amount ELSE interest END) FROM payments WHERE loanId = borrowers.id), 0),
         paidPrincipal = COALESCE((SELECT SUM(CASE WHEN type='Interest Only' THEN 0 WHEN principal > 0 THEN principal ELSE amount END) FROM payments WHERE loanId = borrowers.id), 0),
-        paidInterest  = COALESCE((SELECT SUM(CASE WHEN type='Interest Only' AND interest=0 THEN amount ELSE interest END) FROM payments WHERE loanId = borrowers.id AND date >= borrowers.date), 0)""")
+        paidInterest  = COALESCE((SELECT SUM(CASE WHEN type='Interest Only' AND interest=0 THEN amount ELSE interest END) FROM payments WHERE loanId = borrowers.id), 0)""")
     suspend fun rebuildBorrowerPaidFromPayments()
 
     @Query("""UPDATE debts SET
         paid          = COALESCE((SELECT SUM(CASE WHEN type='Interest Only' THEN 0 WHEN principal > 0 THEN principal ELSE amount END) FROM debt_payments WHERE debtId = debts.id), 0)
-                      + COALESCE((SELECT SUM(CASE WHEN type='Interest Only' AND interest=0 THEN amount ELSE interest END) FROM debt_payments WHERE debtId = debts.id AND date >= debts.date), 0),
+                      + COALESCE((SELECT SUM(CASE WHEN type='Interest Only' AND interest=0 THEN amount ELSE interest END) FROM debt_payments WHERE debtId = debts.id), 0),
         paidPrincipal = COALESCE((SELECT SUM(CASE WHEN type='Interest Only' THEN 0 WHEN principal > 0 THEN principal ELSE amount END) FROM debt_payments WHERE debtId = debts.id), 0),
-        paidInterest  = COALESCE((SELECT SUM(CASE WHEN type='Interest Only' AND interest=0 THEN amount ELSE interest END) FROM debt_payments WHERE debtId = debts.id AND date >= debts.date), 0)""")
+        paidInterest  = COALESCE((SELECT SUM(CASE WHEN type='Interest Only' AND interest=0 THEN amount ELSE interest END) FROM debt_payments WHERE debtId = debts.id), 0)""")
     suspend fun rebuildDebtPaidFromDebtPayments()
 
     // recalculateDebtPaid removed by C01 Sprint 1 Stage 2 (twin of
@@ -263,7 +263,7 @@ interface FynloDao {
     fun getAllPeople(): Flow<List<Person>>
 
     /**
-     * C03b Stage #3 (3.2.90) — lookup-by-phone for the
+     * C03b Stage #3 (3.2.90) — lookup?by-phone for the
      * `findOrCreatePersonId` resolver in FinanceRepository. Returns
      * the first match (phone is the dedup key); empty phone always
      * returns null so empty-phone borrowers don't accidentally link
@@ -449,7 +449,7 @@ interface FynloDao {
     @Query("DELETE FROM flow_templates")
     suspend fun deleteAllFlowTemplates()
 
-    // ─── Delete-by-id (for Firestore REMOVED sync events) ─────────────────────
+    // ─── Delete?by-id (for Firestore REMOVED sync events) ─────────────────────
     @Query("DELETE FROM payments WHERE id = :id")
     suspend fun deletePaymentById(id: String)
 

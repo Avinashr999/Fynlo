@@ -24,7 +24,7 @@ import kotlinx.coroutines.flow.StateFlow
  */
 object BillingManager {
 
-    private var billingClient: BillingClient? = null
+    private var billingClient: BillingClient?= null
 
     private val _isPro = MutableStateFlow(!FeatureFlags.BILLING_ENABLED)
     /** True when the user owns Pro — or always true while billing is disabled. */

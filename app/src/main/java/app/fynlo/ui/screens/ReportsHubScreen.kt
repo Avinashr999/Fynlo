@@ -25,22 +25,23 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalLocale
 import app.fynlo.FinanceViewModel
 import app.fynlo.logic.CurrencyFormatter
+import app.fynlo.logic.isGeneratedJournalEntry
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import app.fynlo.ui.theme.*
 
 /**
- * C15a (3.2.29) — Reports landing as **pure launcher** (UX_AUDIT §C15a).
+ * C15a (3.2.29) - Reports landing as **pure launcher** (UX_AUDIT section C15a).
  *
  * Previous version mixed two responsibilities: it inlined the same data the
  * detail screens render (Income/Expense breakdown, Net Worth Trend mini-chart,
  * "Where Money Went" + "Where Money Came From" category bars) AND also showed
- * the launcher tiles below. That's the "duplicate" the audit calls out — the
+ * the launcher tiles below. That's the "duplicate" the audit calls out - the
  * inline blocks just preview what the user gets if they tap the corresponding
  * tile, so they're redundant on a Home-archetype landing.
  *
- * Now: date-range chip row at the top + a clean 3×N grid of tiles. Each tile
+ * Now: date-range chip row at the top + a clean 3xN grid of tiles. Each tile
  * carries a one-line preview value computed against the selected range (audit
  * fix #3), so the landing still tells the user what's going on at a glance
  * without rendering the full visualizations.
@@ -61,7 +62,7 @@ fun ReportsHubScreen(
     LaunchedEffect(Unit) { app.fynlo.data.Analytics.screenView("Reports") }
     val transactions   by viewModel.transactions.collectAsState()
     val summary        by viewModel.financialSummary.collectAsState()
-    // C21 Stage 2 — collect borrowers + debts + investments so the Export
+    // C21 Stage 2 - collect borrowers + debts + investments so the Export
     // PDF button at the top of this hub produces a comprehensive report
     // (was passing emptyList() for each pre-Stage 2; only summary +
     // transactions made it through).
@@ -71,11 +72,11 @@ fun ReportsHubScreen(
     val currentProject by viewModel.currentProject.collectAsState()
     val currencyCode   = currentProject?.currency ?: "INR"
     val locale         = LocalLocale.current.platformLocale
-    // C21 Stage 3 — net-worth snapshots for the trend-line chart in the
+    // C21 Stage 3 - net-worth snapshots for the trend-line chart in the
     // exported PDF. The on-screen Reports landing already uses these via
     // the tile preview computation; threading them to Export PDF too.
     val snapshots      by viewModel.getNetWorthSnapshots().collectAsState(initial = emptyList())
-    // C11 (3.2.40) — user's Date Format pref for the PDF date columns.
+    // C11 (3.2.40) - user's Date Format pref for the PDF date columns.
     val dateFormat     by app.fynlo.data.UserPreferences.dateFormat(androidx.compose.ui.platform.LocalContext.current)
         .collectAsState(initial = app.fynlo.logic.DateUtils.DEFAULT_COMPACT_PATTERN)
 
@@ -97,12 +98,12 @@ fun ReportsHubScreen(
     val fromStr = fromDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
     val toStr   = toDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
 
-    // Same financing-activity exclusion as before — debt received/repaid, lending,
+    // Same financing-activity exclusion as before - debt received/repaid, lending,
     // investments are balance-sheet movements, not P&L.
     val financingCats = setOf("Debt Received", "Debt Repayment", "Lending",
         "Loan Recovery", "Loan Repayment", "Investment", "Investment Returns")
 
-    // Pre-computed previews — each tile reads one of these. Memoised on
+    // Pre-computed previews - each tile reads one of these. Memoised on
     // [transactions, fromStr, toStr] so range changes recompute in one pass.
     data class RangeAggregate(
         val plNet: Double,
@@ -112,7 +113,7 @@ fun ReportsHubScreen(
     )
     val agg = remember(transactions, fromStr, toStr) {
         val inRange = transactions.filter {
-            it.date in fromStr..toStr && it.tags != "journal_only"
+            it.date in fromStr..toStr && !it.isGeneratedJournalEntry()
         }
         val plList = inRange.filter { it.category !in financingCats }
         val income  = plList.filter { it.type.equals("income", true)  }.sumOf { it.amount }
@@ -122,12 +123,12 @@ fun ReportsHubScreen(
             .filter { it.type.equals("income", true) && it.category.equals("Interest", true) }
             .sumOf { it.amount }
         // Monthly Summary preview is always "this calendar month" net regardless
-        // of selectedRange — that screen has its own month picker, so the tile
+        // of selectedRange - that screen has its own month picker, so the tile
         // surfaces the most-useful snapshot (current month).
         val mFrom = today.withDayOfMonth(1).format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
         val mTo   = today.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
         val mPl = transactions.filter {
-            it.date in mFrom..mTo && it.tags != "journal_only" && it.category !in financingCats
+            it.date in mFrom..mTo && !it.isGeneratedJournalEntry() && it.category !in financingCats
         }
         val mIncome  = mPl.filter { it.type.equals("income",  true) }.sumOf { it.amount }
         val mExpense = mPl.filter { it.type.equals("expense", true) }.sumOf { it.amount }
@@ -153,7 +154,7 @@ fun ReportsHubScreen(
                 .padding(horizontal = 16.dp)
                 .verticalScroll(rememberScrollState())
         ) {
-            // Export-PDF button kept — top-right utility, shared across detail
+            // Export-PDF button kept - top-right utility, shared across detail
             // screens. PDF is generated against the active range below.
             Row(
                 Modifier.fillMaxWidth().padding(bottom = 8.dp),
@@ -162,10 +163,10 @@ fun ReportsHubScreen(
                 val context = androidx.compose.ui.platform.LocalContext.current
                 val projectName = currentProject?.name ?: "Personal"
                 val periodLabel = if (selectedRange == "All Time") "All time"
-                                  else "${fromDate.format(DateTimeFormatter.ofPattern("dd MMM yyyy"))} – ${toDate.format(DateTimeFormatter.ofPattern("dd MMM yyyy"))}"
+                                  else "${fromDate.format(DateTimeFormatter.ofPattern("dd MMM yyyy"))} - ${toDate.format(DateTimeFormatter.ofPattern("dd MMM yyyy"))}"
                 Button(
                     onClick = {
-                        // C21 Stage 1 — standardized filename + identity row.
+                        // C21 Stage 1 - standardized filename + identity row.
                         val file = app.fynlo.logic.ExportUtility.exportCacheFile(
                             context,
                             app.fynlo.logic.ExportUtility.filename("Report", projectName, "pdf")
@@ -199,7 +200,7 @@ fun ReportsHubScreen(
                 }
             }
 
-            // Range chip row — drives every tile preview below. Kept the same
+            // Range chip row - drives every tile preview below. Kept the same
             // affordance the old inline summary used; it just feeds tile values
             // now instead of an inline render.
             Column(Modifier.fillMaxWidth().padding(bottom = 16.dp)) {
@@ -213,7 +214,7 @@ fun ReportsHubScreen(
                     }
                 }
                 Text(
-                    "${fromDate.format(DateTimeFormatter.ofPattern("dd MMM yyyy"))} → ${toDate.format(DateTimeFormatter.ofPattern("dd MMM yyyy"))}",
+                    "${fromDate.format(DateTimeFormatter.ofPattern("dd MMM yyyy"))} -> ${toDate.format(DateTimeFormatter.ofPattern("dd MMM yyyy"))}",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 8.dp)

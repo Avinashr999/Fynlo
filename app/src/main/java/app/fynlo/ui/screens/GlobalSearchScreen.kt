@@ -18,8 +18,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
@@ -79,9 +77,6 @@ fun GlobalSearchScreen(
     val typeOptions = listOf("All", "Loans", "Debts", "Transactions", "Investments")
 
     val locale = LocalLocale.current.platformLocale
-    val focusRequester = remember { FocusRequester() }
-    LaunchedEffect(Unit) { runCatching { focusRequester.requestFocus() } }
-
     // C22 (3.2.58) — record the query into the recents list after the user
     // stops typing for ~600ms. Avoids littering the list with every
     // intermediate prefix (e.g. "F", "Fo", "Foo", "Food").
@@ -151,16 +146,19 @@ fun GlobalSearchScreen(
     }
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0.dp),
         topBar = {
             Surface(
-                modifier = Modifier.fillMaxWidth().statusBarsPadding().height(66.dp),
+                modifier = Modifier.fillMaxWidth(),
                 color = MaterialTheme.colorScheme.surface,
                 tonalElevation = 0.dp,
             ) {
                 Row(
                     modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                        .fillMaxWidth()
+                        .statusBarsPadding()
+                        .height(58.dp)
+                        .padding(horizontal = 12.dp, vertical = 4.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
@@ -185,7 +183,7 @@ fun GlobalSearchScreen(
                         onValueChange = { query = it },
                         placeholder   = { Text("Search loans, debts, transactions") },
                         singleLine    = true,
-                        modifier      = Modifier.weight(1f).focusRequester(focusRequester),
+                        modifier      = Modifier.weight(1f).heightIn(min = 56.dp),
                         shape         = RoundedCornerShape(16.dp),
                         leadingIcon   = { Icon(Icons.Default.Search, null, tint = Emerald500) },
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),

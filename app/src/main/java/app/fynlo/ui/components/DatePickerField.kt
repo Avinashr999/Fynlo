@@ -9,8 +9,10 @@ import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import java.time.LocalDate
 import java.time.Year
@@ -57,10 +59,12 @@ fun DatePickerField(
         (currentYear - 80)..(currentYear + 50)
     }
 
-    val state = rememberDatePickerState(
-        initialSelectedDateMillis = initialMillis,
-        yearRange = yearRange,
-    )
+    val state = key(initialMillis) {
+        rememberDatePickerState(
+            initialSelectedDateMillis = initialMillis,
+            yearRange = yearRange,
+        )
+    }
 
     if (showPicker) {
         DatePickerDialog(
@@ -73,10 +77,18 @@ fun DatePickerField(
                         onValueChange(d.format(fmt))
                     }
                     showPicker = false
-                }) { Text("OK") }
+                }) { Text("Use date", fontWeight = FontWeight.Bold) }
             },
             dismissButton = {
-                TextButton(onClick = { showPicker = false }) { Text("Cancel") }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (optional && value.isNotBlank()) {
+                        TextButton(onClick = {
+                            onValueChange("")
+                            showPicker = false
+                        }) { Text("Clear") }
+                    }
+                    TextButton(onClick = { showPicker = false }) { Text("Cancel") }
+                }
             }
         ) {
             DatePicker(state = state)
@@ -88,28 +100,42 @@ fun DatePickerField(
         onValueChange = {},
         label         = { Text(if (optional) "$label (optional)" else label) },
         trailingIcon  = {
-            Row {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.End,
+            ) {
                 if (optional && value.isNotBlank()) {
                     IconButton(onClick = { onValueChange("") }) {
-                        Icon(Icons.Default.Close, contentDescription = "Clear date")
+                        Icon(
+                            Icons.Default.Close,
+                            contentDescription = "Clear date",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
                     }
                 }
                 IconButton(onClick = { showPicker = true }) {
-                    Icon(Icons.Default.CalendarMonth, contentDescription = "Pick date")
+                    Icon(
+                        Icons.Default.CalendarMonth,
+                        contentDescription = "Pick date",
+                        tint = app.fynlo.ui.theme.Emerald500,
+                    )
                 }
             }
         },
         readOnly      = true,
         singleLine    = true,
         interactionSource = interactionSource,
-        modifier      = modifier.fillMaxWidth(),
-        shape         = RoundedCornerShape(16.dp),
+        modifier      = modifier
+            .fillMaxWidth()
+            .heightIn(min = 60.dp),
+        shape         = RoundedCornerShape(18.dp),
         colors        = OutlinedTextFieldDefaults.colors(
-            focusedContainerColor   = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
-            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+            focusedContainerColor   = MaterialTheme.colorScheme.surface,
+            unfocusedContainerColor = MaterialTheme.colorScheme.surface,
             focusedBorderColor      = app.fynlo.ui.theme.Emerald500,
-            unfocusedBorderColor    = androidx.compose.ui.graphics.Color.Transparent,
+            unfocusedBorderColor    = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.65f),
             focusedLabelColor       = app.fynlo.ui.theme.Emerald500,
+            unfocusedLabelColor     = MaterialTheme.colorScheme.onSurfaceVariant,
             cursorColor             = app.fynlo.ui.theme.Emerald500
         ),
         placeholder   = { Text("DD-MM-YYYY") }

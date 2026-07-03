@@ -133,7 +133,7 @@ class BudgetSuggestionDataIntegrityTest {
             ),
         )
         assertEquals(
-            "Blank-category entries must be filtered before the max-by step.",
+            "Blank-category entries must be filtered before the max?by step.",
             "Food",
             result,
         )
@@ -143,7 +143,7 @@ class BudgetSuggestionDataIntegrityTest {
     fun `zero-spend category is ignored`() {
         // Shouldn't happen in practice (expenseAnalytics is derived from
         // sumOf on positive amounts), but defensively excluded so a stray
-        // zero-amount entry can't win a max-by against an empty set.
+        // zero-amount entry can't win a max?by against an empty set.
         val result = BudgetSuggestion.suggest(
             cappedCategories = emptySet(),
             expenseAnalytics = mapOf(
@@ -231,13 +231,13 @@ class BudgetSuggestionDataIntegrityTest {
     // Smoke-test finding on 3.2.6 install: the heuristic correctly picked
     // "Lending" as the highest-spend uncapped category because the user had
     // lent money (auto-creates an Expense txn with category="Lending"), but
-    // that's the OPPOSITE of what a "what should I budget?" answer should
+    // that's the OPPOSITE of what a "what should I budget-" answer should
     // be — lending money isn't discretionary spend.
 
     @Test
     fun `Lending is never suggested even when it is the highest spend`() {
         // The exact 3.2.6 smoke-test scenario: user has lent ₹50k, eaten
-        // ₹3.5k. Pre-fix, "Lending" wins the max-by. Post-fix, "Food" wins.
+        // ₹3.5k. Pre-fix, "Lending" wins the max?by. Post-fix, "Food" wins.
         val result = BudgetSuggestion.suggest(
             cappedCategories = emptySet(),
             expenseAnalytics = mapOf(

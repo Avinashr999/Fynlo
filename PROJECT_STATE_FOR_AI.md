@@ -1,5 +1,40 @@
 # §0 — REQUIRED READING (read this first, every session)
 
+## 2026-07-03 - Search Insets and Book Check Grouping
+
+- Global Search now removes the duplicate local top inset and uses a compact 58dp search header so the search field sits closer to the status area instead of leaving a large blank gap above it.
+- Book Check now groups unclear/stale interest payment review rows per borrower/debt instead of showing one card per old payment. This stays review-only: no balances, loan dates, payment rows, or cash/account totals are changed automatically.
+- Added regression tests for grouped borrower/debt interest-payment reviews.
+- Phone install/smoke is still pending because the phone is currently with the user.
+
+## 2026-07-03 - Final Hardening Audit Status
+
+- User manually phone-verified the 17 latest local UI/accounting audit items in the developer app. Treat those items as `PHONE VERIFIED BY USER` for local phone behavior.
+- Cloud/local parity is only `LOCAL VERIFIED, CLOUD ROUND-TRIP PENDING` until the real cloud path is tested: sign in, sync, restart or fresh install, reload from cloud, and compare dashboard/account/loan/debt/investment numbers.
+- Do not build a release AAB or call the app release-ready until cloud round-trip is either verified or explicitly accepted as a pending release risk.
+- Release-gate auth fix: Profile & Security now has a real guest-mode `Sign in with Google` action with loading, safe error text, signed-in state refresh, and cloud-backup start after success. Developer app install/launch and UI hierarchy confirmed the button is visible and enabled. User must still complete account selection before cloud round-trip can be marked verified.
+
+## 2026-07-02 - Loan Balance Clarity and Interest Period Review
+
+- Borrower detail now labels the hero amount as `Total Receivable` and debt detail labels it as `Total Payable`, so principal-only balances are not confused with principal-plus-interest totals.
+- Detail rows now use `Principal Outstanding`, `Interest Due`, and `Interest Payable` wording to avoid duplicate-looking `Current Balance`/`Principal due` labels.
+- Loan overview summary band was simplified to `Total Borrowers/Debtors`, `Principal`, and `Interest`; `Paid ahead` stays in detailed interest breakdowns where it fits and has context.
+- Book Check now adds a warning-level `Interest period may be complete` review when a due period appears fully paid but dates were not advanced. This does not mutate dates silently.
+- Borrower/debt payment dialogs now warn when a payment may complete the current interest period and explain that the due date is treated as the next period start to avoid double counting.
+- Settings personalization now reloads the saved name into the field and disables `Save name` when the entered name is already saved.
+- EMI Calculator now supports `Duration` or `Exact dates`; exact-date simple interest uses days, while EMI methods clearly show the converted billing-month count.
+- Installed the latest developer debug build on the connected phone: `app.fynlo.dev`.
+- Verification: `:app:compileProdDebugKotlin`, `:app:testProdDebugUnitTest`, focused `InterestPolicyTest`, `LedgerAccountabilityTest`, `MoneyActionIdempotencyDataIntegrityTest`, `:app:installDevDebug`, and app launch sanity all passed.
+- No release AAB was built and production was not installed in this pass.
+
+## 2026-07-01 - Search Bar and Interest Reduction Clarity
+
+- Fixed Global Search text clipping on phone by giving the top search row enough height for the outlined search field while the keyboard is open.
+- Fixed the Invest screen's dark-mode portfolio/holding numbers by replacing light-theme hardcoded emerald text with theme-aware primary/error/on-surface colors in the portfolio summary and investment cards.
+- Reworded waiver displays in loan/debt details and repayment dialogs to `Reduced / waived: -amount`, so cases like `INR 18,000 interest - INR 99 reduced = INR 17,901 due` are understandable to users.
+- Installed production and developer debug builds on the connected phone: `app.fynlo` is `3.2.109` / code `233`, and `app.fynlo.dev` is `3.2.109-dev` / code `233`.
+- Data-integrity touch: no calculation change. Verification: `:app:compileProdDebugKotlin`, `:app:testProdDebugUnitTest`, `:app:installProdDebug`, and `:app:installDevDebug` passed.
+
 > **For AI agents (Claude, Claude Code, Cursor, Copilot, etc.):**
 > This section is non-negotiable. Read it fully before proposing any change.
 
@@ -2017,3 +2052,146 @@ The user approved the combined future roadmap below. Do not treat these as compl
 - Verification passed: `:app:compileProdDebugKotlin`, `:app:testProdDebugUnitTest`, `:app:bundleProdRelease`, `:app:installProdDebug`, and `:app:installDevDebug`.
 - Unit test result XML showed 413 tests with 0 failures/errors.
 - Release lint found no active warnings/errors; only stale baseline notes remain for removed/changed baseline entries.
+
+## Next Session Release Follow-Ups
+
+- Play Console upload warning remains: `This App Bundle contains native code, and you've not uploaded debug symbols`. Treat this as a release-quality task, not a user-facing blocker. Investigate whether a native debug symbol zip can be produced/uploaded for the third-party native libraries included in the AAB.
+- Dark mode is not release-ready. Multiple screens have low-contrast text/numbers and unreadable surfaces. Do a full dark-mode audit across onboarding, dashboard, loans, debts, investments, expenses, reports, settings, dialogs, statements, search, and calculator screens before calling dark mode supported.
+- Global Search still has a visible top gap above/around the search bar on device. Re-check the actual installed screen on phone and fix the root layout/insets rather than only reducing empty-state padding.
+
+## 2026-07-01 - Due-Date Interest Stop, Dark Contrast, Search Insets
+
+- Added `stopInterestAfterDue` to both borrower and debt records, with Room migration `29 -> 30` and Firestore read/write compatibility through the existing model sync.
+- Loan and debt add/edit dialogs now expose a plain-language `Stop interest after due date` switch for grace/personal arrangements where extra-day interest should not accrue after the due date.
+- Introduced `InterestPolicy` as the single borrower/debt interest policy layer. Dashboard totals, loan/debt summaries, details, payments, waivers, write-offs, ledger health, payoff planning, calendar due entries, people profiles, and interest-income views now route saved loan/debt interest through this policy. The standalone EMI calculator intentionally continues using the raw engine for what-if calculations.
+- Added `InterestPolicyTest` coverage for borrower/debt due-date clamping and blank-due fallback behavior.
+- Global Search top bar now uses a shorter status-aware bar with a fixed 58dp content row to address the visible top gap on phone.
+- Dark mode base colors were retuned for stronger text/surface/error contrast. This is a broad readability fix, but still needs phone smoke across the screens the user flagged before declaring dark mode production-polished.
+- Release AAB builds successfully at `app/build/outputs/bundle/prodRelease/app-prod-release.aab`. Gradle produced Java/Kotlin mapping files but did not emit a native debug-symbol zip under `app/build/outputs`, so the Play Console native-code symbol warning remains non-blocking unless a future task adds symbol packaging for the included native libraries.
+- Data-integrity touch: yes. Verification: `:app:compileProdDebugKotlin`, `:app:testProdDebugUnitTest`, and `:app:bundleProdRelease` passed.
+
+## 2026-07-01 - Book Check Interest-Period False Positive Fix
+
+- Fixed Book Check payment-total mismatches after full interest-only settlement rolls a loan/debt interest period forward.
+- The rebuild logic intentionally treats principal payments as lifetime totals and interest payments as current-period totals after rollover. Book Check now uses the same rule instead of summing old settled interest rows forever.
+- Confirmed from the connected production app database that the four reported Book Check items came from two Samanvi Travels and two Muhammed interest-only settlements on `2026-06-30`, with interest periods rolled to `2026-07-01`.
+- Confirmed the reported `₹17,901` on Venkat Reddy Vzm Line is not a 365-day interest bug: the record stores `₹99` waived interest. `₹18,000 accrued - ₹99 waived = ₹17,901`.
+- Added regression coverage for exact one-year interest: `₹1,00,000` at `18%` from `2025-06-28` to `2026-06-28` with stop-after-due enabled must produce `₹18,000`.
+- Data-integrity touch: yes. Verification: focused `InterestPolicyTest`/`LedgerAccountabilityTest`, full `:app:compileProdDebugKotlin`, and full `:app:testProdDebugUnitTest` passed.
+
+## 2026-07-02 - Loan Date Edit Accrual Rebuild
+
+- Investigated the reported Samanvi Travels date-correction issue on the connected production app database.
+- Borrower rows store one `date` field; there is no separate persisted `interestStartDate`, `nextAccrualDate`, or schedule table. That single date is the visible loan date and the current interest accrual start.
+- Live DB finding: the Samanvi rows and their linked Lending transactions already held corrected dates (`2026-02-01` and `2026-04-22`), but the rows also had interest-only payments dated `2026-06-30` (`Rs.216,892` and `Rs.39,492`). Those paid-interest values are ahead of interest accrued from the corrected dates, so current outstanding interest appears as zero until accrued interest catches up.
+- Root fix: borrower and debt edit flows now rebuild derived paid totals from payment rows immediately after an edit and sync the reloaded row. The edit form is no longer allowed to persist stale `paid`, `paidPrincipal`, or `paidInterest` values after a date/source correction.
+- Book Check now warns when paid interest is ahead of accrued interest for a loan/debt. This is not a critical ledger break, but it explains why interest can look frozen after a corrected date.
+- Added regression tests for the exact wrong-date-to-corrected-date shape: wrong `2026-07-01` borrower date edited to `2026-02-01` and `2026-04-22`; principal remains unchanged, payment rows are not duplicated, paid-interest is rebuilt from rows, and interest accrues from the corrected date.
+- Data-integrity touch: yes. No schema migration. Verification: `:app:compileProdDebugKotlin` and `:app:testProdDebugUnitTest` passed.
+
+## 2026-07-02 - Paid-Ahead Interest UX Verification
+
+- Installed the latest fixed production debug build on the connected phone. No release build or Play Store AAB was produced for this verification pass.
+- Phone database verification for Samanvi Travels confirmed the first current loan row is `Rs.600,000`, not `Rs.1,000,000`; the earlier `Rs.1,000,000` amount was a user-side recall mistake.
+- Samanvi loan `Rs.600,000` shows corrected loan date `2026-02-01`, source `Family Cash`, and a single interest-only payment row dated `2026-06-30` for `Rs.216,892`. As of `2026-07-02`, accrued interest is about `Rs.59,573`, so the row is paid ahead by about `Rs.157,319`.
+- Samanvi loan `Rs.125,500` shows corrected loan date `2026-04-22`, source `Family Cash`, and a single interest-only payment row dated `2026-06-30` for `Rs.39,492`. As of `2026-07-02`, accrued interest is about `Rs.5,859`, so the row is paid ahead by about `Rs.33,633`.
+- Borrower detail UI now explains this state instead of silently showing zero interest due: it displays `Interest paid ahead`, the advance amount, accrued interest, collected interest, and a plain sentence explaining why `Interest due` is zero.
+- Debt detail UI received the same paid-ahead explanation pattern for debt interest paid ahead of accrued interest.
+- Phone UI verification confirmed the Samanvi borrower detail shows `Interest paid ahead`, `Interest due is zero because collected interest is already ahead of interest accrued from 01-02-2026`, `Accrued interest`, and `Interest collected`.
+- Data-integrity touch: UX-only after the earlier rebuild fix. No schema migration. Verification: `:app:compileProdDebugKotlin`, `:app:testProdDebugUnitTest`, and `:app:installProdDebug` passed.
+
+## 2026-07-02 - Book Check Interest Review Cleanup
+
+- Book Check interest-period warnings now name the affected borrower/debt, payment amount/date, and principal amount instead of showing a generic `Interest payment period unclear` message.
+- Settings > Book Check now explains that old interest rows must be assigned as previous period, current period, advance interest, or extra/manual so current interest due remains understandable.
+- Borrower and debt detail screens now show a simpler `Interest breakdown`: calculated interest, collected/paid interest, optional advance interest, and any historical-review note. `Interest due` remains only in the main statement summary to avoid repetition.
+- Dashboard Book Check warnings now appear in the primary confidence card only; the duplicate small nudge was removed.
+- Startup cloud wording now says `Checking cloud backup...` while sync state is still being verified, avoiding a false warning tone on reopen.
+- Data-integrity touch: UX/readability only. No schema migration and no balance mutation. Verification: `:app:compileProdDebugKotlin`, `:app:testProdDebugUnitTest`, and developer app install/launch sanity passed.
+
+## 2026-07-03 - Simple Loan/Debt Detail UX Pass
+
+- Borrower and debt detail summaries were simplified again so the first screen reads like a user statement, not an accounting/debug panel.
+- Borrower summary now focuses on `Total Receivable`, `Principal Outstanding`, and `Interest Due`; paid principal details remain in Payment History.
+- Debt summary now focuses on `Total Payable`, `Principal Outstanding`, and `Interest Payable`; paid principal details remain in Payment History.
+- Payment History rows now carry the detailed audit trail with plain labels such as `Principal collected`, `Interest collected`, `Interest paid`, `Old interest history`, `Interest paid ahead`, and `Interest needs review`.
+- Payment dialog and Book Check copy now avoids technical wording such as allocation/stale/derived/current-period where users see it. The app still keeps the stronger internal accounting state, but the visible copy tells users what happened and what to do.
+- Book Check paid-ahead warnings now say `Extra interest already collected` or `Extra interest already paid`, making clear that interest due/payable is zero only for now and interest keeps adding from the loan/debt date.
+- Data-integrity touch: UX/readability only. No schema migration and no balance mutation. Verification: `:app:compileProdDebugKotlin`, focused interest/Book Check tests, full `:app:testProdDebugUnitTest`, `:app:installDevDebug`, and developer app launch sanity passed.
+
+## 2026-07-03 - Book Check Route, EMI/Search Keyboard Polish
+
+- Dashboard Book Check now opens a dedicated `book_check` route that launches Settings with Trust & Safety and Book Check already open. This avoids the prior generic Settings landing when query navigation was missed.
+- Global Search no longer auto-focuses the search field on open, so the keyboard does not appear before the user taps the field. The search top bar was also shortened to reduce the visible top gap on phone.
+- EMI Calculator now clears focus and hides the keyboard on initial open and while scrolling. The inner scroll container also listens for user scrolls, reducing the keyboard-stays-open behavior seen during manual testing.
+- Exact-date EMI wording was softened from a warning tone to a plain explanation: simple interest uses exact days; EMI methods show the exact-day range and billing-month schedule.
+- Payment dialogs now show a clearer interest-payment review note: users are told to choose the correct bucket when a payment covers due interest, pays ahead, or belongs to an older period. Loan/debt dates are not silently changed.
+- Existing sync wiring for transfer account IDs and interest period fields was rechecked; no schema migration or data mutation was needed.
+- Data-integrity touch: no balance mutation and no production data write. Verification: `:app:compileProdDebugKotlin`, focused `InterestPolicyTest`/`LedgerAccountabilityTest`/`MoneyActionIdempotencyDataIntegrityTest`/`SyncLogicTest`, full `:app:testProdDebugUnitTest`, `:app:installDevDebug`, and developer app launch sanity passed.
+
+## 2026-07-03 - Profile/Security Google Sign-In Gate
+
+- Investigated the reported `Google Sign-In setup is missing for this build` message from Profile & Security after using the app locally without sign-in.
+- Local config check: `app.fynlo` and `app.fynlo.dev` both have checked-in Google services config, generated `default_web_client_id`, and Android OAuth entries for the local debug and release SHA-1 fingerprints.
+- Signing report check: installed prod/dev debug builds use the debug SHA-1 already present in the local Google services JSON; prod/dev release use the release SHA-1 already present locally.
+- Added a narrow `FynloAuth` warning log around Profile/Security sign-in failures so future phone checks can distinguish Google status code 10/setup rejection, cancellation, missing token, or Firebase auth failure without exposing technical messages to normal users.
+- Phone reproduction on the developer app proved the button is not dead: tapping it launches Google Play Services sign-in, then returns `ApiException status=10`.
+- Root cause: the dev `google-services.json` is a placeholder/copy. It declares package `app.fynlo.dev`, but its Android OAuth client IDs and `mobilesdk_app_id` are the same as production. Google rejects that identity for the dev package.
+- Current release-gate status: `BLOCKED: missing real dev Firebase/OAuth config` for developer-app Google sign-in. Production app sign-in is separate and should be tested with `app.fynlo`.
+- Required external fix: in Firebase Console, create/register Android app `app.fynlo.dev`, add the local debug SHA-1/SHA-256, download the fresh `google-services.json`, and replace `app/src/dev/google-services.json`. Do not manually edit the production JSON.
+- Verification: `:app:compileDevDebugKotlin` and `:app:installDevDebug` passed; phone log captured `status=10` from Google sign-in in `app.fynlo.dev`.
+
+## 2026-07-03 - Minimal Book Check Visibility Pass
+
+- Dashboard now interrupts the user with Book Check only for critical problems. Warning/review-level items stay available inside Settings -> Review & safety -> Book check.
+- Settings Trust/Safety was renamed to `Review & safety`, and balance repair copy now says `Fix account totals` with a plain explanation that totals are rebuilt from saved money records.
+- Book Check dialog now hides advanced repair coverage and money-path trails unless internal/developer tools are visible. Normal users see checks, why they matter, and what to do next.
+- Book Check row titles/details are translated for display so internal words like trace, ledger trace, linked-row, and account-id issues appear as money path, saved record, or account review language.
+- Data-integrity touch: UX/readability only. No schema migration and no balance mutation. Verification: `:app:compileProdDebugKotlin` and `:app:testProdDebugUnitTest` passed.
+
+## 2026-07-03 - Account Paise Display Pass
+
+- Account-facing balances now keep paise visible using `CurrencyFormatter.exact`, so account screens can show values such as `Rs15,000.50` instead of rounding away cents/paise.
+- Applied exact money display to dashboard account rows, account transfer account pickers, transaction history before/after balances, and account pickers inside loan, debt, payment, and investment flows.
+- Dashboard hero totals and high-level cards intentionally remain compact/no-decimal to avoid visual noise; exact decimals are used where users reconcile account balances.
+- Added formatter regression tests for exact positive and negative paise values.
+- Data-integrity touch: display-only. No schema migration and no balance mutation. Verification: `:app:compileProdDebugKotlin` and `:app:testProdDebugUnitTest` passed.
+
+## 2026-07-03 - Calculation, Account, and Organising Audit
+
+- Audited core money paths for account mutation, transfers, lending/debt interest, investment funding traces, account statement ordering, and generated journal-entry filtering.
+- Confirmed account transfers remain net-worth neutral: one account is reduced and the other receives the same amount through the transaction balance engine.
+- Confirmed account statements/history use transaction date plus created/updated time ordering, so newer money movements appear first.
+- Fixed summary lending profit so it uses actual interest portions from payment rows instead of summing the full `Loan Repayment` transaction amount, which can include principal.
+- Fixed hand-loan breakdown consistency so hand-loan rows use total paid amount, matching the hand-loan total.
+- Standardized generated journal-entry exclusion in dashboard automation, financial summary, reports, P&L, and monthly summary using the shared journal-entry detector instead of exact tag matching.
+- Data-integrity touch: calculation/read model only. No schema migration and no account balance mutation.
+- Verification: `:app:compileProdDebugKotlin`, focused accounting tests, and full `:app:testProdDebugUnitTest` passed.
+
+## 2026-07-03 - Minimal UI/Accountability Cleanup Gate
+
+- Removed the global app content inset that was leaving extra empty space above Global Search, and kept Global Search from opening the keyboard before the user taps the field.
+- Book Check review rows now use simpler user-facing text and expose a visible `Open related record` action when a safe destination is available.
+- Account-facing money display now preserves paise in statement balance edits, account pickers, investment funding pickers, and reconciliation-style account views.
+- Dark-mode-sensitive reusable cards now use theme-aware outline colors instead of fixed light borders, improving readability without changing the overall design language.
+- Generated journal/payment rows are filtered through the shared journal-entry detector, so proof/reminder counts and report summaries do not depend on one exact tag string.
+- Cleaned remaining UTF-8 mojibake artifacts in source comments and display strings, then rechecked route/query strings and Play Store URLs that were affected by the earlier cleanup pass.
+- Data-integrity touch: display/readability and read-model filtering only. No schema migration and no account balance mutation.
+- Verification: `:app:compileProdDebugKotlin` passed and full `:app:testProdDebugUnitTest` passed.
+
+### 2026-07-03 - Save feedback and confirmation consistency
+- Product rule: normal money entry stays fast. Required fields keep the primary button pale/disabled until valid, with a short hint below the button.
+- Successful adds, edits, payments, waivers, transfers, and account changes now give a short snackbar-style confirmation instead of silently closing.
+- Risky account actions now ask clearly before continuing: close account, delete account, and balance edits that create a correction entry.
+- Confirmations use plain user language: what will happen, why it matters, and the exact action button.
+
+### 2026-07-03 - Loan/debt detail clarity
+- Borrower and debt detail screens now always show the interest rate and interest method next to the account/date details, including no-interest records.
+- Cleaned remaining old delete confirmation wording so risky actions read as plain questions instead of rough placeholder text.
+
+### 2026-07-03 - Minimalism and consistency pass
+- Added shared form action buttons so money entry forms use the same enabled, disabled, and destructive-action treatment.
+- Standardized high-traffic loan, debt, income, expense, repayment, and waiver action text toward short sentence-case labels.
+- Normal payments now use the standard green action style; red remains reserved for destructive or warning actions.
+- Cleaned visible Book Check severity copy from technical severity wording toward user-facing repair language.
+- Scope: UI/UX consistency only. No calculation logic, schema migration, account balance mutation, or sync behavior change.

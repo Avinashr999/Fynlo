@@ -140,7 +140,7 @@ class TransactionAccountIdResolverDataIntegrityTest {
     @Test
     fun `lookup is only called for non-blank names — never invoked with empty string`() {
         var calls = 0
-        val spy: (String) -> String? = { name ->
+        val spy: (String) -> String?= { name ->
             calls++
             check(name.isNotEmpty()) { "Resolver must skip the lookup for blank names." }
             lookup(name)

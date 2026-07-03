@@ -27,6 +27,7 @@ data class Debt(
     val paidInterest: Double = 0.0,      // interest payments only (shows as P&L expense)
     val interestWaived: Double = 0.0,    // non-cash interest forgiven by creditor
     val status: String = "Active", // Active, Cleared, Overdue
+    val stopInterestAfterDue: Boolean = false,
     val collateral: String = "",
     val notes: String = "",
     val projectId: String = "personal",

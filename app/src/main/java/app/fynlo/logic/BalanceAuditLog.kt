@@ -72,7 +72,7 @@ object BalanceAuditLog {
     // diagnostic record from inside the repository / sync layer without
     // breaking that boundary. `FynloApplication.onCreate` calls init()
     // before any DAO is touched.
-    @Volatile private var appCtx: Context? = null
+    @Volatile private var appCtx: Context?= null
     fun init(context: Context) { appCtx = context.applicationContext }
 
     suspend fun record(

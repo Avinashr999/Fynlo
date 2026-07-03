@@ -1,4 +1,4 @@
-﻿package app.fynlo.ui.theme
+package app.fynlo.ui.theme
 
 import android.app.Activity
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -15,7 +15,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.core.view.WindowCompat
 import androidx.compose.ui.unit.dp
 
-// ── Carbon + Emerald — Light ─────────────────────────────────────────────────
+// -- Carbon + Emerald - Light -------------------------------------------------
 private val LightColorScheme = lightColorScheme(
     primary                  = Emerald500,
     onPrimary                = Color.White,
@@ -48,36 +48,38 @@ private val LightColorScheme = lightColorScheme(
     scrim                    = Color.Black
 )
 
-// ── Carbon + Emerald — Dark ──────────────────────────────────────────────────
+// -- Carbon + Emerald - Dark --------------------------------------------------
 private val DarkColorScheme = darkColorScheme(
     primary                  = Emerald400,
     onPrimary                = Carbon950,
-    primaryContainer         = Emerald700,
-    onPrimaryContainer       = Emerald100,
-    secondary                = Emerald400,
+    primaryContainer         = Color(0xFF0B6B50),
+    onPrimaryContainer       = Color(0xFFE4FFF4),
+    secondary                = Color(0xFF7ADCB9),
     onSecondary              = Carbon950,
-    secondaryContainer       = Emerald700,
-    onSecondaryContainer     = Emerald100,
-    tertiary                 = SemanticBlue,
-    onTertiary               = Color.White,
-    background               = DarkBackground,
-    onBackground             = Carbon50,
-    surface                  = DarkSurface,
-    onSurface                = Carbon50,
-    surfaceVariant           = Carbon800,
-    onSurfaceVariant         = Color(0xFFD4D4D8),
-    surfaceContainer         = Carbon800,
-    surfaceContainerHigh     = Carbon700,
-    surfaceContainerHighest  = Carbon600,
-    surfaceContainerLow      = Color(0xFF1F1F22),
-    surfaceContainerLowest   = Carbon900,
-    outline                  = Carbon500,
-    outlineVariant           = Carbon400,
-    error                    = SemanticRed,
-    onError                  = Color.White,
-    inverseSurface           = Carbon50,
+    secondaryContainer       = Color(0xFF174F3E),
+    onSecondaryContainer     = Color(0xFFE4FFF4),
+    tertiary                 = Color(0xFF9FCBFF),
+    onTertiary               = Carbon950,
+    background               = Carbon950,
+    onBackground             = Color(0xFFF3FAF6),
+    surface                  = Color(0xFF101C17),
+    onSurface                = Color(0xFFF3FAF6),
+    surfaceVariant           = Color(0xFF20332B),
+    onSurfaceVariant         = Color(0xFFE2E8E4),
+    surfaceContainer         = Color(0xFF182922),
+    surfaceContainerHigh     = Color(0xFF22372F),
+    surfaceContainerHighest  = Color(0xFF2C453B),
+    surfaceContainerLow      = Color(0xFF13211B),
+    surfaceContainerLowest   = Color(0xFF0B1712),
+    outline                  = Color(0xFF8EA098),
+    outlineVariant           = Color(0xFF53655D),
+    error                    = Color(0xFFFFB4AB),
+    onError                  = Color(0xFF690005),
+    errorContainer           = Color(0xFF4A1719),
+    onErrorContainer         = Color(0xFFFFDAD6),
+    inverseSurface           = Color(0xFFE5ECE7),
     inverseOnSurface         = Carbon900,
-    inversePrimary           = Emerald500,
+    inversePrimary           = Emerald600,
     scrim                    = Color.Black
 )
 

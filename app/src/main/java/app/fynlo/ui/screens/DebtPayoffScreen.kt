@@ -18,6 +18,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalLocale
 import app.fynlo.FinanceViewModel
 import app.fynlo.data.model.Debt
+import app.fynlo.data.model.DebtPayment
 import app.fynlo.logic.CurrencyFormatter
 import app.fynlo.logic.DebtPayoffPlanner
 import app.fynlo.logic.InterestEngine
@@ -28,12 +29,14 @@ import app.fynlo.ui.theme.*
 @Composable
 fun DebtPayoffScreen(viewModel: FinanceViewModel) {
     val debts  by viewModel.debts.collectAsState()
+    val debtPayments by viewModel.debtPayments.collectAsState()
     val isPrivacy by viewModel.isPrivacyMode.collectAsState()
     val currentProject by viewModel.currentProject.collectAsState()
     val currencyCode = currentProject?.currency ?: "INR"
     val locale = LocalLocale.current.platformLocale
 
     val activeDebts = debts.filter { it.status != "Cleared" && it.amount > it.paid }
+    val paymentsByDebt = remember(debtPayments) { debtPayments.groupBy { it.debtId } }
 
     if (activeDebts.isEmpty()) {
         Box(Modifier.fillMaxSize(), Alignment.Center) {
@@ -45,19 +48,15 @@ fun DebtPayoffScreen(viewModel: FinanceViewModel) {
         return
     }
 
-    val totalOwed = remember(activeDebts) {
-        activeDebts.sumOf { d ->
-            val interest = InterestEngine.calcIntAccrued(d.amount, d.rate, d.date, d.intType, d.due, totalPaid = d.paidPrincipal)
-            InterestEngine.calcOutstanding(d.amount, interest, d.paidPrincipal, d.paidInterest, d.interestWaived)
-        }
+    val totalOwed = remember(activeDebts, paymentsByDebt) {
+        activeDebts.sumOf { d -> app.fynlo.logic.DebtLiabilityCalculator.outstanding(d, paymentsByDebt[d.id].orEmpty()).total }
     }
 
     // 3.2.62 — planner state moves out so it survives the LazyColumn
     // rewrite (key prevents stuck inputs when the debts list churns).
-    val planInputs = remember(activeDebts) {
+    val planInputs = remember(activeDebts, paymentsByDebt) {
         activeDebts.map { d ->
-            val interest = InterestEngine.calcIntAccrued(d.amount, d.rate, d.date, d.intType, d.due, totalPaid = d.paidPrincipal)
-            val outstanding = InterestEngine.calcOutstanding(d.amount, interest, d.paidPrincipal, d.paidInterest, d.interestWaived)
+            val outstanding = app.fynlo.logic.DebtLiabilityCalculator.outstanding(d, paymentsByDebt[d.id].orEmpty()).total
             DebtPayoffPlanner.DebtInput(
                 id = d.id, name = d.name,
                 outstandingBalance = outstanding,
@@ -175,7 +174,7 @@ fun DebtPayoffScreen(viewModel: FinanceViewModel) {
         }
 
         itemsIndexed(activeDebts, key = { _, d -> d.id }) { index, debt ->
-            DebtPayoffCard(debt, currencyCode, locale, isPrivacy)
+            DebtPayoffCard(debt, paymentsByDebt[debt.id].orEmpty(), currencyCode, locale, isPrivacy)
             if (index < activeDebts.lastIndex) {
                 HorizontalDivider(thickness = 0.5.dp,
                     color = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f))
@@ -308,11 +307,16 @@ private fun PayoffStat(label: String, value: String, color: Color, modifier: Mod
 }
 
 @Composable
-private fun DebtPayoffCard(debt: Debt, currencyCode: String, locale: Locale, isPrivacy: Boolean = false) {
-    val interest    = InterestEngine.calcIntAccrued(debt.amount, debt.rate, debt.date, debt.intType, debt.due, totalPaid = debt.paidPrincipal)
-    val outstanding = InterestEngine.calcOutstanding(
-        debt.amount, interest, debt.paidPrincipal, debt.paidInterest, debt.interestWaived
-    )
+private fun DebtPayoffCard(
+    debt: Debt,
+    payments: List<DebtPayment>,
+    currencyCode: String,
+    locale: Locale,
+    isPrivacy: Boolean = false,
+) {
+    val liability = app.fynlo.logic.DebtLiabilityCalculator.outstanding(debt, payments)
+    val interest = liability.interest
+    val outstanding = liability.total
     val monthlyRate = debt.rate / 100.0 / 12.0
 
     val today = java.time.LocalDate.now()

@@ -58,6 +58,7 @@ fun DebtScreen(
     LaunchedEffect(Unit) { app.fynlo.data.Analytics.screenView("Debts") }
         val haptic = LocalHapticFeedback.current
 val debts by viewModel.debts.collectAsState()
+    val debtPayments by viewModel.debtPayments.collectAsState()
     val transactions by viewModel.transactions.collectAsState()
     val accounts by viewModel.accounts.collectAsState()
     val isPrivacy by viewModel.isPrivacyMode.collectAsState()
@@ -71,6 +72,7 @@ val debts by viewModel.debts.collectAsState()
     var statusFilter by remember { mutableStateOf("Active") }
     val todayKey = remember { java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd")) }
     val accountIdToName = remember(accounts) { accounts.associate { it.id to it.name } }
+    val paymentsByDebt = remember(debtPayments) { debtPayments.groupBy { it.debtId } }
     val debtReceivedIntoById = remember(transactions, accountIdToName) {
         transactions
             .filter { it.ref.isNotBlank() && it.category.equals("Debt Received", ignoreCase = true) }
@@ -266,6 +268,7 @@ val debts by viewModel.debts.collectAsState()
             itemsIndexed(filteredDebts, key = { _, d -> d.id }) { index, debt ->
                     DebtCard(
                         debt = debt,
+                        payments = paymentsByDebt[debt.id].orEmpty(),
                         receivedIntoAccount = debtReceivedIntoById[debt.id].orEmpty(),
                         currencyCode = currencyCode,
                         isPrivacy = isPrivacy,
@@ -293,6 +296,7 @@ val debts by viewModel.debts.collectAsState()
 @Composable
 fun DebtCard(
     debt: Debt,
+    payments: List<DebtPayment> = emptyList(),
     receivedIntoAccount: String = "",
     currencyCode: String = "INR",
     isPrivacy: Boolean = false,
@@ -302,14 +306,8 @@ fun DebtCard(
     val today  = remember { java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd")) }
     val isOverdue = debt.due.isNotBlank() && debt.due < today && debt.paid < debt.amount
 
-    val interest = InterestEngine.calcIntAccrued(
-        amount = debt.amount, rate = debt.rate,
-        loanDate = debt.date, intType = debt.intType,
-        dueDate = debt.due, totalPaid = debt.paidPrincipal
-    )
-    val outstanding = InterestEngine.calcOutstanding(
-        debt.amount, interest, debt.paidPrincipal, debt.paidInterest, debt.interestWaived
-    )
+    val liability = app.fynlo.logic.DebtLiabilityCalculator.outstanding(debt, payments)
+    val outstanding = liability.total
 
     Row(
         modifier = Modifier

@@ -15,12 +15,14 @@ import app.fynlo.data.model.Transaction
 import app.fynlo.data.remote.FirestoreRepository
 import app.fynlo.data.remote.SyncManager
 import app.fynlo.logic.InterestEngine
+import app.fynlo.logic.InterestPolicy
 import com.google.firebase.FirebaseApp
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -539,6 +541,143 @@ class MoneyActionIdempotencyDataIntegrityTest {
     }
 
     @Test
+    fun `editing borrower date rebuilds paid interest window and accrues from corrected loan date`() = runBlocking {
+        db.dao().insertAccount(Account(id = "acc-family", name = "Family Cash", type = "Cash", balance = 2_000_000.0))
+        val wrongDateLoan = Borrower(
+            id = "loan-samanvi-main",
+            name = "Samanvi Travels",
+            amount = 1_000_000.0,
+            rate = 24.0,
+            date = "2026-07-01",
+            intType = "Simple Interest",
+        )
+        repository.insertBorrowerWithSource(wrongDateLoan, "Family Cash", "personal")
+        db.dao().insertPayment(
+            Payment(
+                id = "payment-before-wrong-date",
+                loanId = wrongDateLoan.id,
+                name = wrongDateLoan.name,
+                amount = 10_000.0,
+                principal = 0.0,
+                interest = 10_000.0,
+                type = "Interest Only",
+                date = "2026-06-30",
+            )
+        )
+        db.dao().rebuildBorrowerPaidFromPayments()
+        assertEquals(10_000.0, db.dao().getBorrowerById(wrongDateLoan.id)!!.paidInterest, 0.0001)
+
+        repository.updateBorrowerWithSource(
+            wrongDateLoan.copy(date = "2026-02-01", paid = 999_999.0, paidInterest = 999_999.0),
+            "Family Cash",
+        )
+
+        val corrected = db.dao().getBorrowerById(wrongDateLoan.id)!!
+        assertEquals("2026-02-01", corrected.date)
+        assertEquals(1_000_000.0, corrected.amount, 0.0001)
+        assertEquals(10_000.0, corrected.paidInterest, 0.0001)
+        val rows = db.dao().getPaymentsForLoanOnce(wrongDateLoan.id)
+        assertEquals(1, rows.size)
+        val breakdown = InterestPolicy.borrowerBreakdown(corrected, rows, asOf = "2026-07-01")
+        assertEquals(10_000.0, breakdown.unclearInterest, 0.0001)
+        assertEquals(breakdown.accrued, breakdown.due, 0.0001)
+        assertEquals(
+            InterestEngine.calcIntAccrued(1_000_000.0, 24.0, "2026-02-01", "Simple Interest", asOf = "2026-07-01"),
+            InterestPolicy.accruedForBorrower(corrected, asOf = "2026-07-01"),
+            0.0001,
+        )
+    }
+
+    @Test
+    fun `editing second borrower date rebuilds paid interest window from corrected April date`() = runBlocking {
+        db.dao().insertAccount(Account(id = "acc-family", name = "Family Cash", type = "Cash", balance = 500_000.0))
+        val wrongDateLoan = Borrower(
+            id = "loan-samanvi-second",
+            name = "Samanvi Travels",
+            amount = 125_500.0,
+            rate = 24.0,
+            date = "2026-07-01",
+            intType = "Simple Interest",
+        )
+        repository.insertBorrowerWithSource(wrongDateLoan, "Family Cash", "personal")
+        db.dao().insertPayment(
+            Payment(
+                id = "payment-before-wrong-date-second",
+                loanId = wrongDateLoan.id,
+                name = wrongDateLoan.name,
+                amount = 1_000.0,
+                principal = 0.0,
+                interest = 1_000.0,
+                type = "Interest Only",
+                date = "2026-06-30",
+            )
+        )
+        db.dao().rebuildBorrowerPaidFromPayments()
+
+        repository.updateBorrowerWithSource(
+            wrongDateLoan.copy(date = "2026-04-22", paid = 50_000.0, paidInterest = 50_000.0),
+            "Family Cash",
+        )
+
+        val corrected = db.dao().getBorrowerById(wrongDateLoan.id)!!
+        assertEquals("2026-04-22", corrected.date)
+        assertEquals(125_500.0, corrected.amount, 0.0001)
+        assertEquals(1_000.0, corrected.paidInterest, 0.0001)
+        val rows = db.dao().getPaymentsForLoanOnce(wrongDateLoan.id)
+        assertEquals(1, rows.size)
+        val breakdown = InterestPolicy.borrowerBreakdown(corrected, rows, asOf = "2026-07-01")
+        assertEquals(1_000.0, breakdown.unclearInterest, 0.0001)
+        assertEquals(breakdown.accrued, breakdown.due, 0.0001)
+        assertEquals(
+            InterestEngine.calcIntAccrued(125_500.0, 24.0, "2026-04-22", "Simple Interest", asOf = "2026-07-01"),
+            InterestPolicy.accruedForBorrower(corrected, asOf = "2026-07-01"),
+            0.0001,
+        )
+    }
+
+    @Test
+    fun `editing borrower date marks stale advance interest for review`() = runBlocking {
+        db.dao().insertAccount(Account(id = "acc-family", name = "Family Cash", type = "Cash", balance = 50_000.0))
+        val loan = Borrower(
+            id = "loan-lakshmi",
+            name = "Lakshmi Devi",
+            amount = 15_000.0,
+            rate = 12.0,
+            date = "2026-06-01",
+            intType = "Simple Interest",
+        )
+        repository.insertBorrowerWithSource(loan, "Family Cash", "personal")
+        db.dao().insertPayment(
+            Payment(
+                id = "lakshmi-interest",
+                loanId = loan.id,
+                name = loan.name,
+                amount = 64.0,
+                principal = 0.0,
+                interest = 64.0,
+                type = "Interest Only",
+                date = "2026-06-20",
+                interestAllocationType = InterestPolicy.ADVANCE_INTEREST,
+                interestPeriodStartDate = "2026-06-01",
+            )
+        )
+        db.dao().rebuildBorrowerPaidFromPayments()
+
+        repository.updateBorrowerWithSource(loan.copy(date = "2026-07-01"), "Family Cash")
+
+        val corrected = db.dao().getBorrowerById(loan.id)!!
+        val row = db.dao().getPaymentsForLoanOnce(loan.id).single()
+        val breakdown = InterestPolicy.borrowerBreakdown(corrected, listOf(row), asOf = "2026-07-03")
+
+        assertEquals(InterestPolicy.UNKNOWN_REVIEW, row.interestAllocationType)
+        assertEquals(0.0, breakdown.paid, 0.0001)
+        assertEquals(0.0, breakdown.paidAhead, 0.0001)
+        assertEquals(64.0, breakdown.unclearInterest, 0.0001)
+        assertTrue("Fresh interest must still accrue from the edited loan date", breakdown.accrued > 0.0)
+        assertEquals(breakdown.accrued, breakdown.due, 0.0001)
+    }
+
+    @Test
     fun `editing debt destination reverses old account and credits corrected account`() = runBlocking {
         db.dao().insertAccount(Account(id = "acc-family", name = "Family Cash", type = "Cash", balance = 1000.0))
         db.dao().insertAccount(Account(id = "acc-business", name = "Business Investment", type = "Bank", balance = 2000.0))
@@ -646,7 +785,7 @@ class MoneyActionIdempotencyDataIntegrityTest {
     }
 
     @Test
-    fun `full interest only loan payment rolls interest start to next day`() = runBlocking {
+    fun `full interest only loan payment keeps accrual start and records paid ahead separately`() = runBlocking {
         db.dao().insertAccount(Account(id = "acc-1", name = "Personal Cash", type = "Cash", balance = 1000.0))
         db.dao().insertBorrower(Borrower(id = "loan-1", name = "Ravi", amount = 100000.0, rate = 12.0, date = "2026-01-01"))
         val interestDue = InterestEngine.calcIntAccrued(100000.0, 12.0, "2026-01-01", "Simple Interest", asOf = "2026-02-01")
@@ -658,16 +797,23 @@ class MoneyActionIdempotencyDataIntegrityTest {
             type = "Interest Only",
             amount = interestDue,
             interest = interestDue,
+            interestAllocationType = InterestPolicy.CURRENT_PERIOD_INTEREST,
+            interestPeriodStartDate = "2026-01-01",
+            interestPeriodEndDate = "2026-02-01",
         )
 
         repository.insertPaymentWithDest(payment, "Personal Cash", "personal")
 
         val updated = db.dao().getBorrowerById("loan-1")!!
-        assertEquals("2026-02-02", updated.date)
-        assertEquals(0.0, updated.paidInterest, 0.0001)
+        assertEquals("2026-01-01", updated.date)
+        assertEquals(interestDue, updated.paidInterest, 0.0001)
         assertEquals(0.0, updated.paidPrincipal, 0.0001)
         assertEquals(1000.0 + interestDue, db.dao().getAccountById("acc-1")!!.balance, 0.0001)
         assertEquals(1, db.dao().getPaymentsForLoanOnce("loan-1").size)
+        val rows = db.dao().getPaymentsForLoanOnce("loan-1")
+        val later = app.fynlo.logic.InterestPolicy.borrowerBreakdown(updated, rows, asOf = "2026-03-01")
+        assertTrue(later.accrued > interestDue)
+        assertTrue(later.due > 0.0)
     }
 
     @Test
@@ -684,6 +830,9 @@ class MoneyActionIdempotencyDataIntegrityTest {
             type = "Interest Only",
             amount = partial,
             interest = partial,
+            interestAllocationType = InterestPolicy.CURRENT_PERIOD_INTEREST,
+            interestPeriodStartDate = "2026-01-01",
+            interestPeriodEndDate = "2026-02-01",
         )
 
         repository.insertPaymentWithDest(payment, "Personal Cash", "personal")
@@ -715,7 +864,7 @@ class MoneyActionIdempotencyDataIntegrityTest {
     }
 
     @Test
-    fun `full interest only debt payment rolls interest start to next day`() = runBlocking {
+    fun `full interest only debt payment keeps accrual start and records paid ahead separately`() = runBlocking {
         db.dao().insertAccount(Account(id = "acc-1", name = "Personal Cash", type = "Cash", balance = 5000.0))
         db.dao().insertDebt(Debt(id = "debt-1", name = "Lender", amount = 100000.0, rate = 12.0, date = "2026-01-01"))
         val interestDue = InterestEngine.calcIntAccrued(100000.0, 12.0, "2026-01-01", "Simple Interest", asOf = "2026-02-01")
@@ -727,16 +876,23 @@ class MoneyActionIdempotencyDataIntegrityTest {
             type = "Interest Only",
             amount = interestDue,
             interest = interestDue,
+            interestAllocationType = InterestPolicy.CURRENT_PERIOD_INTEREST,
+            interestPeriodStartDate = "2026-01-01",
+            interestPeriodEndDate = "2026-02-01",
         )
 
         repository.insertDebtPaymentWithSource(payment, "Personal Cash", "personal")
 
         val updated = db.dao().getDebtById("debt-1")!!
-        assertEquals("2026-02-02", updated.date)
-        assertEquals(0.0, updated.paidInterest, 0.0001)
+        assertEquals("2026-01-01", updated.date)
+        assertEquals(interestDue, updated.paidInterest, 0.0001)
         assertEquals(0.0, updated.paidPrincipal, 0.0001)
         assertEquals(5000.0 - interestDue, db.dao().getAccountById("acc-1")!!.balance, 0.0001)
         assertEquals(1, db.dao().getDebtPaymentsForDebtOnce("debt-1").size)
+        val rows = db.dao().getDebtPaymentsForDebtOnce("debt-1")
+        val later = app.fynlo.logic.InterestPolicy.debtBreakdown(updated, rows, asOf = "2026-03-01")
+        assertTrue(later.accrued > interestDue)
+        assertTrue(later.due > 0.0)
     }
 
     @Test

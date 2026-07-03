@@ -1,4 +1,4 @@
-﻿package app.fynlo.ui.screens
+package app.fynlo.ui.screens
 
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.clickable
@@ -63,6 +63,7 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
     LaunchedEffect(Unit) { app.fynlo.data.Analytics.screenView("Lending") }
     val haptic        = LocalHapticFeedback.current
     val borrowers     by viewModel.borrowers.collectAsState()
+    val payments      by viewModel.payments.collectAsState()
     val summary       by viewModel.financialSummary.collectAsState()
     val isPrivacy     by viewModel.isPrivacyMode.collectAsState()
     val currentProject by viewModel.currentProject.collectAsState()
@@ -72,14 +73,14 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
     var searchQuery by remember { mutableStateOf("") }
     var showAddDialog by remember { mutableStateOf(false) }
 
-    // C12 Stage 3 (3.2.28) — Collect / Mark-as-Defaulted / Write-Off dialogs
-    // and their state vars are gone from this screen per audit §C12 #6/#7;
+    // C12 Stage 3 (3.2.28) - Collect / Mark-as-Defaulted / Write-Off dialogs
+    // and their state vars are gone from this screen per audit -C12 #6/#7;
     // they're now hosted in CustomerDetailScreen as proper buttons. Only the
-    // Add flow (FAB → AddLendingDialog) remains on the list screen.
+    // Add flow (FAB - AddLendingDialog) remains on the list screen.
 
-    // C12 Stage 2 (3.2.27) — replaced 3 filter UIs (Interest/Hand TabRow + sort
+    // C12 Stage 2 (3.2.27) - replaced 3 filter UIs (Interest/Hand TabRow + sort
     // dropdown + collapsible Settled section) with a single Active/Overdue/Closed
-    // segmented control per audit fix #3. Default is "Active" — the most
+    // segmented control per audit fix #3. Default is "Active" - the most
     // common state the user wants to see. Sort dropdown gone entirely
     // (audit fix #4); processed list uses a fixed sort: overdue-first then
     // by amount descending (the same default the dropdown defaulted to).
@@ -134,7 +135,7 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
         )
     }
 
-    // C12 Stage 2 — back-handler for the Interest/Hand TabRow is gone with
+    // C12 Stage 2 - back-handler for the Interest/Hand TabRow is gone with
     // the TabRow itself. The Active/Overdue/Closed segmented filter doesn't
     // need a back-stack since "Active" is the default and the user can tap
     // back to it any time.
@@ -148,10 +149,10 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
             verticalArrangement = Arrangement.spacedBy(10.dp),
             contentPadding = PaddingValues(bottom = FabBottomPadding)
         ) {
-            // C12 Stage 2 — top toolbar row: EMI calculator + Calendar shortcut.
-            // The stats line ("X interest · Y hand · Z settled") is gone — the
+            // C12 Stage 2 - top toolbar row: EMI calculator + Calendar shortcut.
+            // The stats line ("X interest - Y hand - Z settled") is gone - the
             // segmented filter below shows per-status counts, which is more
-            // useful UX. The sort dropdown is gone (audit #4) — processed list
+            // useful UX. The sort dropdown is gone (audit #4) - processed list
             // uses a fixed overdue-first / amount-desc sort.
             item {
                 Row(
@@ -162,13 +163,13 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         PremiumStatCard(
                             label = "Yield",
-                            value = if (isPrivacy) "••••" else "${String.format(locale, "%.1f", summary.lendingYield)}%",
+                            value = if (isPrivacy) "----" else "${String.format(locale, "%.1f", summary.lendingYield)}%",
                             iconTint = Emerald500
                         )
                         if (!summary.lendingXirr.isNaN()) {
                             PremiumStatCard(
                                 label = "XIRR",
-                                value = if (isPrivacy) "••••" else app.fynlo.logic.XirrCalculator.format(summary.lendingXirr),
+                                value = if (isPrivacy) "----" else app.fynlo.logic.XirrCalculator.format(summary.lendingXirr),
                                 iconTint = Emerald500
                             )
                         }
@@ -205,8 +206,8 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
                 )
             }
 
-            // C12 Stage 2 — Active/Overdue/Closed segmented filter. Replaces the
-            // Interest/Hand TabRow (which sorted by loan-type, not status — less
+            // C12 Stage 2 - Active/Overdue/Closed segmented filter. Replaces the
+            // Interest/Hand TabRow (which sorted by loan-type, not status - less
             // useful for daily UX), the sort dropdown (audit #4), and the
             // collapsible Settled section (now exposed via "Closed" filter).
             item {
@@ -252,6 +253,7 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
                         color = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f))
                     LendingCard(
                         borrower     = borrower,
+                        payments     = payments.filter { it.loanId == borrower.id },
                         currencyCode = currencyCode,
                         isOverdue    = borrower.due.isNotBlank() && borrower.due < today && borrower.paid < borrower.amount,
                         isPrivacy    = isPrivacy,
@@ -267,12 +269,13 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
 @Composable
 fun LendingCard(
     borrower: app.fynlo.data.model.Borrower,
+    payments: List<app.fynlo.data.model.Payment> = emptyList(),
     currencyCode: String = "INR",
     isOverdue: Boolean = false,
     isPrivacy: Boolean = false,
     onClick: () -> Unit,
 ) {
-    // C12 Stage 3 (3.2.28) — rebuilt to the audit §C12 #6 spec: icon + name +
+    // C12 Stage 3 (3.2.28) - rebuilt to the audit -C12 #6 spec: icon + name +
     // amount + chevron. One row tap navigates to CustomerDetailScreen, which
     // owns every per-loan action as a proper labelled button (Collect / Send
     // Reminder / Mark NPA / Write Off / Edit / Delete). The previous version
@@ -280,14 +283,12 @@ fun LendingCard(
     // builder; all of that lifted to the detail screen so the list stays
     // scannable. Matches DebtCard visually per audit #5.
     val locale = LocalLocale.current.platformLocale
-    val interest = app.fynlo.logic.InterestEngine.calcIntAccrued(
-        amount = borrower.amount, rate = borrower.rate,
-        loanDate = borrower.date, intType = borrower.intType,
-        dueDate = borrower.due, totalPaid = borrower.paidPrincipal
-    )
-    val outstanding = app.fynlo.logic.InterestEngine.calcOutstanding(
-        borrower.amount, interest, borrower.paidPrincipal, borrower.paidInterest, borrower.interestWaived
-    )
+    val interestDue = if (payments.isEmpty()) {
+        app.fynlo.logic.InterestPolicy.borrowerInterestOutstanding(borrower)
+    } else {
+        app.fynlo.logic.InterestPolicy.borrowerBreakdown(borrower, payments).due
+    }
+    val outstanding = (borrower.amount - borrower.paidPrincipal).coerceAtLeast(0.0) + interestDue
 
     Row(
         modifier = Modifier
@@ -358,11 +359,11 @@ fun LendingCard(
             }
         }
         Column(horizontalAlignment = Alignment.End) {
-            // C16 (3.2.41) — Outstanding on the Lent side is a receivable
+            // C16 (3.2.41) - Outstanding on the Lent side is a receivable
             // (asset), not a debt to the user. Colour: green for normal
             // (asset), red for overdue (urgency). Pre-C16 normal state was
-            // neutral onSurface — audit said it should signal asset-ness.
-            val outstandingText = if (isPrivacy) "••••" else CurrencyFormatter.detail(outstanding, currencyCode, locale)
+            // neutral onSurface - audit said it should signal asset-ness.
+            val outstandingText = if (isPrivacy) "----" else CurrencyFormatter.detail(outstanding, currencyCode, locale)
             Text(
                 text = outstandingText,
                 style = MaterialTheme.typography.titleMedium.copy(
@@ -393,7 +394,7 @@ fun EmptyLendingState(onAdd: () -> Unit = {}) {
         actionLabel = "Add First Loan"
     )
 }
-// ── EMI Calculator Dialog ─────────────────────────────────────────────────────
+// -- EMI Calculator Dialog -----------------------------------------------------
 
 @Composable
 fun EmiCalculatorDialog(currencyCode: String, onDismiss: () -> Unit) {
@@ -424,7 +425,7 @@ fun EmiCalculatorDialog(currencyCode: String, onDismiss: () -> Unit) {
         (p + totalInterest) / n
     }
 
-    // Compound interest — only applies after due date (matches InterestEngine overdue rule)
+    // Compound interest - only applies after due date (matches InterestEngine overdue rule)
     val isOverdue = remember(dueDate) {
         if (dueDate.isBlank()) false
         else runCatching {
@@ -449,7 +450,7 @@ fun EmiCalculatorDialog(currencyCode: String, onDismiss: () -> Unit) {
     val total    = emi?.let { it * (tenure.toIntOrNull() ?: 0) }
     val interest = total?.let { it - (principal.toDoubleOrNull() ?: 0.0) }
 
-    // C22 dialog universalization (3.2.55) — migrated to canonical FormDialog.
+    // C22 dialog universalization (3.2.55) - migrated to canonical FormDialog.
     app.fynlo.ui.components.FormDialog(
         title = "EMI Calculator",
         onDismiss = onDismiss,

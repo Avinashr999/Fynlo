@@ -14,8 +14,10 @@ import app.fynlo.data.model.*
 import app.fynlo.data.model.FlowResult
 import app.fynlo.logic.XirrCalculator
 import app.fynlo.logic.CagrCalculator
+import app.fynlo.logic.InterestPolicy
 import app.fynlo.logic.LedgerAccountability
 import app.fynlo.logic.LedgerAccountabilityReport
+import app.fynlo.logic.isGeneratedJournalEntry
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
@@ -343,13 +345,13 @@ class FinanceViewModel @Inject constructor(
     fun updateSearchQuery(query: String) { _searchQuery.value = query }
 
     val expenseAnalytics: StateFlow<Map<String, Double>> = transactions.map { trans ->
-        trans.filter { it.type.lowercase() == "expense" }
+        trans.filter { it.type.lowercase() == "expense" && !it.isGeneratedJournalEntry() }
             .groupBy { it.category }
             .mapValues { entry -> entry.value.sumOf { it.amount } }
     }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyMap())
 
     val financialSummary: StateFlow<FinancialSummary> = combine(
-        transactions, accounts, investments, borrowers, debts, valuations
+        transactions, accounts, investments, borrowers, debts, valuations, payments, debtPayments
     ) { args: Array<List<*>> ->
         val trans = args[0].requireTypedList<Transaction>()
         val accts = args[1].requireTypedList<Account>()
@@ -357,6 +359,10 @@ class FinanceViewModel @Inject constructor(
         val brws  = args[3].requireTypedList<Borrower>()
         val dbts  = args[4].requireTypedList<Debt>()
         val vals  = args[5].requireTypedList<InvestmentValuation>()
+        val loanPayments = args[6].requireTypedList<Payment>()
+        val debtPaymentRows = args[7].requireTypedList<DebtPayment>()
+        val paymentsByLoan = loanPayments.groupBy { it.loanId }
+        val paymentsByDebt = debtPaymentRows.groupBy { it.debtId }
 
         val totalCashVal     = accts.sumOf { it.balance }
         val totalInvestVal   = invs.sumOf { it.currentVal }
@@ -365,27 +371,14 @@ class FinanceViewModel @Inject constructor(
         val activeBrws = brws.filter { it.status != "WrittenOff" }
 
         val totalReceivables = activeBrws.sumOf { b ->
-            val accrued = if (b.status == "Defaulted" && b.frozenInterest > 0)
-                b.frozenInterest  // frozen at default date — no further accrual
-            else
-                app.fynlo.logic.InterestEngine.calcIntAccrued(
-                    b.amount, b.rate, b.date, b.intType, b.due,
-                    totalPaid = b.paidPrincipal  // only principal reduces interest base
-                )
-            app.fynlo.logic.InterestEngine.calcOutstanding(
-                b.amount, accrued, b.paidPrincipal, b.paidInterest, b.interestWaived
-            )
+            if (b.rate <= 0) (b.amount - b.paid).coerceAtLeast(0.0)
+            else (b.amount - b.paidPrincipal).coerceAtLeast(0.0) +
+                InterestPolicy.borrowerBreakdown(b, paymentsByLoan[b.id].orEmpty()).due
         }
 
         val totalInterestLoans = activeBrws.filter { it.rate > 0 }.sumOf { b ->
-            val accrued = if (b.status == "Defaulted" && b.frozenInterest > 0) b.frozenInterest
-            else app.fynlo.logic.InterestEngine.calcIntAccrued(
-                b.amount, b.rate, b.date, b.intType, b.due, totalPaid = b.paidPrincipal
-            )
-            // Derive paidInterest from (paid - paidPrincipal) — more reliable than paidInterest field
-            // which can get out of sync when rebuild queries run
-            val derivedPaidInterest = (b.paid - b.paidPrincipal).coerceAtLeast(0.0)
-            app.fynlo.logic.InterestEngine.calcOutstanding(b.amount, accrued, b.paidPrincipal, derivedPaidInterest, b.interestWaived)
+            (b.amount - b.paidPrincipal).coerceAtLeast(0.0) +
+                InterestPolicy.borrowerBreakdown(b, paymentsByLoan[b.id].orEmpty()).due
         }
         // Hand loans: use 'paid' (mirrors isActive check for hand loans)
         // Interest loans are not counted here (they have a separate totalInterestLoans)
@@ -397,43 +390,44 @@ class FinanceViewModel @Inject constructor(
             .mapValues { it.value.sumOf { inv -> inv.currentVal } }
 
         val interestBrwMap = activeBrws.filter { it.rate > 0 }.associate { b ->
-            val accrued = if (b.status == "Defaulted" && b.frozenInterest > 0) b.frozenInterest
-            else app.fynlo.logic.InterestEngine.calcIntAccrued(
-                b.amount, b.rate, b.date, b.intType, b.due, totalPaid = b.paidPrincipal
-            )
-            b.name to app.fynlo.logic.InterestEngine.calcOutstanding(b.amount, accrued, b.paidPrincipal, b.paidInterest, b.interestWaived)
+            b.name to ((b.amount - b.paidPrincipal).coerceAtLeast(0.0) +
+                InterestPolicy.borrowerBreakdown(b, paymentsByLoan[b.id].orEmpty()).due)
         }
 
         val handBrwMap = activeBrws.filter { it.rate <= 0 }.associate { b ->
-            b.name to (b.amount - b.paidPrincipal).coerceAtLeast(0.0)
+            b.name to (b.amount - b.paid).coerceAtLeast(0.0)
         }
 
         // Use totalInterestLoans + totalHandLoans (both correctly use paid/paidPrincipal per type)
-        // totalReceivables uses paidPrincipal for all loans which is wrong for hand loans
+        // totalReceivables remains available for reports; dashboard assets use split interest/hand-loan totals below.
         val totalAssets       = totalCashVal + totalInvestVal + totalInterestLoans + totalHandLoans
-        val debtLiabilities = dbts.map { app.fynlo.logic.DebtLiabilityCalculator.outstanding(it) }
+        val debtLiabilities = dbts.map { debt ->
+            val principal = (debt.amount - debt.paidPrincipal).coerceAtLeast(0.0)
+            val interest = InterestPolicy.debtBreakdown(debt, paymentsByDebt[debt.id].orEmpty()).due
+            app.fynlo.logic.DebtLiabilityCalculator.Liability(principal = principal, interest = interest)
+        }
         val totalDebtPrincipal = debtLiabilities.sumOf { it.principal }
         val totalDebtInterest  = debtLiabilities.sumOf { it.interest }
         // Exclude journal_only entries (Bad Debt write-offs, Interest Expense P&L entries)
-        // from cash flow totals — they are accounting entries, not actual cash movements
-        val cashTrans     = trans.filter { it.tags != "journal_only" }
+        // from cash flow totals - they are accounting entries, not actual cash movements
+        val cashTrans     = trans.filterNot { it.isGeneratedJournalEntry() }
         val totalExpenses = cashTrans.filter { it.type.lowercase() == "expense" }.sumOf { it.amount }
         val totalIncome   = cashTrans.filter { it.type.lowercase() == "income"  }.sumOf { it.amount }
         // P&L includes journal entries (bad debts + interest expense are real economic costs)
         val totalBadDebtWriteOffs = trans.filter { it.category == "Bad Debt" }.sumOf { it.amount }
         val totalInterestExpense  = trans.filter { it.category == "Interest Expense" }.sumOf { it.amount }
-        val totalInterestIncome   = trans.filter { it.category == "Loan Repayment" }.sumOf { it.amount }
+        val totalInterestIncome   = loanPayments.sumOf { InterestPolicy.paymentInterestAmount(it) }
         val invGrowth      = invs.sumOf { it.currentVal - (it.invested - it.withdrawn) }
 
-        // C14 #5 (3.2.82) — Yield on ACTIVE interest-bearing loans only.
+        // C14 #5 (3.2.82) - Yield on ACTIVE interest-bearing loans only.
         val interestBearing = activeBrws.filter { it.rate > 0 }
         val avgYield       = if (interestBearing.isNotEmpty()) interestBearing.map { it.rate }.average() else 0.0
 
         val net            = totalAssets - (totalDebtPrincipal + totalDebtInterest)
         val accountsMap    = accts.associate { it.name to it.balance }
 
-        // ── Performance Analytics (XIRR/CAGR) ──────────────────────────────────
-        // C14 #5 (3.2.82) — Portfolio-wide annualised metrics.
+        // -- Performance Analytics (XIRR/CAGR) ----------------------------------
+        // C14 #5 (3.2.82) - Portfolio-wide annualised metrics.
         val todayStr = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
 
         // 1. Investment Performance
@@ -473,11 +467,8 @@ class FinanceViewModel @Inject constructor(
         }
         // Terminal outstanding principal + accrued interest
         activeBrws.filter { it.rate > 0 }.forEach { b ->
-            val accrued = if (b.status == "Defaulted" && b.frozenInterest > 0) b.frozenInterest
-            else app.fynlo.logic.InterestEngine.calcIntAccrued(
-                b.amount, b.rate, b.date, b.intType, b.due, totalPaid = b.paidPrincipal
-            )
-            val outstanding = app.fynlo.logic.InterestEngine.calcOutstanding(b.amount, accrued, b.paidPrincipal, b.paidInterest, b.interestWaived)
+            val outstanding = (b.amount - b.paidPrincipal).coerceAtLeast(0.0) +
+                InterestPolicy.borrowerBreakdown(b, paymentsByLoan[b.id].orEmpty(), todayStr).due
             if (outstanding > 0) {
                 lendCashflows.add(XirrCalculator.Cashflow(outstanding, todayStr))
             }
@@ -551,12 +542,12 @@ class FinanceViewModel @Inject constructor(
         viewModelScope.launch(Dispatchers.IO) { recalcCoordinator.runAndStamp() }
     }
 
-    // ── C04: smart defaults for Add Transaction ───────────────────────────────
+    // -- C04: smart defaults for Add Transaction -------------------------------
     // Reads from / writes to RecentlyUsedTracker so the next time the user
     // opens AddTransactionDialog, the category for the current type is
     // pre-selected without them tapping. Category recency is split by type
     // (CATEGORY_INCOME / CATEGORY_EXPENSE) so e.g. "Salary" never bleeds
-    // into the Expense picker — same boundary C05 enforced for the chip
+    // into the Expense picker - same boundary C05 enforced for the chip
     // list itself.
 
     /**
@@ -564,7 +555,7 @@ class FinanceViewModel @Inject constructor(
      * the given type, or `null` if the user has never submitted one yet.
      * Called from `AddTransactionDialog`'s on-open prefill.
      */
-    suspend fun rememberLastTransactionCategory(isIncome: Boolean): String? {
+    suspend fun rememberLastTransactionCategory(isIncome: Boolean): String?{
         val fieldId = if (isIncome) RecentlyUsedTracker.FieldIds.CATEGORY_INCOME
                       else          RecentlyUsedTracker.FieldIds.CATEGORY_EXPENSE
         return recentlyUsedTracker.last(
@@ -575,7 +566,7 @@ class FinanceViewModel @Inject constructor(
 
     /**
      * Records the user's category choice after they submit an Add
-     * Transaction. Fire-and-forget — the write is fast and a transient
+     * Transaction. Fire-and-forget - the write is fast and a transient
      * failure shouldn't block the UI. Blank values are dropped by the
      * tracker so picker fields with no selection don't pollute recency.
      */
@@ -592,14 +583,14 @@ class FinanceViewModel @Inject constructor(
         }
     }
 
-    // ── C04 Stage 3: recurring transaction category recency ───────────────
+    // -- C04 Stage 3: recurring transaction category recency ---------------
     // Mirrors the AddTransaction methods but keyed off ADD_RECURRING so the
     // user's "what category did I last assign to a recurring expense" memory
     // doesn't bleed into / out of the one-off AddTransaction flow. Split by
-    // type for the same reason AddTransaction is — a recurring "Salary"
+    // type for the same reason AddTransaction is - a recurring "Salary"
     // income shouldn't prefill an "Expense" recurring as Salary.
 
-    suspend fun rememberLastRecurringCategory(isIncome: Boolean): String? {
+    suspend fun rememberLastRecurringCategory(isIncome: Boolean): String?{
         val fieldId = if (isIncome) RecentlyUsedTracker.FieldIds.CATEGORY_INCOME
                       else          RecentlyUsedTracker.FieldIds.CATEGORY_EXPENSE
         return recentlyUsedTracker.last(
@@ -621,10 +612,10 @@ class FinanceViewModel @Inject constructor(
         }
     }
 
-    // ── C04 Stage 3: budget category — heuristic-first prefill ────────────
+    // -- C04 Stage 3: budget category - heuristic-first prefill ------------
     // The audit's BudgetScreen criterion is "pre-select the category most
     // likely to need a budget," which it defines as "the category with the
-    // biggest spend that doesn't already have a budget" — NOT pure recency.
+    // biggest spend that doesn't already have a budget" - NOT pure recency.
     // [suggestBudgetCategory] computes this; [rememberLastBudgetCategory]
     // is the fallback used when there are no uncapped expenses (or no
     // expenses at all). Callers should chain them:
@@ -637,13 +628,13 @@ class FinanceViewModel @Inject constructor(
      * `null` when every category the user has spent on is already
      * budget-capped, or when there are no expense transactions at all.
      */
-    fun suggestBudgetCategory(): String? =
+    fun suggestBudgetCategory(): String?=
         app.fynlo.data.BudgetSuggestion.suggest(
             cappedCategories = budgets.value.map { it.category }.toSet(),
             expenseAnalytics = expenseAnalytics.value,
         )
 
-    suspend fun rememberLastBudgetCategory(): String? =
+    suspend fun rememberLastBudgetCategory(): String?=
         recentlyUsedTracker.last(
             RecentlyUsedTracker.FormIds.ADD_BUDGET,
             RecentlyUsedTracker.FieldIds.CATEGORY_EXPENSE,
@@ -660,11 +651,11 @@ class FinanceViewModel @Inject constructor(
         }
     }
 
-    // ── C04 Stage 3: currency picker — locale-default-first prefill ───────
+    // -- C04 Stage 3: currency picker - locale-default-first prefill -------
     // On fresh install we have no recency, so the picker falls back to the
     // device's locale-derived currency code (e.g., "INR" for an en_IN device,
     // "USD" for en_US, "EUR" for fr_FR). Once the user has picked at least
-    // once, that pick wins — recency overrides locale, matching how every
+    // once, that pick wins - recency overrides locale, matching how every
     // other recency-driven prefill in the app works.
 
     /**
@@ -696,8 +687,8 @@ class FinanceViewModel @Inject constructor(
         }
     }
 
-    // ── C04 Stage 3: top-N flows for grouped-picker UX ────────────────────
-    // For dropdowns (currency picker is the canonical case) — render a
+    // -- C04 Stage 3: top-N flows for grouped-picker UX --------------------
+    // For dropdowns (currency picker is the canonical case) - render a
     // "Recently used" group at the top with these N entries, then the full
     // alphabetical list below. Chip-based pickers (AddTransaction, Recurring,
     // Budget) don't need this since FilterChip layout already shows every
@@ -712,14 +703,14 @@ class FinanceViewModel @Inject constructor(
 
     /**
      * C02 step 4: manual recalc that returns a before/after snapshot so the
-     * Settings screen can show a result dialog ("Net worth: ₹268,081 → ₹241,663").
+     * Settings screen can show a result dialog ("Net worth: ?268,081 -> ?241,663").
      *
      * Implementation note: `financialSummary` is a derived `StateFlow` over
      * the Room-backed list flows. When `runAndStamp()` returns, the DB writes
      * have committed but the StateFlow chain hasn't *necessarily* emitted the
      * post-state yet. So we wait briefly for the next *different* value,
      * with a 500 ms timeout for the (common, post-C01) case where nothing
-     * actually changed — in which case `pre == post` and the dialog says
+     * actually changed - in which case `pre == post` and the dialog says
      * "no changes."
      */
     suspend fun recalculateAllBalancesCapturingDelta(): RecalcDelta {
@@ -785,7 +776,7 @@ class FinanceViewModel @Inject constructor(
         runMoneyAction { repository.updateDebtWithDestination(debt.copy(projectId = pid, updatedAt = System.currentTimeMillis()), destination) }
     }
 
-    // ─── Add investment — pick the right repository function by source type ─────
+    // --- Add investment - pick the right repository function by source type -----
     fun addInvestmentFundedByAccount(investment: Investment, accountName: String, accountId: String = "") {
         runMoneyAction { repository.insertInvestmentFundedByAccount(investment.copy(projectId = pid), accountName, pid, accountId) }
     }
@@ -824,7 +815,7 @@ class FinanceViewModel @Inject constructor(
         investment: Investment,
         fundingSourceType: String,
         sourceName: String,
-        debtDetails: Debt? = null
+        debtDetails: Debt?= null
     ) {
         viewModelScope.launch(Dispatchers.IO) {
             repository.executeLinkedInvestment(
@@ -1173,15 +1164,15 @@ class FinanceViewModel @Inject constructor(
     }
 
     /**
-     * Reset All Data — wipes Firestore + Room, clears all preferences, removes
+     * Reset All Data - wipes Firestore + Room, clears all preferences, removes
      * the PIN, signs out of Google/Firebase and cancels background work so the
      * app relaunches in a clean first-run state. [authManager] is passed in
      * because the ViewModel doesn't own it (same pattern as
      * [deleteAccountPermanently]). [onComplete] runs on the main thread once
-     * everything is cleared — the caller uses it to restart the app process.
+     * everything is cleared - the caller uses it to restart the app process.
      */
     /**
-     * 3.2.74 — wipe Firestore for this user and re-push local. Used when
+     * 3.2.74 - wipe Firestore for this user and re-push local. Used when
      * stale cloud values are silently restoring themselves into local on
      * every sync, growing net worth without user input.
      */
@@ -1202,7 +1193,7 @@ class FinanceViewModel @Inject constructor(
             runCatching { repository.resetAllData(context) }
                 .onFailure { android.util.Log.e("Reset", "resetAllData failed: ${it.message}") }
 
-            // 2. DataStore preferences — then re-assert the first-run gates so the
+            // 2. DataStore preferences - then re-assert the first-run gates so the
             //    onboarding + setup wizard show again on next launch.
             runCatching {
                 app.fynlo.data.UserPreferences.clearAll(context)
@@ -1211,7 +1202,7 @@ class FinanceViewModel @Inject constructor(
             }
 
             // 3. PIN / biometric + any legacy SharedPreferences.
-            //    commit() (not apply()) — AppRestarter kills the process right
+            //    commit() (not apply()) - AppRestarter kills the process right
             //    after, which would drop apply()'s queued async write.
             runCatching {
                 app.fynlo.data.PinManager(context).clearPinSync()
@@ -1326,7 +1317,7 @@ class FinanceViewModel @Inject constructor(
     }
 
     /**
-     * All exports below recalc-then-export per UX_AUDIT §C02: "PDF, JSON,
+     * All exports below recalc-then-export per UX_AUDIT section C02: "PDF, JSON,
      * XLSX must invoke recalc as a pre-step." `recalcCoordinator.runAndStamp()`
      * stamps `lastRecalcAt` so the timestamp embedded in the export header
      * (added in C02 Stage 2) reflects when the data was actually computed.
@@ -1375,17 +1366,17 @@ class FinanceViewModel @Inject constructor(
 
     suspend fun exportToPDF(
         outputStream: java.io.OutputStream,
-        // C11 (3.2.40) — user's Date Format pref, collected by the caller.
+        // C11 (3.2.40) - user's Date Format pref, collected by the caller.
         // Default matches the in-app default if caller hasn't migrated.
         dateFormat: String = app.fynlo.logic.DateUtils.DEFAULT_COMPACT_PATTERN,
     ) {
         val recalcAt = recalcCoordinator.runAndStamp()
         // C08 Stage 4: project currency threads through so the PDF cards +
         // tables render amounts in the user's configured format
-        // (₹2,41,663 / $241,663 / etc.) instead of the pre-3.2.18
-        // hardcoded "₹X,XXX.XX".
+        // (?2,41,663 / $241,663 / etc.) instead of the pre-3.2.18
+        // hardcoded "?X,XXX.XX".
         val currencyCode = currentProject.value?.currency ?: "INR"
-        // C21 Stage 1 — thread project name + signed-in email onto the PDF
+        // C21 Stage 1 - thread project name + signed-in email onto the PDF
         // cover. AuthManager is lightweight to instantiate (just wraps
         // Firebase.auth singleton); reaching for it directly avoids adding
         // a constructor-injection just for the export read path.
@@ -1398,7 +1389,7 @@ class FinanceViewModel @Inject constructor(
             userEmail   = app.fynlo.data.AuthManager().userEmail,
             periodLabel = "All time",
             debts       = debts.value,
-            // C21 Stage 3 — snapshots for the net-worth trend chart.
+            // C21 Stage 3 - snapshots for the net-worth trend chart.
             // Fetched via repository.getNetWorthSnapshots(pid).first() so
             // we get the current list without subscribing in this scope.
             snapshots   = repository.getNetWorthSnapshots(pid).first(),
@@ -1441,11 +1432,11 @@ class FinanceViewModel @Inject constructor(
      */
     suspend fun exportToXLSX(
         outputStream: java.io.OutputStream,
-        // C11 (3.2.40) — user's Date Format pref, collected by the caller.
+        // C11 (3.2.40) - user's Date Format pref, collected by the caller.
         dateFormat: String = app.fynlo.logic.DateUtils.DEFAULT_COMPACT_PATTERN,
     ) {
         val recalcAt = recalcCoordinator.runAndStamp()
-        // C21 Stage 4 — thread the Summary-sheet KPIs (FinancialSummary)
+        // C21 Stage 4 - thread the Summary-sheet KPIs (FinancialSummary)
         // and currency code so amounts render with the active currency
         // symbol and the Summary sheet's KPIs match the PDF cover.
         app.fynlo.logic.ExcelExportUtility.generateFullBackup(
@@ -1483,17 +1474,17 @@ class FinanceViewModel @Inject constructor(
     }
 
     /**
-     * C15c (3.2.31) — Backfill month-end net-worth snapshots from transaction
-     * history (UX_AUDIT §C15c #5). For each calendar month-end between the
+     * C15c (3.2.31) - Backfill month-end net-worth snapshots from transaction
+     * history (UX_AUDIT section C15c #5). For each calendar month-end between the
      * user's earliest transaction and last completed month, computes an
      * approximate net worth by walking the cash-basis cash flow forward to
-     * today: `approxNW(monthEnd) = currentNW − (cumulative cash flow from
+     * today: `approxNW(monthEnd) = currentNW - (cumulative cash flow from
      * monthEnd+1 to today)`. Financing categories are excluded so debt
      * received / loans extended / investments don't double-count.
      *
      * Investment unrealized value changes aren't reconstructable from history
      * (we only know `currentVal`), so this is held flat. The result is a
-     * cash-flow-based curve — accurate enough to read trend direction without
+     * cash-flow-based curve - accurate enough to read trend direction without
      * requiring a Pricing-history API. Existing snapshot dates are preserved.
      *
      * Calls [onDone] with the count of snapshots inserted (0 if no
@@ -1510,7 +1501,7 @@ class FinanceViewModel @Inject constructor(
                 "Debt Received", "Debt Repayment", "Lending",
                 "Loan Recovery", "Loan Repayment", "Investment", "Investment Returns"
             )
-            val cashTxns = txns.filter { it.tags != "journal_only" && it.category !in financingCats }
+            val cashTxns = txns.filter { !it.isGeneratedJournalEntry() && it.category !in financingCats }
             if (cashTxns.isEmpty()) {
                 kotlinx.coroutines.withContext(Dispatchers.Main) { onDone(0) }
                 return@launch
@@ -1562,7 +1553,7 @@ class FinanceViewModel @Inject constructor(
         viewModelScope.launch(Dispatchers.IO) { repository.deleteRecurringTransaction(r) }
     }
 
-    // ── Recurring Auto-Logger ─────────────────────────────────────────────
+    // -- Recurring Auto-Logger ---------------------------------------------
     /** Call once on app start. Logs all overdue recurring transactions. */
     fun triggerDueRecurring() {
         viewModelScope.launch(Dispatchers.IO) {
@@ -1579,7 +1570,7 @@ class FinanceViewModel @Inject constructor(
                     runCatching { LocalDate.parse(r.lastRun, fmt) }.getOrNull()
 
                 val nextDue: java.time.LocalDate = when {
-                    lastRun == null -> today // never run → due today
+                    lastRun == null -> today // never run -> due today
                     r.frequency == "Daily"   -> lastRun.plusDays(1)
                     r.frequency == "Weekly"  -> lastRun.plusWeeks(1)
                     r.frequency == "Monthly" -> lastRun.plusMonths(1)
@@ -1644,7 +1635,7 @@ class FinanceViewModel @Inject constructor(
             val debt1 = Debt(
                 "d1", "Home Loan", amount = 150000.0, rate = 8.5,
                 date = "2023-01-01", paid = 20000.0,
-                notes = "Monthly EMI ₹2500. 15 years tenure.", projectId = pid
+                notes = "Monthly EMI ?2500. 15 years tenure.", projectId = pid
             )
             repository.insertDebtWithDestination(debt1, "HDFC Bank", pid)
 
@@ -1662,7 +1653,7 @@ private inline fun <reified T> List<*>.requireTypedList(): List<T> = map { it as
 
 /**
  * C02 step 4: result type for [FinanceViewModel.recalculateAllBalancesCapturingDelta].
- * `before == after` means the recalc was a no-op (the common case after C01 —
+ * `before == after` means the recalc was a no-op (the common case after C01 -
  * data is already structurally consistent). The Settings dialog inspects the
  * deltas on whichever metrics it surfaces and shows "No changes" when none move.
  */
@@ -1671,7 +1662,7 @@ data class RecalcDelta(
     val before: app.fynlo.data.model.FinancialSummary,
     val after: app.fynlo.data.model.FinancialSummary,
 ) {
-    /** Net-worth delta (after − before). Positive = value went up. */
+    /** Net-worth delta (after - before). Positive = value went up. */
     val netWorthChange: Double get() = after.netWorth - before.netWorth
     val receivablesChange: Double get() = after.totalReceivables - before.totalReceivables
     val cashChange: Double get() = after.totalCash - before.totalCash
@@ -1693,8 +1684,8 @@ data class BookRepairResult(
     val debtReceiptMismatches: Int = 0,
     val transactionAccountIds: Int = 0,
     val accountBalanceDrift: Int = 0,
-    val recalcDelta: RecalcDelta? = null,
-    val errorMessage: String? = null,
+    val recalcDelta: RecalcDelta?= null,
+    val errorMessage: String?= null,
 ) {
     val repairedItemCount: Int
         get() = deletedResidue +

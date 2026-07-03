@@ -70,10 +70,10 @@ private fun buildMonthData(
             val loanStart = if (b.date < startOf) startOf else b.date
 
             // Interest accrued from loan start to end of this month
-            val intAtEnd  = InterestEngine.calcIntAccrued(b.amount, b.rate, b.date, b.intType, b.due, b.paid, asOf = endOf)
+            val intAtEnd  = app.fynlo.logic.InterestPolicy.accruedForBorrower(b, endOf)
             // Interest accrued from loan start to start of this month
             val intAtStart = if (b.date >= startOf) 0.0
-            else InterestEngine.calcIntAccrued(b.amount, b.rate, b.date, b.intType, b.due, b.paid, asOf = startOf)
+            else app.fynlo.logic.InterestPolicy.accruedForBorrower(b, startOf)
 
             // Interest earned during this specific month = difference
             val monthlyInterest = (intAtEnd - intAtStart).coerceAtLeast(0.0)
@@ -290,7 +290,7 @@ fun InterestIncomeScreen(
 
             // ── Monthly breakdown table ──────────────────────────────────────
             Text(
-                "Month-by-Month Breakdown",
+                "Month?by-Month Breakdown",
                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
             )
 

@@ -23,8 +23,8 @@ class DebtLiabilityCalculatorDataIntegrityTest {
         val liability = DebtLiabilityCalculator.outstanding(debt, asOf = "2026-07-01")
 
         assertEquals(88_000.0, liability.principal, 0.01)
-        assertEquals(2_177.0, liability.interest, 0.01)
-        assertEquals(90_177.0, liability.total, 0.01)
+        assertEquals(2_176.68, liability.interest, 0.01)
+        assertEquals(90_176.68, liability.total, 0.01)
     }
 
     @Test

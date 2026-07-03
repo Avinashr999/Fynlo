@@ -8,7 +8,7 @@ import app.fynlo.data.UserPreferences
 import kotlinx.coroutines.runBlocking
 
 object ThemeController {
-    var darkModeOverride: Boolean? by mutableStateOf(null)
+    var darkModeOverride: Boolean?by mutableStateOf(null)
 
     fun load(context: Context) {
         val mode = UserPreferences.getDarkModeSync(context)

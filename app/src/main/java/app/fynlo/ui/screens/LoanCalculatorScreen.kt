@@ -16,14 +16,20 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import java.util.Locale
+import kotlin.math.ceil
 import kotlin.math.pow
 import app.fynlo.FinanceViewModel
 import app.fynlo.logic.CurrencyFormatter
@@ -46,7 +52,7 @@ import app.fynlo.ui.theme.*
  *   - Loan/Due date inputs swapped from raw text fields to `DatePickerField`
  *     (same component used everywhere else in the app).
  *   - "Outstanding as of today" section hidden behind an explicit
- *     `Already took this loan?` toggle — the primary use case is planning
+ *     `Already took this loan-` toggle — the primary use case is planning
  *     a *future* EMI; the outstanding-interest path is the exception, not
  *     the default. Cleans up the form for the common case.
  *   - Amortization schedule got a Month-wise / Year-wise toggle. Yearly is
@@ -60,7 +66,7 @@ import app.fynlo.ui.theme.*
  *   - Save as Debt (push computed loan into Debts tracker).
  *   - Prepayment simulation (modal: "prepay ₹X in month Y, see savings").
  *   - Affordability % (EMI vs declared salary).
- *   - Compare two scenarios side-by-side.
+ *   - Compare two scenarios side?by-side.
  *   - Share / export schedule (CSV or PDF).
  *   - EMI breakdown pie chart.
  *
@@ -68,9 +74,10 @@ import app.fynlo.ui.theme.*
  */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
-fun LoanCalculatorScreen(viewModel: FinanceViewModel? = null) {
+fun LoanCalculatorScreen(viewModel: FinanceViewModel?= null) {
     val locale = LocalLocale.current.platformLocale
     val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
     val scrollState = rememberScrollState()
     val currentProjectState = viewModel?.currentProject?.collectAsState()
     val currentProject = currentProjectState?.value
@@ -81,6 +88,9 @@ fun LoanCalculatorScreen(viewModel: FinanceViewModel? = null) {
     var rate       by remember { mutableStateOf("") }
     var tenure     by remember { mutableStateOf("") }
     var tenureUnit by remember { mutableStateOf("Months") }
+    var tenureMode by remember { mutableStateOf("Duration") }
+    var fromDate   by remember { mutableStateOf(java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy"))) }
+    var toDate     by remember { mutableStateOf(java.time.LocalDate.now().plusMonths(12).format(java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy"))) }
     var intType    by remember { mutableStateOf("Reducing Balance") }
     var loanDate   by remember { mutableStateOf(java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy"))) }
     var dueDate    by remember { mutableStateOf("") }
@@ -124,9 +134,34 @@ fun LoanCalculatorScreen(viewModel: FinanceViewModel? = null) {
         }.getOrDefault(0)
     }
 
-    val tenureMonths = remember(tenure, tenureUnit) {
-        val t = tenure.toIntOrNull() ?: 0
-        if (tenureUnit == "Years") t * 12 else t
+    val exactTenureDays = remember(fromDate, toDate) {
+        runCatching {
+            val fmt = java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy")
+            java.time.temporal.ChronoUnit.DAYS.between(
+                java.time.LocalDate.parse(fromDate, fmt),
+                java.time.LocalDate.parse(toDate, fmt),
+            ).toInt().coerceAtLeast(0)
+        }.getOrDefault(0)
+    }
+    val tenureMonths = remember(tenure, tenureUnit, tenureMode, exactTenureDays) {
+        if (tenureMode == "Exact dates") {
+            ceil(exactTenureDays / 30.4375).toInt().coerceAtLeast(1)
+        } else {
+            val t = tenure.toIntOrNull() ?: 0
+            if (tenureUnit == "Years") t * 12 else t
+        }
+    }
+    val durationTenureValue = remember(tenure) { tenure.toIntOrNull() ?: 0 }
+    val durationTenureError = remember(tenureMode, tenureUnit, durationTenureValue) {
+        if (tenureMode != "Duration" || durationTenureValue <= 0) null
+        else when {
+            tenureUnit == "Months" && durationTenureValue > 360 -> "Use 1 to 360 months."
+            tenureUnit == "Years" && durationTenureValue > 30 -> "Use 1 to 30 years."
+            else -> null
+        }
+    }
+    val exactDateError = remember(tenureMode, exactTenureDays) {
+        if (tenureMode == "Exact dates" && exactTenureDays <= 0) "To date must be after from date." else null
     }
 
     data class CalcResult(
@@ -136,10 +171,11 @@ fun LoanCalculatorScreen(viewModel: FinanceViewModel? = null) {
         val schedule: List<Triple<Int, Double, Double>>
     )
 
-    val result = remember(principal, rate, tenureMonths, intType) {
+    val result = remember(principal, rate, tenureMonths, exactTenureDays, tenureMode, intType, durationTenureError, exactDateError) {
         val p = principal.toDoubleOrNull() ?: return@remember null
         val r = rate.toDoubleOrNull() ?: return@remember null
         val n = tenureMonths
+        if (durationTenureError != null || exactDateError != null) return@remember null
         if (p <= 0 || r <= 0 || n <= 0) return@remember null
 
         when (intType) {
@@ -158,7 +194,11 @@ fun LoanCalculatorScreen(viewModel: FinanceViewModel? = null) {
                 CalcResult(emi, emi * n, emi * n - p, schedule)
             }
             "Simple Interest" -> {
-                val totalInterest = p * r / 100.0 * (n / 12.0)
+                val totalInterest = if (tenureMode == "Exact dates" && exactTenureDays > 0) {
+                    p * r / 100.0 * (exactTenureDays / 365.0)
+                } else {
+                    p * r / 100.0 * (n / 12.0)
+                }
                 val total = p + totalInterest
                 val emi   = total / n
                 CalcResult(emi, total, totalInterest, emptyList())
@@ -181,6 +221,9 @@ fun LoanCalculatorScreen(viewModel: FinanceViewModel? = null) {
         rate = ""
         tenure = ""
         tenureUnit = "Months"
+        tenureMode = "Duration"
+        fromDate = java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy"))
+        toDate = java.time.LocalDate.now().plusMonths(12).format(java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy"))
         intType = "Reducing Balance"
         loanDate = java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy"))
         dueDate = ""
@@ -188,10 +231,33 @@ fun LoanCalculatorScreen(viewModel: FinanceViewModel? = null) {
         scheduleGranularity = "Yearly"
     }
 
+    LaunchedEffect(scrollState.isScrollInProgress) {
+        if (scrollState.isScrollInProgress) {
+            focusManager.clearFocus(force = true)
+            keyboardController?.hide()
+        }
+    }
+    LaunchedEffect(Unit) {
+        focusManager.clearFocus(force = true)
+        keyboardController?.hide()
+    }
+    val hideKeyboardOnScroll = remember(focusManager, keyboardController) {
+        object : NestedScrollConnection {
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                if (source == NestedScrollSource.UserInput && available.y != 0f) {
+                    focusManager.clearFocus(force = true)
+                    keyboardController?.hide()
+                }
+                return Offset.Zero
+            }
+        }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
             .imeNestedScroll()
+            .nestedScroll(hideKeyboardOnScroll)
     ) {
         PremiumScreenHeader(
             title = "EMI Calculator",
@@ -208,6 +274,7 @@ fun LoanCalculatorScreen(viewModel: FinanceViewModel? = null) {
             modifier = Modifier
                 .fillMaxSize()
                 .padding(horizontal = 16.dp)
+                .nestedScroll(hideKeyboardOnScroll)
                 .verticalScroll(scrollState)
                 .imePadding()
         ) {
@@ -226,12 +293,18 @@ fun LoanCalculatorScreen(viewModel: FinanceViewModel? = null) {
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Next),
                     modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp), singleLine = true
                 )
-
                 OutlinedTextField(
                     value = rate, onValueChange = { rate = it },
                     label = { Text("Annual Interest Rate (%)") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Next),
                     modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp), singleLine = true
+                )
+
+                TemplateSegmentedSelector(
+                    options = listOf("Duration", "Exact dates"),
+                    selectedIndex = if (tenureMode == "Exact dates") 1 else 0,
+                    onSelected = { idx -> tenureMode = if (idx == 1) "Exact dates" else "Duration" },
+                    modifier = Modifier.fillMaxWidth(),
                 )
 
                 // 3.2.16 — tenure input + unit picker. The unit segmented row
@@ -240,15 +313,23 @@ fun LoanCalculatorScreen(viewModel: FinanceViewModel? = null) {
                 // cramped. Now the number input is `weight(1f)` (takes
                 // remaining space) and the unit picker hugs its natural
                 // width — far cleaner.
-                Row(
+                if (tenureMode == "Duration") {
+                    Row(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     OutlinedTextField(
                         value = tenure, onValueChange = { tenure = it },
                         label = { Text("Tenure") },
+                        supportingText = {
+                            Text(durationTenureError ?: if (tenureUnit == "Months") "1 to 360 months supported" else "1 to 30 years supported")
+                        },
+                        isError = durationTenureError != null,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
-                        keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
+                        keyboardActions = KeyboardActions(onDone = {
+                            focusManager.clearFocus()
+                            keyboardController?.hide()
+                        }),
                         modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp), singleLine = true
                     )
                     val tenureUnits = listOf("Months", "Years")
@@ -258,6 +339,34 @@ fun LoanCalculatorScreen(viewModel: FinanceViewModel? = null) {
                         onSelected = { idx -> tenureUnit = tenureUnits[idx] },
                         modifier = Modifier.width(156.dp),
                     )
+                }
+                } else {
+                    DatePickerField(
+                        value = fromDate,
+                        onValueChange = { fromDate = it },
+                        label = "From date",
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    DatePickerField(
+                        value = toDate,
+                        onValueChange = { toDate = it },
+                        label = "To date",
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    if (exactDateError != null) {
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp),
+                            color = SemanticRed.copy(alpha = 0.08f),
+                        ) {
+                            Text(
+                                "Pick a later To date. Multi-year ranges are supported.",
+                                modifier = Modifier.padding(12.dp),
+                                style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
+                                color = SemanticRed,
+                            )
+                        }
+                    }
                 }
 
                 if (result != null) {
@@ -317,7 +426,7 @@ fun LoanCalculatorScreen(viewModel: FinanceViewModel? = null) {
                 ) {
                     Column(Modifier.weight(1f)) {
                         Text(
-                            "Already took this loan?",
+                            "Already took this loan-",
                             style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
                         )
                         Text(
@@ -388,7 +497,7 @@ fun LoanCalculatorScreen(viewModel: FinanceViewModel? = null) {
                 Spacer(Modifier.height(16.dp))
 
                 // 3.2.16 — result cards bumped from bodySmall to titleMedium.
-                // Three side-by-side cards in the same row at narrow widths
+                // Three side?by-side cards in the same row at narrow widths
                 // cramped tiny numbers; titleMedium with proper card padding
                 // makes the headline-level information actually readable.
                 Row(
@@ -428,6 +537,22 @@ fun LoanCalculatorScreen(viewModel: FinanceViewModel? = null) {
                         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text("Method: $intType", style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                if (tenureMode == "Exact dates") {
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        if (intType == "Simple Interest")
+                            "Calculated using $exactTenureDays exact days at $rate% p.a."
+                        else
+                            "Exact date range: $exactTenureDays days. EMI schedule uses $tenureMonths billing months.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f))
+                            .padding(12.dp),
+                    )
                 }
 
                 // ── Outstanding-as-of-today (only when trackExistingLoan) ─
@@ -741,7 +866,7 @@ fun LoanCalculatorScreen(viewModel: FinanceViewModel? = null) {
  *
  * Surfaces months saved + interest saved + new payoff month. Toggleable
  * (default OFF) so the base calculator flow stays focused. Mirrors the
- * "What if I pay extra?" pattern from Debt detail (3.2.64) for visual
+ * "What if I pay extra-" pattern from Debt detail (3.2.64) for visual
  * consistency.
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -770,7 +895,7 @@ private fun PrepaymentWhatIfSection(
         Column(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text("What if I prepay?",
+                    Text("What if I prepay-",
                         style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold))
                     Text("Months saved + interest saved at a faster pace",
                         style = MaterialTheme.typography.labelSmall,
@@ -898,7 +1023,7 @@ private fun AffordabilitySection(
         Column(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text("Can I afford this EMI?",
+                    Text("Can I afford this EMI-",
                         style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold))
                     Text("Compare against your monthly income",
                         style = MaterialTheme.typography.labelSmall,

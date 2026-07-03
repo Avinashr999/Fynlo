@@ -140,35 +140,54 @@ object LedgerAccountability {
         borrowers.forEach { borrower ->
             val linked = txByRef[borrower.id].orEmpty()
             val fundingTxn = linked.firstOrNull { it.category.equals("Lending", true) || it.type.equals("Expense", true) }
-            val accruedInterest = if (borrower.status == "Defaulted" && borrower.frozenInterest > 0.0) {
-                borrower.frozenInterest
-            } else {
-                InterestEngine.calcIntAccrued(
-                    borrower.amount,
-                    borrower.rate,
-                    borrower.date,
-                    borrower.intType,
-                    borrower.due,
-                    totalPaid = borrower.paidPrincipal,
-                    asOf = today.toString(),
-                )
-            }
+            val borrowerPayments = paymentsByLoan[borrower.id].orEmpty()
+            val interestBreakdown = app.fynlo.logic.InterestPolicy.borrowerBreakdown(borrower, borrowerPayments, today.toString())
             if (borrower.sourceAccount.isBlank() && fundingTxn == null) {
                 addIssue(LedgerIssueSeverity.INFO, "Loan funding trace missing", "${borrower.name} was created before a funding account was linked. Future loans record this automatically.", "loan", borrower.id)
             }
             if (fundingTxn == null) {
                 addIssue(LedgerIssueSeverity.INFO, "Loan disbursement trace missing", "${borrower.name} has no linked disbursement row. This is usually legacy/imported data.", "loan", borrower.id)
             }
-            val paymentTotal = paymentsByLoan[borrower.id].orEmpty().sumOf { it.amount }
+            val paymentTotal = borrowerPayments.sumOf { borrowerPrincipalForPaidTotal(it) } +
+                borrowerPayments.sumOf { borrowerInterestForPaidTotal(it) }
             if (abs(paymentTotal - borrower.paid) > 0.01) {
                 addIssue(LedgerIssueSeverity.CRITICAL, "Loan payment total mismatch", "${borrower.name} paid total does not match payment rows.", "loan", borrower.id)
             }
+            val unclearBorrowerInterestPayments = borrowerPayments.filter {
+                val interest = borrowerInterestForPaidTotal(it)
+                InterestPolicy.isUnclearInterestPayment(it.interestAllocationType, interest) ||
+                    InterestPolicy.isStaleCurrentPeriodInterest(it.interestAllocationType, interest, it.interestPeriodStartDate, borrower.date)
+            }
+            if (unclearBorrowerInterestPayments.isNotEmpty()) {
+                addIssue(
+                    LedgerIssueSeverity.WARNING,
+                    interestReviewTitle(unclearBorrowerInterestPayments.size),
+                    unclearBorrowerInterestDetail(borrower, unclearBorrowerInterestPayments),
+                    "loan",
+                    borrower.id,
+                )
+            }
+            addCompletedBorrowerInterestPeriodIssue(
+                borrower = borrower,
+                payments = borrowerPayments,
+                today = today,
+                addIssue = ::addIssue,
+            )
             addInterestWaiverIssue(
                 interestWaived = borrower.interestWaived,
-                accruedInterest = accruedInterest,
-                paidInterest = borrower.paidInterest,
+                accruedInterest = interestBreakdown.accrued,
+                paidInterest = interestBreakdown.paid,
                 title = "Loan interest waiver exceeds unpaid interest",
                 detail = "${borrower.name} has more waived interest than its unpaid interest balance.",
+                recordType = "loan",
+                recordId = borrower.id,
+                addIssue = ::addIssue,
+            )
+            addInterestPaidAheadIssue(
+                paidInterest = interestBreakdown.paid,
+                accruedInterest = interestBreakdown.accrued,
+                title = "Extra interest already collected",
+                detail = "${borrower.name} has collected more interest than is due today. Interest due is zero for now, and new interest will keep adding from the loan date.",
                 recordType = "loan",
                 recordId = borrower.id,
                 addIssue = ::addIssue,
@@ -186,15 +205,8 @@ object LedgerAccountability {
         debts.forEach { debt ->
             val linked = txByRef[debt.id].orEmpty()
             val receivedTxn = linked.firstOrNull { it.category.equals("Debt Received", true) }
-            val accruedInterest = InterestEngine.calcIntAccrued(
-                debt.amount,
-                debt.rate,
-                debt.date,
-                debt.intType,
-                debt.due,
-                totalPaid = debt.paidPrincipal,
-                asOf = today.toString(),
-            )
+            val currentDebtPayments = debtPaymentsByDebt[debt.id].orEmpty()
+            val interestBreakdown = app.fynlo.logic.InterestPolicy.debtBreakdown(debt, currentDebtPayments, today.toString())
             if (receivedTxn == null) {
                 addIssue(LedgerIssueSeverity.INFO, "Debt receipt trace missing", "${debt.name} has no linked Debt Received row. Future debts record the destination account automatically.", "debt", debt.id)
             } else if (receivedTxn.toAcct.isBlank()) {
@@ -202,16 +214,46 @@ object LedgerAccountability {
             } else if (abs(receivedTxn.amount - debt.amount) > 0.01) {
                 addIssue(LedgerIssueSeverity.CRITICAL, "Debt receipt amount mismatch", "${debt.name} is ${CurrencyFormatter.detail(debt.amount)} but its received transaction is ${CurrencyFormatter.detail(receivedTxn.amount)}.", "debt", debt.id)
             }
-            val paymentTotal = debtPaymentsByDebt[debt.id].orEmpty().sumOf { it.amount }
+            val paymentTotal = currentDebtPayments.sumOf { debtPrincipalForPaidTotal(it) } +
+                currentDebtPayments.sumOf { debtInterestForPaidTotal(it) }
             if (abs(paymentTotal - debt.paid) > 0.01) {
                 addIssue(LedgerIssueSeverity.CRITICAL, "Debt payment total mismatch", "${debt.name} paid total does not match payment rows.", "debt", debt.id)
             }
+            val unclearDebtInterestPayments = currentDebtPayments.filter {
+                val interest = debtInterestForPaidTotal(it)
+                InterestPolicy.isUnclearInterestPayment(it.interestAllocationType, interest) ||
+                    InterestPolicy.isStaleCurrentPeriodInterest(it.interestAllocationType, interest, it.interestPeriodStartDate, debt.date)
+            }
+            if (unclearDebtInterestPayments.isNotEmpty()) {
+                addIssue(
+                    LedgerIssueSeverity.WARNING,
+                    interestReviewTitle(unclearDebtInterestPayments.size),
+                    unclearDebtInterestDetail(debt, unclearDebtInterestPayments),
+                    "debt",
+                    debt.id,
+                )
+            }
+            addCompletedDebtInterestPeriodIssue(
+                debt = debt,
+                payments = currentDebtPayments,
+                today = today,
+                addIssue = ::addIssue,
+            )
             addInterestWaiverIssue(
                 interestWaived = debt.interestWaived,
-                accruedInterest = accruedInterest,
-                paidInterest = debt.paidInterest,
+                accruedInterest = interestBreakdown.accrued,
+                paidInterest = interestBreakdown.paid,
                 title = "Debt interest waiver exceeds unpaid interest",
                 detail = "${debt.name} has more waived interest than its unpaid interest balance.",
+                recordType = "debt",
+                recordId = debt.id,
+                addIssue = ::addIssue,
+            )
+            addInterestPaidAheadIssue(
+                paidInterest = interestBreakdown.paid,
+                accruedInterest = interestBreakdown.accrued,
+                title = "Extra interest already paid",
+                detail = "${debt.name} has paid more interest than is due today. Interest payable is zero for now, and new interest will keep adding from the debt date.",
                 recordType = "debt",
                 recordId = debt.id,
                 addIssue = ::addIssue,
@@ -394,6 +436,170 @@ object LedgerAccountability {
     private fun isOldOpen(date: String, today: LocalDate): Boolean =
         runCatching { LocalDate.parse(date).plusDays(90).isBefore(today) }.getOrDefault(false)
 
+    private fun borrowerPrincipalForPaidTotal(payment: Payment): Double = when {
+        payment.type.equals("Interest Only", ignoreCase = true) -> 0.0
+        payment.principal > 0.0 -> payment.principal
+        else -> payment.amount
+    }
+
+    private fun borrowerInterestForPaidTotal(payment: Payment): Double =
+        InterestPolicy.paymentInterestAmount(payment)
+
+    private fun debtPrincipalForPaidTotal(payment: DebtPayment): Double = when {
+        payment.type.equals("Interest Only", ignoreCase = true) -> 0.0
+        payment.principal > 0.0 -> payment.principal
+        else -> payment.amount
+    }
+
+    private fun debtInterestForPaidTotal(payment: DebtPayment): Double =
+        InterestPolicy.debtPaymentInterestAmount(payment)
+
+    private fun interestReviewTitle(count: Int): String =
+        if (count == 1) "Interest payment needs review" else "Interest payments need review"
+
+    private fun unclearBorrowerInterestDetail(borrower: Borrower, payments: List<Payment>): String {
+        val principal = CurrencyFormatter.detail(borrower.amount)
+        if (payments.size == 1) {
+            val payment = payments.first()
+            val amount = CurrencyFormatter.detail(borrowerInterestForPaidTotal(payment))
+            val date = DateUtils.formatToDisplay(payment.date)
+            return "${borrower.name} has an interest payment of $amount on $date for loan principal $principal. Choose whether it belongs to older interest, this loan period, paid in advance, or an extra note."
+        }
+        val total = CurrencyFormatter.detail(payments.sumOf { borrowerInterestForPaidTotal(it) })
+        val latestDate = payments.maxByOrNull { it.date }?.date?.let(DateUtils::formatToDisplay) ?: "an unknown date"
+        return "${borrower.name} has ${payments.size} interest payments totaling $total for loan principal $principal. Latest payment is on $latestDate. Open this borrower, edit those payments, and choose older interest, this loan period, paid in advance, or extra note."
+    }
+
+    private fun unclearDebtInterestDetail(debt: Debt, payments: List<DebtPayment>): String {
+        val principal = CurrencyFormatter.detail(debt.amount)
+        if (payments.size == 1) {
+            val payment = payments.first()
+            val amount = CurrencyFormatter.detail(debtInterestForPaidTotal(payment))
+            val date = DateUtils.formatToDisplay(payment.date)
+            return "${debt.name} has an interest payment of $amount on $date for debt principal $principal. Choose whether it belongs to older interest, this debt period, paid in advance, or an extra note."
+        }
+        val total = CurrencyFormatter.detail(payments.sumOf { debtInterestForPaidTotal(it) })
+        val latestDate = payments.maxByOrNull { it.date }?.date?.let(DateUtils::formatToDisplay) ?: "an unknown date"
+        return "${debt.name} has ${payments.size} interest payments totaling $total for debt principal $principal. Latest payment is on $latestDate. Open this debt, edit those payments, and choose older interest, this debt period, paid in advance, or extra note."
+    }
+
+    private fun addCompletedBorrowerInterestPeriodIssue(
+        borrower: Borrower,
+        payments: List<Payment>,
+        today: LocalDate,
+        addIssue: (LedgerIssueSeverity, String, String, String, String) -> Unit,
+    ) {
+        if (borrower.due.isBlank() || borrower.rate <= 0.0) return
+        val dueDate = runCatching { LocalDate.parse(borrower.due) }.getOrNull() ?: return
+        if (dueDate.isAfter(today)) return
+        val principalOutstanding = (borrower.amount - borrower.paidPrincipal).coerceAtLeast(0.0)
+        if (principalOutstanding <= 0.01) return
+
+        val accruedForPeriod = InterestEngine.calcIntAccrued(
+            amount = borrower.amount,
+            rate = borrower.rate,
+            loanDate = borrower.date,
+            intType = borrower.intType,
+            dueDate = borrower.due,
+            asOf = borrower.due,
+        )
+        if (accruedForPeriod <= 0.01) return
+
+        val reviewPayments = payments.filter { payment ->
+            val allocation = payment.interestAllocationType
+            val interest = borrowerInterestForPaidTotal(payment)
+            interest > 0.01 &&
+                allocation != InterestPolicy.OLD_PERIOD_INTEREST &&
+                allocation != InterestPolicy.EXTRA_INTEREST &&
+                !InterestPolicy.isStaleCurrentPeriodInterest(allocation, interest, payment.interestPeriodStartDate, borrower.date)
+        }
+        val reviewInterest = reviewPayments.sumOf { borrowerInterestForPaidTotal(it) }
+        if (reviewInterest + 0.01 < accruedForPeriod) return
+        val latestPayment = reviewPayments.maxByOrNull { it.date }
+
+        addIssue(
+            LedgerIssueSeverity.WARNING,
+            "Loan may need next interest start date",
+            completedPeriodDetail(
+                name = borrower.name,
+                principal = borrower.amount,
+                paymentAmount = reviewInterest,
+                paymentDate = latestPayment?.date.orEmpty(),
+                startDate = borrower.date,
+                dueDate = borrower.due,
+                isDebt = false,
+            ),
+            "loan",
+            borrower.id,
+        )
+    }
+
+    private fun addCompletedDebtInterestPeriodIssue(
+        debt: Debt,
+        payments: List<DebtPayment>,
+        today: LocalDate,
+        addIssue: (LedgerIssueSeverity, String, String, String, String) -> Unit,
+    ) {
+        if (debt.due.isBlank() || debt.rate <= 0.0) return
+        val dueDate = runCatching { LocalDate.parse(debt.due) }.getOrNull() ?: return
+        if (dueDate.isAfter(today)) return
+        val principalOutstanding = (debt.amount - debt.paidPrincipal).coerceAtLeast(0.0)
+        if (principalOutstanding <= 0.01) return
+
+        val accruedForPeriod = InterestEngine.calcIntAccrued(
+            amount = debt.amount,
+            rate = debt.rate,
+            loanDate = debt.date,
+            intType = debt.intType,
+            dueDate = debt.due,
+            asOf = debt.due,
+        )
+        if (accruedForPeriod <= 0.01) return
+
+        val reviewPayments = payments.filter { payment ->
+            val allocation = payment.interestAllocationType
+            val interest = debtInterestForPaidTotal(payment)
+            interest > 0.01 &&
+                allocation != InterestPolicy.OLD_PERIOD_INTEREST &&
+                allocation != InterestPolicy.EXTRA_INTEREST &&
+                !InterestPolicy.isStaleCurrentPeriodInterest(allocation, interest, payment.interestPeriodStartDate, debt.date)
+        }
+        val reviewInterest = reviewPayments.sumOf { debtInterestForPaidTotal(it) }
+        if (reviewInterest + 0.01 < accruedForPeriod) return
+        val latestPayment = reviewPayments.maxByOrNull { it.date }
+
+        addIssue(
+            LedgerIssueSeverity.WARNING,
+            "Debt may need next interest start date",
+            completedPeriodDetail(
+                name = debt.name,
+                principal = debt.amount,
+                paymentAmount = reviewInterest,
+                paymentDate = latestPayment?.date.orEmpty(),
+                startDate = debt.date,
+                dueDate = debt.due,
+                isDebt = true,
+            ),
+            "debt",
+            debt.id,
+        )
+    }
+
+    private fun completedPeriodDetail(
+        name: String,
+        principal: Double,
+        paymentAmount: Double,
+        paymentDate: String,
+        startDate: String,
+        dueDate: String,
+        isDebt: Boolean,
+    ): String {
+        val direction = if (isDebt) "debt" else "loan"
+        val paymentLabel = if (isDebt) "paid" else "collected"
+        val dateText = paymentDate.takeIf { it.isNotBlank() }?.let { DateUtils.formatToDisplay(it) } ?: "an unknown date"
+        return "$name has ${CurrencyFormatter.detail(paymentAmount)} interest $paymentLabel on $dateText for $direction principal ${CurrencyFormatter.detail(principal)}. The due date has passed. Review whether future interest should start from the next day."
+    }
+
     private fun investmentFundingPrefix(sourceType: String): String = when (sourceType) {
         "existing_debt" -> "Debt funds from"
         "new_loan" -> "New loan from"
@@ -425,6 +631,26 @@ object LedgerAccountability {
 
         val maxWaivable = (accruedInterest - paidInterest).coerceAtLeast(0.0)
         if (interestWaived - maxWaivable > 0.01) {
+            addIssue(
+                LedgerIssueSeverity.WARNING,
+                title,
+                detail,
+                recordType,
+                recordId,
+            )
+        }
+    }
+
+    private fun addInterestPaidAheadIssue(
+        paidInterest: Double,
+        accruedInterest: Double,
+        title: String,
+        detail: String,
+        recordType: String,
+        recordId: String,
+        addIssue: (LedgerIssueSeverity, String, String, String, String) -> Unit,
+    ) {
+        if (paidInterest - accruedInterest > 0.01) {
             addIssue(
                 LedgerIssueSeverity.WARNING,
                 title,

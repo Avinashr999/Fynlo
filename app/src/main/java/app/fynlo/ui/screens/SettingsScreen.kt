@@ -41,6 +41,7 @@ import app.fynlo.FinanceViewModel
 import app.fynlo.data.UserPreferences
 import app.fynlo.logic.CurrencyFormatter
 import app.fynlo.logic.CurrencyUtils
+import app.fynlo.logic.isGeneratedJournalEntry
 import app.fynlo.ui.components.FynloConfirmDialog
 import app.fynlo.ui.components.FormDialog
 import app.fynlo.ui.theme.ThemeController
@@ -59,27 +60,29 @@ fun SettingsScreen(
     viewModel: FinanceViewModel,
     onNavigateToAbout: () -> Unit,
     onNavigateToProfile: () -> Unit = {},
-    onNavigateToUpgrade: () -> Unit = {}
+    onNavigateToUpgrade: () -> Unit = {},
+    onNavigateToLedgerIssue: (app.fynlo.logic.LedgerIssue) -> Unit = {},
+    openBookCheck: Boolean = false,
 ) {
     val scope   = rememberCoroutineScope()
     val context = LocalContext.current
     val isPro by app.fynlo.billing.BillingManager.isPro.collectAsState()
     val showInternalTools = app.fynlo.BuildConfig.DEBUG && app.fynlo.BuildConfig.FLAVOR == "dev"
-    // ── Setup-wizard editable prefs (DataStore-backed) ─────────────────────
+    // -- Setup-wizard editable prefs (DataStore-backed) ---------------------
     val displayNameFlow    by UserPreferences.userDisplayName(context).collectAsState(initial = "")
     var displayName        by remember { mutableStateOf("") }
     val notifsEnabled      by UserPreferences.notificationsEnabled(context).collectAsState(initial = true)
-    // C18 — split toggles (audit fix #1). Each defaults to the master in the
+    // C18 - split toggles (audit fix #1). Each defaults to the master in the
     // pref-layer Flow so existing-setup users see consistent state on first open.
     val loanRemindersEnabled by UserPreferences.loanRemindersEnabled(context).collectAsState(initial = true)
     val budgetAlertsEnabled  by UserPreferences.budgetAlertsEnabled(context).collectAsState(initial = true)
     val defaultCurrency    by UserPreferences.defaultCurrency(context).collectAsState(initial = "INR")
     val dateFormat         by UserPreferences.dateFormat(context).collectAsState(initial = "dd-MM-yyyy")
 
-    // ── C04 Stage 3: currency picker — recency-then-locale prefill ────────
+    // -- C04 Stage 3: currency picker - recency-then-locale prefill --------
     // Use `LocalConfiguration.current.locales[0]` so in-app language overrides
     // (system per-app locale) are respected. The picker's selected row comes
-    // from `viewModel.rememberLastCurrencyOrLocale(...)` — the most-recent
+    // from `viewModel.rememberLastCurrencyOrLocale(...)` - the most-recent
     // pick if any, otherwise the device locale's currency code with an "INR"
     // fallback for locales without a country. The reactive top-N list drives
     // the "Recently used" group at the top of the dropdown.
@@ -89,7 +92,7 @@ fun SettingsScreen(
         // Re-resolve whenever locale changes or the persisted default updates
         // (e.g., from another surface). `defaultCurrency` is the canonical
         // persisted value; the recency layer wins when present so subsequent
-        // picks survive re-open. Falls through to locale → "INR" on a fresh
+        // picks survive re-open. Falls through to locale -> "INR" on a fresh
         // install where no pick has been recorded yet.
         pickerCurrency = viewModel.rememberLastCurrencyOrLocale(pickerLocale)
     }
@@ -97,13 +100,15 @@ fun SettingsScreen(
         .collectAsState(initial = emptyList())
 
     // Sync display name from flow on first load
-    LaunchedEffect(displayNameFlow) { if (displayName.isEmpty()) displayName = displayNameFlow }
+    LaunchedEffect(displayNameFlow) {
+        if (displayName != displayNameFlow) displayName = displayNameFlow
+    }
 
 
-    // C22 (3.2.66) — backup-encryption UI state. Toggle persists for the
-    // session only (not on DataStore — encryption is a per-export choice,
+    // C22 (3.2.66) - backup-encryption UI state. Toggle persists for the
+    // session only (not on DataStore - encryption is a per-export choice,
     // not a long-term preference). `pendingExportPassword` survives the
-    // dialog→SAF gap; `pendingImportBytes` survives the SAF→dialog gap on
+    // dialog->SAF gap; `pendingImportBytes` survives the SAF->dialog gap on
     // the restore side when the picked file is detected as encrypted.
     var encryptOnExport       by remember { mutableStateOf(false) }
     var showExportPwdDialog   by remember { mutableStateOf(false) }
@@ -114,7 +119,7 @@ fun SettingsScreen(
     var pendingRestorePreview by remember { mutableStateOf<app.fynlo.data.BackupRestorePreview?>(null) }
     var restorePreviewError   by remember { mutableStateOf<String?>(null) }
 
-    // C22 (3.2.67) — CSV import state. `pendingCsvRows` holds the parsed
+    // C22 (3.2.67) - CSV import state. `pendingCsvRows` holds the parsed
     // CSV after the SAF picker callback completes; presence triggers the
     // column-mapping dialog. Importer result surfaces as a one-shot
     // snackbar-ish line in the dialog before dismiss.
@@ -141,15 +146,23 @@ fun SettingsScreen(
     var showAppInfo by remember { mutableStateOf(false) }
     var showDeveloperTools by remember { mutableStateOf(false) }
     var showWhatsNew by remember { mutableStateOf(false) }
-    var showTrustSafety by remember { mutableStateOf(false) }
+    var showTrustSafety by remember { mutableStateOf(openBookCheck) }
+    var showLedgerHealth by remember { mutableStateOf(openBookCheck) }
 
-    // ── Export launchers ────────────────────────────────────────────────────
+    LaunchedEffect(openBookCheck) {
+        if (openBookCheck) {
+            showTrustSafety = true
+            showLedgerHealth = true
+        }
+    }
+
+    // -- Export launchers ----------------------------------------------------
     val jsonLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("application/json")
     ) { uri -> uri?.let { scope.launch {
         val json = viewModel.exportAllData()
         val bytes = if (pendingExportPassword.isNotBlank()) {
-            // C22 (3.2.66) — encrypt with the password captured pre-SAF.
+            // C22 (3.2.66) - encrypt with the password captured pre-SAF.
             // Wipe the password immediately after use; we don't want it
             // sitting in process memory longer than necessary.
             val pwd = pendingExportPassword
@@ -159,7 +172,7 @@ fun SettingsScreen(
         context.contentResolver.openOutputStream(it)?.use { os -> os.write(bytes) }
     }}}
 
-    // 3.2.70 — sample CSV exporter so users can test Import without having
+    // 3.2.70 - sample CSV exporter so users can test Import without having
     // a real bank export. Saves a tiny 5-row file via CreateDocument SAF
     // so the user picks where to drop it (Downloads is the obvious choice).
     val csvSampleLauncher = rememberLauncherForActivityResult(
@@ -171,8 +184,8 @@ fun SettingsScreen(
                 appendLine("2026-05-20,Salary credit,50000,Salary")
                 appendLine("2026-05-21,Coffee at Blue Tokai,-380,Food")
                 appendLine("2026-05-22,Uber to office,-145,Transport")
-                appendLine("2026-05-23,Amazon — wireless mouse,-1299,Shopping")
-                appendLine("2026-05-25,Refund — wrong item returned,1299,Shopping")
+                appendLine("2026-05-23,Amazon - wireless mouse,-1299,Shopping")
+                appendLine("2026-05-25,Refund - wrong item returned,1299,Shopping")
             }
             context.contentResolver.openOutputStream(it)?.use { os ->
                 os.write(sample.toByteArray(Charsets.UTF_8))
@@ -187,10 +200,10 @@ fun SettingsScreen(
         }
     }}}
 
-    // C22 (3.2.67 → 3.2.68 smoke fix) — Use `OpenDocument` not `GetContent`.
+    // C22 (3.2.67 -> 3.2.68 smoke fix) - Use `OpenDocument` not `GetContent`.
     // `GetContent("*/*")` opens to the recents-only SAF chooser on many
     // Android versions and surfaces an empty "no files" screen if the
-    // user has no recent CSVs — user reported "no options coming to save
+    // user has no recent CSVs - user reported "no options coming to save
     // in files". `OpenDocument` with an explicit MIME array launches the
     // full SAF file browser (Downloads, internal storage, Drive, etc.)
     // and lists files matching any of the listed types.
@@ -213,7 +226,7 @@ fun SettingsScreen(
         }
     }}}
 
-    // 3.2.68 smoke fix — same OpenDocument switch as the CSV launcher.
+    // 3.2.68 smoke fix - same OpenDocument switch as the CSV launcher.
     // GetContent("*/*") opens to recents on many Android versions; users
     // looking for a backup in Downloads couldn't reach it. OpenDocument
     // launches the full SAF browser.
@@ -241,10 +254,10 @@ fun SettingsScreen(
     val pdfLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("application/pdf")
     ) { uri -> uri?.let { scope.launch(Dispatchers.IO) {
-        // exportToPDF is now suspend (C02 — runs recalcCoordinator.runAndStamp()
+        // exportToPDF is now suspend (C02 - runs recalcCoordinator.runAndStamp()
         // first so the PDF reflects fresh state, not whatever was in memory).
         context.contentResolver.openOutputStream(it)?.use { os ->
-            // C11 (3.2.40) — pass user's Date Format preference through.
+            // C11 (3.2.40) - pass user's Date Format preference through.
             viewModel.exportToPDF(os, dateFormat = dateFormat)
         }
     }}}
@@ -287,16 +300,16 @@ fun SettingsScreen(
         // Route XLSX through viewModel.exportToXLSX so it gets the same
         // recalc-then-export contract as PDF / CSV / JSON. Previously this
         // launcher called ExcelExportUtility.generateFullBackup directly and
-        // bypassed any pre-step — that's the C02 gap closed.
+        // bypassed any pre-step - that's the C02 gap closed.
         runCatching {
             context.contentResolver.openOutputStream(it)?.use { os ->
-                // C11 (3.2.40) — pass user's Date Format preference through.
+                // C11 (3.2.40) - pass user's Date Format preference through.
                 viewModel.exportToXLSX(os, dateFormat = dateFormat)
             }
         }
     }}}
 
-    // ── Danger Zone — Reset All Data flow state ───────────────────────────────
+    // -- Danger Zone - Reset All Data flow state -------------------------------
     var showResetPinGate by remember { mutableStateOf(false) }
     var showResetWarning by remember { mutableStateOf(false) }
     var isResetting      by remember { mutableStateOf(false) }
@@ -316,7 +329,7 @@ fun SettingsScreen(
         WhatsNewDialog(onDismiss = { showWhatsNew = false })
     }
 
-    // C22 (3.2.66) — backup-encryption dialogs.
+    // C22 (3.2.66) - backup-encryption dialogs.
     if (showExportPwdDialog) {
         BackupPasswordDialog(
             mode = BackupPasswordMode.SET,
@@ -459,7 +472,7 @@ fun SettingsScreen(
             .verticalScroll(rememberScrollState()).imePadding()
             .padding(horizontal = 16.dp)
     ) {
-        // ── Upgrade to Pro (hidden until billing is enabled) ──────────────────
+        // -- Upgrade to Pro (hidden until billing is enabled) ------------------
         SettingsSummaryPanel(
             currencyCode = defaultCurrency,
             dateFormat = dateFormat,
@@ -506,7 +519,7 @@ fun SettingsScreen(
             Spacer(Modifier.height(16.dp))
         }
 
-        // ── Appearance ────────────────────────────────────────────────────────
+        // -- Appearance --------------------------------------------------------
         SettingsExpandableCard(
             title = "Personalization",
             subtitle = "Theme and display name",
@@ -515,7 +528,7 @@ fun SettingsScreen(
             expanded = showPersonalization,
             onToggle = { showPersonalization = !showPersonalization },
         ) {
-            // 3.2.21 — Theme picker redesigned to match the Notifications
+            // 3.2.21 - Theme picker redesigned to match the Notifications
             // section's Switch pattern. Was a 3-option `SegmentedButtonRow`
             // (System / Light / Dark) from the 3.2.11 chip-sweep; that was
             // technically correct (3-state mutex) but visually inconsistent
@@ -525,13 +538,13 @@ fun SettingsScreen(
             // "Dark mode" Switch appears. That's now this pattern.
             //
             // State mapping (preserves `ThemeController.darkModeOverride`):
-            //   - `null`  → "Follow system" ON,  "Dark mode" row hidden
-            //   - `false` → "Follow system" OFF, "Dark mode" Switch OFF
-            //   - `true`  → "Follow system" OFF, "Dark mode" Switch ON
+            //   - `null`  -> "Follow system" ON,  "Dark mode" row hidden
+            //   - `false` -> "Follow system" OFF, "Dark mode" Switch OFF
+            //   - `true`  -> "Follow system" OFF, "Dark mode" Switch ON
             //
             // When the user toggles "Follow system" OFF, the override is
             // seeded with the CURRENT visual state (via `isSystemInDarkTheme()`)
-            // so the screen doesn't visually flip — it stays whatever the
+            // so the screen doesn't visually flip - it stays whatever the
             // user is already seeing, just frozen under their control.
             val isCurrentlyDark = androidx.compose.foundation.isSystemInDarkTheme()
             val themeOverride = ThemeController.darkModeOverride
@@ -560,7 +573,7 @@ fun SettingsScreen(
                         ThemeController.save(context)
                         viewModel.showFeedback(if (useSystem) "Using system theme" else "Theme preference saved")
                     },
-                    // 3.2.22 — added explicit uncheckedColors. M3 defaults
+                    // 3.2.22 - added explicit uncheckedColors. M3 defaults
                     // were `outline` thumb on `surfaceContainerHighest` track,
                     // both very light greys that disappeared into the
                     // SettingsCard's `surfaceVariant` background in light
@@ -611,7 +624,7 @@ fun SettingsScreen(
                 value         = displayName,
                 onValueChange = { displayName = it },
                 label         = { Text("Your Name") },
-                placeholder   = { Text("Optional — used for greetings") },
+                placeholder   = { Text("Optional - used for greetings") },
                 singleLine    = true,
                 trailingIcon  = null,
                 modifier      = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
@@ -620,28 +633,36 @@ fun SettingsScreen(
                     focusedLabelColor    = Emerald500
                 )
             )
-            if (displayName.isNotBlank()) {
+            val trimmedDisplayName = displayName.trim()
+            val savedDisplayName = displayNameFlow.trim()
+            val displayNameChanged = trimmedDisplayName.isNotBlank() && trimmedDisplayName != savedDisplayName
+            if (trimmedDisplayName.isNotBlank()) {
                 Button(
                     onClick = {
                         scope.launch {
-                            UserPreferences.setUserDisplayName(context, displayName.trim())
-                            viewModel.showFeedback("Name saved")
+                            if (displayNameChanged) {
+                                UserPreferences.setUserDisplayName(context, trimmedDisplayName)
+                                viewModel.showFeedback("Name saved")
+                            } else {
+                                viewModel.showFeedback("Already saved")
+                            }
                         }
                     },
+                    enabled = displayNameChanged,
                     modifier = Modifier
                         .align(Alignment.End)
                         .padding(top = 10.dp, end = 4.dp),
                     shape = RoundedCornerShape(12.dp),
                 ) {
-                    Text("Save name")
+                    Text(if (displayNameChanged) "Save name" else "Already saved")
                 }
             }
         }
 
         Spacer(Modifier.height(16.dp))
 
-        // ── Cloud Backup ─────────────────────────────────────────────────────
-        // ── Backup & Export ──────────────────────────────────────────────────
+        // -- Cloud Backup -----------------------------------------------------
+        // -- Backup & Export --------------------------------------------------
         SettingsExpandableCard(
             title = "Backup & Export",
             subtitle = "Backups, reports, imports, and restore",
@@ -657,7 +678,7 @@ fun SettingsScreen(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     Icon(Icons.Default.CloudDone, null, Modifier.size(18.dp), tint = Green)
-                    Text("Auto-backup on · synced to cloud in real-time",
+                    Text("Auto-backup on  -  synced to cloud in real-time",
                         style = MaterialTheme.typography.bodyMedium, color = Green)
                 }
                 SettingsDivider()
@@ -671,10 +692,10 @@ fun SettingsScreen(
                 SettingsDivider()
                 }
 
-                // C22 (3.2.66) — encryption toggle. Off by default so the
+                // C22 (3.2.66) - encryption toggle. Off by default so the
                 // existing Export flow is unchanged for users who don't
                 // need encryption; flipping on routes the next export
-                // through a password dialog → AES-GCM under PBKDF2.
+                // through a password dialog -> AES-GCM under PBKDF2.
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
@@ -687,7 +708,7 @@ fun SettingsScreen(
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis)
                         Text(
-                            if (encryptOnExport) "Next export will be AES-encrypted. Keep the password safe — there's no recovery."
+                            if (encryptOnExport) "Next export will be AES-encrypted. Keep the password safe - there's no recovery."
                             else "Export will be plain JSON (readable by anyone with the file).",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -695,7 +716,7 @@ fun SettingsScreen(
                             overflow = TextOverflow.Ellipsis,
                         )
                     }
-                    // 3.2.63 lesson — explicit unchecked colors so the Switch
+                    // 3.2.63 lesson - explicit unchecked colors so the Switch
                     // stays visible against the surface in light mode.
                     Switch(
                         checked = encryptOnExport,
@@ -720,7 +741,7 @@ fun SettingsScreen(
                     if (!isPro) {
                         onNavigateToUpgrade()
                     } else if (encryptOnExport) {
-                        // Password dialog → SAF picker → encrypt + write.
+                        // Password dialog -> SAF picker -> encrypt + write.
                         showExportPwdDialog = true
                     } else {
                         pendingExportPassword = ""
@@ -754,7 +775,7 @@ fun SettingsScreen(
                     title = "Restore Backup",
                     subtitle = "Preview counts and integrity before replacing current data"
                 ) {
-                    // 3.2.69 smoke fix — single `*/*` so Samsung / Xiaomi
+                    // 3.2.69 smoke fix - single `*/*` so Samsung / Xiaomi
                     // pickers don't hide files whose declared MIME isn't in
                     // the array. Our reader auto-detects encrypted vs plain
                     // via magic header, so file type doesn't matter at the
@@ -765,8 +786,8 @@ fun SettingsScreen(
                 SettingsDivider()
 
                 if (showInternalTools) {
-                // C22 (3.2.67) — bank statement CSV import.
-                // 3.2.70 — discoverable sample for first-time testing. Saves
+                // C22 (3.2.67) - bank statement CSV import.
+                // 3.2.70 - discoverable sample for first-time testing. Saves
                 // a 5-row example file to user-chosen location so they can
                 // immediately exercise the Import flow without needing a
                 // real bank export.
@@ -791,18 +812,18 @@ fun SettingsScreen(
                     subtitle = "Map columns from your bank export and bulk-add transactions"
                 ) {
                     if (allAccountsForImport.isEmpty()) {
-                        // 3.2.68 smoke fix — was set into csvImportSummary which
+                        // 3.2.68 smoke fix - was set into csvImportSummary which
                         // only renders inside the mapping dialog (never opens
                         // without rows). A Toast surfaces immediately.
                         android.widget.Toast.makeText(
                             context,
-                            "Add an account first — imported transactions need a destination.",
+                            "Add an account first - imported transactions need a destination.",
                             android.widget.Toast.LENGTH_LONG,
                         ).show()
                     } else {
-                        // 3.2.69 smoke fix — was an array including specific CSV
+                        // 3.2.69 smoke fix - was an array including specific CSV
                         // MIMEs plus `*/*`. User reported "navigated to my files
-                        // but cant see file" — Samsung / Xiaomi pickers interpret
+                        // but cant see file" - Samsung / Xiaomi pickers interpret
                         // the MIME array strictly and HIDE files whose declared
                         // MIME isn't in the list (even when `*/*` is included).
                         // Switching to a single-element `arrayOf("*/*")` shows
@@ -818,8 +839,8 @@ fun SettingsScreen(
         Spacer(Modifier.height(16.dp))
 
         SettingsExpandableCard(
-            title = "Trust & Safety",
-            subtitle = "Book check, proof, close, undo, and release readiness",
+            title = "Review & safety",
+            subtitle = "Book check, proof records, month close, undo, and backup confidence",
             icon = Icons.Default.Verified,
             color = Green,
             expanded = showTrustSafety,
@@ -838,14 +859,14 @@ fun SettingsScreen(
                 fun fmtDelta(v: Double): String = when {
                     kotlin.math.abs(v) < 0.5 -> "no change"
                     v > 0 -> "+${fmtMoney(v)}"
-                    else  -> "−${fmtMoney(-v)}"
+                    else  -> "Rs${fmtMoney(-v)}"
                 }
 
                 SettingsActionRow(
                     icon     = Icons.Default.Calculate,
                     color    = Amber,
-                    title    = "Recalculate Balances",
-                    subtitle = "Fixes account balances that got out of sync. Run this if Personal Cash or any account shows a wrong amount."
+                    title    = "Fix account totals",
+                    subtitle = "Use when an account amount looks wrong. The app rebuilds totals from saved money records."
                 ) {
                     if (recalcInFlight) return@SettingsActionRow
                     recalcInFlight = true
@@ -860,16 +881,15 @@ fun SettingsScreen(
 
                 SettingsDivider()
 
-                var showLedgerHealth by remember { mutableStateOf(false) }
                 var safeRepairInFlight by remember { mutableStateOf(false) }
                 var safeRepairSummary by remember { mutableStateOf<String?>(null) }
                 val ledgerHealthSubtitle = when {
                     ledgerReport.criticalCount > 0 || ledgerReport.warningCount > 0 ->
-                        "${ledgerReport.headline} · Score ${ledgerReport.score}/100 · ${ledgerReport.criticalCount} serious · ${ledgerReport.warningCount} review"
+                        "${ledgerReport.headline}  -  Score ${ledgerReport.score}/100  -  ${ledgerReport.criticalCount} serious  -  ${ledgerReport.warningCount} review"
                     ledgerReport.infoCount > 0 ->
-                        "${ledgerReport.headline} · Score ${ledgerReport.score}/100 · ${ledgerReport.infoCount} notes"
+                        "${ledgerReport.headline}  -  Score ${ledgerReport.score}/100  -  ${ledgerReport.infoCount} notes"
                     else ->
-                        "${ledgerReport.headline} · Score ${ledgerReport.score}/100 · No issues"
+                        "${ledgerReport.headline}  -  Score ${ledgerReport.score}/100  -  No issues"
                 }
                 SettingsActionRow(
                     icon = Icons.Default.Verified,
@@ -883,6 +903,11 @@ fun SettingsScreen(
                         report = ledgerReport,
                         repairInFlight = safeRepairInFlight,
                         repairSummary = safeRepairSummary,
+                        showAdvancedTools = showInternalTools,
+                        onOpenIssue = { issue ->
+                            showLedgerHealth = false
+                            onNavigateToLedgerIssue(issue)
+                        },
                         onRunSafeRepair = {
                             if (!safeRepairInFlight) {
                                 safeRepairInFlight = true
@@ -909,7 +934,7 @@ fun SettingsScreen(
                     icon = Icons.Default.Verified,
                     color = Green,
                     title = "Money action history",
-                    subtitle = "${auditEvents.size} saved money actions. Review or export accountability history."
+                    subtitle = "${auditEvents.size} saved money actions. Review or export only when you need a detailed trail."
                 ) { showAuditTrail = true }
 
                 if (showAuditTrail) {
@@ -1075,7 +1100,7 @@ fun SettingsScreen(
                 if (showInternalTools) {
                 SettingsDivider()
 
-                // 3.2.72 — diagnostic: show every balance-mutation site so
+                // 3.2.72 - diagnostic: show every balance-mutation site so
                 // the user can see which subsystem is moving net worth.
                 var showAuditLog by remember { mutableStateOf(false) }
                 SettingsActionRow(
@@ -1094,7 +1119,7 @@ fun SettingsScreen(
 
                 SettingsDivider()
 
-                // 3.2.74 — wipe Firestore + re-push local. Use when stale
+                // 3.2.74 - wipe Firestore + re-push local. Use when stale
                 // cloud data is "restoring" itself into local on every sync.
                 var showResetCloudConfirm by remember { mutableStateOf(false) }
                 var resetCloudInFlight by remember { mutableStateOf(false) }
@@ -1154,14 +1179,14 @@ fun SettingsScreen(
 
         Spacer(Modifier.height(16.dp))
 
-        // ── Notifications ────────────────────────────────────────────────────
-        // C18 fix #1 (3.2.20) — the single "Loan & Budget Reminders" Switch
+        // -- Notifications ----------------------------------------------------
+        // C18 fix #1 (3.2.20) - the single "Loan & Budget Reminders" Switch
         // bundled two semantically different alert types. Split into:
         //   - Loan reminders   (overdue loans, due-date reminders for borrowers)
         //   - Budget alerts    (over-budget category warnings, daily-spend nudges)
         // Each toggles its own pref; setting either ON keeps the master
         // `notifications_enabled` ON so the [ReminderScheduler] keeps running.
-        // Setting both OFF disables the master too — scheduler stops.
+        // Setting both OFF disables the master too - scheduler stops.
         // Worker-layer differentiation (which alarm class reads which sub-key
         // before firing) is a follow-up; the UI split lands now so users have
         // granular control even if the underlying dispatch is currently unified.
@@ -1198,7 +1223,7 @@ fun SettingsScreen(
                         // is idempotent (uses ExistingPeriodicWorkPolicy.KEEP).
                         if (it) app.fynlo.notifications.ReminderScheduler.schedule(context)
                     },
-                    // 3.2.22 — added explicit uncheckedColors. M3 defaults
+                    // 3.2.22 - added explicit uncheckedColors. M3 defaults
                     // were `outline` thumb on `surfaceContainerHighest` track,
                     // both very light greys that disappeared into the
                     // SettingsCard's `surfaceVariant` background in light
@@ -1238,7 +1263,7 @@ fun SettingsScreen(
                         }
                         if (it) app.fynlo.notifications.ReminderScheduler.schedule(context)
                     },
-                    // 3.2.22 — added explicit uncheckedColors. M3 defaults
+                    // 3.2.22 - added explicit uncheckedColors. M3 defaults
                     // were `outline` thumb on `surfaceContainerHighest` track,
                     // both very light greys that disappeared into the
                     // SettingsCard's `surfaceVariant` background in light
@@ -1258,7 +1283,7 @@ fun SettingsScreen(
 
         Spacer(Modifier.height(16.dp))
 
-        // ── Formatting ──────────────────────────────────────────────────────────
+        // -- Formatting ----------------------------------------------------------
         SettingsExpandableCard(
             title = "Formatting",
             subtitle = "Currency and date display",
@@ -1267,7 +1292,7 @@ fun SettingsScreen(
             expanded = showFormatting,
             onToggle = { showFormatting = !showFormatting },
         ) {
-            // Currency — C04 Stage 3 grouped picker (recently used at top,
+            // Currency - C04 Stage 3 grouped picker (recently used at top,
             // then full alphabetical list). The displayed/selected row comes
             // from `pickerCurrency` (recency-then-locale resolver); selecting
             // a row records into both the canonical pref and the recency
@@ -1279,9 +1304,9 @@ fun SettingsScreen(
             val groupedOrder = remember(recentCurrencies, fullCurrencies) {
                 buildCurrencyPickerOrder(recentCurrencies, fullCurrencies)
             }
-            // Shared label formatter — used both for the field's selected-row
+            // Shared label formatter - used both for the field's selected-row
             // display and the per-row dropdown items so they stay in sync.
-            // Audit fix #10: format reads `INR  ₹  Indian Rupee` instead of
+            // Audit fix #10: format reads `INR  Rs  Indian Rupee` instead of
             // the bare 3-letter code.
             fun currencyLabel(code: String): String {
                 val info = CurrencyUtils.supported.firstOrNull { it.code == code }
@@ -1303,7 +1328,7 @@ fun SettingsScreen(
                     shape = RoundedCornerShape(12.dp)
                 )
                 ExposedDropdownMenu(expanded = currencyExpanded, onDismissRequest = { currencyExpanded = false }) {
-                    // "Recently used" group — hidden entirely on fresh install
+                    // "Recently used" group - hidden entirely on fresh install
                     // (when `observeRecentCurrencies` emits an empty list).
                     if (recentCurrencies.isNotEmpty()) {
                         Text(
@@ -1326,7 +1351,7 @@ fun SettingsScreen(
                         HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
                     }
                     // Full alphabetical list (always shown). Recency-driven
-                    // entries appear in both groups — the audit's reference
+                    // entries appear in both groups - the audit's reference
                     // UX explicitly keeps the canonical entry visible in the
                     // main list so users don't have to scroll past their
                     // recents to re-find a familiar code.
@@ -1345,7 +1370,7 @@ fun SettingsScreen(
             }
             HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
             // Date Format
-            // C18 (3.2.20) — was a SegmentedButtonRow (3.2.11) showing just the
+            // C18 (3.2.20) - was a SegmentedButtonRow (3.2.11) showing just the
             // pattern strings (`dd-MM-yyyy` / `MM-dd-yyyy` / `yyyy-MM-dd`).
             // The audit asked for example values alongside the pattern so the
             // user sees what they're actually choosing. Segmented buttons
@@ -1372,7 +1397,7 @@ fun SettingsScreen(
                 modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 12.dp),
             ) {
                 OutlinedTextField(
-                    value = "$dateFormat   →   $dateFormatExample",
+                    value = "$dateFormat   ->   $dateFormatExample",
                     onValueChange = {}, readOnly = true,
                     label = { Text("Date Format") },
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = dateFormatExpanded) },
@@ -1404,7 +1429,7 @@ fun SettingsScreen(
 
 
 
-        // ── App Info ─────────────────────────────────────────────────────────
+        // -- App Info ---------------------------------------------------------
         // PIN manager retained for the Danger Zone reset gate; the PIN &
         // biometric controls now live in Profile & Security (ProfileScreen).
         val pinManager = remember { app.fynlo.data.PinManager(context) }
@@ -1417,7 +1442,7 @@ fun SettingsScreen(
             expanded = showAppInfo,
             onToggle = { showAppInfo = !showAppInfo },
         ) {
-            // C18 #4 (3.2.78) — was an email-shortcut; the audit deferred
+            // C18 #4 (3.2.78) - was an email-shortcut; the audit deferred
             // an in-app form. ReportBugDialog captures the report in a
             // structured Crashlytics non-fatal (so support gets it without
             // the user having to remember to actually send the email), and
@@ -1432,10 +1457,10 @@ fun SettingsScreen(
                 title    = "Report a Bug",
                 subtitle = "In-app form with device info and reference ID"
             ) { showBugDialog = true }
-            // C18 fix #5 (3.2.20) — Rate-on-Play-Store gated by positive
+            // C18 fix #5 (3.2.20) - Rate-on-Play-Store gated by positive
             // engagement. The audit's complaint was the rate-prompt being
             // shown immediately rather than after the user has actually
-            // used the app. Threshold: ≥5 transactions logged. Fresh
+            // used the app. Threshold: >=5 transactions logged. Fresh
             // installs / first-day users don't see the row at all, so
             // they can't be nudged toward a premature rating they
             // wouldn't otherwise leave. After 5 transactions the user
@@ -1490,7 +1515,7 @@ fun SettingsScreen(
             }
         }
 
-        // ── Developer (debug only) ───────────────────────────────────────────
+        // -- Developer (debug only) -------------------------------------------
         if (showInternalTools) {
             Spacer(Modifier.height(16.dp))
             SettingsExpandableCard(
@@ -1508,7 +1533,7 @@ fun SettingsScreen(
                 var showReleaseChecklist by remember { mutableStateOf(false) }
 
                 if (showSeedConfirm) FynloConfirmDialog(
-                    title = "Load Test Data?",
+                    title = "Load Test Data-",
                     message = "This will delete all existing data and replace it with QA test data.",
                     confirmText = "Load",
                     destructive = true,
@@ -1516,7 +1541,7 @@ fun SettingsScreen(
                     onConfirm = { viewModel.loadDummyData(); showSeedConfirm = false },
                 )
                 if (showCleanupConfirm) FynloConfirmDialog(
-                    title = "Cleanup Seeder Data?",
+                    title = "Cleanup Seeder Data-",
                     message = "Removes all QA test data from the app and Firestore.",
                     confirmText = "Cleanup",
                     destructive = true,
@@ -1524,14 +1549,14 @@ fun SettingsScreen(
                     onConfirm = { viewModel.cleanupSeeederData(); showCleanupConfirm = false },
                 )
                 if (showRestoreConfirm) FynloConfirmDialog(
-                    title = "Restore Real Data?",
+                    title = "Restore Real Data-",
                     message = "Clears all transactions and restores Personal Cash INR 3,962 plus HDFC Bank INR 1,22,500.",
                     confirmText = "Restore",
                     onDismiss = { showRestoreConfirm = false },
                     onConfirm = { viewModel.restoreRealData(); showRestoreConfirm = false },
                 )
                 if (showWipeConfirm) FynloConfirmDialog(
-                    title = "Wipe ALL Data?",
+                    title = "Wipe ALL Data-",
                     message = "Permanent destruction: this will delete everything from this phone and Google Cloud. This cannot be undone.",
                     confirmText = "WIPE EVERYTHING",
                     destructive = true,
@@ -1575,8 +1600,8 @@ fun SettingsScreen(
             }
         }
 
-        // ── Version ──────────────────────────────────────────────────────────
-        // ── Danger Zone ──────────────────────────────────────────────────────
+        // -- Version ----------------------------------------------------------
+        // -- Danger Zone ------------------------------------------------------
         Spacer(Modifier.height(16.dp))
         Row(
             Modifier.padding(start = 2.dp, bottom = 8.dp, top = 4.dp),
@@ -1632,10 +1657,10 @@ fun SettingsScreen(
             }
         }
 
-        // Confirmation warning — shown after the PIN gate (if any).
+        // Confirmation warning - shown after the PIN gate (if any).
         if (showResetWarning) {
             FynloConfirmDialog(
-                title = "Reset All Data?",
+                title = "Reset All Data-",
                 message = "This will permanently delete ALL your data - transactions, loans, debts, investments, accounts, budgets and goals. This cannot be undone.",
                 confirmText = "Yes, Reset Everything",
                 destructive = true,
@@ -1652,7 +1677,7 @@ fun SettingsScreen(
             )
         }
 
-        // Blocking progress while the wipe runs — restart kills the process.
+        // Blocking progress while the wipe runs - restart kills the process.
         if (isResetting) {
             Dialog(
                 onDismissRequest = { },
@@ -1701,11 +1726,11 @@ fun SettingsScreen(
     }
 }
 
-// ── Shared composables ──────────────────────────────────────────────────────
+// -- Shared composables ------------------------------------------------------
 
 @Composable
 private fun SettingsSectionLabel(title: String) {
-    // C18 (3.2.20) — removed the emerald `•` bullet + emerald-coloured text.
+    // C18 (3.2.20) - removed the emerald `*` bullet + emerald-coloured text.
     // The audit called this inconsistent with the rest of the app, where
     // section headers are plain bold on default surface colour. The Danger
     // Zone header (further below) keeps its red bullet because it serves
@@ -1814,17 +1839,17 @@ private fun SettingsDivider() {
 }
 
 /**
- * C04 Stage 3 — pure helper for grouped currency-picker display order.
+ * C04 Stage 3 - pure helper for grouped currency-picker display order.
  *
  * Merges the user's recently-used currency codes (most-recent first) with the
  * full curated list, producing a single flat sequence where:
  *   1. Recent entries come first (preserving their order).
  *   2. Then every entry from [full] that isn't already in [recent], in the
  *      order [full] supplies (callers pass it alphabetically sorted).
- *   3. No duplicates — a code in both [recent] and [full] appears exactly
+ *   3. No duplicates - a code in both [recent] and [full] appears exactly
  *      once, in its recent-group position.
  *
- * Exposed for unit testing — see `CurrencyPickerOrderDataIntegrityTest`.
+ * Exposed for unit testing - see `CurrencyPickerOrderDataIntegrityTest`.
  * The composable above keeps the two groups visually separated (with a
  * divider) rather than using this flat form, but the dedupe/order contract
  * is the load-bearing piece, hence the test coverage.
@@ -2127,16 +2152,16 @@ private fun MonthlyCloseDialog(
     onDismiss: () -> Unit,
 ) {
     val income = remember(transactions) {
-        transactions.filter { it.type.equals("Income", ignoreCase = true) && !it.tags.contains("journal_only", ignoreCase = true) }
+        transactions.filter { it.type.equals("Income", ignoreCase = true) && !it.isGeneratedJournalEntry() }
             .sumOf { it.amount }
     }
     val expense = remember(transactions) {
-        transactions.filter { it.type.equals("Expense", ignoreCase = true) && !it.tags.contains("journal_only", ignoreCase = true) }
+        transactions.filter { it.type.equals("Expense", ignoreCase = true) && !it.isGeneratedJournalEntry() }
             .sumOf { it.amount }
     }
     val transfers = remember(transactions) { transactions.count { it.type.equals("Transfer", ignoreCase = true) } }
     FynloConfirmDialog(
-        title = if (isClosed) "Reopen $month?" else "Close $month?",
+        title = if (isClosed) "Reopen $month-" else "Close $month-",
         message = if (isClosed) {
             "This unlocks the month so corrections can be made. Close it again after checking Book check."
         } else {
@@ -2370,7 +2395,7 @@ private fun buildProofGaps(
     val largeTransactionGaps = transactions
         .filter {
             kotlin.math.abs(it.amount) >= 50_000.0 &&
-                it.tags.split(',').none { tag -> tag.trim().equals("journal_only", ignoreCase = true) } &&
+                !it.isGeneratedJournalEntry() &&
                 !hasProof("transaction", it.id)
         }
         .sortedWith(compareByDescending<app.fynlo.data.model.Transaction> { it.date }.thenByDescending { it.updatedAt })
@@ -2553,7 +2578,7 @@ private fun buildLaunchReadinessItems(
         ),
         LaunchReadinessItem(
             "Clean Play Store onboarding",
-            "First-run screens explain ledger separation, lending, debt, investments, sync, exports, and backups without developer wording.",
+            "First-run screens explain separate books, lending, debt, investments, cloud backup, exports, and backups without developer wording.",
             ready = true,
             accent = Green,
         ),
@@ -2704,6 +2729,8 @@ private fun LedgerHealthDialog(
     report: app.fynlo.logic.LedgerAccountabilityReport,
     repairInFlight: Boolean,
     repairSummary: String?,
+    showAdvancedTools: Boolean,
+    onOpenIssue: (app.fynlo.logic.LedgerIssue) -> Unit,
     onRunSafeRepair: () -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -2714,16 +2741,27 @@ private fun LedgerHealthDialog(
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             LedgerHealthSummary(report)
-            LedgerSafeRepairCard(
-                inFlight = repairInFlight,
-                summary = repairSummary,
-                onRunSafeRepair = onRunSafeRepair,
-            )
-            RepairCoverageCard(report)
-            ReconciliationGuideCard(report)
+            if (report.criticalCount > 0 || report.issues.any { canSafeRepairHelp(it) }) {
+                LedgerSafeRepairCard(
+                    inFlight = repairInFlight,
+                    summary = repairSummary,
+                    onRunSafeRepair = onRunSafeRepair,
+                )
+            }
+            if (showAdvancedTools) {
+                RepairCoverageCard(report)
+                ReconciliationGuideCard(report)
+            }
             if (report.issues.isNotEmpty()) {
                 LedgerDialogSectionTitle("Checks to review")
-                report.issues.take(12).forEach { issue -> LedgerIssueRow(issue) }
+                report.issues.take(12).forEach { issue ->
+                    LedgerIssueRow(
+                        issue = issue,
+                        onOpen = if (issue.recordType.isNotBlank() && issue.recordId.isNotBlank()) {
+                            { onOpenIssue(issue) }
+                        } else null,
+                    )
+                }
                 if (report.issues.size > 12) {
                     Text(
                         "+${report.issues.size - 12} more checks",
@@ -2748,11 +2786,11 @@ private fun LedgerHealthDialog(
                     )
                 }
             }
-            if (report.trails.isNotEmpty()) {
-                LedgerDialogSectionTitle("Money trails")
+            if (showAdvancedTools && report.trails.isNotEmpty()) {
+                LedgerDialogSectionTitle("Money paths")
                 report.trails.take(8).forEach { trail ->
                     LedgerInfoCard(
-                        title = "${trail.referenceId} - ${trail.title}",
+                        title = trail.title,
                         detail = trail.route,
                         accent = Green,
                     )
@@ -2774,7 +2812,7 @@ private fun app.fynlo.BookRepairResult.toSafeRepairSummary(
     errorMessage?.let { return "Could not finish: $it" }
     val parts = buildList {
         if (deletedResidue > 0) add("$deletedResidue deleted row cleanup")
-        if (debtFundedTransferTraces > 0) add("$debtFundedTransferTraces neutralized investment traces")
+        if (debtFundedTransferTraces > 0) add("$debtFundedTransferTraces investment money-path fixes")
         if (debtFundedJournalRefs > 0) add("$debtFundedJournalRefs investment trail links")
         if (debtReceiptMismatches > 0) add("$debtReceiptMismatches debt receipt amounts")
         if (transactionAccountIds > 0) add("$transactionAccountIds account links")
@@ -2782,11 +2820,11 @@ private fun app.fynlo.BookRepairResult.toSafeRepairSummary(
     }
     val delta = recalcDelta
     if (parts.isEmpty() && delta?.isNoOp != false) {
-        return "No repair needed. Stored balances already match the ledger checks."
+        return "No fix needed. Saved balances already match your money records."
     }
-    val repairText = if (parts.isEmpty()) "No linked-row repairs" else parts.joinToString(", ")
+    val repairText = if (parts.isEmpty()) "No safe fixes needed" else parts.joinToString(", ")
     val balanceText = if (delta == null) {
-        "balance recalc not run"
+        "account total check not run"
     } else {
         "net worth ${formatDelta(delta.netWorthChange)}, cash ${formatDelta(delta.cashChange)}, investments ${formatDelta(delta.investmentsChange)}"
     }
@@ -2804,22 +2842,22 @@ private fun RepairCoverageCard(report: app.fynlo.logic.LedgerAccountabilityRepor
     ) {
         Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(
-                "What repair can do",
+                "What safe fix can do",
                 style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
             )
             Text(
-                "Auto repair can rebuild known links, neutral investment transfer traces, debt receipt amount mismatches, and balance drift when the evidence is already in your book.",
+                "Safe fix can rebuild known account links and correct totals when the evidence is already saved in your book.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Text(
-                "It will not guess missing accounts, change dates, delete suspected duplicates, or decide which person/record is correct.",
+                "It will not guess accounts, change dates, delete possible duplicates, or decide which person is correct.",
                 style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
                 color = Amber,
             )
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                RepairCoveragePill("May help", autoHelpCount.toString(), Green, Modifier.weight(1f))
-                RepairCoveragePill("Manual", manualCount.toString(), Amber, Modifier.weight(1f))
+                RepairCoveragePill("Can fix", autoHelpCount.toString(), Green, Modifier.weight(1f))
+                RepairCoveragePill("Review", manualCount.toString(), Amber, Modifier.weight(1f))
             }
         }
     }
@@ -2855,8 +2893,8 @@ private fun canSafeRepairHelp(issue: app.fynlo.logic.LedgerIssue): Boolean {
 @Composable
 private fun ReconciliationGuideCard(report: app.fynlo.logic.LedgerAccountabilityReport) {
     val nextStep = when {
-        report.criticalCount > 0 -> "Run safe repair first, then review every critical item before exporting."
-        report.warningCount > 0 -> "Warnings usually mean older rows are missing trace links. Review them before month close."
+        report.criticalCount > 0 -> "Fix safe issues first, then review every critical item before exporting."
+        report.warningCount > 0 -> "Warnings usually mean older records are missing a clear money path. Review them before month close."
         else -> "No ledger problems found. You can close the month after checking totals."
     }
     Surface(
@@ -2866,8 +2904,8 @@ private fun ReconciliationGuideCard(report: app.fynlo.logic.LedgerAccountability
     ) {
         Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("Review path", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold))
-            ReconcileStep("1", "Run safe repair", "Only rebuilds links and totals from records already in your book.")
-            ReconcileStep("2", "Check remaining warnings", "Open the related account, loan, debt, investment, or transaction trail.")
+            ReconcileStep("1", "Fix safe issues", "Only rebuilds links and totals from records already in your book.")
+            ReconcileStep("2", "Check remaining warnings", "Open the related account, loan, debt, investment, or transaction history.")
             ReconcileStep("3", "Close the month", "Lock the reviewed month so old entries cannot accidentally change.")
             Text(nextStep, style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold), color = Green)
         }
@@ -2908,11 +2946,11 @@ private fun LedgerSafeRepairCard(
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             Text(
-                "Safe repair",
+                "Safe fix",
                 style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
             )
             Text(
-                "Rechecks deleted rows, money trails, linked account ids, debt receipts, and balance drift using existing ledger records.",
+                "Checks saved money records and fixes only clear account-link or total problems.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -2941,7 +2979,7 @@ private fun LedgerSafeRepairCard(
                 } else {
                     Icon(Icons.Default.Build, null, Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
-                    Text("Run safe repair")
+                    Text("Fix safe issues")
                 }
             }
         }
@@ -3083,7 +3121,7 @@ private fun LedgerHealthSummary(report: app.fynlo.logic.LedgerAccountabilityRepo
     ) {
         Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                LedgerSummaryMetric("Serious", report.criticalCount.toString(), Red)
+                LedgerSummaryMetric("Needs fixing", report.criticalCount.toString(), Red)
                 LedgerSummaryMetric("Review", report.warningCount.toString(), Amber)
                 LedgerSummaryMetric("Linked", report.linkedRecords.toString(), Green)
             }
@@ -3093,7 +3131,7 @@ private fun LedgerHealthSummary(report: app.fynlo.logic.LedgerAccountabilityRepo
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Text(
-                "Duplicate entries: ${report.duplicateCount} · Missing links: ${report.missingTraceCount}",
+                "Possible duplicates: ${report.duplicateCount}  -  Account links to review: ${report.missingTraceCount}",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -3127,30 +3165,63 @@ private fun LedgerDialogSectionTitle(title: String) {
 }
 
 @Composable
-private fun LedgerIssueRow(issue: app.fynlo.logic.LedgerIssue) {
+private fun LedgerIssueRow(
+    issue: app.fynlo.logic.LedgerIssue,
+    onOpen: (() -> Unit)?= null,
+) {
     val color = when (issue.severity) {
         app.fynlo.logic.LedgerIssueSeverity.CRITICAL -> Red
         app.fynlo.logic.LedgerIssueSeverity.WARNING -> Amber
         app.fynlo.logic.LedgerIssueSeverity.INFO -> Blue
     }
     LedgerInfoCard(
-        title = issue.title,
-        detail = issue.detail,
+        title = userFacingLedgerIssueTitle(issue),
+        detail = userFacingLedgerIssueDetail(issue),
         accent = color,
         explanation = ledgerIssueExplanation(issue),
         suggestion = ledgerIssueSuggestion(issue),
+        onClick = onOpen,
     )
 }
 
+private fun userFacingLedgerIssueTitle(issue: app.fynlo.logic.LedgerIssue): String {
+    val title = issue.title.lowercase()
+    val detail = issue.detail.lowercase()
+    return when {
+        "interest payment" in title -> "Interest payment needs review"
+        "duplicate" in title -> "Possible duplicate record"
+        "amount mismatch" in title -> "Amount needs review"
+        "investment" in title && ("trace" in title || "path" in title || "link" in title) -> "Investment money path missing"
+        "debt" in title && ("receipt" in title || "trace" in title || "path" in title || "link" in title) -> "Debt deposit path missing"
+        "loan" in title && ("trace" in title || "path" in title || "link" in title) -> "Loan money path missing"
+        ("source" in title || "destination" in title || "account" in title) && ("not found" in title || "missing" in title) -> "Account needs review"
+        "trace" in title || "ledger" in title || "link" in title -> "Money path needs review"
+        "old" in detail || "older" in detail || "legacy" in detail -> "Older record needs review"
+        else -> issue.title
+    }
+}
+
+private fun userFacingLedgerIssueDetail(issue: app.fynlo.logic.LedgerIssue): String {
+    return issue.detail
+        .replace("ledger trace", "money path", ignoreCase = true)
+        .replace("trace", "money path", ignoreCase = true)
+        .replace("ledger", "book", ignoreCase = true)
+        .replace("legacy/imported data", "older saved data", ignoreCase = true)
+        .replace("linked-row", "saved record", ignoreCase = true)
+        .replace("source account id", "source account", ignoreCase = true)
+        .replace("destination account id", "destination account", ignoreCase = true)
+}
 @Composable
 private fun LedgerInfoCard(
     title: String,
     detail: String,
     accent: Color,
-    explanation: String? = null,
-    suggestion: String? = null,
+    explanation: String?= null,
+    suggestion: String?= null,
+    onClick: (() -> Unit)?= null,
 ) {
     Surface(
+        modifier = if (onClick != null) Modifier.fillMaxWidth().clickable(onClick = onClick) else Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(14.dp),
         color = MaterialTheme.colorScheme.surface,
         border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f)),
@@ -3190,6 +3261,31 @@ private fun LedgerInfoCard(
                         color = accent,
                     )
                 }
+                if (onClick != null) {
+                    Spacer(Modifier.height(8.dp))
+                    Surface(
+                        shape = RoundedCornerShape(999.dp),
+                        color = accent.copy(alpha = 0.10f),
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(5.dp),
+                        ) {
+                            Text(
+                                "Open related record",
+                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.ExtraBold),
+                                color = accent,
+                            )
+                            Icon(
+                                Icons.Default.ChevronRight,
+                                contentDescription = null,
+                                modifier = Modifier.size(14.dp),
+                                tint = accent,
+                            )
+                        }
+                    }
+                }
             }
         }
     }
@@ -3199,6 +3295,8 @@ private fun ledgerIssueExplanation(issue: app.fynlo.logic.LedgerIssue): String {
     val title = issue.title.lowercase()
     val detail = issue.detail.lowercase()
     return when {
+        "interest payment" in title || "interest start date" in title || "interest period" in title || "assign it as previous" in detail ->
+            "The payment is saved, but it needs one simple choice so current interest due stays clear."
         "duplicate" in title || "duplicate" in detail ->
             "Two similar money rows can double-count cash, expenses, income, or repayments."
         "invalid" in title || "amount" in title && "mismatch" !in title ->
@@ -3214,17 +3312,17 @@ private fun ledgerIssueExplanation(issue: app.fynlo.logic.LedgerIssue): String {
         "receipt amount mismatch" in title || "receipt amount" in detail ->
             "The debt principal and deposited transaction disagree, so debt and account cash can drift apart."
         "receipt link" in title || "debt received" in detail ->
-            "The debt exists, but the app cannot trace the money into an account."
+            "The debt exists, but the app cannot show which account received the money."
         "investment" in title && "funding" in title ->
             "The holding exists, but the app cannot prove which account or debt funded it."
         "investment" in title && "debt" in title ->
-            "Debt-funded investments need a neutral trace so they do not incorrectly change account cash."
+            "Debt-funded investments need a clear link so they do not incorrectly change account cash."
         "orphan" in title ->
             "A payment without its parent record cannot be trusted in borrower or debt totals."
         "older" in title || "old" in detail ->
             "Older open records may need review so due status, interest, and reports stay meaningful."
         else ->
-            "This item affects traceability. Fixing it makes account balances and reports easier to trust."
+            "This item affects account clarity. Reviewing it makes balances and reports easier to trust."
     }
 }
 
@@ -3232,6 +3330,8 @@ private fun ledgerIssueSuggestion(issue: app.fynlo.logic.LedgerIssue): String {
     val title = issue.title.lowercase()
     val detail = issue.detail.lowercase()
     return when {
+        "interest payment" in title || "interest start date" in title || "interest period" in title || "assign it as previous" in detail ->
+            "Open it and choose older interest, this period, paid ahead, or extra note."
         "duplicate" in title || "duplicate" in detail ->
             "Open History, compare the two entries, and delete only the extra copy."
         "funding" in title || "investment" in title ->
@@ -3243,12 +3343,12 @@ private fun ledgerIssueSuggestion(issue: app.fynlo.logic.LedgerIssue): String {
         "source" in title || "account" in detail ->
             "Open the original record and choose the correct account from the account picker."
         else ->
-            "Review this row before changing balances; fix it from the original loan, debt, investment, or transaction screen."
+            "Open the original loan, debt, investment, or transaction before changing balances."
     }
 }
 
 /**
- * C22 (3.2.66) — password dialog for encrypted-backup export/import.
+ * C22 (3.2.66) - password dialog for encrypted-backup export/import.
  *
  * - [BackupPasswordMode.SET]: export flow. Requires a second "confirm
  *   password" field to defend against typos (no recovery if the user
@@ -3259,7 +3359,7 @@ private fun ledgerIssueSuggestion(issue: app.fynlo.logic.LedgerIssue): String {
  *   a previous failed attempt without dismissing the dialog.
  */
 /**
- * C22 (3.2.67) — column-mapping dialog for CSV import.
+ * C22 (3.2.67) - column-mapping dialog for CSV import.
  *
  * Surfaces the parsed CSV headers (first row) as the option set for four
  * column dropdowns: Date, Description, Amount, Category (optional). The
@@ -3267,7 +3367,7 @@ private fun ledgerIssueSuggestion(issue: app.fynlo.logic.LedgerIssue): String {
  * orphan-account regression from 3.2.59 can't recur.
  *
  * Live preview of the first 3 mapped rows updates as the user changes
- * mappings — gives them confidence the columns are right before they
+ * mappings - gives them confidence the columns are right before they
  * commit. Skipped-row count surfaces in the button label.
  */
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
@@ -3388,7 +3488,7 @@ private fun CsvImportDialog(
                         val t = r.transaction
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(
-                                "${if (r.isDuplicate) "Duplicate" else "Ready"} · ${t.date} · ${t.category} · ${"%.2f".format(t.amount)}",
+                                "${if (r.isDuplicate) "Duplicate" else "Ready"}  -  ${t.date}  -  ${t.category}  -  ${"%.2f".format(t.amount)}",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = if (r.isDuplicate) SemanticAmber else MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -3432,7 +3532,7 @@ private fun CsvImportDialog(
             Text(
                 when {
                     targetAccount.isBlank() -> "Pick a target account."
-                    previewOk.isEmpty()     -> "Preview rows all skip — check your column picks."
+                    previewOk.isEmpty()     -> "Preview rows all skip - check your column picks."
                     else                    -> "No data rows to import."
                 },
                 style = MaterialTheme.typography.labelSmall,
@@ -3488,12 +3588,12 @@ private fun CsvColumnPicker(
 }
 
 /**
- * 3.2.72 — diagnostic dialog showing every account-balance mutation.
+ * 3.2.72 - diagnostic dialog showing every account-balance mutation.
  *
  * Entries are reactive (StateFlow from BalanceAuditLog.observe) so the
  * list updates without re-opening the dialog if a sync fires while it's
  * visible. Most useful as: open the dialog, force-stop the app, relaunch,
- * watch what SYNC_PULL entries appear at the top — that's the "what
+ * watch what SYNC_PULL entries appear at the top - that's the "what
  * mutated on launch" trace.
  */
 @Composable
@@ -3515,7 +3615,7 @@ private fun BalanceAuditLogDialog(
         Text(
             if (entries.isEmpty()) "No balance changes recorded yet. Once you add, edit, sync, or recurring transactions fire, they'll show up here newest-first."
             else "${entries.size} balance mutation${if (entries.size == 1) "" else "s"} recorded (newest first, capped at 200). " +
-                 "Look for SYNC_PULL entries on relaunch — those are Firestore overwriting your local balance.",
+                 "Look for SYNC_PULL entries on relaunch - those are Firestore overwriting your local balance.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -3554,7 +3654,7 @@ private fun AuditEntryRow(
     entry: app.fynlo.logic.BalanceAuditLog.Entry,
     dateFmt: java.time.format.DateTimeFormatter,
 ) {
-    // Tint the row by source so SYNC_PULL stands out — that's the one
+    // Tint the row by source so SYNC_PULL stands out - that's the one
     // the diagnostic exists to flag.
     val tintColor = when (entry.source) {
         "SYNC_PULL"          -> SemanticAmber
@@ -3566,7 +3666,7 @@ private fun AuditEntryRow(
     }
     val sign = when {
         entry.delta > 0  -> "+"
-        entry.delta < 0  -> "−"
+        entry.delta < 0  -> "Rs"
         else             -> ""
     }
     val deltaText = "$sign${"%.2f".format(kotlin.math.abs(entry.delta))}"
@@ -3578,7 +3678,7 @@ private fun AuditEntryRow(
         Column(Modifier.padding(horizontal = 10.dp, vertical = 6.dp)) {
             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
                 Text(
-                    "${entry.source} · ${entry.account}",
+                    "${entry.source}  -  ${entry.account}",
                     style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
                     color = tintColor,
                 )
@@ -3589,7 +3689,7 @@ private fun AuditEntryRow(
                 )
             }
             Text(
-                "${dateFmt.format(java.time.Instant.ofEpochMilli(entry.timestamp))} — ${entry.note}",
+                "${dateFmt.format(java.time.Instant.ofEpochMilli(entry.timestamp))} - ${entry.note}",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -3675,7 +3775,7 @@ private fun WhatsNewDialog(onDismiss: () -> Unit) {
         SettingsHelpBlock(
             icon = Icons.Default.Verified,
             title = "Book check keeps totals trustworthy",
-            body = "Open Book check when you want to review missing traces, old entries, or balance warnings before exporting reports.",
+            body = "Open Book check when you want to review missing money paths, old entries, or balance warnings before exporting reports.",
         )
         SettingsHelpBlock(
             icon = Icons.Default.SwapHoriz,
@@ -3800,7 +3900,7 @@ private fun ReleaseChecklistItem(title: String, detail: String) {
 @Composable
 private fun BackupPasswordDialog(
     mode: BackupPasswordMode,
-    errorMessage: String? = null,
+    errorMessage: String?= null,
     onConfirm: (String) -> Unit,
     onDismiss: () -> Unit,
 ) {

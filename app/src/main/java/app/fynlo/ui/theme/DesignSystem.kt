@@ -41,7 +41,7 @@ fun PremiumScreenHeader(
     title: String,
     modifier: Modifier = Modifier,
     subtitle: String = "",
-    action: (@Composable () -> Unit)? = null,
+    action: (@Composable () -> Unit)?= null,
 ) {
     Row(
         modifier = modifier.fillMaxWidth()
@@ -75,7 +75,7 @@ fun LedgerDetailTopBar(
     title: String,
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier,
-    subtitle: String? = null,
+    subtitle: String?= null,
     actions: @Composable RowScope.() -> Unit = {},
 ) {
     Surface(
@@ -86,6 +86,7 @@ fun LedgerDetailTopBar(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .statusBarsPadding()
                 .padding(start = 16.dp, end = 16.dp, top = 10.dp, bottom = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -138,6 +139,91 @@ fun LedgerDetailTopBar(
 
 // ── Section label — emerald accent with dot ───────────────────────────────────
 @Composable
+fun LedgerTopBarActionButton(
+    icon: ImageVector,
+    contentDescription: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    tint: Color = MaterialTheme.colorScheme.onSurfaceVariant,
+    containerColor: Color = MaterialTheme.colorScheme.surfaceContainerLowest,
+) {
+    Surface(
+        onClick = onClick,
+        modifier = modifier.size(44.dp),
+        shape = RoundedCornerShape(14.dp),
+        color = containerColor,
+        tonalElevation = 1.dp,
+        border = BorderStroke(
+            0.5.dp,
+            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f),
+        ),
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Icon(
+                icon,
+                contentDescription = contentDescription,
+                modifier = Modifier.size(21.dp),
+                tint = tint,
+            )
+        }
+    }
+}
+
+@Composable
+fun DetailActionButton(
+    text: String,
+    icon: ImageVector,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    emphasized: Boolean = false,
+    destructive: Boolean = false,
+    warning: Boolean = false,
+) {
+    val contentColor = when {
+        destructive -> MaterialTheme.colorScheme.error
+        warning -> SemanticAmber
+        else -> Emerald500
+    }
+    val background = if (emphasized) contentColor else MaterialTheme.colorScheme.surface
+    Surface(
+        onClick = onClick,
+        modifier = modifier
+            .fillMaxWidth()
+            .heightIn(min = 52.dp),
+        shape = RoundedCornerShape(16.dp),
+        color = background,
+        tonalElevation = if (emphasized) 0.dp else 1.dp,
+        border = if (emphasized) null else BorderStroke(
+            0.8.dp,
+            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.65f),
+        ),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 13.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center,
+        ) {
+            Icon(
+                icon,
+                contentDescription = null,
+                modifier = Modifier.size(18.dp),
+                tint = if (emphasized) Color.White else contentColor,
+            )
+            Spacer(Modifier.width(8.dp))
+            Text(
+                text,
+                style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.ExtraBold),
+                color = if (emphasized) Color.White else contentColor,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+}
+
+@Composable
 fun PremiumSectionLabel(
     label: String,
     modifier: Modifier = Modifier
@@ -154,7 +240,7 @@ fun PremiumSectionLabel(
             label.uppercase(),
             style = MaterialTheme.typography.labelLarge.copy(
                 fontWeight = FontWeight.ExtraBold,
-                color = Emerald800
+                color = MaterialTheme.colorScheme.primary
             )
         )
     }
@@ -166,10 +252,10 @@ fun PremiumStatCard(
     label: String,
     value: String,
     modifier: Modifier = Modifier,
-    icon: ImageVector? = null,
+    icon: ImageVector?= null,
     iconTint: Color = Emerald500,
     valueColor: Color = MaterialTheme.colorScheme.onSurface,
-    onClick: (() -> Unit)? = null
+    onClick: (() -> Unit)?= null
 ) {
     val base = if (onClick != null)
         modifier.clip(RoundedCornerShape(12.dp)).clickable(onClick = onClick)
@@ -230,7 +316,7 @@ fun PremiumSettingsItem(
     title: String,
     subtitle: String = "",
     iconBg: Color = Emerald500,
-    trailing: (@Composable () -> Unit)? = null,
+    trailing: (@Composable () -> Unit)?= null,
     onClick: () -> Unit
 ) {
     Surface(
@@ -285,7 +371,10 @@ fun LedgerPanel(
         color = MaterialTheme.colorScheme.surface,
         tonalElevation = 0.dp,
         shadowElevation = 0.dp,
-        border = BorderStroke(0.8.dp, TemplateBorder),
+        border = BorderStroke(
+            0.8.dp,
+            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f),
+        ),
     ) {
         Column(
             modifier = Modifier.padding(14.dp),
@@ -298,7 +387,7 @@ fun LedgerPanel(
 fun LedgerSectionTitle(
     title: String,
     modifier: Modifier = Modifier,
-    count: String? = null,
+    count: String?= null,
 ) {
     Row(
         modifier = modifier.fillMaxWidth(),
@@ -308,7 +397,7 @@ fun LedgerSectionTitle(
         Text(
             title.uppercase(),
             style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.ExtraBold),
-            color = Emerald800,
+            color = MaterialTheme.colorScheme.primary,
         )
         if (count != null) {
             Text(
@@ -341,7 +430,7 @@ fun LedgerMetricBand(
 data class LedgerMetric(
     val label: String,
     val value: String,
-    val valueColor: Color? = null,
+    val valueColor: Color?= null,
 )
 
 @Composable
@@ -354,7 +443,10 @@ fun LedgerMetricCard(
         shape = RoundedCornerShape(TemplateCardRadius),
         color = MaterialTheme.colorScheme.surface,
         tonalElevation = 0.dp,
-        border = BorderStroke(0.8.dp, TemplateBorder),
+        border = BorderStroke(
+            0.8.dp,
+            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f),
+        ),
     ) {
         Column(
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 11.dp),
@@ -383,7 +475,7 @@ fun LedgerHeroPanel(
     subtitle: String,
     modifier: Modifier = Modifier,
     containerColor: Color = Emerald700,
-    supporting: (@Composable ColumnScope.() -> Unit)? = null,
+    supporting: (@Composable ColumnScope.() -> Unit)?= null,
 ) {
     Surface(
         modifier = modifier.fillMaxWidth(),
@@ -453,7 +545,10 @@ fun LedgerRow(
         shape = RoundedCornerShape(TemplateCardRadius),
         color = MaterialTheme.colorScheme.surface,
         tonalElevation = 0.dp,
-        border = BorderStroke(0.8.dp, TemplateBorder),
+        border = BorderStroke(
+            0.8.dp,
+            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f),
+        ),
         onClick = onClick,
     ) {
         Row(
@@ -513,7 +608,7 @@ fun TemplatePrimaryButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
-    leadingIcon: ImageVector? = null,
+    leadingIcon: ImageVector?= null,
 ) {
     Button(
         onClick = onClick,
@@ -548,7 +643,10 @@ fun TemplateSecondaryButton(
         enabled = enabled,
         modifier = modifier.height(48.dp),
         shape = RoundedCornerShape(12.dp),
-        border = BorderStroke(0.8.dp, TemplateBorder),
+        border = BorderStroke(
+            0.8.dp,
+            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f),
+        ),
         colors = ButtonDefaults.outlinedButtonColors(
             contentColor = MaterialTheme.colorScheme.onSurface,
             disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant,

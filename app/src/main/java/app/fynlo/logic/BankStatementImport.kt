@@ -17,7 +17,7 @@ import java.util.UUID
  *   - amount > 0  → Income (deposit)         → toAcct = targetAccount
  *   - amount < 0  → Expense (withdrawal)     → fromAcct = targetAccount
  *
- * All rows land on a single user-picked [targetAccount] so the orphan-
+ * All rows land on a single user-picked [targetAccount] so the orphan?
  * account bug from 3.2.59 can't recur. If the bank file mixes multiple
  * accounts, the user runs the importer once per account.
  *
@@ -34,7 +34,7 @@ object BankStatementImport {
         val dateCol:        Int,
         val descriptionCol: Int,
         val amountCol:      Int,
-        val categoryCol:    Int? = null,
+        val categoryCol:    Int?= null,
     )
 
     /**
@@ -166,7 +166,7 @@ object BankStatementImport {
 
     /** First-match-wins across [DATE_FORMATS]; returns ISO yyyy-MM-dd on
      *  success, null when no pattern parses cleanly. */
-    fun tryParseDate(raw: String): String? {
+    fun tryParseDate(raw: String): String?{
         if (raw.isBlank()) return null
         for (fmt in DATE_FORMATS) {
             try {
@@ -180,7 +180,7 @@ object BankStatementImport {
     /** Parse an amount that may carry currency symbols, thousand separators,
      *  parentheses for negatives (accounting convention), or Dr/Cr suffixes
      *  (Indian bank format). Returns null when nothing usable is found. */
-    fun tryParseAmount(raw: String): Double? {
+    fun tryParseAmount(raw: String): Double?{
         if (raw.isBlank()) return null
         var s = raw.trim()
         // Strip common currency symbols + thousand separators + spaces.

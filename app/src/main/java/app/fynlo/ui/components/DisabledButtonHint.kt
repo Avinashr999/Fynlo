@@ -16,7 +16,7 @@ import androidx.compose.ui.unit.dp
  *
  * Per UX_AUDIT §C17 ("Save" / "Add" / "Pay ₹0" / "Confirm" buttons disabled
  * with no explanation — user stares at greyed button, doesn't know what's
- * missing). The hint takes a `reason: String?` and:
+ * missing). The hint takes a `reason: String-` and:
  *  - renders the reason in 11sp `onSurfaceVariant` centered text when present
  *  - renders a small bottom spacer instead when null (so the button column
  *    height stays stable when the user fills the missing field and the
@@ -24,7 +24,7 @@ import androidx.compose.ui.unit.dp
  *
  * Idiomatic usage at the call site:
  * ```
- * val disabledReason: String? = when {
+ * val disabledReason: String?= when {
  *     name.isBlank()        -> "Enter a name to continue"
  *     amount.toDoubleOrNull()?.let { it > 0 } != true -> "Enter an amount to continue"
  *     else                  -> null

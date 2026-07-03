@@ -418,7 +418,7 @@ private fun ProfileStep(name: String, onNameChange: (String) -> Unit) {
     val focusManager = LocalFocusManager.current
     StepLayout(
         icon = Icons.Default.Person,
-        title = "What Should We Call You?",
+        title = "What Should We Call You-",
         subtitle = "Used for greetings only"
     ) {
         OutlinedTextField(

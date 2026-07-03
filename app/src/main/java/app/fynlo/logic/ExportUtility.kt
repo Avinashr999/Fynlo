@@ -57,7 +57,7 @@ object ExportUtility {
         return File(exportDir, fileName)
     }
     /**
-     * C21 Stage 1 � header info row rendered at the top of every PDF cover.
+     * C21 Stage 1 - header info row rendered at the top of every PDF cover.
      * Audit §C21 #8 + #9: "Project: ... | User: ... | Period: ... | Currency: ..."
      *
      * Defaults are tolerant — User segment is omitted entirely when blank
@@ -137,7 +137,7 @@ object ExportUtility {
 
     private data class TableRowSpec(
         val cols: List<String>,
-        val colors: List<Int>? = null,
+        val colors: List<Int>?= null,
     )
 
     private data class MeasuredTableRow(
@@ -147,8 +147,8 @@ object ExportUtility {
 
     // ── Page management ───────────────────────────────────────────────────────
     private class PdfBuilder(private val pdf: PdfDocument, private val os: OutputStream) {
-        private var page: PdfDocument.Page? = null
-        private var canvas: Canvas? = null
+        private var page: PdfDocument.Page?= null
+        private var canvas: Canvas?= null
         private var pageNum = 0
         var y = MARGIN + 10f
 
@@ -212,7 +212,7 @@ object ExportUtility {
         cols: List<String>,
         widths: List<Float>,
         isHeader: Boolean = false,
-        colors: List<Int>? = null
+        colors: List<Int>?= null
     ): MeasuredTableRow {
         val perCell = cols.mapIndexed { i, text ->
             val paint = if (isHeader) bodyPaint(COLOR_WHITE, 9f, true)
@@ -256,7 +256,7 @@ object ExportUtility {
         widths: List<Float>,
         isHeader: Boolean = false,
         altBg: Boolean = false,
-        colors: List<Int>? = null
+        colors: List<Int>?= null
     ) {
         drawMeasuredTableRow(
             measureTableRow(cols, widths, isHeader, colors),
@@ -439,7 +439,7 @@ object ExportUtility {
             val date = today.minusMonths(off.toLong())
             val key  = date.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM"))
             val list = transactions.filter {
-                it.date.startsWith(key) && it.tags != "journal_only" && it.category !in financingCats
+                it.date.startsWith(key) && !it.isGeneratedJournalEntry() && it.category !in financingCats
             }
             val label = date.format(java.time.format.DateTimeFormatter.ofPattern("MMM"))
             Triple(
@@ -682,7 +682,7 @@ object ExportUtility {
         val monthStart = nowDate.withDayOfMonth(1).toString()
         val monthEnd   = nowDate.toString()
         val monthlyTxn = transactions.filter {
-            it.date in monthStart..monthEnd && it.tags != "journal_only" && it.category !in financingCats
+            it.date in monthStart..monthEnd && !it.isGeneratedJournalEntry() && it.category !in financingCats
         }
         val monthlyIncome  = monthlyTxn.filter { it.type.equals("income",  true) }.sumOf { it.amount }
         val monthlyExpense = monthlyTxn.filter { it.type.equals("expense", true) }.sumOf { it.amount }

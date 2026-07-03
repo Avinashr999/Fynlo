@@ -87,5 +87,5 @@ object RecentlyUsedLogic {
         snapshot: RecentlyUsedSnapshot,
         formId: String,
         fieldId: String,
-    ): String? = topN(snapshot, formId, fieldId, n = 1).firstOrNull()
+    ): String?= topN(snapshot, formId, fieldId, n = 1).firstOrNull()
 }

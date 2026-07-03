@@ -39,7 +39,7 @@ class FirestoreRepository(private val userId: String) {
         return elem.mapValues { (_, v) -> v.toAny() }
     }
 
-    private fun JsonElement.toAny(): Any? = when (this) {
+    private fun JsonElement.toAny(): Any?= when (this) {
         is JsonNull       -> null
         is JsonPrimitive  -> when {
             isString      -> content

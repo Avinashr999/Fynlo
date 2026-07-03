@@ -11,7 +11,6 @@ plugins {
     alias(libs.plugins.hilt.android.plugin)
     alias(libs.plugins.baselineprofile)
 }
-
 android {
     namespace = "app.fynlo"
     compileSdk = 36
@@ -49,8 +48,8 @@ android {
         applicationId = "app.fynlo"
         minSdk = 26
         targetSdk = 36
-        versionCode = 232
-        versionName = "3.2.108"
+        versionCode = 233
+        versionName = "3.2.109"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

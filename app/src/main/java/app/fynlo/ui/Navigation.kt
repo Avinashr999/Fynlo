@@ -62,6 +62,7 @@ sealed class Screen(val route: String, val label: String, val icon: ImageVector)
     object Invest : Screen("invest", "Invest", Icons.AutoMirrored.Filled.TrendingUp)
     object Spend : Screen("spend", "Expenses", Icons.AutoMirrored.Filled.ReceiptLong)
     object Settings : Screen("settings", "Settings", Icons.Default.Settings)
+    object BookCheck : Screen("book_check", "Book check", Icons.Default.Verified)
     object UpgradePro : Screen("upgrade_pro", "Fynlo Ledger Pro", Icons.Default.Star)
     object About : Screen("about", "About", Icons.Default.Info)
     object People : Screen("people", "Contact Book", Icons.Default.Group)
@@ -510,6 +511,7 @@ fun MainNavigation(viewModel: FinanceViewModel) {
         }  // close drawerContent
     ) {
         Scaffold(
+            contentWindowInsets = WindowInsets(0.dp),
             topBar = {
                 if (!isFullScreenRoute) {
                     val isPrivacy by viewModel.isPrivacyMode.collectAsState()
@@ -547,7 +549,7 @@ fun MainNavigation(viewModel: FinanceViewModel) {
                                 is app.fynlo.data.SyncStatus.Synced       -> "All changes synced to cloud"
                                 is app.fynlo.data.SyncStatus.Syncing      -> "Syncing..."
                                 is app.fynlo.data.SyncStatus.Offline      -> "Offline - changes sync when reconnected"
-                                is app.fynlo.data.SyncStatus.Initialising -> "Connecting to cloud..."
+                                is app.fynlo.data.SyncStatus.Initialising -> "Checking cloud backup..."
                                 is app.fynlo.data.SyncStatus.Error        -> "Sync error - sign in again to retry"
                             }
                             viewModel.showFeedback(msg)
@@ -721,7 +723,57 @@ fun MainNavigation(viewModel: FinanceViewModel) {
                     SettingsScreen(
                         viewModel = viewModel,
                         onNavigateToAbout = { navController.navigate(Screen.About.route) },
-                        onNavigateToUpgrade = { navController.navigate(Screen.UpgradePro.route) }
+                        onNavigateToUpgrade = { navController.navigate(Screen.UpgradePro.route) },
+                        onNavigateToLedgerIssue = { issue ->
+                            when (issue.recordType) {
+                                "loan" -> navController.navigate("customer/${issue.recordId}")
+                                "debt" -> navController.navigate("debt/${issue.recordId}")
+                                "transaction", "payment", "debt_payment" -> navController.navigate(Screen.History.route)
+                                "investment" -> navController.navigate(Screen.Invest.route)
+                                "account" -> navController.navigate(Screen.Home.route)
+                                else -> navController.navigate(Screen.History.route)
+                            }
+                        },
+                        openBookCheck = false,
+                    )
+                }
+                composable(
+                    route = "settings-bookCheck={bookCheck}",
+                    arguments = listOf(navArgument("bookCheck") { type = NavType.BoolType; defaultValue = false })
+                ) { backStackEntry ->
+                    SettingsScreen(
+                        viewModel = viewModel,
+                        onNavigateToAbout = { navController.navigate(Screen.About.route) },
+                        onNavigateToUpgrade = { navController.navigate(Screen.UpgradePro.route) },
+                        onNavigateToLedgerIssue = { issue ->
+                            when (issue.recordType) {
+                                "loan" -> navController.navigate("customer/${issue.recordId}")
+                                "debt" -> navController.navigate("debt/${issue.recordId}")
+                                "transaction", "payment", "debt_payment" -> navController.navigate(Screen.History.route)
+                                "investment" -> navController.navigate(Screen.Invest.route)
+                                "account" -> navController.navigate(Screen.Home.route)
+                                else -> navController.navigate(Screen.History.route)
+                            }
+                        },
+                        openBookCheck = backStackEntry.arguments?.getBoolean("bookCheck") ?: false,
+                    )
+                }
+                composable(Screen.BookCheck.route) {
+                    SettingsScreen(
+                        viewModel = viewModel,
+                        onNavigateToAbout = { navController.navigate(Screen.About.route) },
+                        onNavigateToUpgrade = { navController.navigate(Screen.UpgradePro.route) },
+                        onNavigateToLedgerIssue = { issue ->
+                            when (issue.recordType) {
+                                "loan" -> navController.navigate("customer/${issue.recordId}")
+                                "debt" -> navController.navigate("debt/${issue.recordId}")
+                                "transaction", "payment", "debt_payment" -> navController.navigate(Screen.History.route)
+                                "investment" -> navController.navigate(Screen.Invest.route)
+                                "account" -> navController.navigate(Screen.Home.route)
+                                else -> navController.navigate(Screen.History.route)
+                            }
+                        },
+                        openBookCheck = true,
                     )
                 }
                 composable(Screen.UpgradePro.route) {

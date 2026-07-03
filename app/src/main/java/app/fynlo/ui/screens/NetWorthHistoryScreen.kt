@@ -197,7 +197,7 @@ fun NetWorthHistoryScreen(viewModel: FinanceViewModel) {
                 // ── Callout cards (audit #3). Three equal-weight tiles.
                 val today    = LocalDate.now()
                 val current  = summary.netWorth
-                val nwAt: (LocalDate) -> Double? = { target ->
+                val nwAt: (LocalDate) -> Double?= { target ->
                     // Use the snapshot closest to (but not after) the target date.
                     sorted.lastOrNull { runCatching { LocalDate.parse(it.date) <= target }.getOrDefault(false) }
                         ?.netWorth
@@ -206,7 +206,7 @@ fun NetWorthHistoryScreen(viewModel: FinanceViewModel) {
                 val sixMonthAgo = nwAt(today.minusMonths(6))
                 val allTimeHigh = sorted.maxOf { it.netWorth }
 
-                fun signedPct(now: Double, then: Double?): String? {
+                fun signedPct(now: Double, then: Double?): String?{
                     if (then == null) return null
                     if (then == 0.0)  return "—"
                     val pct = (now - then) / kotlin.math.abs(then) * 100

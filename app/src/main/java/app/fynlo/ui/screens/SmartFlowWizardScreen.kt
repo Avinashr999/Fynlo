@@ -234,7 +234,7 @@ fun StepAssetDetails(
     var expanded by remember { mutableStateOf(false) }
 
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        Text("What did you acquire?", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+        Text("What did you acquire-", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         
         OutlinedTextField(
             value = name, onValueChange = onNameChange,
@@ -287,7 +287,7 @@ fun StepFundingSource(
     onTenureChange: (String) -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        Text("How was this funded?", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+        Text("How was this funded-", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         
         sources.forEach { src ->
             Row(

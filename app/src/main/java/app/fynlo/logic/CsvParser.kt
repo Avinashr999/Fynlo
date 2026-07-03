@@ -14,7 +14,7 @@ package app.fynlo.logic
  * Intentionally does not handle:
  *   - Multi-line fields (quoted fields with embedded newlines). Rare in
  *     bank statements; would need a streaming state machine and the
- *     line-by-line approach gives the mapper UI a clean "row count" to
+ *     line?by-line approach gives the mapper UI a clean "row count" to
  *     show. If a real bank uses them we'll extend.
  *   - Tab/semicolon separators. Add as a parser variant if needed.
  *

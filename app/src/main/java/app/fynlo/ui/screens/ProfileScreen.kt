@@ -1,6 +1,11 @@
+﻿@file:Suppress("DEPRECATION")
+
 package app.fynlo.ui.screens
 
 import android.annotation.SuppressLint
+import android.util.Log
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.BorderStroke
@@ -30,10 +35,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.fynlo.FynloApplication
 import app.fynlo.billing.BillingManager
+import app.fynlo.data.Analytics
+import app.fynlo.data.GoogleSignInHelper
 import app.fynlo.data.PinManager
 import app.fynlo.ui.components.FynloConfirmDialog
 import app.fynlo.ui.screens.PinMode
 import app.fynlo.ui.theme.*
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInStatusCodes
+import com.google.android.gms.common.api.ApiException
+import kotlinx.coroutines.launch
 
 @SuppressLint("InlinedApi")
 @Composable
@@ -52,9 +63,59 @@ fun ProfileScreen(
     var biometricEnabled by remember { mutableStateOf(pinManager.isBiometricEnabled) }
     var showPinSetup     by remember { mutableStateOf(false) }
     var showRemovePinConfirm by remember { mutableStateOf(false) }
-    val isGoogle = app.authManager.isSignedInWithGoogle
+    val authUser by app.authManager.user.collectAsState()
+    val isGoogle = authUser?.providerData
+        ?.any { it.providerId == com.google.firebase.auth.GoogleAuthProvider.PROVIDER_ID } == true
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var deleting by remember { mutableStateOf(false) }
+    var signingIn by remember { mutableStateOf(false) }
+    var signInError by remember { mutableStateOf("") }
+    var hasStartedSignIn by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+
+    val signInLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (!hasStartedSignIn) return@rememberLauncherForActivityResult
+        scope.launch {
+            signingIn = true
+            signInError = ""
+            runCatching {
+                val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
+                val account = task.getResult(ApiException::class.java)
+                val idToken = account.idToken ?: run {
+                    Log.w("FynloAuth", "Google sign-in returned no token for ${context.packageName}")
+                    throw IllegalStateException("Missing Google token")
+                }
+                val signInResult = app.authManager.signInWithGoogle(idToken)
+                if (signInResult.isSuccess) {
+                    Analytics.signIn("google")
+                    app.onGoogleSignInComplete(app.authManager.userId)
+                    signInError = ""
+                    android.widget.Toast
+                        .makeText(context, "Signed in. Cloud backup is starting.", android.widget.Toast.LENGTH_SHORT)
+                        .show()
+                } else {
+                    Log.w(
+                        "FynloAuth",
+                        "Firebase Google sign-in failed for ${context.packageName}",
+                        signInResult.exceptionOrNull()
+                    )
+                    signInError = profileSignInError(signInResult.exceptionOrNull())
+                }
+            }.onFailure { ex ->
+                val status = (ex as? ApiException)?.statusCode
+                Log.w(
+                    "FynloAuth",
+                    "Google sign-in failed for ${context.packageName}; status=$status; message=${ex.message}",
+                    ex
+                )
+                signInError = profileSignInError(ex)
+            }
+            signingIn = false
+            hasStartedSignIn = false
+        }
+    }
 
     // Full-screen PIN set/change flow (same as the lock screen).
     if (showPinSetup) {
@@ -109,8 +170,8 @@ fun ProfileScreen(
         }
     }
 
-    val email    = app.authManager.userEmail
-    val name     = app.authManager.userName
+    val email    = authUser?.email.orEmpty()
+    val name     = authUser?.displayName.orEmpty()
 
     Column(modifier = Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
         PremiumScreenHeader("Profile & Security", subtitle = "Identity, sync, and app lock")
@@ -145,7 +206,11 @@ fun ProfileScreen(
                             Text(name,  style = MaterialTheme.typography.bodyMedium)
                             Text(email, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         } else {
-                            Text("Not signed in with Google", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(
+                                if (signingIn) "Signing in..." else "Not signed in",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
                     }
                 }
@@ -167,12 +232,70 @@ fun ProfileScreen(
                     Text("Cloud Sync", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold))
                     Text(
                         if (isGoogle) "Syncing across all your devices via Google account"
-                        else "Device-only sync. Sign in with Google for cross-device sync",
+                        else if (signingIn) "Opening Google sign-in..."
+                        else "Device-only. Sign in to start cloud backup.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
+        if (!isGoogle) {
+            Spacer(Modifier.height(12.dp))
+            Button(
+                onClick = {
+                    if (signingIn) return@Button
+                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    signInError = ""
+                    signingIn = true
+                    hasStartedSignIn = true
+                    val client = GoogleSignInHelper.getClient(context)
+                    signInLauncher.launch(client.signInIntent)
+                },
+                enabled = !signingIn,
+                modifier = Modifier.fillMaxWidth().height(52.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+            ) {
+                if (signingIn) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        color = MaterialTheme.colorScheme.onPrimary,
+                        strokeWidth = 2.dp
+                    )
+                } else {
+                    Text("Sign in with Google", fontWeight = FontWeight.SemiBold)
+                }
+            }
+            if (signInError.isNotBlank()) {
+                Spacer(Modifier.height(8.dp))
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(14.dp),
+                    color = MaterialTheme.colorScheme.errorContainer,
+                ) {
+                    Text(
+                        signInError,
+                        modifier = Modifier.padding(12.dp),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onErrorContainer
+                    )
+                }
+            }
+        } else {
+            Spacer(Modifier.height(8.dp))
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(14.dp),
+                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f),
+            ) {
+                Text(
+                    "Cloud backup active",
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                    style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+            }
+        }
 
         Spacer(Modifier.height(16.dp))
 
@@ -312,6 +435,7 @@ fun ProfileScreen(
                 onClick  = {
                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                     app.authManager.signOut()
+                    GoogleSignInHelper.getClient(context).signOut()
                     onSignOut()
                 },
                 modifier = Modifier.fillMaxWidth().height(52.dp),
@@ -383,5 +507,18 @@ fun ProfileScreen(
         }
         Spacer(Modifier.height(32.dp))
     }
+    }
+}
+
+
+private fun profileSignInError(error: Throwable?): String {
+    val api = error as? ApiException
+    return when (api?.statusCode) {
+        GoogleSignInStatusCodes.SIGN_IN_CANCELLED -> ""
+        GoogleSignInStatusCodes.SIGN_IN_CURRENTLY_IN_PROGRESS ->
+            "Sign-in is already in progress."
+        GoogleSignInStatusCodes.SIGN_IN_FAILED ->
+            "Sign-in failed. Please try again."
+        else -> "Sign-in failed. Please try again."
     }
 }

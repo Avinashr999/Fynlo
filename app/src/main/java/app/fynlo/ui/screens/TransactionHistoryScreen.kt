@@ -2,6 +2,7 @@ package app.fynlo.ui.screens
 
 import app.fynlo.logic.displayFromAcct
 import app.fynlo.logic.displayToAcct
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -23,6 +24,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.fynlo.FinanceViewModel
@@ -48,7 +51,7 @@ fun TransactionHistoryScreen(viewModel: FinanceViewModel) {
     val searchQuery by viewModel.searchQuery.collectAsState()
     val currentProject by viewModel.currentProject.collectAsState()
     val isPrivacy by viewModel.isPrivacyMode.collectAsState()
-    // 3.2.81 — account names for the edit dialog's new Account picker (C13 #9).
+    // 3.2.81 - account names for the edit dialog's new Account picker (C13 #9).
     val allAccounts by viewModel.accounts.collectAsState()
     val currencyCode = currentProject?.currency ?: "INR"
     val locale = LocalLocale.current.platformLocale
@@ -123,7 +126,7 @@ fun TransactionHistoryScreen(viewModel: FinanceViewModel) {
     ) {
         Spacer(Modifier.height(8.dp))
 
-        // ── Hero: net total + entry count (flat, on background) ────────────────
+        // -- Hero: net total + entry count (flat, on background) ----------------
         if (selectionMode) {
             Text(
                 text = "${selectedIds.size} selected",
@@ -138,7 +141,7 @@ fun TransactionHistoryScreen(viewModel: FinanceViewModel) {
                 modifier = Modifier.padding(top = 8.dp)
             )
             Text(
-                text = if (isPrivacy) "••••"
+                text = if (isPrivacy) "****"
                        else if (net < 0) CurrencyFormatter.negative(net, currencyCode, locale)
                        else "+${CurrencyFormatter.detail(net, currencyCode, locale)}",
                 style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.ExtraBold),
@@ -171,7 +174,7 @@ fun TransactionHistoryScreen(viewModel: FinanceViewModel) {
 
         Spacer(Modifier.height(14.dp))
 
-        // ── Selection action bar (flat, emerald) ───────────────────────────────
+        // -- Selection action bar (flat, emerald) -------------------------------
         if (selectionMode) {
             Row(
                 Modifier.fillMaxWidth().padding(bottom = 12.dp),
@@ -195,7 +198,7 @@ fun TransactionHistoryScreen(viewModel: FinanceViewModel) {
                 }
             }
         } else {
-            // ── Soft search ────────────────────────────────────────────────────
+            // -- Soft search ----------------------------------------------------
             HistorySoftField(
                 value = searchQuery,
                 placeholder = "Search transactions",
@@ -205,9 +208,9 @@ fun TransactionHistoryScreen(viewModel: FinanceViewModel) {
 
             Spacer(Modifier.height(12.dp))
 
-            // 3.2.11 chip-sweep: type filter chips → SegmentedButtonRow.
+            // 3.2.11 chip-sweep: type filter chips -> SegmentedButtonRow.
             // The Dates affordance is semantically a TOGGLE (show / hide the
-            // date filter panel), not a "pick one of N" — so it becomes a
+            // date filter panel), not a "pick one of N" - so it becomes a
             // FilledTonalButton with the DateRange leading icon, which is the
             // M3 affordance for "tap to open a panel" actions. The button's
             // tonal weight communicates the active state when the panel is
@@ -242,14 +245,14 @@ fun TransactionHistoryScreen(viewModel: FinanceViewModel) {
                 }
             }
 
-            // ── Flat date filter (no card) ─────────────────────────────────────
+            // -- Flat date filter (no card) -------------------------------------
             if (showDateFilter) {
                 val today = java.time.LocalDate.now()
                 val displayFmt = java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy")
                 Spacer(Modifier.height(12.dp))
                 // 3.2.11 chip-sweep: 7 date-preset FilterChips wrapped to 2-3 lines
                 // depending on screen width, taking significant vertical space and not
-                // always discoverable. Now an ExposedDropdownMenuBox — same widget the
+                // always discoverable. Now an ExposedDropdownMenuBox - same widget the
                 // C04 currency picker uses, same widget the AddRecurring frequency
                 // picker uses (3.2.10). One row, always fits. Selecting a preset still
                 // populates fromDate/toDate so the existing custom-range DatePickerFields
@@ -346,7 +349,7 @@ fun TransactionHistoryScreen(viewModel: FinanceViewModel) {
                         ym.format(java.time.format.DateTimeFormatter.ofPattern("MMMM yyyy"))
                     }.getOrDefault(month)
 
-                    // ── Flat month header ──────────────────────────────────────
+                    // -- Flat month header --------------------------------------
                     item {
                         Row(
                             Modifier.fillMaxWidth().padding(top = 18.dp, bottom = 6.dp),
@@ -357,12 +360,12 @@ fun TransactionHistoryScreen(viewModel: FinanceViewModel) {
                                     fontWeight = FontWeight.Bold, letterSpacing = 0.8.sp),
                                 color = MaterialTheme.colorScheme.onSurfaceVariant)
                             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                                val mIncText = if (isPrivacy) "••••" else CurrencyFormatter.detail(monthIncome, currencyCode, locale)
+                                val mIncText = if (isPrivacy) "****" else CurrencyFormatter.detail(monthIncome, currencyCode, locale)
                                 Text("+$mIncText",
                                     style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
                                     color = Emerald500)
 
-                                val mExpText = if (isPrivacy) "••••" else CurrencyFormatter.negative(monthExpense, currencyCode, locale)
+                                val mExpText = if (isPrivacy) "****" else CurrencyFormatter.negative(monthExpense, currencyCode, locale)
                                 Text(mExpText,
                                     style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
                                     color = SemanticRed)
@@ -404,17 +407,14 @@ fun TransactionHistoryScreen(viewModel: FinanceViewModel) {
                                     viewModel.deleteTransaction(transaction)
                                     viewModel.showFeedback("Transaction deleted")
                                 },
-                                // 3.2.81 — accounts for the edit dialog's new Account picker.
+                                // 3.2.81 - accounts for the edit dialog's new Account picker.
                                 bankAccounts = allAccounts.map { it.name },
-                                // C03b Stage #1b-2 (3.2.88) — id → current name
+                                // C03b Stage #1b-2 (3.2.88) - id -> current name
                                 // for rename-reflective sub-label.
                                 accountIdToName = allAccounts.associate { it.id to it.name },
                                 balanceImpacts = balanceImpactsByTransaction[transaction.id].orEmpty(),
                             )
-                            if (idx < dayTxns.lastIndex) {
-                                HorizontalDivider(thickness = 0.5.dp, color = hairline,
-                                    modifier = Modifier.padding(start = 52.dp))
-                            }
+                            Spacer(Modifier.height(if (idx < dayTxns.lastIndex) 8.dp else 2.dp))
                         }
                     }
                 }
@@ -554,15 +554,15 @@ fun TransactionItem(
     isPrivacy: Boolean = false,
     onLongPress: () -> Unit = {},
     onSelect: () -> Unit = {},
-    // C13 #9 (3.2.81) — propagate the user's actual account names so the
+    // C13 #9 (3.2.81) - propagate the user's actual account names so the
     // edit dialog's new Account picker shows real options (not free-text
     // that could orphan the transaction per the 3.2.59 bug pattern).
     // Default emptyList for back-compat call sites that haven't wired it.
     bankAccounts: List<String> = emptyList(),
-    // C03b Stage #1b-2 (3.2.88) — id → current Account.name lookup so
+    // C03b Stage #1b-2 (3.2.88) - id -> current Account.name lookup so
     // the row's sub-label reflects renames immediately (the stored
     // fromAcct/toAcct can be stale; the id is the immutable handle).
-    // Empty map means "fall through to stored name" — back-compat for
+    // Empty map means "fall through to stored name" - back-compat for
     // call sites that haven't wired it yet.
     accountIdToName: Map<String, String> = emptyMap(),
     balanceImpacts: List<TransactionBalanceImpact> = emptyList(),
@@ -655,7 +655,7 @@ fun TransactionItem(
             }
         }
     ) {
-    Row(
+    Surface(
         modifier = Modifier
             .fillMaxWidth()
             .combinedClickable(
@@ -669,12 +669,21 @@ fun TransactionItem(
                 onLongClick = {
                     if (isManagedEntry) showManagedEntry = true else onLongPress()
                 }
-            )
-            .background(
-                if (isSelected) rowColor.copy(alpha = 0.10f)
-                else MaterialTheme.colorScheme.background
-            )
-            .padding(vertical = 12.dp),
+            ),
+        shape = RoundedCornerShape(18.dp),
+        color = if (isSelected) rowColor.copy(alpha = 0.10f) else MaterialTheme.colorScheme.surface,
+        tonalElevation = 0.dp,
+        shadowElevation = 0.dp,
+        border = BorderStroke(
+            0.7.dp,
+            if (isSelected) rowColor.copy(alpha = 0.34f)
+            else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f),
+        ),
+    ) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         // Leading: checkbox in selection mode, else colored category chip
@@ -690,7 +699,7 @@ fun TransactionItem(
             }
         } else {
             Box(
-                modifier = Modifier.size(40.dp).background(rowColor.copy(alpha = 0.15f), CircleShape),
+                modifier = Modifier.size(42.dp).background(rowColor.copy(alpha = 0.13f), RoundedCornerShape(13.dp)),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(getCategoryIcon(txn.category), null, tint = rowColor, modifier = Modifier.size(20.dp))
@@ -700,8 +709,12 @@ fun TransactionItem(
         Spacer(Modifier.width(12.dp))
 
         Column(Modifier.weight(1f)) {
-            Text(txn.category,
-                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold))
+            Text(
+                txn.category,
+                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
             // C03b Stage #1b-2: resolve via id (renames take immediate effect);
             // falls back to stored name for legacy orphan rows.
             val sub = txn.desc.ifBlank {
@@ -712,7 +725,8 @@ fun TransactionItem(
                 Text(sub,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1)
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis)
             }
             if (showTimestamp) {
                 Text(
@@ -720,6 +734,7 @@ fun TransactionItem(
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.padding(top = 2.dp),
                 )
             }
@@ -730,6 +745,7 @@ fun TransactionItem(
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
             if (txn.notes.isNotEmpty()) {
@@ -740,7 +756,8 @@ fun TransactionItem(
                     Text(txn.notes,
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1)
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis)
                 }
             }
             if (balanceImpacts.isNotEmpty()) {
@@ -755,7 +772,7 @@ fun TransactionItem(
                         "Balance: hidden"
                     } else {
                         balanceImpacts.take(2).joinToString(" | ") { impact ->
-                            "${impact.accountName} after ${CurrencyFormatter.detail(impact.after, currencyCode, locale)}"
+                            "${impact.accountName} after ${CurrencyFormatter.exact(impact.after, currencyCode, locale)}"
                         }
                     }
                     Text(
@@ -780,8 +797,13 @@ fun TransactionItem(
         Text(
             text  = amountText,
             style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.ExtraBold),
-            color = rowColor
+            color = rowColor,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            textAlign = TextAlign.End,
+            modifier = Modifier.widthIn(min = 82.dp, max = 132.dp),
         )
+    }
     }
     }
 }
@@ -801,44 +823,38 @@ private fun RunningBalanceStrip(
     val changeText = if (isPrivacy) {
         "Hidden"
     } else if (impact.delta < -0.005) {
-        CurrencyFormatter.negative(abs(impact.delta), currencyCode, locale)
+        CurrencyFormatter.negativeExact(abs(impact.delta), currencyCode, locale)
     } else {
-        "+${CurrencyFormatter.detail(impact.delta, currencyCode, locale)}"
+        "+${CurrencyFormatter.exact(impact.delta, currencyCode, locale)}"
     }
 
     Surface(
-        modifier = Modifier
-            .padding(top = 8.dp)
-            .fillMaxWidth(),
-        shape = RoundedCornerShape(14.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.42f),
-        border = androidx.compose.foundation.BorderStroke(
-            0.5.dp,
-            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f),
-        ),
+        modifier = Modifier.padding(top = 7.dp),
+        shape = RoundedCornerShape(11.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.34f),
+        border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.34f)),
     ) {
         Row(
-            Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            Modifier.padding(horizontal = 9.dp, vertical = 6.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             RunningBalanceMetric(
                 label = "Before",
-                value = if (isPrivacy) "Hidden" else CurrencyFormatter.detail(impact.before, currencyCode, locale),
+                value = if (isPrivacy) "Hidden" else CurrencyFormatter.exact(impact.before, currencyCode, locale),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.weight(1f),
             )
+            Text("->", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             RunningBalanceMetric(
                 label = "Change",
                 value = changeText,
                 color = deltaColor,
-                modifier = Modifier.weight(1f),
             )
+            Text("->", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             RunningBalanceMetric(
-                label = "Balance after",
-                value = if (isPrivacy) "Hidden" else CurrencyFormatter.detail(impact.after, currencyCode, locale),
+                label = "After",
+                value = if (isPrivacy) "Hidden" else CurrencyFormatter.exact(impact.after, currencyCode, locale),
                 color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.weight(1f),
             )
         }
     }
@@ -863,6 +879,7 @@ private fun RunningBalanceMetric(
             style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
             color = color,
             maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
         )
     }
 }

@@ -63,7 +63,7 @@ class IdsDataIntegrityTest {
 
     @Test
     fun `newId stays unique across a tight burst of calls`() {
-        // The original "P-${timestamp}-..." scheme collided in this exact
+        // The original "P-${timestamp}?..." scheme collided in this exact
         // shape: a tight loop with millisecond-resolution clock + a
         // 4-digit hash suffix → birthday-paradox collisions around
         // 100 inserts. UUID v4 sees no collisions at 10,000.

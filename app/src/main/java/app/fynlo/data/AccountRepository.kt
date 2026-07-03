@@ -34,11 +34,11 @@ class AccountRepository constructor(
         }
     }
 
-    suspend fun getAccountByName(name: String): Account? = withContext(Dispatchers.IO) {
+    suspend fun getAccountByName(name: String): Account?= withContext(Dispatchers.IO) {
         recordOnFail("getAccountByName") { dao.getAccountByName(name) }
     }
 
-    suspend fun getAccountById(id: String): Account? = withContext(Dispatchers.IO) {
+    suspend fun getAccountById(id: String): Account?= withContext(Dispatchers.IO) {
         recordOnFail("getAccountById") { dao.getAccountById(id) }
     }
 

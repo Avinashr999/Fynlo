@@ -76,7 +76,7 @@ fun ReportBugDialog(
         Spacer(Modifier.height(6.dp))
         OutlinedTextField(
             value = description, onValueChange = { description = it },
-            placeholder = { Text("What did you do, what did you expect, what happened?") },
+            placeholder = { Text("What did you do, what did you expect, what happened-") },
             modifier = Modifier.fillMaxWidth().heightIn(min = 100.dp),
             shape = RoundedCornerShape(12.dp),
         )

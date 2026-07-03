@@ -1,4 +1,4 @@
-package app.fynlo.ui.screens
+﻿package app.fynlo.ui.screens
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -440,7 +440,7 @@ private fun personMatches(person: Person, peopleId: String, name: String, phone:
 }
 
 private fun moneyFormat(amount: Double): String {
-    val fmt = NumberFormat.getCurrencyInstance(Locale("en", "IN"))
+    val fmt = NumberFormat.getCurrencyInstance(Locale.Builder().setLanguage("en").setRegion("IN").build())
     fmt.maximumFractionDigits = 0
     return fmt.format(amount)
 }
@@ -468,26 +468,14 @@ private fun PersonMoneyHistoryDialog(
     val totalLent = personLoans.sumOf { it.amount }
     val totalBorrowed = personDebts.sumOf { it.amount }
     val receivableNow = personLoans.sumOf { loan ->
-        if (loan.status == "WrittenOff") 0.0 else {
-            val interest = if (loan.status == "Defaulted" && loan.frozenInterest > 0.0) loan.frozenInterest
-            else InterestEngine.calcIntAccrued(
-                loan.amount,
-                loan.rate,
-                loan.date,
-                loan.intType,
-                loan.due,
-                totalPaid = loan.paidPrincipal,
-            )
-            InterestEngine.calcOutstanding(
-                loan.amount,
-                interest,
-                loan.paidPrincipal,
-                loan.paidInterest,
-                loan.interestWaived,
-            )
-        }
+        if (loan.status == "WrittenOff") 0.0
+        else (loan.amount - loan.paidPrincipal).coerceAtLeast(0.0) +
+            app.fynlo.logic.InterestPolicy.borrowerBreakdown(loan, personPayments.filter { it.loanId == loan.id }).due
     }
-    val payableNow = personDebts.sumOf { DebtLiabilityCalculator.outstanding(it).total }
+    val payableNow = personDebts.sumOf { debt ->
+        (debt.amount - debt.paidPrincipal).coerceAtLeast(0.0) +
+            app.fynlo.logic.InterestPolicy.debtBreakdown(debt, personDebtPayments.filter { it.debtId == debt.id }).due
+    }
     val entries = remember(personLoans, personDebts, personPayments, personDebtPayments) {
         buildList {
             personLoans.forEach { loan ->

@@ -83,6 +83,8 @@ fun CollectionCalendarScreen(
 ) {
     val borrowers by viewModel.borrowers.collectAsState()
     val debts by viewModel.debts.collectAsState()
+    val payments by viewModel.payments.collectAsState()
+    val debtPayments by viewModel.debtPayments.collectAsState()
     val currentProject by viewModel.currentProject.collectAsState()
     val currencyCode = currentProject?.currency ?: "INR"
     val today = remember { LocalDate.now() }
@@ -93,16 +95,16 @@ fun CollectionCalendarScreen(
     var selectedDate by remember { mutableStateOf<LocalDate?>(today) }
 
     // Build due entries for all active borrower and debt rows that have a due date.
-    val allEntries = remember(borrowers, debts, today) {
+    val allEntries = remember(borrowers, debts, payments, debtPayments, today) {
+        val paymentsByLoan = payments.groupBy { it.loanId }
+        val paymentsByDebt = debtPayments.groupBy { it.debtId }
         val lendingEntries = borrowers
             .filter { it.due.isNotBlank() && it.paid < it.amount }
             .mapNotNull { b ->
                 try {
                     val due = LocalDate.parse(b.due, dbFmt)
-                    val interest = InterestEngine.calcIntAccrued(b.amount, b.rate, b.date, b.intType, b.due, totalPaid = b.paidPrincipal)
-                    val outstanding = InterestEngine.calcOutstanding(
-                        b.amount, interest, b.paidPrincipal, b.paidInterest, b.interestWaived
-                    )
+                    val outstanding = (b.amount - b.paidPrincipal).coerceAtLeast(0.0) +
+                        app.fynlo.logic.InterestPolicy.borrowerBreakdown(b, paymentsByLoan[b.id].orEmpty()).due
                     DueEntry(
                         id = b.id,
                         title = b.name,
@@ -119,7 +121,8 @@ fun CollectionCalendarScreen(
             .mapNotNull { d: Debt ->
                 try {
                     val due = LocalDate.parse(d.due, dbFmt)
-                    val outstanding = DebtLiabilityCalculator.outstanding(d).total
+                    val outstanding = (d.amount - d.paidPrincipal).coerceAtLeast(0.0) +
+                        app.fynlo.logic.InterestPolicy.debtBreakdown(d, paymentsByDebt[d.id].orEmpty()).due
                     DueEntry(
                         id = d.id,
                         title = d.name,

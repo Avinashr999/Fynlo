@@ -1,5 +1,6 @@
 ﻿package app.fynlo
 
+import app.fynlo.logic.CurrencyFormatter
 import app.fynlo.logic.InterestEngine
 import org.junit.Assert.*
 import org.junit.Test
@@ -95,6 +96,23 @@ class InterestEngineTest {
         val withFutureDue = InterestEngine.calcIntAccrued(10000.0, 12.0, "2023-01-01", "Simple Interest", dueDate = "2030-01-01", asOf = "2024-01-01")
         val plainSI       = InterestEngine.calcIntAccrued(10000.0, 12.0, "2023-01-01", "Simple Interest", asOf = "2024-01-01")
         assertEquals(plainSI, withFutureDue, 0.0)
+    }
+
+    @Test fun `short-period small principal accrues non-zero interest`() {
+        val accrued = InterestEngine.calcIntAccrued(
+            500.0,
+            18.0,
+            "2026-07-01",
+            "Simple Interest",
+            asOf = "2026-07-03",
+        )
+
+        assertTrue("Expected fresh accrual for 2 days, got $accrued", accrued > 0.0)
+        assertEquals(0.49, accrued, 0.01)
+    }
+
+    @Test fun `small non-zero interest is not displayed as zero`() {
+        assertEquals("₹0.49", CurrencyFormatter.interest(0.493, "INR", java.util.Locale.forLanguageTag("en-IN")))
     }
 
     @Test fun `outstanding principal plus interest minus paid`() = assertEquals(6200.0, InterestEngine.calcOutstanding(10000.0, 1200.0, 5000.0), 0.0)

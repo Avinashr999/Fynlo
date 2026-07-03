@@ -38,3 +38,14 @@ talks to the live project. Wiping dev can never touch prod data.
 
 Note: plain `assembleRelease` / `bundleRelease` now build **both** flavors —
 prefer the flavor-qualified task names above.
+
+## Google sign-in status
+
+If the dev app shows **"Developer Google sign-in is not configured yet"**, the
+button wiring is working but Google is rejecting the dev package identity.
+The current dev JSON is a placeholder/copy. It has `app.fynlo.dev` as the
+package name, but its Android OAuth client IDs still match the production app.
+
+To fix it, create/download a real Firebase Android app config for package
+`app.fynlo.dev` and replace `app/src/dev/google-services.json`. Do not manually
+edit the production JSON.

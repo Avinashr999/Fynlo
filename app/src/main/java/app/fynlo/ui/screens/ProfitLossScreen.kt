@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalLocale
 import app.fynlo.FinanceViewModel
 import app.fynlo.logic.CurrencyFormatter
+import app.fynlo.logic.isGeneratedJournalEntry
 import app.fynlo.ui.theme.*
 import java.time.LocalDate
 import java.time.YearMonth
@@ -31,33 +32,33 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 /**
- * C15b (3.2.30) — P&L Statement with chart-hero + callout cards per
- * UX_AUDIT §C15b fixes #1–#5.
+ * C15b (3.2.30) - P&L Statement with chart-hero + callout cards per
+ * UX_AUDIT section C15b fixes #1-#5.
  *
  * - **#1 + #2** Rolling-12 line chart of monthly income vs expense, sitting
  *   directly under the Net P&L hero number (the `type_chart_hero` shape from
- *   `DESIGN_SYSTEM.md §1.2`).
+ *   `DESIGN_SYSTEM.md section 1.2`).
  * - **#3** Four callout cards: This Month / Last Month / YTD / vs Last Year.
  *   Each shows a signed net P&L for its window, colour-coded green/red.
  * - **#4** "Total Lent Out" was previously `activeBorrowers.sum(amount)` which
- *   was neither lifetime nor outstanding — it excluded written-off loans but
+ *   was neither lifetime nor outstanding - it excluded written-off loans but
  *   included paid-off principal. Renamed to "Total Lent Out (lifetime)" with
  *   the full historical sum across every borrower; added "Currently Lent Out"
  *   beneath it for the active outstanding principal.
- * - **#5** Static "You are profitable ↑" replaced with a cash-basis subtitle
- *   that shows the actual operating arithmetic (`income X − expenses Y = net`).
+ * - **#5** Static "You are profitable up" replaced with a cash-basis subtitle
+ *   that shows the actual operating arithmetic (`income X - expenses Y = net`).
  */
 @Composable
 fun ProfitLossScreen(viewModel: FinanceViewModel) {
     val transactions   by viewModel.transactions.collectAsState()
     val borrowers      by viewModel.borrowers.collectAsState()
     val investments    by viewModel.investments.collectAsState()
-    // C21 Stage 2 — debts for the Liabilities & Debts section in the
+    // C21 Stage 2 - debts for the Liabilities & Debts section in the
     // exported PDF (audit #3). Not used in-screen by P&L computations.
     val debts          by viewModel.debts.collectAsState()
-    // C21 Stage 3 — snapshots for the net-worth trend chart in the PDF.
+    // C21 Stage 3 - snapshots for the net-worth trend chart in the PDF.
     val snapshots      by viewModel.getNetWorthSnapshots().collectAsState(initial = emptyList())
-    // C11 (3.2.40) — user's Date Format pref for PDF date columns.
+    // C11 (3.2.40) - user's Date Format pref for PDF date columns.
     val dateFormat     by app.fynlo.data.UserPreferences.dateFormat(androidx.compose.ui.platform.LocalContext.current)
         .collectAsState(initial = app.fynlo.logic.DateUtils.DEFAULT_COMPACT_PATTERN)
     val currentProject by viewModel.currentProject.collectAsState()
@@ -66,19 +67,19 @@ fun ProfitLossScreen(viewModel: FinanceViewModel) {
     val locale          = LocalLocale.current.platformLocale
     val context         = androidx.compose.ui.platform.LocalContext.current
 
-    // ── Cash-basis figures — exclude financing activities (debt/lending/investment).
+    // -- Cash-basis figures - exclude financing activities (debt/lending/investment).
     // Debt received = liability (not income); debt repayment principal = balance sheet
     // (not expense); lending principal = balance sheet too.
     val financingCategories = listOf(
         "Debt Received", "Debt Repayment", "Lending",
         "Loan Recovery", "Loan Repayment", "Investment", "Investment Returns"
     )
-    val cashTxns       = transactions.filter { it.tags != "journal_only" && it.category !in financingCategories }
+    val cashTxns       = transactions.filter { !it.isGeneratedJournalEntry() && it.category !in financingCategories }
     val totalIncome    = cashTxns.filter { it.type.equals("income",  ignoreCase = true) }.sumOf { it.amount }
     val totalExpense   = cashTxns.filter { it.type.equals("expense", ignoreCase = true) }.sumOf { it.amount }
 
-    // ── Interest tracking ───────────────────────────────────────────────────
-    // Use paidInterest from borrowers — actual interest collected, not the full
+    // -- Interest tracking ---------------------------------------------------
+    // Use paidInterest from borrowers - actual interest collected, not the full
     // Loan Repayment transaction (which includes principal recovery).
     val interestIncome   = borrowers.sumOf { it.paidInterest }
     val interestExpense  = transactions.filter { it.category == "Interest Expense" }.sumOf { it.amount }
@@ -91,7 +92,7 @@ fun ProfitLossScreen(viewModel: FinanceViewModel) {
     val operatingProfit  = grossRevenue - totalExpense
     val netProfit        = operatingProfit - interestExpense - badDebtWriteOffs
 
-    // ── Rolling-12 monthly buckets for the chart (audit #1). One bucket per
+    // -- Rolling-12 monthly buckets for the chart (audit #1). One bucket per
     // calendar month ending in the current month. Empty months render as zero.
     val today    = remember { LocalDate.now() }
     val monthly  = remember(transactions, today) {
@@ -109,7 +110,7 @@ fun ProfitLossScreen(viewModel: FinanceViewModel) {
         }
     }
 
-    // ── Callout windows (audit #3). YTD = Jan 1 → today. vs Last Year same
+    // -- Callout windows (audit #3). YTD = Jan 1 -> today. vs Last Year same
     // window from prior calendar year.
     val callouts = remember(transactions, today) {
         fun netFor(fromKey: String, toKey: String): Double {
@@ -156,7 +157,7 @@ fun ProfitLossScreen(viewModel: FinanceViewModel) {
                 )
                 Button(
                     onClick = {
-                        // C21 Stage 1 — standardized filename + identity row.
+                        // C21 Stage 1 - standardized filename + identity row.
                         val projectName = currentProject?.name ?: "Personal"
                         val file = app.fynlo.logic.ExportUtility.exportCacheFile(
                             context,
@@ -196,7 +197,7 @@ fun ProfitLossScreen(viewModel: FinanceViewModel) {
 
             Spacer(Modifier.height(12.dp))
 
-            // ── Chart-hero block (audit #1 + #2). Net P&L number sits directly
+            // -- Chart-hero block (audit #1 + #2). Net P&L number sits directly
             // above the rolling-12 income/expense line chart, both inside one
             // surface so the hero reads as a single unit per type_chart_hero.
             Column(
@@ -215,13 +216,13 @@ fun ProfitLossScreen(viewModel: FinanceViewModel) {
                     style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.ExtraBold),
                     color = if (netProfit >= 0) green else red
                 )
-                // Audit #5 — replace the static "You are profitable ↑" with the
+                // Audit #5 - replace the static "You are profitable up" with the
                 // actual cash-basis arithmetic. Stating the numbers means the
                 // user sees WHY it's positive (or negative) rather than a vague
                 // affirmation that may not match the underlying flow.
                 Text(
-                    "Cash basis · income ${CurrencyFormatter.detail(grossRevenue, currencyCode, locale)} " +
-                    "− expenses ${CurrencyFormatter.detail(totalExpense + interestExpense + badDebtWriteOffs, currencyCode, locale)}",
+                    "Cash basis - income ${CurrencyFormatter.detail(grossRevenue, currencyCode, locale)} " +
+                    "- expenses ${CurrencyFormatter.detail(totalExpense + interestExpense + badDebtWriteOffs, currencyCode, locale)}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -258,7 +259,7 @@ fun ProfitLossScreen(viewModel: FinanceViewModel) {
 
             Spacer(Modifier.height(16.dp))
 
-            // ── Callout cards (audit #3). Four equal-weight tiles in one row.
+            // -- Callout cards (audit #3). Four equal-weight tiles in one row.
             Row(
                 Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -275,7 +276,7 @@ fun ProfitLossScreen(viewModel: FinanceViewModel) {
 
             Spacer(Modifier.height(16.dp))
 
-            // ── REVENUE ───────────────────────────────────────────────────────────
+            // -- REVENUE -----------------------------------------------------------
             PLSection(
                 "Revenue",
                 listOf(
@@ -288,7 +289,7 @@ fun ProfitLossScreen(viewModel: FinanceViewModel) {
 
             Spacer(Modifier.height(12.dp))
 
-            // ── EXPENSES ──────────────────────────────────────────────────────────
+            // -- EXPENSES ----------------------------------------------------------
             PLSection(
                 "Expenses",
                 listOf(
@@ -301,14 +302,14 @@ fun ProfitLossScreen(viewModel: FinanceViewModel) {
 
             Spacer(Modifier.height(12.dp))
 
-            // ── LENDING PERFORMANCE ───────────────────────────────────────────────
-            // Audit #4 — "Total Lent Out" used to be `activeBorrowers.sum(amount)`
+            // -- LENDING PERFORMANCE -----------------------------------------------
+            // Audit #4 - "Total Lent Out" used to be `activeBorrowers.sum(amount)`
             // which excluded written-off loans (so not lifetime) but included
             // already-recovered principal (so not outstanding either). Fixed:
-            //   • Total Lent Out (lifetime) = every borrower's original amount,
+            //   ? Total Lent Out (lifetime) = every borrower's original amount,
             //     INCLUDING written-off loans (they're part of lifetime activity).
-            //   • Currently Lent Out      = active borrowers' outstanding
-            //     principal (amount − paidPrincipal).
+            //   ? Currently Lent Out      = active borrowers' outstanding
+            //     principal (amount - paidPrincipal).
             val activeBorrowers       = borrowers.filter { it.status != "WrittenOff" }
             val totalLentLifetime     = borrowers.sumOf { it.amount }
             val currentlyLentOut      = activeBorrowers.sumOf { (it.amount - it.paidPrincipal).coerceAtLeast(0.0) }
@@ -331,7 +332,7 @@ fun ProfitLossScreen(viewModel: FinanceViewModel) {
 
             Spacer(Modifier.height(12.dp))
 
-            // ── INVESTMENTS ───────────────────────────────────────────────────────
+            // -- INVESTMENTS -------------------------------------------------------
             // Investments P&L = only gains/returns, NOT the capital itself (balance sheet).
             PLSection(
                 "Investments",
@@ -351,7 +352,7 @@ fun ProfitLossScreen(viewModel: FinanceViewModel) {
 }
 
 /**
- * Dual-line rolling-12 income vs expense chart. Lightweight Canvas — both
+ * Dual-line rolling-12 income vs expense chart. Lightweight Canvas - both
  * series share the same y-axis (max of either series), so the relative
  * spread reads as "did income exceed expense this month or not."
  */
@@ -387,7 +388,7 @@ private fun MonthlyPLLineChart(
             drawPath(expPath, expenseColor, style = Stroke(3.dp.toPx(), cap = StrokeCap.Round))
             monthly.forEachIndexed { i, m -> drawCircle(expenseColor, 3.dp.toPx(), Offset(xOf(i), yOf(m.third))) }
         }
-        // Month axis labels — every third month + the last one to avoid
+        // Month axis labels - every third month + the last one to avoid
         // clutter on narrow screens. Compact "MMM" form per the design system.
         Row(Modifier.fillMaxWidth().padding(top = 6.dp), Arrangement.SpaceBetween) {
             monthly.forEachIndexed { i, (ym, _, _) ->

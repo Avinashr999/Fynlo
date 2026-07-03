@@ -1,6 +1,7 @@
 package app.fynlo.logic
 
 import app.fynlo.data.model.Debt
+import app.fynlo.data.model.DebtPayment
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
@@ -16,18 +17,20 @@ object DebtLiabilityCalculator {
         debt: Debt,
         asOf: String = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")),
     ): Liability {
-        val accruedInterest = InterestEngine.calcIntAccrued(
-            debt.amount,
-            debt.rate,
-            debt.date,
-            debt.intType,
-            debt.due,
-            totalPaid = debt.paidPrincipal,
-            asOf = asOf,
-        )
         return Liability(
             principal = (debt.amount - debt.paidPrincipal).coerceAtLeast(0.0),
-            interest = (accruedInterest - debt.paidInterest - debt.interestWaived).coerceAtLeast(0.0),
+            interest = InterestPolicy.debtInterestOutstanding(debt, asOf),
+        )
+    }
+
+    fun outstanding(
+        debt: Debt,
+        payments: List<DebtPayment>,
+        asOf: String = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")),
+    ): Liability {
+        return Liability(
+            principal = (debt.amount - debt.paidPrincipal).coerceAtLeast(0.0),
+            interest = InterestPolicy.debtBreakdown(debt, payments, asOf).due,
         )
     }
 }

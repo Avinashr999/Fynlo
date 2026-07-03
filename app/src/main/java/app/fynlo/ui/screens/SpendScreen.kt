@@ -73,10 +73,10 @@ val transactions by viewModel.transactions.collectAsState()
             .entries.sortedByDescending { it.value }
     }
 
-    // C13 (3.2.23) — Home archetype: MoM delta on the hero so the user
-    // sees "₹X this month, ↓ ₹500 vs last month" at a glance per audit
+    // C13 (3.2.23) - Home archetype: MoM delta on the hero so the user
+    // sees "RsX this month, down Rs500 vs last month" at a glance per audit
     // acceptance ("1-second readability"). Previous month's total is
-    // computed from the same `allExpenses` Flow — no extra fetch.
+    // computed from the same `allExpenses` Flow - no extra fetch.
     val previousMonthKey = remember(selectedMonth) {
         selectedMonth.minusMonths(1).format(keyFmt)
     }
@@ -84,9 +84,9 @@ val transactions by viewModel.transactions.collectAsState()
         allExpenses.filter { it.date.startsWith(previousMonthKey) }.sumOf { it.amount }
     }
 
-    // C13 — top-category callout for the audit's "mostly on Food" hero
+    // C13 - top-category callout for the audit's "mostly on Food" hero
     // subtitle. Only shown when the month has spend AND a clear leader
-    // (≥30% share of total — below that the "mostly" framing is misleading).
+    // (>=30% share of total - below that the "mostly" framing is misleading).
     val topCategory = remember(byCat, total) {
         if (total <= 0 || byCat.isEmpty()) null
         else byCat.first().let { entry ->
@@ -95,12 +95,12 @@ val transactions by viewModel.transactions.collectAsState()
         }
     }
 
-    // 3.2.81 — hoisted from inside the dialog scope so ExpenseRow can
+    // 3.2.81 - hoisted from inside the dialog scope so ExpenseRow can
     // pass it to the edit dialog too.
     val allAccounts by viewModel.accounts.collectAsState()
 
     if (showDialog) {
-        // 3.2.59 — wire real account / investment / debt names so the
+        // 3.2.59 - wire real account / investment / debt names so the
         // source picker is a dropdown of existing entities.
         val allInvestments by viewModel.investments.collectAsState()
         val allDebts by viewModel.debts.collectAsState()
@@ -116,7 +116,7 @@ val transactions by viewModel.transactions.collectAsState()
             allowTypeSwitch = false,
             rememberLastCategory = { isIncome -> viewModel.rememberLastTransactionCategory(isIncome) },
             onRecordCategory = { isIncome, cat -> viewModel.recordTransactionCategory(isIncome, cat) },
-            // 3.2.81 (C13 #5) — when user toggles "Repeat monthly?" ON,
+            // 3.2.81 (C13 #5) - when user toggles "Repeat monthly?" ON,
             // also create a RecurringTransaction template alongside the
             // one-time insert.
             onRepeatMonthly = { txn -> viewModel.addRecurringTransaction(toRecurringTemplate(txn)) },
@@ -148,7 +148,7 @@ val transactions by viewModel.transactions.collectAsState()
         Column(
         modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp)
     ) {
-        // C13 (3.2.23) — removed the in-page "Add" FilledTonalButton row that
+        // C13 (3.2.23) - removed the in-page "Add" FilledTonalButton row that
         // sat above the Month selector. Per audit fix #4 ("remove duplicate
         // add entry points"), the Scaffold-level FAB owned by Navigation
         // is the single Add affordance for this screen now. The dialog
@@ -172,10 +172,10 @@ val transactions by viewModel.transactions.collectAsState()
             }
 
             Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-                // C13 (3.2.23) — Home archetype hero. Per audit acceptance
+                // C13 (3.2.23) - Home archetype hero. Per audit acceptance
                 // "1-second readability": big number + MoM delta + top-category
                 // callout. The delta line uses an arrow + colour to signal
-                // direction (↓ green = spent less / ↑ red = spent more). Hidden
+                // direction (down green = spent less / up red = spent more). Hidden
                 // when previousMonthTotal == 0 (first month of usage).
                 LedgerHeroPanel(
                     label = "Spent in ${selectedMonth.format(monthFmt)}",
@@ -264,7 +264,7 @@ val transactions by viewModel.transactions.collectAsState()
                     Spacer(Modifier.height(20.dp))
                 }
 
-                // C13 (3.2.23) — Recent list now sectioned by date bucket per
+                // C13 (3.2.23) - Recent list now sectioned by date bucket per
                 // audit fix #3 ("sectioned by Today / Yesterday / This Week /
                 // Earlier"). Buckets are computed once via `remember(expenses,
                 // today)` and only non-empty buckets render their header. The
@@ -319,11 +319,11 @@ val transactions by viewModel.transactions.collectAsState()
                                     viewModel.editTransaction(txn, it)
                                     viewModel.showFeedback("Expense updated")
                                 },
-                                // 3.2.81 — accounts list from the parent
+                                // 3.2.81 - accounts list from the parent
                                 // composable; lets the edit dialog show a
                                 // real Account picker (#9).
                                 bankAccounts = allAccounts.map { it.name },
-                                // C03b Stage #1b-2 (3.2.88) — id → current name
+                                // C03b Stage #1b-2 (3.2.88) - id -> current name
                                 // for rename-reflective sub-label.
                                 accountIdToName = allAccounts.associate { it.id to it.name },
                             )
@@ -350,10 +350,10 @@ private fun ExpenseRow(
     locale: Locale,
     onDelete: () -> Unit = {},
     onEdit: (app.fynlo.data.model.Transaction) -> Unit = {},
-    // 3.2.81 — propagate account names so EditTransactionDialog's new
+    // 3.2.81 - propagate account names so EditTransactionDialog's new
     // Account picker (C13 #9) has real options instead of free-text.
     bankAccounts: List<String> = emptyList(),
-    // C03b Stage #1b-2 (3.2.88) — id → current Account.name lookup so
+    // C03b Stage #1b-2 (3.2.88) - id -> current Account.name lookup so
     // the row's sub-label reflects renames immediately.
     accountIdToName: Map<String, String> = emptyMap(),
 ) {

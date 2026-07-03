@@ -98,6 +98,18 @@ class CurrencyFormatterDataIntegrityTest {
     }
 
     @Test
+    fun `exact preserves paise for account balances`() {
+        assertEquals("\u20B915,000.50", CurrencyFormatter.exact(15_000.5, "INR"))
+        assertEquals("\u20B915,000.05", CurrencyFormatter.exact(15_000.05, "INR"))
+    }
+
+    @Test
+    fun `negative exact preserves paise`() {
+        assertEquals("\u2212\u20B915,000.50", CurrencyFormatter.negativeExact(15_000.5, "INR"))
+        assertEquals("\u2212\u20B915,000.50", CurrencyFormatter.negativeExact(-15_000.5, "INR"))
+    }
+
+    @Test
     fun `unknown currency code falls back to rupee symbol`() {
         // [CurrencyUtils.symbolFor] defaults to ₹ for unknown codes; this
         // test pins that the formatter inherits that fallback rather than
@@ -239,7 +251,7 @@ class CurrencyFormatterDataIntegrityTest {
 
     @Test
     fun `negative is idempotent on multiple calls (does not double-prefix)`() {
-        // Defensive: if a caller accidentally wraps an already-negative-
+        // Defensive: if a caller accidentally wraps an already-negative?
         // formatted string and feeds it back, we shouldn't end up with
         // "−−₹15,000". The current implementation can't accept strings as
         // input — only doubles — so this is structurally impossible, but

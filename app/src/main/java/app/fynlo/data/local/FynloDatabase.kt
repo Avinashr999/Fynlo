@@ -31,11 +31,29 @@ import app.fynlo.data.model.FlowTemplate
         ProofAttachment::class,
         SyncConflict::class
     ],
-    version = 29,
+    version = 31,
     exportSchema = true
 )
 abstract class FynloDatabase : RoomDatabase() {
     abstract fun dao(): FynloDao
+}
+val MIGRATION_30_31 = object : Migration(30, 31) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE `payments` ADD COLUMN `interestPeriodStartDate` TEXT NOT NULL DEFAULT ''")
+        db.execSQL("ALTER TABLE `payments` ADD COLUMN `interestPeriodEndDate` TEXT NOT NULL DEFAULT ''")
+        db.execSQL("ALTER TABLE `payments` ADD COLUMN `interestAllocationType` TEXT NOT NULL DEFAULT 'UNKNOWN_REVIEW'")
+        db.execSQL("ALTER TABLE `debt_payments` ADD COLUMN `interestPeriodStartDate` TEXT NOT NULL DEFAULT ''")
+        db.execSQL("ALTER TABLE `debt_payments` ADD COLUMN `interestPeriodEndDate` TEXT NOT NULL DEFAULT ''")
+        db.execSQL("ALTER TABLE `debt_payments` ADD COLUMN `interestAllocationType` TEXT NOT NULL DEFAULT 'UNKNOWN_REVIEW'")
+        db.execSQL("UPDATE `payments` SET `interestAllocationType` = 'PRINCIPAL_REPAYMENT' WHERE COALESCE(`interest`, 0) <= 0 AND `type` != 'Interest Only'")
+        db.execSQL("UPDATE `debt_payments` SET `interestAllocationType` = 'PRINCIPAL_REPAYMENT' WHERE COALESCE(`interest`, 0) <= 0 AND `type` != 'Interest Only'")
+    }
+}
+val MIGRATION_29_30 = object : Migration(29, 30) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE `borrowers` ADD COLUMN `stopInterestAfterDue` INTEGER NOT NULL DEFAULT 0")
+        db.execSQL("ALTER TABLE `debts` ADD COLUMN `stopInterestAfterDue` INTEGER NOT NULL DEFAULT 0")
+    }
 }
 
 val MIGRATION_28_29 = object : Migration(28, 29) {

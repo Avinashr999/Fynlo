@@ -35,8 +35,8 @@ data class InvestmentSaveRequest(
     val sourceType: String,        // "account" | "existing_debt" | "new_loan"
     val sourceAccountName: String = "",
     val sourceAccountId: String = "",
-    val sourceDebt: Debt? = null,  // existing debt selected
-    val newLoan: Debt? = null      // auto-created if sourceType = "new_loan"
+    val sourceDebt: Debt?= null,  // existing debt selected
+    val newLoan: Debt?= null      // auto-created if sourceType = "new_loan"
 )
 
 // ─── Source types ────────────────────────────────────────────────────────────
@@ -55,7 +55,7 @@ fun AddInvestmentDialog(
     currencyCode: String = "INR",
     onDismiss: () -> Unit,
     onConfirm: (InvestmentSaveRequest) -> Unit,
-    initialInvestment: Investment? = null
+    initialInvestment: Investment?= null
 ) {
     val currencySymbol = CurrencyUtils.symbolFor(currencyCode)
     val isNew = initialInvestment == null || initialInvestment.id.isBlank()
@@ -120,7 +120,7 @@ fun AddInvestmentDialog(
     val amountDouble = amount.toDoubleOrNull() ?: 0.0
     // C17 (3.2.42) — compute the disabled reason first; canSave just checks
     // the reason for null. Lets us surface which field is missing inline.
-    val disabledReason: String? = when {
+    val disabledReason: String?= when {
         name.isBlank()        -> "Enter an investment name to continue"
         amountDouble <= 0.0   -> "Enter the invested amount to continue"
         sourceType == SOURCE_ACCOUNT && selectedAccount == null && activeAccounts.isNotEmpty() ->
@@ -253,7 +253,7 @@ fun AddInvestmentDialog(
                                     onValueChange = {}, readOnly = true,
                                     label = { Text("Deduct from which account?") },
                                     supportingText = selectedAccount?.let { acct ->
-                                        { Text("${acct.type}  •  Balance: ${CurrencyFormatter.detail(acct.balance, currencyCode)}", style = MaterialTheme.typography.labelSmall) }
+                                        { Text("${acct.type}  •  Balance: ${CurrencyFormatter.exact(acct.balance, currencyCode)}", style = MaterialTheme.typography.labelSmall) }
                                     },
                                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = accountExpanded) },
                                     modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, true).fillMaxWidth()
@@ -275,7 +275,7 @@ fun AddInvestmentDialog(
                                                         }
                                                     }
                                                     Text(
-                                                        CurrencyFormatter.detail(acct.balance, currencyCode),
+                                                        CurrencyFormatter.exact(acct.balance, currencyCode),
                                                         style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                                                         color = if (acct.balance >= 0) Emerald500 else MaterialTheme.colorScheme.error
                                                     )

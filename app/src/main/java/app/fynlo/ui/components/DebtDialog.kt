@@ -35,7 +35,7 @@ fun AddDebtDialog(
     viewModel: FinanceViewModel,
     onDismiss: () -> Unit,
     onConfirm: (Debt, String) -> Unit,
-    initialDebt: Debt? = null,
+    initialDebt: Debt?= null,
     initialDestinationAccountName: String = "",
     currencyCode: String = "INR",
 ) {
@@ -69,6 +69,7 @@ fun AddDebtDialog(
     var expandedIntType  by remember { mutableStateOf(false) }
     val interestTypes    = listOf("Simple Interest", "Reducing Balance", "Compound Interest", "Both")
     var selectedIntType  by remember { mutableStateOf(initialDebt?.intType ?: "Simple Interest") }
+    var stopInterestAfterDue by remember { mutableStateOf(initialDebt?.stopInterestAfterDue ?: false) }
     var submitting       by remember(initialDebt?.id) { mutableStateOf(false) }
 
     val lenderName = if (useCustomName) customLenderName else selectedPerson?.name ?: ""
@@ -108,7 +109,7 @@ fun AddDebtDialog(
                     }
                     Spacer(Modifier.height(16.dp))
 
-                // ── Lender selection ─────────────────────────────────────
+                // -- Lender selection -------------------------------------
                 if (!useCustomName) {
                     ExposedDropdownMenuBox(expanded = personExpanded, onExpandedChange = { personExpanded = !personExpanded }) {
                         OutlinedTextField(
@@ -146,7 +147,7 @@ fun AddDebtDialog(
 
                 Spacer(Modifier.height(4.dp))
 
-                // ── Deposit to account (actual accounts) ──────────────────
+                // -- Deposit to account (actual accounts) ------------------
                 ExposedDropdownMenuBox(expanded = expandedDest, onExpandedChange = { expandedDest = !expandedDest }) {
                         OutlinedTextField(
                             value = selectedAccount.name,
@@ -154,7 +155,7 @@ fun AddDebtDialog(
                             readOnly = true,
                             label = { Text("Received into Account") },
                             supportingText = {
-                                Text("${selectedAccount.type}  •  Balance: ${CurrencyFormatter.detail(selectedAccount.balance, currencyCode, locale)}",
+                                Text("${selectedAccount.type}  *  Balance: ${CurrencyFormatter.exact(selectedAccount.balance, currencyCode, locale)}",
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.primary)
                             },
@@ -179,7 +180,7 @@ fun AddDebtDialog(
                                                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                                                 }
                                             }
-                                            Text(CurrencyFormatter.detail(acct.balance, currencyCode, locale),
+                                            Text(CurrencyFormatter.exact(acct.balance, currencyCode, locale),
                                                 style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
                                                 color = Emerald500)
                                         }
@@ -191,7 +192,7 @@ fun AddDebtDialog(
                     }
                 Spacer(Modifier.height(8.dp))
 
-                // ── Amount + dates ────────────────────────────────────────
+                // -- Amount + dates ----------------------------------------
                 OutlinedTextField(value = amount, onValueChange = { amount = it },
                     label = { Text("Amount (${CurrencyUtils.symbolFor(currencyCode)})") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
@@ -211,11 +212,11 @@ fun AddDebtDialog(
                         modifier = Modifier.weight(1f))
                 }
 
-                // ── Interest type ─────────────────────────────────────────
-                // C12 (3.2.25) — display labels routed through
+                // -- Interest type -----------------------------------------
+                // C12 (3.2.25) - display labels routed through
                 // `InterestEngine.label(...)` so "Both" renders as "SI + CI"
                 // per audit fix #9. Stored value (`selectedIntType`) stays
-                // raw — DB schema and InterestEngine branch on the raw form.
+                // raw - DB schema and InterestEngine branch on the raw form.
                 ExposedDropdownMenuBox(expanded = expandedIntType, onExpandedChange = { expandedIntType = !expandedIntType }) {
                     OutlinedTextField(value = app.fynlo.logic.InterestEngine.label(selectedIntType), onValueChange = {}, readOnly = true,
                         label = { Text("Interest Type") },
@@ -232,48 +233,69 @@ fun AddDebtDialog(
                 }
 
                 DatePickerField(value = due, onValueChange = { due = it }, label = "Due Date", optional = true)
+                Spacer(Modifier.height(12.dp))
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text("Stop interest after due date", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold))
+                            Text(
+                                "Use when lender gives grace time and you do not want extra interest after the due date.",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        Switch(checked = stopInterestAfterDue, onCheckedChange = { stopInterestAfterDue = it })
+                    }
+                }
+                Spacer(Modifier.height(12.dp))
                 OutlinedTextField(value = notes, onValueChange = { notes = it },
                     label = { Text("Notes / Purpose") }, modifier = Modifier.fillMaxWidth())
 
                 Spacer(Modifier.height(24.dp))
 
-                Row(Modifier.fillMaxWidth(), Arrangement.End) {
-                    TextButton(onClick = onDismiss) { Text("Cancel") }
-                    Spacer(Modifier.width(8.dp))
-                    Button(
-                        onClick = {
-                            if (submitting) return@Button
-                            submitting = true
-                            val now = System.currentTimeMillis()
-                            val finalId = initialDebt?.id?.takeIf { it.isNotBlank() } ?: app.fynlo.logic.Ids.newId()
-                            val debt = (initialDebt ?: Debt(
-                                id = finalId,
-                                name = lenderName,
-                                amount = 0.0,
-                                rate = 0.0,
-                                date = DateUtils.parseInput(date),
-                            )).copy(
-                                id = finalId,
-                                name = lenderName,
-                                amount = amount.toDoubleOrNull() ?: 0.0,
-                                rate = rate.toDoubleOrNull() ?: 0.0,
-                                date = DateUtils.parseInput(date),
-                                due = if (due.isNotEmpty()) DateUtils.parseInput(due) else "",
-                                tenure = tenure.toIntOrNull() ?: 0,
-                                notes = notes,
-                                status = initialDebt?.status ?: "Active",
-                                type = initialDebt?.type ?: "Friend / Family",
-                                intType = selectedIntType,
-                                updatedAt = now,
-                                createdAt = initialDebt?.createdAt ?: now,
-                            )
-                            onConfirm(debt, selectedAccount.name)
-                        },
-                        enabled = isValid && !submitting
-                    ) { Text("Save") }
-                }
-                // C17 (3.2.42) — disabled-button hint.
-                val debtDisabledReason: String? = when {
+                FormActionRow(
+                    primaryText = if (initialDebt == null) "Save debt" else "Save changes",
+                    onPrimary = {
+                        if (submitting) return@FormActionRow
+                        submitting = true
+                        val now = System.currentTimeMillis()
+                        val finalId = initialDebt?.id?.takeIf { it.isNotBlank() } ?: app.fynlo.logic.Ids.newId()
+                        val debt = (initialDebt ?: Debt(
+                            id = finalId,
+                            name = lenderName,
+                            amount = 0.0,
+                            rate = 0.0,
+                            date = DateUtils.parseInput(date),
+                        )).copy(
+                            id = finalId,
+                            name = lenderName,
+                            amount = amount.toDoubleOrNull() ?: 0.0,
+                            rate = rate.toDoubleOrNull() ?: 0.0,
+                            date = DateUtils.parseInput(date),
+                            due = if (due.isNotEmpty()) DateUtils.parseInput(due) else "",
+                            tenure = tenure.toIntOrNull() ?: 0,
+                            notes = notes,
+                            status = initialDebt?.status ?: "Active",
+                            stopInterestAfterDue = stopInterestAfterDue,
+                            type = initialDebt?.type ?: "Friend / Family",
+                            intType = selectedIntType,
+                            updatedAt = now,
+                            createdAt = initialDebt?.createdAt ?: now,
+                        )
+                        onConfirm(debt, selectedAccount.name)
+                    },
+                    primaryEnabled = isValid && !submitting,
+                    onCancel = onDismiss,
+                )
+                // C17 (3.2.42) - disabled-button hint.
+                val debtDisabledReason: String?= when {
                     lenderName.isBlank() -> "Enter the lender's name to continue"
                     amount.isEmpty()     -> "Enter the borrowed amount to continue"
                     else                 -> null

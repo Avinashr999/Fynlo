@@ -44,18 +44,20 @@ import app.fynlo.ui.components.FynloConfirmDialog
 import app.fynlo.ui.components.ProofAttachmentSection
 import app.fynlo.ui.components.WaiveInterestDialog
 import app.fynlo.ui.theme.Emerald500
+import app.fynlo.ui.theme.DetailActionButton
 import app.fynlo.ui.theme.LedgerDetailTopBar
+import app.fynlo.ui.theme.LedgerTopBarActionButton
 import app.fynlo.ui.theme.SemanticAmber
 import app.fynlo.ui.theme.SemanticRed
 import java.util.Locale
 
 /**
  * Owed-side counterpart to [CustomerDetailScreen]. Same visual structure
- * (hero outstanding → action button → payment history → notes) so the
- * Lent and Owed detail surfaces feel like one design (UX_AUDIT §C12 fix #5).
+ * (hero outstanding -> action button -> payment history -> notes) so the
+ * Lent and Owed detail surfaces feel like one design (UX_AUDIT sectionC12 fix #5).
  *
  * Hosts all per-debt actions per audit #6/#7: Pay (primary button), Edit
- * + Delete (TopBar). The card in [DebtScreen] is now action-free — every
+ * + Delete (TopBar). The card in [DebtScreen] is now action-free - every
  * action lives here as a proper labelled button.
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -88,13 +90,11 @@ fun DebtDetailScreen(
         .sortedByDescending { it.date }
     val debtProofs = proofAttachments.filter { it.ownerType == "debt" && it.ownerId == debtId }
 
-    val interest = InterestEngine.calcIntAccrued(
-        debt.amount, debt.rate, debt.date, debt.intType, debt.due, totalPaid = debt.paidPrincipal
-    )
-    val interestOutstanding = (interest - debt.paidInterest - debt.interestWaived).coerceAtLeast(0.0)
-    val totalOutstanding = InterestEngine.calcOutstanding(
-        debt.amount, interest, debt.paidPrincipal, debt.paidInterest, debt.interestWaived
-    )
+    val interestBreakdown = app.fynlo.logic.InterestPolicy.debtBreakdown(debt, debtPayments)
+    val interest = interestBreakdown.accrued
+    val interestOutstanding = interestBreakdown.due
+    val advanceInterest = interestBreakdown.paidAhead
+    val totalOutstanding = (debt.amount - debt.paidPrincipal).coerceAtLeast(0.0) + interestOutstanding
     val accountIdToName = remember(accounts) { accounts.associate { it.id to it.name } }
     val receivedTxn = remember(transactions, debt.id) {
         transactions
@@ -117,7 +117,11 @@ fun DebtDetailScreen(
         AddDebtDialog(
             viewModel    = viewModel,
             onDismiss    = { showEditDialog = false },
-            onConfirm    = { updated, destination -> viewModel.updateDebtWithDestination(updated, destination); showEditDialog = false },
+            onConfirm    = { updated, destination ->
+                viewModel.updateDebtWithDestination(updated, destination)
+                viewModel.showFeedback("Debt updated")
+                showEditDialog = false
+            },
             initialDebt  = debt,
             initialDestinationAccountName = receivedInto,
         )
@@ -125,11 +129,13 @@ fun DebtDetailScreen(
     if (showPayDialog) {
         PayDebtDialog(
             debt      = debt,
+            payments  = debtPayments,
             accounts  = accounts,
             onDismiss = { showPayDialog = false },
             onConfirm = { payment, source ->
                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                 viewModel.payDebt(payment, source)
+                viewModel.showFeedback("Debt payment saved")
                 showPayDialog = false
             }
         )
@@ -143,6 +149,7 @@ fun DebtDetailScreen(
             onConfirm = { amount, reason ->
                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                 viewModel.waiveDebtInterest(debt, amount, reason)
+                viewModel.showFeedback("Interest waived")
                 showWaiveInterestDialog = false
             },
             currencyCode = currencyCode,
@@ -160,6 +167,7 @@ fun DebtDetailScreen(
                     deleteInProgress = true
                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                     viewModel.deleteDebt(debt)
+                    viewModel.showFeedback("Debt deleted")
                     showDeleteConfirm = false
                     onNavigateBack()
                 }
@@ -174,16 +182,18 @@ fun DebtDetailScreen(
                 subtitle = "Debt statement",
                 onNavigateBack = onNavigateBack,
             ) {
-                IconButton(onClick = { showEditDialog = true }) {
-                    Icon(Icons.Default.Edit, contentDescription = "Edit")
-                }
-                IconButton(onClick = { showDeleteConfirm = true }) {
-                    Icon(
-                        Icons.Default.Delete,
-                        contentDescription = "Delete",
-                        tint = MaterialTheme.colorScheme.error
-                    )
-                }
+                LedgerTopBarActionButton(
+                    icon = Icons.Default.Edit,
+                    contentDescription = "Edit",
+                    onClick = { showEditDialog = true },
+                )
+                LedgerTopBarActionButton(
+                    icon = Icons.Default.Delete,
+                    contentDescription = "Delete",
+                    onClick = { showDeleteConfirm = true },
+                    tint = MaterialTheme.colorScheme.error,
+                    containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.18f),
+                )
             }
         }
     ) { padding ->
@@ -198,7 +208,7 @@ fun DebtDetailScreen(
             item {
                 Column(modifier = Modifier.fillMaxWidth().padding(top = 4.dp)) {
                     Text(
-                        "Current Outstanding",
+                        "Total Payable",
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -215,24 +225,32 @@ fun DebtDetailScreen(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        DetailItem("Principal due", CurrencyFormatter.detail((debt.amount - debt.paidPrincipal).coerceAtLeast(0.0), currencyCode, locale))
-                        DetailItem("Interest due",  CurrencyFormatter.detail(interestOutstanding, currencyCode, locale))
-                        DetailItem("Paid",          CurrencyFormatter.detail(debt.paid, currencyCode, locale))
+                        DetailItem("Principal Outstanding", CurrencyFormatter.detail((debt.amount - debt.paidPrincipal).coerceAtLeast(0.0), currencyCode, locale))
+                        DetailItem("Interest Payable", CurrencyFormatter.interest(interestOutstanding, currencyCode, locale))
+                        DetailItem("Total Payable", CurrencyFormatter.detail(totalOutstanding, currencyCode, locale))
                     }
                     if (debt.interestWaived > 0.0) {
                         Spacer(Modifier.height(8.dp))
                         Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                             Text(
-                                "Accrued interest: ${CurrencyFormatter.detail(interest, currencyCode, locale)}",
+                                "Interest before reduction: ${CurrencyFormatter.interest(interest, currencyCode, locale)}",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                             Text(
-                                "Interest waived: ${CurrencyFormatter.detail(debt.interestWaived, currencyCode, locale)}",
+                                "Reduced / waived: -${CurrencyFormatter.interest(debt.interestWaived, currencyCode, locale)}",
                                 style = MaterialTheme.typography.labelSmall,
-                                color = Emerald500,
+                                color = MaterialTheme.colorScheme.primary,
                             )
                         }
+                    }
+                    if (advanceInterest > 0.01) {
+                        Spacer(Modifier.height(10.dp))
+                        InterestPaidAheadNotice(
+                            title = "Interest paid ahead",
+                            body = "Interest payable is zero for now because extra interest was already paid. Interest will continue adding from the debt date.",
+                            advance = CurrencyFormatter.interest(advanceInterest, currencyCode, locale),
+                        )
                     }
                     if (receivedInto.isNotBlank() || debt.notes.isNotBlank()) {
                         Spacer(Modifier.height(12.dp))
@@ -297,12 +315,24 @@ fun DebtDetailScreen(
                             modifier = Modifier.weight(1f),
                         )
                     }
-                    if (debt.rate > 0) {
-                        Spacer(Modifier.height(8.dp))
-                        Text(
-                            "Rate: ${debt.rate}% • ${app.fynlo.logic.InterestEngine.label(debt.intType)}",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                    Spacer(Modifier.height(8.dp))
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f))
+                            .padding(horizontal = 14.dp, vertical = 10.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        DetailItem(
+                            "Interest rate",
+                            interestRateLabel(debt.rate),
+                            modifier = Modifier.weight(1f),
+                        )
+                        DetailItem(
+                            "Interest method",
+                            interestMethodLabel(debt.rate, debt.intType),
+                            modifier = Modifier.weight(1f),
                         )
                     }
                 }
@@ -310,34 +340,28 @@ fun DebtDetailScreen(
 
             if (totalOutstanding > 0) {
                 item {
-                    Button(
+                    DetailActionButton(
+                        text = "Make Payment",
+                        icon = Icons.Default.Payment,
                         onClick = { showPayDialog = true },
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = SemanticRed)
-                    ) {
-                        Icon(Icons.Default.Payment, null, Modifier.size(18.dp))
-                        Spacer(Modifier.width(8.dp))
-                        Text("Make Payment")
-                    }
+                        emphasized = true,
+                        destructive = true,
+                    )
                 }
 
                 if (debt.rate > 0.0 && interestOutstanding > 0.0) {
                     item {
-                        OutlinedButton(
+                        DetailActionButton(
+                            text = "Waive interest",
+                            icon = Icons.Default.MoneyOff,
                             onClick = { showWaiveInterestDialog = true },
                             modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp),
-                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Emerald500)
-                        ) {
-                            Icon(Icons.Default.MoneyOff, null, Modifier.size(18.dp))
-                            Spacer(Modifier.width(8.dp))
-                            Text("Waive Interest")
-                        }
+                        )
                     }
                 }
 
-                // C22 (3.2.64) — extra-payment what-if scenario.
+                // C22 (3.2.64) - extra-payment what-if scenario.
                 item {
                     WhatIfSection(
                         debt = debt,
@@ -356,7 +380,7 @@ fun DebtDetailScreen(
                 )
             }
 
-            // 3.2.83 — XIRR (effective borrowing rate) on this debt.
+            // 3.2.83 - XIRR (effective borrowing rate) on this debt.
             // Cashflows from borrower's perspective (mirror of Lending):
             //   - principal received on `debtDate` as a POSITIVE inflow
             //   - each DebtPayment made as a NEGATIVE outflow on its date
@@ -543,6 +567,24 @@ private fun DebtPaymentItem(
     locale: Locale,
     paidFrom: String = "",
 ) {
+    val interest = app.fynlo.logic.InterestPolicy.debtPaymentInterestAmount(payment)
+    val title = paymentHistoryTitle(
+        principal = payment.principal,
+        interest = interest,
+        allocationType = payment.interestAllocationType,
+        isDebt = true,
+    ).ifBlank { payment.type.ifBlank { "Payment" } }
+    val details = paymentHistoryDetails(
+        principal = payment.principal,
+        interest = interest,
+        allocationType = payment.interestAllocationType,
+        periodStart = payment.interestPeriodStartDate,
+        periodEnd = payment.interestPeriodEndDate,
+        notes = payment.notes,
+        currencyCode = currencyCode,
+        locale = locale,
+        isDebt = true,
+    )
     Row(
         modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -561,7 +603,7 @@ private fun DebtPaymentItem(
         Spacer(Modifier.width(14.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                payment.type.ifBlank { "Payment" },
+                title,
                 style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold)
             )
             Text(
@@ -576,9 +618,9 @@ private fun DebtPaymentItem(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            if (payment.notes.isNotBlank()) {
+            details.forEach { detail ->
                 Text(
-                    payment.notes,
+                    detail,
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -595,13 +637,13 @@ private fun DebtPaymentItem(
 }
 
 /**
- * C22 (3.2.64) — extra-payment what-if. Reuses [DebtPayoffPlanner] with a
+ * C22 (3.2.64) - extra-payment what-if. Reuses [DebtPayoffPlanner] with a
  * single-debt list to compare two scenarios:
- *   - **Baseline** — what happens at the user's current monthly pace
+ *   - **Baseline** - what happens at the user's current monthly pace
  *     (derived from `paid / monthsElapsed`, floored to a sensible
  *     minimum so a brand-new debt with no payment history still produces
  *     a number).
- *   - **Scenario** — baseline + a user-set extra-payment amount.
+ *   - **Scenario** - baseline + a user-set extra-payment amount.
  *
  * Surfaces months saved + interest saved + new payoff month. Toggleable
  * (default OFF) so the detail screen stays focused on view + pay; users
@@ -625,13 +667,13 @@ private fun WhatIfSection(
         Column(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text("What if I pay extra?",
+                    Text("What if I pay extra-",
                         style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold))
                     Text("See months saved + interest saved at a higher monthly pace.",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                // 3.2.63 lesson — explicit unchecked colors so the Switch
+                // 3.2.63 lesson - explicit unchecked colors so the Switch
                 // is visible on this tinted background in light mode too.
                 Switch(
                     checked = expanded,
@@ -649,7 +691,7 @@ private fun WhatIfSection(
             if (expanded) {
                 Spacer(Modifier.height(12.dp))
 
-                // Baseline monthly pace — start from what the user is
+                // Baseline monthly pace - start from what the user is
                 // actually doing. If no payments yet, fall back to a
                 // sensible "minimum that covers interest + chips away".
                 val baseline = remember(debt) {
@@ -694,7 +736,7 @@ private fun WhatIfSection(
                     "At current pace (${CurrencyFormatter.detail(baseline, currencyCode, locale)}/mo): " +
                     if (basePlan.feasible) "paid off in ${basePlan.totalMonths} mo, " +
                         "${CurrencyFormatter.detail(basePlan.totalInterestPaid, currencyCode, locale)} interest"
-                    else "interest is outpacing payments — never paid off",
+                    else "interest is outpacing payments - never paid off",
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -754,7 +796,7 @@ private fun WhatIfSection(
                     if (!basePlan.feasible && scenarioPlan.feasible) {
                         Spacer(Modifier.height(6.dp))
                         Text(
-                            "The extra pushes you over the line — without it, " +
+                            "The extra pushes you over the line - without it, " +
                             "interest grows faster than payments and the debt never clears.",
                             style = MaterialTheme.typography.labelSmall,
                             color = SemanticAmber,
@@ -844,7 +886,7 @@ private fun EmiPlanningSection(
 
                     Spacer(Modifier.height(12.dp))
                     Text(
-                        "This is the baseline schedule for a ₹${String.format(locale, "%,.0f", debt.amount)} loan at ${debt.rate}% for ${debt.tenure} months.",
+                        "This is the baseline schedule for a Rs${String.format(locale, "%,.0f", debt.amount)} loan at ${debt.rate}% for ${debt.tenure} months.",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )

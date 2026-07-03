@@ -2,11 +2,14 @@ package app.fynlo.ui.screens
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -14,6 +17,7 @@ import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -22,6 +26,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -30,16 +35,16 @@ import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.unit.dp
 import app.fynlo.FinanceViewModel
 import app.fynlo.logic.CurrencyFormatter
-import app.fynlo.logic.InterestEngine
 import app.fynlo.ui.components.AddDebtDialog
 import app.fynlo.ui.components.AddLendingDialog
 import app.fynlo.ui.theme.Emerald500
-import app.fynlo.ui.theme.LedgerMetric
-import app.fynlo.ui.theme.LedgerMetricBand
 import app.fynlo.ui.theme.SemanticRed
 import app.fynlo.ui.theme.PremiumScreenHeader
 import app.fynlo.ui.theme.TemplatePill
 import app.fynlo.ui.theme.TemplateScreenPadding
+import app.fynlo.ui.theme.TemplateBorder
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 
 /**
  * Combined Loans hub — one tab for "money lent out" (Lending) and "money owed"
@@ -77,6 +82,7 @@ fun LoansHubScreen(
     val isPrivacy by viewModel.isPrivacyMode.collectAsState()
     val borrowers by viewModel.borrowers.collectAsState()
     val debts by viewModel.debts.collectAsState()
+    val payments by viewModel.payments.collectAsState()
     val currentProject by viewModel.currentProject.collectAsState()
     val currencyCode = currentProject?.currency ?: "INR"
     val locale = LocalLocale.current.platformLocale
@@ -102,24 +108,10 @@ fun LoansHubScreen(
             else (b.amount - b.paidPrincipal).coerceAtLeast(0.0)
         }
     }
-    val borrowerInterest = remember(activeBorrowers) {
+    val paymentsByLoan = remember(payments) { payments.groupBy { it.loanId } }
+    val borrowerInterest = remember(activeBorrowers, paymentsByLoan) {
         activeBorrowers.sumOf { b ->
-            if (b.rate <= 0) 0.0
-            else {
-                val accrued = if (b.status == "Defaulted" && b.frozenInterest > 0.0) {
-                    b.frozenInterest
-                } else {
-                    InterestEngine.calcIntAccrued(
-                        amount = b.amount,
-                        rate = b.rate,
-                        loanDate = b.date,
-                        intType = b.intType,
-                        dueDate = b.due,
-                        totalPaid = b.paidPrincipal,
-                    )
-                }
-                (accrued - b.paidInterest - b.interestWaived).coerceAtLeast(0.0)
-            }
+            if (b.rate <= 0) 0.0 else app.fynlo.logic.InterestPolicy.borrowerBreakdown(b, paymentsByLoan[b.id].orEmpty()).due
         }
     }
     val owedPrincipal = summary.totalDebtPrincipal
@@ -183,24 +175,15 @@ fun LoansHubScreen(
         // C12 Stage 1 hero block — Total Outstanding for the active tab,
         // hidden when the tab has zero entries (the Lent/Owed segmented +
         // empty-state messaging in the child screen handles that case).
-        LedgerMetricBand(
-            metrics = listOf(
-                LedgerMetric(
-                    label = if (tab == 0) "Total Borrowers" else "Total Debtors",
-                    value = heroCount.toString(),
-                    valueColor = MaterialTheme.colorScheme.onSurface,
-                ),
-                LedgerMetric(
-                    label = "Principal",
-                    value = if (isPrivacy) "Hidden" else CurrencyFormatter.detail(principalAmount, currencyCode, locale),
-                    valueColor = if (tab == 0) Emerald500 else SemanticRed,
-                ),
-                LedgerMetric(
-                    label = "Interest",
-                    value = if (isPrivacy) "Hidden" else CurrencyFormatter.detail(interestAmount, currencyCode, locale),
-                    valueColor = if (interestAmount > 0.0) SemanticRed else MaterialTheme.colorScheme.onSurfaceVariant,
-                ),
-            ),
+        LoansReadableSummary(
+            countLabel = if (tab == 0) "Borrowers" else "Debtors",
+            count = heroCount,
+            principalLabel = "Principal Outstanding",
+            principalValue = if (isPrivacy) "Hidden" else CurrencyFormatter.detail(principalAmount, currencyCode, locale),
+            principalColor = if (tab == 0) Emerald500 else SemanticRed,
+            interestLabel = if (tab == 0) "Interest Due" else "Interest Payable",
+            interestValue = if (isPrivacy) "Hidden" else CurrencyFormatter.detail(interestAmount, currencyCode, locale),
+            interestColor = if (interestAmount > 0.0) SemanticRed else MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(horizontal = TemplateScreenPadding, vertical = 8.dp),
         )
 
@@ -237,6 +220,100 @@ fun LoansHubScreen(
                     showHeader             = false,
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun LoansReadableSummary(
+    countLabel: String,
+    count: Int,
+    principalLabel: String,
+    principalValue: String,
+    principalColor: Color,
+    interestLabel: String,
+    interestValue: String,
+    interestColor: Color,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        color = MaterialTheme.colorScheme.surface,
+        border = BorderStroke(0.8.dp, TemplateBorder),
+    ) {
+        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    "Loan book",
+                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.ExtraBold),
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                Surface(
+                    shape = RoundedCornerShape(999.dp),
+                    color = Emerald500.copy(alpha = 0.10f),
+                    border = BorderStroke(0.6.dp, Emerald500.copy(alpha = 0.18f)),
+                ) {
+                    Text(
+                        "$count $countLabel",
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                        color = Emerald500,
+                    )
+                }
+            }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                LoanMoneyStat(
+                    label = principalLabel,
+                    value = principalValue,
+                    color = principalColor,
+                    modifier = Modifier.weight(1f),
+                )
+                LoanMoneyStat(
+                    label = interestLabel,
+                    value = interestValue,
+                    color = interestColor,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun LoanMoneyStat(
+    label: String,
+    value: String,
+    color: Color,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        modifier = modifier.height(76.dp),
+        shape = RoundedCornerShape(16.dp),
+        color = color.copy(alpha = 0.08f),
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(5.dp),
+        ) {
+            Text(
+                label.uppercase(),
+                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.ExtraBold),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                value,
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.ExtraBold),
+                color = color,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
     }
 }

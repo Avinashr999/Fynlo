@@ -3,7 +3,7 @@ package app.fynlo.logic
 /**
  * C22 (3.2.60) — Snowball / Avalanche debt-payoff planner.
  *
- * Simulates month-by-month repayment of multiple debts given a total
+ * Simulates month?by-month repayment of multiple debts given a total
  * monthly budget. Two strategies:
  *
  *   - **SNOWBALL** — orders debts by smallest remaining balance first.

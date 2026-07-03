@@ -7,6 +7,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.AccountBalance
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -55,6 +56,7 @@ fun AccountStatementScreen(
             accountName    = accountName,
             currentBalance = account.balance,
             currencySymbol = currencySymbol,
+            currencyCode   = currencyCode,
             onDismiss      = { showEditDialog = false },
             onConfirm      = { newBalance ->
                 viewModel.quickEditBalance(accountName, newBalance, account.balance, account.id)
@@ -76,29 +78,79 @@ fun AccountStatementScreen(
             }
         }
     ) { padding ->
-        Column(modifier = Modifier.padding(padding).fillMaxSize().padding(16.dp)) {
+        Column(modifier = Modifier.padding(padding).fillMaxSize().padding(horizontal = 18.dp)) {
+            Spacer(Modifier.height(8.dp))
             // Balance — flat hero
             if (account != null) {
-                Column(modifier = Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 20.dp)) {
-                    Text("Current Balance", style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text(
-                        CurrencyFormatter.hero(account.balance, currencyCode, locale),
-                        style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.ExtraBold),
-                        color = if (account.balance >= 0) Emerald500 else SemanticRed
-                    )
-                    Text(app.fynlo.logic.pluralize(accountTransactions.size, "transaction"),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Surface(
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 18.dp),
+                    shape = RoundedCornerShape(22.dp),
+                    color = MaterialTheme.colorScheme.surface,
+                    border = androidx.compose.foundation.BorderStroke(
+                        0.7.dp,
+                        MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f),
+                    ),
+                ) {
+                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        ) {
+                            Surface(
+                                shape = RoundedCornerShape(13.dp),
+                                color = Emerald500.copy(alpha = 0.12f),
+                                modifier = Modifier.size(40.dp),
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        Icons.Default.AccountBalance,
+                                        contentDescription = null,
+                                        tint = Emerald500,
+                                        modifier = Modifier.size(20.dp),
+                                    )
+                                }
+                            }
+                            Column(Modifier.weight(1f)) {
+                                Text(
+                                    "Current balance",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                                Text(
+                                    app.fynlo.logic.pluralize(accountTransactions.size, "transaction"),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
+                        Text(
+                            CurrencyFormatter.exact(account.balance, currencyCode, locale),
+                            style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.ExtraBold),
+                            color = if (account.balance >= 0) Emerald500 else SemanticRed,
+                        )
+                    }
                 }
             }
 
             if (accountTransactions.isEmpty()) {
-                Text("No transactions found for this account.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text(
+                        "No transactions for this account yet.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             } else {
-                LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    "Money movement",
+                    style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.ExtraBold),
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(bottom = 10.dp),
+                )
+                LazyColumn(
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    contentPadding = PaddingValues(bottom = FabBottomPadding),
+                ) {
                     items(accountTransactions, key = { it.id }) { txn ->
                         val focusedImpacts = balanceImpactsByTransaction[txn.id]
                             .orEmpty()
@@ -136,6 +188,7 @@ private fun QuickBalanceEditDialog(
     accountName: String,
     currentBalance: Double,
     currencySymbol: String,
+    currencyCode: String,
     onDismiss: () -> Unit,
     onConfirm: (Double) -> Unit
 ) {
@@ -169,8 +222,8 @@ private fun QuickBalanceEditDialog(
             Spacer(Modifier.height(8.dp))
             val diff = newBalance - currentBalance
             Text(
-                if (diff >= 0) "+ $currencySymbol${"%.2f".format(diff)} will be added"
-                else "− $currencySymbol${"%.2f".format(-diff)} will be deducted",
+                if (diff >= 0) "+ ${CurrencyFormatter.exact(diff, currencyCode)} will be added"
+                else "${CurrencyFormatter.negativeExact(diff, currencyCode)} will be deducted",
                 style = MaterialTheme.typography.bodySmall,
                 color = if (diff >= 0) Emerald500 else SemanticRed,
             )

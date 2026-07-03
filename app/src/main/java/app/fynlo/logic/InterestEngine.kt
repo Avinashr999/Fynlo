@@ -70,7 +70,8 @@ object InterestEngine {
             "Reducing Balance" -> {
                 val rMonthly = rAnnual / 12.0
                 val months   = totalDays / 30
-                if (rMonthly == 0.0 || months == 0L) 0.0
+                if (rMonthly == 0.0) 0.0
+                else if (months == 0L) principalForInterest * rAnnual * totalDays.toDouble() / 365.0
                 else {
                     val n = months.toDouble()
                     val totalPayable = principalForInterest * rMonthly * Math.pow(1 + rMonthly, n) /
@@ -85,19 +86,19 @@ object InterestEngine {
                 var currentTotal   = principalForInterest
                 repeat(fullYears.toInt()) { currentTotal += (currentTotal * rAnnual) }
                 val siForPartialYear = (currentTotal * rAnnual * remainingDays.toDouble()) / 365.0
-                Math.round(currentTotal + siForPartialYear - principalForInterest).toDouble()
+                currentTotal + siForPartialYear - principalForInterest
             }
             // Both — SI from loan date to due date, then CI from due date onwards
             "Both" -> {
                 if (dueDate.isEmpty()) {
                     val tYears = totalDays.toDouble() / 365.0
-                    Math.round(principalForInterest * rAnnual * tYears).toDouble()
+                    principalForInterest * rAnnual * tYears
                 } else {
                     val daysTodue   = daysBetween(loanDate, dueDate).coerceAtLeast(0)
                     val daysOverdue = daysBetween(dueDate, asOf).coerceAtLeast(0)
                     val siInterest  = principalForInterest * rAnnual * (daysTodue.toDouble() / 365.0)
                     if (daysOverdue <= 0) {
-                        Math.round(siInterest).toDouble()
+                        siInterest
                     } else {
                         val baseForCI = principalForInterest + siInterest
                         val fullYears = daysOverdue / 365
@@ -105,14 +106,14 @@ object InterestEngine {
                         var ciTotal   = baseForCI
                         repeat(fullYears.toInt()) { ciTotal += ciTotal * rAnnual }
                         ciTotal += ciTotal * rAnnual * (remDays.toDouble() / 365.0)
-                        Math.round(siInterest + (ciTotal - baseForCI)).toDouble()
+                        siInterest + (ciTotal - baseForCI)
                     }
                 }
             }
             // Simple Interest — always on original amount (payments → interest first)
             else -> {
                 val tYears = totalDays.toDouble() / 365.0
-                Math.round(principalForInterest * rAnnual * tYears).toDouble()
+                principalForInterest * rAnnual * tYears
             }
         }
     }

@@ -53,7 +53,7 @@ class RecentlyUsedTracker @Inject constructor(
      * Most-recently-used value for the slot, or `null` if the slot is empty.
      * Used by form-open prefills.
      */
-    suspend fun last(formId: String, fieldId: String): String? {
+    suspend fun last(formId: String, fieldId: String): String?{
         val snapshot = UserPreferences.recentlyUsed(context).first()
         return RecentlyUsedLogic.last(snapshot, formId, fieldId)
     }
@@ -87,7 +87,7 @@ class RecentlyUsedTracker @Inject constructor(
     /**
      * Convention strings for the `fieldId` argument. The category fields are
      * split by transaction type (`category_income` / `category_expense`)
-     * because the audit's C04 fix specifies "default to user's most-recently-
+     * because the audit's C04 fix specifies "default to user's most-recently?
      * used category **for the current type**" — a single shared
      * `"category"` slot would leak across the same Income/Expense boundary
      * that C05 just fixed.

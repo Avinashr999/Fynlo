@@ -40,7 +40,7 @@ fun FynloConfirmDialog(
     destructive: Boolean = false,
     dismissText: String = "Cancel",
     showDismissButton: Boolean = true,
-    supportingContent: (@Composable ColumnScope.() -> Unit)? = null,
+    supportingContent: (@Composable ColumnScope.() -> Unit)?= null,
 ) {
     Dialog(
         onDismissRequest = onDismiss,

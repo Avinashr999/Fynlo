@@ -91,6 +91,30 @@ object CurrencyFormatter {
         locale: Locale = Locale.getDefault(),
     ): String = hero(amount, currencyCode, locale)
 
+    /**
+     * Exact money display for account-facing surfaces where paise must stay visible:
+     * account lists, statements, balance-before/after rows, transfers, and exports.
+     */
+    fun exact(
+        amount: Double,
+        currencyCode: String = "INR",
+        locale: Locale = Locale.getDefault(),
+    ): String = formatGrouped(amount, currencyCode, locale, decimals = 2)
+
+    fun interest(
+        amount: Double,
+        currencyCode: String = "INR",
+        locale: Locale = Locale.getDefault(),
+    ): String {
+        if (!amount.isFinite()) return detail(0.0, currencyCode, locale)
+        val abs = kotlin.math.abs(amount)
+        return if (abs > 0.0 && abs < 1.0) {
+            formatGrouped(amount, currencyCode, locale, decimals = 2)
+        } else {
+            detail(amount, currencyCode, locale)
+        }
+    }
+
     // ── ChartHero ─────────────────────────────────────────────────────────
 
     fun chartHero(
@@ -142,6 +166,16 @@ object CurrencyFormatter {
             .removePrefix(NEGATIVE_PREFIX)   // defensive: abs() can't go negative but covers Double.MIN_VALUE quirks
     }
 
+    fun negativeExact(
+        amount: Double,
+        currencyCode: String = "INR",
+        locale: Locale = Locale.getDefault(),
+    ): String {
+        val abs = kotlin.math.abs(amount)
+        return NEGATIVE_PREFIX + exact(abs, currencyCode, locale)
+            .removePrefix(NEGATIVE_PREFIX)
+    }
+
     // ── Internal ──────────────────────────────────────────────────────────
 
     private fun formatGrouped(
@@ -167,7 +201,7 @@ object CurrencyFormatter {
     }
 
     /**
-     * Hand-rolled lakh-crore grouping. JVM's `DecimalFormat` secondary-
+     * Hand-rolled lakh-crore grouping. JVM's `DecimalFormat` secondary?
      * grouping-via-pattern (`#,##,###`) is unreliable across JDK / ICU
      * versions — some runtimes silently degrade to all-3-digit groups,
      * which silently corrupts INR display. Direct string-manipulation

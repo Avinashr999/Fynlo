@@ -20,6 +20,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import app.fynlo.BuildConfig
 import app.fynlo.FynloApplication
 import app.fynlo.data.GoogleSignInHelper
 import app.fynlo.ui.components.FynloBrandMark
@@ -246,12 +247,19 @@ private fun friendlyGoogleSignInError(error: Throwable): String {
             "Google sign-in is already in progress."
         GoogleSignInStatusCodes.SIGN_IN_FAILED ->
             "Google sign-in failed. Please try again."
-        10 -> "Google sign-in setup is missing for this Play build. Continue without signing in for now."
+        10 -> loginGoogleSetupMissingMessage()
         else -> when {
             error.message?.contains("cancel", ignoreCase = true) == true -> ""
             error.message?.startsWith("10") == true ->
-                "Google sign-in setup is missing for this Play build. Continue without signing in for now."
+                loginGoogleSetupMissingMessage()
             else -> "Google sign-in failed. Please try again."
         }
     }
 }
+
+private fun loginGoogleSetupMissingMessage(): String =
+    if (BuildConfig.FLAVOR == "dev") {
+        "Developer Google sign-in is not configured yet. Continue without signing in for now."
+    } else {
+        "Google sign-in setup is missing for this Play build. Continue without signing in for now."
+    }

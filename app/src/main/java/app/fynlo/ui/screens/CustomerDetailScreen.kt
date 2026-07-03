@@ -66,7 +66,7 @@ val borrowers by viewModel.borrowers.collectAsState()
     val currencyCode = currentProject?.currency ?: "INR"
     val locale = LocalLocale.current.platformLocale
 
-    // C11 (3.2.40) — user's Date Format pref for the loan-statement PDF.
+    // C11 (3.2.40) - user's Date Format pref for the loan-statement PDF.
     val dateFormat by app.fynlo.data.UserPreferences.dateFormat(androidx.compose.ui.platform.LocalContext.current)
         .collectAsState(initial = app.fynlo.logic.DateUtils.DEFAULT_COMPACT_PATTERN)
 
@@ -84,18 +84,11 @@ val borrowers by viewModel.borrowers.collectAsState()
         .sortedByDescending { it.date }
     val loanProofs = proofAttachments.filter { it.ownerType == "loan" && it.ownerId == borrowerId }
 
-    val interest = if (borrower.status == "Defaulted" && borrower.frozenInterest > 0.0) {
-        borrower.frozenInterest
-    } else {
-        InterestEngine.calcIntAccrued(
-            borrower.amount, borrower.rate, borrower.date, borrower.intType, borrower.due,
-            totalPaid = borrower.paidPrincipal
-        )
-    }
-    val interestOutstanding = (interest - borrower.paidInterest - borrower.interestWaived).coerceAtLeast(0.0)
-    val totalOutstanding = InterestEngine.calcOutstanding(
-        borrower.amount, interest, borrower.paidPrincipal, borrower.paidInterest, borrower.interestWaived
-    )
+    val interestBreakdown = app.fynlo.logic.InterestPolicy.borrowerBreakdown(borrower, loanPayments)
+    val interest = interestBreakdown.accrued
+    val interestOutstanding = interestBreakdown.due
+    val advanceInterest = interestBreakdown.paidAhead
+    val totalOutstanding = (borrower.amount - borrower.paidPrincipal).coerceAtLeast(0.0) + interestOutstanding
 
     val context = androidx.compose.ui.platform.LocalContext.current
 
@@ -103,7 +96,7 @@ val borrowers by viewModel.borrowers.collectAsState()
     var showCollectDialog by remember { mutableStateOf(false) }
     var showWaiveInterestDialog by remember { mutableStateOf(false) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
-    // C12 Stage 3 (3.2.28) — new action surfaces lifted from LendingCard.
+    // C12 Stage 3 (3.2.28) - new action surfaces lifted from LendingCard.
     var showReminderPicker by remember { mutableStateOf(false) }
     var showDefaultConfirm by remember { mutableStateOf(false) }
     var showWriteOffConfirm by remember { mutableStateOf(false) }
@@ -119,6 +112,7 @@ val borrowers by viewModel.borrowers.collectAsState()
             onDismiss = { showEditDialog = false },
             onConfirm = { updated, source ->
                 viewModel.updateBorrowerWithSource(updated, source)
+                viewModel.showFeedback("Loan updated")
                 showEditDialog = false
             },
             initialBorrower = borrower
@@ -128,11 +122,13 @@ val borrowers by viewModel.borrowers.collectAsState()
     if (showCollectDialog) {
         CollectPaymentDialog(
             borrower = borrower,
+            payments = loanPayments,
             accounts = accounts,
             onDismiss = { showCollectDialog = false },
             onConfirm = { payment, dest ->
                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                 viewModel.collectLoanPayment(payment, dest)
+                viewModel.showFeedback("Payment collected")
                 showCollectDialog = false
             }
         )
@@ -140,13 +136,14 @@ val borrowers by viewModel.borrowers.collectAsState()
 
     if (showWaiveInterestDialog) {
         WaiveInterestDialog(
-            title = "Waive Interest",
+            title = "Waive interest",
             subtitle = "For: ${borrower.name}",
             maxWaivable = interestOutstanding,
             onDismiss = { showWaiveInterestDialog = false },
             onConfirm = { amount, reason ->
                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                 viewModel.waiveBorrowerInterest(borrower, amount, reason)
+                viewModel.showFeedback("Interest waived")
                 showWaiveInterestDialog = false
             },
             currencyCode = currencyCode,
@@ -165,6 +162,7 @@ val borrowers by viewModel.borrowers.collectAsState()
                     deleteInProgress = true
                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                     viewModel.deleteBorrower(borrower)
+                    viewModel.showFeedback("Loan deleted")
                     showDeleteConfirm = false
                     onNavigateBack()
                 }
@@ -172,9 +170,9 @@ val borrowers by viewModel.borrowers.collectAsState()
         )
     }
 
-    // C12 Stage 3 — Send Reminder picker. Consolidates the previously-separate
+    // C12 Stage 3 - Send Reminder picker. Consolidates the previously-separate
     // WhatsApp and SMS list-row icons into a single channel-picker dialog per
-    // audit §C12 #8. The smart message builder (overdue-aware, includes per-day
+    // audit sectionC12 #8. The smart message builder (overdue-aware, includes per-day
     // interest accrual) was lifted from the old LendingCard.
     if (showReminderPicker) {
         val phone = borrower.phone.trim()
@@ -199,10 +197,10 @@ val borrowers by viewModel.borrowers.collectAsState()
                 appendLine("This is a reminder that your loan repayment is *${app.fynlo.logic.pluralize(daysOverdue, "day")} overdue*.")
                 appendLine()
                 appendLine("*Loan Summary:*")
-                appendLine("• Principal: ${CurrencyFormatter.detail(borrower.amount, currencyCode, locale)}")
-                if (borrower.rate > 0) appendLine("• Interest accrued (${borrower.rate}% ${InterestEngine.label(borrower.intType)}): ${CurrencyFormatter.detail(interest, currencyCode, locale)}")
-                if (borrower.paid > 0)  appendLine("• Amount paid so far: ${CurrencyFormatter.detail(borrower.paid, currencyCode, locale)}")
-                appendLine("• *Total outstanding: ${CurrencyFormatter.detail(totalOutstanding, currencyCode, locale)}*")
+                appendLine("* Principal: ${CurrencyFormatter.detail(borrower.amount, currencyCode, locale)}")
+                if (borrower.rate > 0) appendLine("* Interest accrued (${borrower.rate}% ${InterestEngine.label(borrower.intType)}): ${CurrencyFormatter.detail(interest, currencyCode, locale)}")
+                if (borrower.paid > 0)  appendLine("* Amount paid so far: ${CurrencyFormatter.detail(borrower.paid, currencyCode, locale)}")
+                appendLine("* *Total outstanding: ${CurrencyFormatter.detail(totalOutstanding, currencyCode, locale)}*")
                 appendLine()
                 append("Please arrange payment at your earliest. ")
                 if (borrower.rate > 0) {
@@ -217,14 +215,14 @@ val borrowers by viewModel.borrowers.collectAsState()
                 appendLine("This is a friendly reminder about your outstanding loan$dueInfo.")
                 appendLine()
                 appendLine("*Loan Summary:*")
-                appendLine("• Principal: ${CurrencyFormatter.detail(borrower.amount, currencyCode, locale)}")
-                if (borrower.rate > 0) appendLine("• Interest so far ($daysSince days @ ${borrower.rate}%): ${CurrencyFormatter.detail(interest, currencyCode, locale)}")
-                if (borrower.paid > 0)  appendLine("• Paid: ${CurrencyFormatter.detail(borrower.paid, currencyCode, locale)}")
-                appendLine("• *Outstanding: ${CurrencyFormatter.detail(totalOutstanding, currencyCode, locale)}*")
+                appendLine("* Principal: ${CurrencyFormatter.detail(borrower.amount, currencyCode, locale)}")
+                if (borrower.rate > 0) appendLine("* Interest so far ($daysSince days @ ${borrower.rate}%): ${CurrencyFormatter.detail(interest, currencyCode, locale)}")
+                if (borrower.paid > 0)  appendLine("* Paid: ${CurrencyFormatter.detail(borrower.paid, currencyCode, locale)}")
+                appendLine("* *Outstanding: ${CurrencyFormatter.detail(totalOutstanding, currencyCode, locale)}*")
                 appendLine()
                 append("Kindly arrange repayment at your convenience. Thank you!")
             }
-            appendLine(); append("— Fynlo Ledger")
+            appendLine(); append("- Fynlo Ledger")
         }.trimEnd()
         val smsMsg = buildString {
             if (daysOverdue > 0) append("Hi ${borrower.name}, your loan of ${CurrencyFormatter.detail(borrower.amount, currencyCode, locale)} is $daysOverdue days overdue. ")
@@ -294,7 +292,7 @@ val borrowers by viewModel.borrowers.collectAsState()
         }
     }
 
-    // C12 Stage 3 — Mark NPA / Restore confirmation (lifted from LendingScreen).
+    // C12 Stage 3 - Mark NPA / Restore confirmation (lifted from LendingScreen).
     if (showDefaultConfirm) {
         val isCurrentlyDefaulted = borrower.status == "Defaulted"
         androidx.compose.ui.window.Dialog(
@@ -355,7 +353,7 @@ val borrowers by viewModel.borrowers.collectAsState()
         }
     }
 
-    // C12 Stage 3 — Write Off confirmation (lifted from LendingScreen).
+    // C12 Stage 3 - Write Off confirmation (lifted from LendingScreen).
     if (showWriteOffConfirm) {
         FynloConfirmDialog(
             title = "Write off bad debt?",
@@ -382,11 +380,16 @@ val borrowers by viewModel.borrowers.collectAsState()
                 subtitle = "Loan statement",
                 onNavigateBack = onNavigateBack,
             ) {
-                IconButton(onClick = { showEditDialog = true }) {
-                    Icon(Icons.Default.Edit, contentDescription = "Edit")
-                }
-                IconButton(onClick = {
-                        // C21 Stage 1 — standardized filename + identity row
+                LedgerTopBarActionButton(
+                    icon = Icons.Default.Edit,
+                    contentDescription = "Edit",
+                    onClick = { showEditDialog = true },
+                )
+                LedgerTopBarActionButton(
+                    icon = Icons.Default.PictureAsPdf,
+                    contentDescription = "Export PDF",
+                    onClick = {
+                        // C21 Stage 1 - standardized filename + identity row
                         // (project + signed-in email on the PDF cover).
                         val file = app.fynlo.logic.ExportUtility.exportCacheFile(
                             context,
@@ -411,16 +414,15 @@ val borrowers by viewModel.borrowers.collectAsState()
                                 addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
                             }, "Share Loan Statement"
                         ))
-                }) {
-                    Icon(Icons.Default.PictureAsPdf, contentDescription = "Export PDF")
-                }
-                IconButton(onClick = { showDeleteConfirm = true }) {
-                    Icon(
-                        Icons.Default.Delete,
-                        contentDescription = "Delete",
-                        tint = MaterialTheme.colorScheme.error
-                    )
-                }
+                    },
+                )
+                LedgerTopBarActionButton(
+                    icon = Icons.Default.Delete,
+                    contentDescription = "Delete",
+                    onClick = { showDeleteConfirm = true },
+                    tint = MaterialTheme.colorScheme.error,
+                    containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.18f),
+                )
             }
         }
     ) { padding ->
@@ -434,13 +436,13 @@ val borrowers by viewModel.borrowers.collectAsState()
         ) {
             item {
                 Column(modifier = Modifier.fillMaxWidth().padding(top = 4.dp)) {
-                    Text("Current Balance", style = MaterialTheme.typography.labelMedium,
+                    Text("Total Receivable", style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    // C16 (3.2.41) — Lent-side outstanding is a receivable
+                    // C16 (3.2.41) - Lent-side outstanding is a receivable
                     // (asset), so positive outstanding renders green
                     // (semantic_income), not red. When fully repaid
                     // (zero) the number is neutral onSurface rather than
-                    // green — green would imply "extra income"; the
+                    // green - green would imply "extra income"; the
                     // borrower simply finished paying.
                     Text(
                         CurrencyFormatter.hero(totalOutstanding, currencyCode, locale),
@@ -455,24 +457,32 @@ val borrowers by viewModel.borrowers.collectAsState()
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        DetailItem("Principal due", CurrencyFormatter.detail((borrower.amount - borrower.paidPrincipal).coerceAtLeast(0.0), currencyCode, locale))
-                        DetailItem("Interest due",  CurrencyFormatter.detail(interestOutstanding, currencyCode, locale))
-                        DetailItem("Paid",          CurrencyFormatter.detail(borrower.paid, currencyCode, locale))
+                        DetailItem("Principal Outstanding", CurrencyFormatter.detail((borrower.amount - borrower.paidPrincipal).coerceAtLeast(0.0), currencyCode, locale))
+                        DetailItem("Interest Due", CurrencyFormatter.interest(interestOutstanding, currencyCode, locale))
+                        DetailItem("Total Receivable", CurrencyFormatter.detail(totalOutstanding, currencyCode, locale))
                     }
                     if (borrower.interestWaived > 0.0) {
                         Spacer(Modifier.height(8.dp))
                         Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                             Text(
-                                "Accrued interest: ${CurrencyFormatter.detail(interest, currencyCode, locale)}",
+                                "Interest before reduction: ${CurrencyFormatter.interest(interest, currencyCode, locale)}",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                             Text(
-                                "Interest waived: ${CurrencyFormatter.detail(borrower.interestWaived, currencyCode, locale)}",
+                                "Reduced / waived: -${CurrencyFormatter.interest(borrower.interestWaived, currencyCode, locale)}",
                                 style = MaterialTheme.typography.labelSmall,
-                                color = Emerald500,
+                                color = MaterialTheme.colorScheme.primary,
                             )
                         }
+                    }
+                    if (advanceInterest > 0.01) {
+                        Spacer(Modifier.height(10.dp))
+                        InterestPaidAheadNotice(
+                            title = "Interest paid ahead",
+                            body = "Interest due is zero for now because extra interest was already collected. Interest will continue adding from the loan date.",
+                            advance = CurrencyFormatter.interest(advanceInterest, currencyCode, locale),
+                        )
                     }
                     Spacer(Modifier.height(12.dp))
                     Row(
@@ -522,12 +532,24 @@ val borrowers by viewModel.borrowers.collectAsState()
                             modifier = Modifier.weight(1f),
                         )
                     }
-                    if (borrower.rate > 0) {
-                        Spacer(Modifier.height(8.dp))
-                        Text(
-                            "Rate: ${borrower.rate}% • ${app.fynlo.logic.InterestEngine.label(borrower.intType)}",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                    Spacer(Modifier.height(8.dp))
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f))
+                            .padding(horizontal = 14.dp, vertical = 10.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        DetailItem(
+                            "Interest rate",
+                            interestRateLabel(borrower.rate),
+                            modifier = Modifier.weight(1f),
+                        )
+                        DetailItem(
+                            "Interest method",
+                            interestMethodLabel(borrower.rate, borrower.intType),
+                            modifier = Modifier.weight(1f),
                         )
                     }
                 }
@@ -535,87 +557,63 @@ val borrowers by viewModel.borrowers.collectAsState()
 
             if (totalOutstanding > 0) {
                 item {
-                    Button(
+                    DetailActionButton(
+                        text = "Collect Payment",
+                        icon = Icons.Default.Payments,
                         onClick = { showCollectDialog = true },
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Emerald500)
-                    ) {
-                        Icon(Icons.Default.Payments, null, Modifier.size(18.dp))
-                        Spacer(Modifier.width(8.dp))
-                        Text("Collect Payment")
-                    }
+                        emphasized = true,
+                    )
                 }
             }
 
-            // C12 Stage 3 — Send Reminder is a primary-tier action for the
+            // C12 Stage 3 - Send Reminder is a primary-tier action for the
             // borrower workflow (chasing repayment is the most common action
             // after Collect). Placed right under Collect; opens a channel
             // picker so the user chooses WhatsApp vs SMS once instead of
             // both icons cluttering the row.
             item {
-                OutlinedButton(
+                DetailActionButton(
+                    text = "Send Reminder",
+                    icon = Icons.Default.NotificationsActive,
                     onClick = { showReminderPicker = true },
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Icon(Icons.Default.NotificationsActive, null, Modifier.size(18.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text("Send Reminder")
-                }
+                )
             }
 
             if (borrower.rate > 0.0 && interestOutstanding > 0.0) {
                 item {
-                    OutlinedButton(
+                    DetailActionButton(
+                        text = "Waive interest",
+                        icon = Icons.Default.MoneyOff,
                         onClick = { showWaiveInterestDialog = true },
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Emerald500)
-                    ) {
-                        Icon(Icons.Default.MoneyOff, null, Modifier.size(18.dp))
-                        Spacer(Modifier.width(8.dp))
-                        Text("Waive Interest")
-                    }
+                    )
                 }
             }
 
-            // C12 Stage 3 — NPA + Write Off were per-card actions in the old
+            // C12 Stage 3 - NPA + Write Off were per-card actions in the old
             // LendingCard. They live here now as secondary buttons under the
             // primary collect/reminder pair. Write Off is only meaningful while
             // there's outstanding balance to charge off.
             item {
                 val isDefaulted = borrower.status == "Defaulted"
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(
+                    DetailActionButton(
+                        text = if (isDefaulted) "Restore Active" else "Mark NPA",
+                        icon = if (isDefaulted) Icons.Default.Block else Icons.Default.Warning,
                         onClick = { showDefaultConfirm = true },
                         modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.outlinedButtonColors(
-                            contentColor = if (isDefaulted) Emerald500 else app.fynlo.ui.theme.SemanticAmber
-                        )
-                    ) {
-                        Icon(
-                            if (isDefaulted) Icons.Default.Block else Icons.Default.Warning,
-                            null, Modifier.size(16.dp)
-                        )
-                        Spacer(Modifier.width(6.dp))
-                        Text(if (isDefaulted) "Restore Active" else "Mark NPA",
-                            style = MaterialTheme.typography.labelMedium)
-                    }
+                        warning = !isDefaulted,
+                    )
                     if (totalOutstanding > 0) {
-                        OutlinedButton(
+                        DetailActionButton(
+                            text = "Write Off",
+                            icon = Icons.Default.MoneyOff,
                             onClick = { showWriteOffConfirm = true },
                             modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(12.dp),
-                            colors = ButtonDefaults.outlinedButtonColors(
-                                contentColor = MaterialTheme.colorScheme.error
-                            )
-                        ) {
-                            Icon(Icons.Default.MoneyOff, null, Modifier.size(16.dp))
-                            Spacer(Modifier.width(6.dp))
-                            Text("Write Off", style = MaterialTheme.typography.labelMedium)
-                        }
+                            destructive = true,
+                        )
                     }
                 }
             }
@@ -644,7 +642,7 @@ val borrowers by viewModel.borrowers.collectAsState()
                 }
             }
 
-            // 3.2.83 — XIRR (effective annualised return) on this loan.
+            // 3.2.83 - XIRR (effective annualised return) on this loan.
             // Cashflows from lender's perspective:
             //   - principal disbursed on `loanDate` as a NEGATIVE outflow
             //   - each Payment received as a POSITIVE inflow on its date
@@ -654,7 +652,7 @@ val borrowers by viewModel.borrowers.collectAsState()
             //     Excel / Sheets `XIRR` does the same when modelling
             //     mark-to-market on an open position.
             // Hidden when there are no payments OR the math degenerates
-            // (single cashflow, no inflows, etc.). Format renders "—" then.
+            // (single cashflow, no inflows, etc.). Format renders "-" then.
             if (loanPayments.isNotEmpty()) {
                 item {
                     val xirr = remember(loanPayments, borrower, totalOutstanding) {
@@ -798,6 +796,24 @@ private fun LoanExpandableSection(
 
 @Composable
 fun PaymentItem(payment: Payment, currencyCode: String, locale: Locale) {
+    val interest = app.fynlo.logic.InterestPolicy.paymentInterestAmount(payment)
+    val title = paymentHistoryTitle(
+        principal = payment.principal,
+        interest = interest,
+        allocationType = payment.interestAllocationType,
+        isDebt = false,
+    ).ifBlank { payment.type.ifBlank { "Repayment" } }
+    val details = paymentHistoryDetails(
+        principal = payment.principal,
+        interest = interest,
+        allocationType = payment.interestAllocationType,
+        periodStart = payment.interestPeriodStartDate,
+        periodEnd = payment.interestPeriodEndDate,
+        notes = payment.notes,
+        currencyCode = currencyCode,
+        locale = locale,
+        isDebt = false,
+    )
     Row(
         modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -816,7 +832,7 @@ fun PaymentItem(payment: Payment, currencyCode: String, locale: Locale) {
         Spacer(Modifier.width(14.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                payment.type.ifBlank { "Repayment" },
+                title,
                 style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold)
             )
             Text(
@@ -824,9 +840,9 @@ fun PaymentItem(payment: Payment, currencyCode: String, locale: Locale) {
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            if (payment.notes.isNotBlank()) {
+            details.forEach { detail ->
                 Text(
-                    payment.notes,
+                    detail,
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -842,10 +858,118 @@ fun PaymentItem(payment: Payment, currencyCode: String, locale: Locale) {
     }
 }
 
+fun paymentHistoryTitle(
+    principal: Double,
+    interest: Double,
+    allocationType: String,
+    isDebt: Boolean,
+): String {
+    if (principal > 0.01 && interest > 0.01) return "Mixed payment"
+    if (principal > 0.01) return if (isDebt) "Principal paid" else "Principal collected"
+    if (interest <= 0.01) return ""
+    return when (allocationType) {
+        app.fynlo.logic.InterestPolicy.OLD_PERIOD_INTEREST -> "Older interest"
+        app.fynlo.logic.InterestPolicy.ADVANCE_INTEREST -> "Interest paid ahead"
+        app.fynlo.logic.InterestPolicy.EXTRA_INTEREST -> "Extra interest"
+        app.fynlo.logic.InterestPolicy.UNKNOWN_REVIEW, "" -> "Interest needs review"
+        else -> if (isDebt) "Interest paid" else "Interest collected"
+    }
+}
+
+fun paymentHistoryDetails(
+    principal: Double,
+    interest: Double,
+    allocationType: String,
+    periodStart: String,
+    periodEnd: String,
+    notes: String,
+    currencyCode: String,
+    locale: Locale,
+    isDebt: Boolean,
+): List<String> = buildList {
+    val parts = mutableListOf<String>()
+    if (principal > 0.01) {
+        parts += "${if (isDebt) "Principal paid" else "Principal collected"} ${CurrencyFormatter.detail(principal, currencyCode, locale)}"
+    }
+    if (interest > 0.01) {
+        parts += "${if (isDebt) "Interest paid" else "Interest collected"} ${CurrencyFormatter.interest(interest, currencyCode, locale)}"
+    }
+    if (parts.isNotEmpty()) add(parts.joinToString(" * "))
+
+    if (interest > 0.01 && periodStart.isNotBlank()) {
+        val end = periodEnd.takeIf { it.isNotBlank() } ?: "ongoing"
+        add("Covers ${DateUtils.formatToDisplay(periodStart)} to ${if (end == "ongoing") end else DateUtils.formatToDisplay(end)}")
+    }
+
+    when (allocationType) {
+        app.fynlo.logic.InterestPolicy.OLD_PERIOD_INTEREST ->
+            add("Saved for an older period. It is not reducing interest due now.")
+        app.fynlo.logic.InterestPolicy.EXTRA_INTEREST ->
+            add("Saved as extra interest. It is not reducing interest due now.")
+        app.fynlo.logic.InterestPolicy.UNKNOWN_REVIEW, "" ->
+            if (interest > 0.01) add("Choose where this interest belongs before closing the month.")
+    }
+
+    if (notes.isNotBlank()) add(notes)
+}
+
 @Composable
 fun DetailItem(label: String, value: String, modifier: Modifier = Modifier) {
     Column(modifier = modifier) {
         Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Text(value, style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold))
+    }
+}
+
+fun interestRateLabel(rate: Double): String {
+    if (rate <= 0.0) return "No interest"
+    val clean = rate.toBigDecimal().stripTrailingZeros().toPlainString()
+    return "$clean% p.a."
+}
+
+fun interestMethodLabel(rate: Double, method: String): String =
+    if (rate <= 0.0) "None" else InterestEngine.label(method)
+@Composable
+fun InterestPaidAheadNotice(
+    title: String,
+    body: String,
+    advance: String,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(14.dp),
+        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.36f),
+        border = androidx.compose.foundation.BorderStroke(
+            0.8.dp,
+            MaterialTheme.colorScheme.primary.copy(alpha = 0.18f),
+        ),
+    ) {
+        Column(
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    title,
+                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.ExtraBold),
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                Text(
+                    advance,
+                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.ExtraBold),
+                    color = Emerald500,
+                )
+            }
+            Text(
+                body,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
     }
 }

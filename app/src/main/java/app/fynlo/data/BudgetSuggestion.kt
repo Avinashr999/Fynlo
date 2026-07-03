@@ -49,7 +49,7 @@ object BudgetSuggestion {
      *
      * Surfaced as a smoke-test finding on 3.2.6 install — the heuristic
      * was correctly picking "Lending" because the user had lent money,
-     * but that's the opposite of what a "what should I budget?" answer
+     * but that's the opposite of what a "what should I budget-" answer
      * should look like. Users can still pick any of these manually from
      * the AddBudget chip list if they really want to; this filter only
      * affects the auto-suggestion.
@@ -104,7 +104,7 @@ object BudgetSuggestion {
     fun suggest(
         cappedCategories: Set<String>,
         expenseAnalytics: Map<String, Double>,
-    ): String? =
+    ): String?=
         expenseAnalytics
             .asSequence()
             .filter { (cat, spent) ->

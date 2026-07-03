@@ -42,11 +42,11 @@ fun AddTransactionDialog(
     // sites wire `viewModel::rememberLastTransactionCategory` and
     // `viewModel::recordTransactionCategory` to enable the smart
     // defaults behaviour. The boolean argument is `isIncome` so the
-    // tracker can scope category recency by transaction type — same
+    // tracker can scope category recency by transaction type - same
     // boundary C05 enforces on the chip list itself.
-    rememberLastCategory: suspend (Boolean) -> String? = { null },
+    rememberLastCategory: suspend (Boolean) -> String?= { null },
     onRecordCategory: (Boolean, String) -> Unit = { _, _ -> },
-    // 3.2.59 — orphan-account bug fix. Before this, the Bank / Investment /
+    // 3.2.59 - orphan-account bug fix. Before this, the Bank / Investment /
     // Debts source chip surfaced a free-text "Which bank?" input. Users
     // could type "hdfc" while their account was named "HDFC Bank"; the
     // transaction saved fine, but `dao.updateAccountBalance(name=hdfc, ...)`
@@ -57,12 +57,12 @@ fun AddTransactionDialog(
     // so the user picks an existing entity by default; "Create new..."
     // is appended so genuinely-new accounts/investments/debts can still
     // be created. Defaults are empty so test/preview call sites still
-    // construct cleanly — they just see the free-text fallback.
+    // construct cleanly - they just see the free-text fallback.
     bankAccounts:    List<String> = emptyList(),
     investmentNames: List<String> = emptyList(),
     debtNames:       List<String> = emptyList(),
     existingTransactions: List<Transaction> = emptyList(),
-    // C13 #5 (3.2.81) — "Repeat monthly?" toggle on the Add dialog. When
+    // C13 #5 (3.2.81) - "Repeat monthly?" toggle on the Add dialog. When
     // ON, the caller's onRepeatMonthly callback fires alongside onConfirm
     // with the same transaction, letting the call site insert a parallel
     // RecurringTransaction template (day-of-month derived from the txn
@@ -76,12 +76,12 @@ fun AddTransactionDialog(
     var desc by remember { mutableStateOf("") }
     var date by remember { mutableStateOf(java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy"))) }
     var notes by remember { mutableStateOf("") }
-    // C13 #7 (3.2.81) — Tags. The `Transaction.tags` column has existed
+    // C13 #7 (3.2.81) - Tags. The `Transaction.tags` column has existed
     // since the entity was first defined; just no UI to read/write it.
     // Free-text, comma-separated convention so the same column can power
     // a future tag-filter pill row without migration.
     var tags by remember { mutableStateOf("") }
-    // C13 #5 (3.2.81) — Recurring toggle state.
+    // C13 #5 (3.2.81) - Recurring toggle state.
     var repeatMonthly by remember { mutableStateOf(false) }
 
     // C05: the visible category list is driven by the Income/Expense toggle.
@@ -97,15 +97,15 @@ fun AddTransactionDialog(
     var selectedCategory by remember { mutableStateOf("") }
     var submitting by remember { mutableStateOf(false) }
     // C04 (subsuming C05's reset, completed by Stage 2.5): on every toggle
-    // flip — and on initial open — ask the recency layer for the user's
+    // flip - and on initial open - ask the recency layer for the user's
     // most-recently-used category for the new type. Three cases:
     //   1. No recency yet (fresh install or first time using this type)
-    //      → leave both fields blank so the user picks fresh.
+    //      -> leave both fields blank so the user picks fresh.
     //   2. Recent value is in the curated chip list (`Categories.INCOME`
-    //      / `Categories.EXPENSE`) → pre-select the chip, clear any
+    //      / `Categories.EXPENSE`) -> pre-select the chip, clear any
     //      lingering `customCategory` from a previous toggle flip.
     //   3. Recent value is a Custom-typed string (e.g. user typed
-    //      "Charity") → set `selectedCategory = "Custom"` AND restore
+    //      "Charity") -> set `selectedCategory = "Custom"` AND restore
     //      `customCategory = recent` together so the user sees their
     //      previously-typed value re-rendered in the text input below
     //      the chip row. This is the Stage 2.5 fix; without it the
@@ -173,7 +173,7 @@ fun AddTransactionDialog(
                             .align(Alignment.CenterHorizontally)
                     )
                     Spacer(Modifier.height(10.dp))
-                // ── Header ────────────────────────────────────────────────────
+                // -- Header ----------------------------------------------------
                 Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
                     Text(dialogTitle,
                         style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold))
@@ -181,7 +181,7 @@ fun AddTransactionDialog(
                 }
                 Spacer(Modifier.height(16.dp))
 
-                // ── Expense / Income toggle ───────────────────────────────────
+                // -- Expense / Income toggle -----------------------------------
                 if (allowTypeSwitch) {
                     TemplateSegmentedSelector(
                         options = listOf("Expense", "Income"),
@@ -191,7 +191,7 @@ fun AddTransactionDialog(
                     Spacer(Modifier.height(24.dp))
                 }
 
-                // ── Big amount input (hero) ───────────────────────────────────
+                // -- Big amount input (hero) -----------------------------------
                 Box(Modifier.fillMaxWidth(), Alignment.Center) {
                     BasicAmountField(amount, accent, CurrencyUtils.symbolFor(currencyCode)) {
                         amount = it.filter { c -> c.isDigit() || c == '.' }
@@ -200,7 +200,7 @@ fun AddTransactionDialog(
 
                 Spacer(Modifier.height(24.dp))
 
-                // ── Category chips ────────────────────────────────────────────
+                // -- Category chips --------------------------------------------
                 Text("Category", style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Spacer(Modifier.height(8.dp))
@@ -218,7 +218,7 @@ fun AddTransactionDialog(
 
                 Spacer(Modifier.height(20.dp))
 
-                // ── Account chips ─────────────────────────────────────────────
+                // -- Account chips ---------------------------------------------
                 Text(if (isIncome) "Deposit to" else "Pay from",
                     style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Spacer(Modifier.height(8.dp))
@@ -235,7 +235,7 @@ fun AddTransactionDialog(
                     "Bank" -> "Which bank?"; "Investment" -> "Which investment?"
                     "Debts" -> "Which debt / loan?"; "Custom" -> "Custom source name"; else -> ""
                 }
-                // 3.2.59 — for Bank / Investment / Debts, pick the right
+                // 3.2.59 - for Bank / Investment / Debts, pick the right
                 // backing list and render a dropdown of existing entities
                 // plus a sentinel "Create new..." entry. Custom stays as
                 // free-text (it's the affordance for user-supplied names).
@@ -264,7 +264,7 @@ fun AddTransactionDialog(
 
                 Spacer(Modifier.height(20.dp))
 
-                // ── Date pill ─────────────────────────────────────────────────
+                // -- Date pill -------------------------------------------------
                 SoftField(desc, "Description (optional)") { next ->
                     desc = next
                     val suggestion = suggestTransactionCategory(next, existingTransactions, isIncome)
@@ -279,13 +279,13 @@ fun AddTransactionDialog(
                 Spacer(Modifier.height(12.dp))
                 SoftField(notes, "Notes (optional)") { notes = it }
 
-                // C13 #7 (3.2.81) — Tags field. Comma-separated, free-text
-                // by design — keeps the data model identical to legacy
+                // C13 #7 (3.2.81) - Tags field. Comma-separated, free-text
+                // by design - keeps the data model identical to legacy
                 // exports and lets the user paste from notes apps.
                 Spacer(Modifier.height(12.dp))
                 SoftField(tags, "Tags (comma-separated, optional)") { tags = it }
 
-                // C13 #5 (3.2.81) — Repeat monthly toggle. Auto-derives
+                // C13 #5 (3.2.81) - Repeat monthly toggle. Auto-derives
                 // dayOfMonth from the txn date (clamped to 1..31). When the
                 // user picks a date late in February (e.g. the 28th) the
                 // RecurringWorker's last-day clamp at run time still does
@@ -397,10 +397,11 @@ fun AddTransactionDialog(
 
                 Spacer(Modifier.height(24.dp))
 
-                // ── Save ──────────────────────────────────────────────────────
-                Button(
+                // -- Save ------------------------------------------------------
+                FormPrimaryButton(
+                    text = if (isIncome) "Add income" else "Add expense",
                     onClick = {
-                        if (submitting) return@Button
+                        if (submitting) return@FormPrimaryButton
                         submitting = true
                         val finalAccount = when (selectedSrc) {
                             "Cash" -> "Personal Cash"
@@ -421,38 +422,20 @@ fun AddTransactionDialog(
                             fromAcct = if (isIncome) "" else finalAccount,
                             toAcct = if (isIncome) finalAccount else ""
                         )
-                        // C04: record this category as the most-recently-used for the
-                        // current transaction type so the NEXT Add Transaction pre-selects
-                        // it. Records the FINAL value (e.g., "Charity" for a Custom pick),
-                        // not the chip-list sentinel ("Custom"). Default no-op lambda
-                        // means dialogs constructed without the recency wiring (tests,
-                        // previews) still submit cleanly.
                         onRecordCategory(isIncome, finalCategory)
                         onConfirm(txn)
-                        // C13 #5 — also fire the recurring callback so the
-                        // call site can create the matching template.
                         if (repeatMonthly) onRepeatMonthly(txn)
                     },
-                    // C17 (3.2.42) — was just enabled-on-amount-positive;
-                    // now uses a per-field disabledReason so the user sees
-                    // *what* needs filling rather than staring at a greyed
-                    // Add button.
                     enabled = run {
                         val amt = amount.toDoubleOrNull() ?: 0.0
                         amt > 0.0 && selectedCategory.isNotBlank() &&
                             (selectedCategory != "Custom" || customCategory.isNotBlank()) &&
                             !submitting
                     },
-                    modifier = Modifier.fillMaxWidth().height(52.dp),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Emerald500)
-                ) {
-                    Text(if (isIncome) "Add Income" else "Add Expense",
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
-                }
+                )
                 run {
                     val amt = amount.toDoubleOrNull() ?: 0.0
-                    val reason: String? = when {
+                    val reason: String?= when {
                         amt <= 0.0                                            -> "Enter an amount to continue"
                         selectedCategory.isBlank()                            -> "Pick a category to continue"
                         selectedCategory == "Custom" && customCategory.isBlank() -> "Type a custom category to continue"
@@ -583,16 +566,16 @@ private fun BasicTextFieldAmount(value: String, accent: androidx.compose.ui.grap
 }
 
 /**
- * 3.2.59 — orphan-account fix. Replaces the free-text bank / investment /
+ * 3.2.59 - orphan-account fix. Replaces the free-text bank / investment /
  * debt input with a dropdown of existing entities so the typed name
  * can't drift away from the canonical account.name and silently break
  * the balance-update WHERE clause.
  *
  * - When the user has at least one matching entity, the dropdown lists
  *   them with the first option pre-selected on open.
- * - A trailing "+ Create new…" sentinel reveals a free-text input so
+ * - A trailing "+ Create newâ€¦" sentinel reveals a free-text input so
  *   genuinely-new entities can still be created inline.
- * - Custom is intentionally not routed here — Custom is the affordance
+ * - Custom is intentionally not routed here - Custom is the affordance
  *   for arbitrary names (e.g. "Friend Vikas") so free-text is correct.
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -603,7 +586,7 @@ private fun SourceDropdown(
     selected: String,
     onPick: (String) -> Unit,
 ) {
-    val createNew = "+ Create new…"
+    val createNew = "+ Create newâ€¦"
     var expanded by remember { mutableStateOf(false) }
     var createMode by remember(options) {
         // If the current value isn't in the option list AND isn't blank,

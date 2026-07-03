@@ -138,7 +138,7 @@ object ExcelExportUtility {
         val monthStart = today.withDayOfMonth(1).toString()
         val monthEnd   = today.toString()
         val monthlyTxn = transactions.filter {
-            it.date in monthStart..monthEnd && it.tags != "journal_only" && it.category !in financingCats
+            it.date in monthStart..monthEnd && !it.isGeneratedJournalEntry() && it.category !in financingCats
         }
         val monthlyIncome  = monthlyTxn.filter { it.type.equals("income",  true) }.sumOf { it.amount }
         val monthlyExpense = monthlyTxn.filter { it.type.equals("expense", true) }.sumOf { it.amount }
@@ -333,7 +333,7 @@ object ExcelExportUtility {
         val overrides = sheets.mapIndexed { i, _ ->
             """<Override PartName="/xl/worksheets/sheet${i + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>"""
         }.joinToString("\n")
-        return """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+        return """<-xml version="1.0" encoding="UTF-8" standalone="yes"->
 <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
   <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
   <Default Extension="xml" ContentType="application/xml"/>
@@ -344,7 +344,7 @@ object ExcelExportUtility {
 </Types>"""
     }
 
-    private val ROOT_RELS = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+    private val ROOT_RELS = """<-xml version="1.0" encoding="UTF-8" standalone="yes"->
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
   <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>
 </Relationships>"""
@@ -353,7 +353,7 @@ object ExcelExportUtility {
         val sheetEls = sheets.mapIndexed { i, s ->
             """<sheet name="${xmlEscape(s.name)}" sheetId="${i + 1}" r:id="rId${i + 1}"/>"""
         }.joinToString("\n")
-        return """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+        return """<-xml version="1.0" encoding="UTF-8" standalone="yes"->
 <workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"
           xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
   <sheets>$sheetEls</sheets>
@@ -366,7 +366,7 @@ object ExcelExportUtility {
         }.joinToString("\n")
         val ssRel = """<Relationship Id="rId${sheets.size + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/sharedStrings" Target="sharedStrings.xml"/>"""
         val stylesRel = """<Relationship Id="rId${sheets.size + 2}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>"""
-        return """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+        return """<-xml version="1.0" encoding="UTF-8" standalone="yes"->
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
   $rels
   $ssRel
@@ -392,7 +392,7 @@ object ExcelExportUtility {
      *   - `[$<sym>-409]` — currency symbol + locale identifier (409 = en-US).
      *     OOXML's bilingual locale tag; Excel renders the symbol literally
      *     regardless of the user's locale.
-     *   - `;[Red]-...` — negative format with leading minus, red color.
+     *   - `;[Red]?...` — negative format with leading minus, red color.
      *
      * Symbols escaped for XML (`&` and `<`) — the rupee sign (₹, U+20B9) is
      * a regular UTF-8 character and rides through fine in OOXML.
@@ -407,7 +407,7 @@ object ExcelExportUtility {
         } else {
             "#,##0.00;[Red]-#,##0.00"  // fallback when symbol unknown
         }
-        return """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+        return """<-xml version="1.0" encoding="UTF-8" standalone="yes"->
 <styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
   <numFmts count="2">
     <numFmt numFmtId="164" formatCode="#,##0.00"/>
@@ -507,7 +507,7 @@ object ExcelExportUtility {
         } else ""
 
         // OOXML element ordering matters: dimension → sheetViews → sheetData → autoFilter.
-        return """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+        return """<-xml version="1.0" encoding="UTF-8" standalone="yes"->
 <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
   <dimension ref="A1:${maxCol}${lastRow}"/>
   $sheetViews
@@ -538,7 +538,7 @@ object ExcelExportUtility {
 
     private fun buildSharedStrings(strings: List<String>): String {
         val items = strings.joinToString("") { "<si><t>${xmlEscape(it)}</t></si>" }
-        return """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+        return """<-xml version="1.0" encoding="UTF-8" standalone="yes"->
 <sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" count="${strings.size}" uniqueCount="${strings.size}">$items</sst>"""
     }
 

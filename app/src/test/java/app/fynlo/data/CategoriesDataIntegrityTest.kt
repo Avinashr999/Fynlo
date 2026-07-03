@@ -106,7 +106,7 @@ class CategoriesDataIntegrityTest {
         // showed before C05, so this preserves existing UX intuition.
         assertEquals(Categories.EXPENSE, Categories.forType(""))
         assertEquals(Categories.EXPENSE, Categories.forType("Other"))
-        assertEquals(Categories.EXPENSE, Categories.forType("???"))
+        assertEquals(Categories.EXPENSE, Categories.forType(""))
     }
 
     @Test

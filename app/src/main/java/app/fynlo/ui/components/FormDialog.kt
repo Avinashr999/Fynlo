@@ -9,10 +9,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -21,11 +24,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import app.fynlo.ui.theme.SemanticRed
+import app.fynlo.ui.theme.TemplateAction
 import app.fynlo.ui.theme.TemplateBorder
 import app.fynlo.ui.theme.Emerald700
 
 /**
- * C22 dialog universalization (3.2.53) — canonical form-dialog shape.
+ * C22 dialog universalization (3.2.53) - canonical form-dialog shape.
  *
  * Lifts the layout pattern established by `AddLendingDialog` /
  * `AddTransactionDialog` / `AddDebtDialog` / `AddInvestmentDialog` /
@@ -35,14 +40,14 @@ import app.fynlo.ui.theme.Emerald700
  *
  *   - `Dialog` (not `AlertDialog`) so we control the surface and width.
  *   - `Surface` at 94% width, 28-dp rounded corners, tonal elevation 4dp
- *     → the subtle green tint that distinguishes a form from a confirm.
+ *     -> the subtle green tint that distinguishes a form from a confirm.
  *   - 20-dp inner padding + `verticalScroll` so the form survives any
  *     content height (the AlertDialog text-slot clipping issue from
- *     3.2.50–3.2.51 doesn't apply here, but scroll keeps the behaviour).
+ *     3.2.50-3.2.51 doesn't apply here, but scroll keeps the behaviour).
  *   - `imePadding()` so the keyboard doesn't shove the bottom button
  *     off-screen when a text field is focused.
  *   - Title row with bold title + top-right X close icon (matches the
- *     Lending pattern). Cancel is the X — no bottom Cancel button.
+ *     Lending pattern). Cancel is the X - no bottom Cancel button.
  *
  * Form content goes inside `content`. Caller supplies the form fields,
  * then a full-width primary button + `DisabledButtonHint` at the end.
@@ -142,7 +147,7 @@ fun FormDialog(
 }
 
 /**
- * C22 dialog universalization — bold section label inside a [FormDialog]
+ * C22 dialog universalization - bold section label inside a [FormDialog]
  * body. Lifts the "Borrower" / "Lend from" / "Interest type" label
  * pattern from the Lending dialog so other migrated forms use the same
  * label style instead of `OutlinedTextField` floating labels.
@@ -158,4 +163,70 @@ fun FormSectionLabel(text: String, modifier: Modifier = Modifier) {
         color = MaterialTheme.colorScheme.onSurface,
         modifier = modifier,
     )
+}
+
+@Composable
+fun FormActionRow(
+    primaryText: String,
+    onPrimary: () -> Unit,
+    modifier: Modifier = Modifier,
+    primaryEnabled: Boolean = true,
+    onCancel: (() -> Unit)? = null,
+    cancelText: String = "Cancel",
+    destructive: Boolean = false,
+) {
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.End),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (onCancel != null) {
+            TextButton(onClick = onCancel) {
+                Text(cancelText)
+            }
+        }
+        Button(
+            onClick = onPrimary,
+            enabled = primaryEnabled,
+            shape = RoundedCornerShape(16.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = if (destructive) SemanticRed else TemplateAction,
+                disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.62f),
+            ),
+        ) {
+            Text(
+                primaryText,
+                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+            )
+        }
+    }
+}
+
+@Composable
+fun FormPrimaryButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    destructive: Boolean = false,
+) {
+    Button(
+        onClick = onClick,
+        enabled = enabled,
+        modifier = modifier
+            .fillMaxWidth()
+            .height(52.dp),
+        shape = RoundedCornerShape(16.dp),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = if (destructive) SemanticRed else TemplateAction,
+            disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+            disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.62f),
+        ),
+    ) {
+        Text(
+            text,
+            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+        )
+    }
 }

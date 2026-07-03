@@ -27,14 +27,15 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import app.fynlo.FinanceViewModel
 import app.fynlo.logic.CurrencyFormatter
+import app.fynlo.logic.isGeneratedJournalEntry
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import app.fynlo.ui.theme.*
 
 /**
- * C15d (3.2.32) — Monthly Summary with chart-hero + standardized callouts +
- * linear-regression projection + CSV export per UX_AUDIT §C15d #1–#6.
+ * C15d (3.2.32) - Monthly Summary with chart-hero + standardized callouts +
+ * linear-regression projection + CSV export per UX_AUDIT section C15d #1-#6.
  *
  * - **#1** `type_chart_hero` with Net-for-current-month number above the
  *   bar chart (same surface), matching the shape established for C15b P&L
@@ -45,10 +46,10 @@ import app.fynlo.ui.theme.*
  *   edge so the user can read magnitudes off the chart.
  * - **#4** Four callout cards: Best Month / Worst Month / Avg/Month / Trend.
  *   Replaces the prior 6M Income / 6M Expense / Net Saved 3-chip row.
- * - **#5** Projection — 3 ghost bars at lower opacity at the right of the
+ * - **#5** Projection - 3 ghost bars at lower opacity at the right of the
  *   chart, sized via linear regression of the historical 12 months. Months
- *   labelled with a leading "·" so they're visually distinct.
- * - **#6** CSV export button (top-right of the hero block) — shares a CSV
+ *   labelled with a leading "?" so they're visually distinct.
+ * - **#6** CSV export button (top-right of the hero block) - shares a CSV
  *   of `Month,Income,Expense,Net` for the 12 historical months.
  */
 @Composable
@@ -60,7 +61,7 @@ fun MonthlySummaryScreen(viewModel: FinanceViewModel) {
     val locale       = LocalLocale.current.platformLocale
     val context      = LocalContext.current
 
-    // ── Last 12 months — same financing-category exclusion as P&L Statement
+    // -- Last 12 months - same financing-category exclusion as P&L Statement
     // so financing flows don't inflate income/expense.
     val financingCats = setOf(
         "Debt Received", "Debt Repayment", "Lending",
@@ -73,7 +74,7 @@ fun MonthlySummaryScreen(viewModel: FinanceViewModel) {
             val label = date.format(DateTimeFormatter.ofPattern("MMM"))
             val key   = date.format(DateTimeFormatter.ofPattern("yyyy-MM"))
             val list  = transactions.filter {
-                it.date.startsWith(key) && it.tags != "journal_only" && it.category !in financingCats
+                it.date.startsWith(key) && !it.isGeneratedJournalEntry() && it.category !in financingCats
             }
             val inc = list.filter { it.type.equals("income",  true) }.sumOf { it.amount }
             val exp = list.filter { it.type.equals("expense", true) }.sumOf { it.amount }
@@ -83,7 +84,7 @@ fun MonthlySummaryScreen(viewModel: FinanceViewModel) {
     val incomeColor  = Emerald500
     val expenseColor = SemanticRed
 
-    // ── Projection — independent linear regression of income + expense over
+    // -- Projection - independent linear regression of income + expense over
     // the 12 historical months. Next 3 months projected; rendered as ghost
     // bars at lower opacity at the right edge of the chart.
     val projected = remember(months) {
@@ -109,7 +110,7 @@ fun MonthlySummaryScreen(viewModel: FinanceViewModel) {
         (1..3).map { off ->
             val d = today.plusMonths(off.toLong())
             Triple(
-                "·${d.format(DateTimeFormatter.ofPattern("MMM"))}",
+                "?${d.format(DateTimeFormatter.ofPattern("MMM"))}",
                 incProj[off - 1],
                 expProj[off - 1]
             )
@@ -126,11 +127,11 @@ fun MonthlySummaryScreen(viewModel: FinanceViewModel) {
     val idleRatio = if (financialSummary.totalAssets > 0) financialSummary.totalCash / financialSummary.totalAssets else 0.0
     val isIdle    = idleRatio > 0.6
 
-    // ── Callouts (audit #4)
+    // -- Callouts (audit #4)
     val (bestLabel, bestNet) = months.maxByOrNull { it.second - it.third }
-        ?.let { it.first to it.second - it.third } ?: ("—" to 0.0)
+        ?.let { it.first to it.second - it.third } ?: ("-" to 0.0)
     val (worstLabel, worstNet) = months.minByOrNull { it.second - it.third }
-        ?.let { it.first to it.second - it.third } ?: ("—" to 0.0)
+        ?.let { it.first to it.second - it.third } ?: ("-" to 0.0)
     val avgNet     = if (months.isNotEmpty()) months.sumOf { it.second - it.third } / months.size else 0.0
     // Trend = recent-6 avg net vs prior-6 avg net (delta).
     val recent6Avg = months.takeLast(6).let { if (it.isEmpty()) 0.0 else it.sumOf { m -> m.second - m.third } / it.size }
@@ -172,7 +173,7 @@ fun MonthlySummaryScreen(viewModel: FinanceViewModel) {
                 }
             }
 
-            // ── Chart-hero block (audit #1 + #2 + #3 + #5). Current month
+            // -- Chart-hero block (audit #1 + #2 + #3 + #5). Current month
             // net number sits above the 12-month bar chart, all in one
             // surface so the hero reads as a single type_chart_hero.
             val today    = LocalDate.now()
@@ -203,7 +204,7 @@ fun MonthlySummaryScreen(viewModel: FinanceViewModel) {
                             color = if (thisNet >= 0) incomeColor else expenseColor
                         )
                         Text(
-                            "Income ${CurrencyFormatter.detail(thisInc, currencyCode, locale)} · " +
+                            "Income ${CurrencyFormatter.detail(thisInc, currencyCode, locale)} - " +
                             "Expense ${CurrencyFormatter.detail(thisExp, currencyCode, locale)}",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -243,7 +244,7 @@ fun MonthlySummaryScreen(viewModel: FinanceViewModel) {
 
             Spacer(Modifier.height(16.dp))
 
-            // ── Callout cards (audit #4)
+            // -- Callout cards (audit #4)
             Row(
                 Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -280,7 +281,7 @@ fun MonthlySummaryScreen(viewModel: FinanceViewModel) {
 
             Spacer(Modifier.height(20.dp))
             Text(
-                "Month-by-Month Breakdown",
+                "Month?by-Month Breakdown",
                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
             )
             Spacer(Modifier.height(8.dp))
@@ -429,7 +430,7 @@ private fun MonthlyBarChart(
                 }
             }
         }
-        // Month labels — historical in normal weight; projected dimmed.
+        // Month labels - historical in normal weight; projected dimmed.
         Row(
             Modifier.fillMaxWidth().padding(start = 52.dp, top = 4.dp),
         ) {
@@ -501,7 +502,7 @@ private fun MSCallout(
 }
 
 /**
- * CSV export — write `Month,Income,Expense,Net` rows for the 12 historical
+ * CSV export - write `Month,Income,Expense,Net` rows for the 12 historical
  * months and share via ACTION_SEND. File goes to the app cache + the
  * existing FileProvider so the share intent gets a content:// URI.
  */
@@ -510,7 +511,7 @@ private fun exportMonthsAsCsv(
     months: List<Triple<String, Double, Double>>,
     currencyCode: String,
 ) {
-    // C21 Stage 1 — standardized filename: Fynlo_MonthlySummary_<date>_<project>.csv
+    // C21 Stage 1 - standardized filename: Fynlo_MonthlySummary_<date>_<project>.csv
     // The project name isn't readily available at this helper's call site so
     // the subject defaults to the report type itself; matches the pattern
     // for cases where there's no per-project subject to embed.

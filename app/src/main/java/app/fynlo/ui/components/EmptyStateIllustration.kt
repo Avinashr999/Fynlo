@@ -29,7 +29,7 @@ enum class EmptyStateType { LENDING, DEBTS, INVESTMENTS, SPENDING }
 @Composable
 fun EmptyStateIllustration(
     type: EmptyStateType,
-    onAction: (() -> Unit)? = null,
+    onAction: (() -> Unit)?= null,
     actionLabel: String = "Get Started"
 ) {
     val primary  = MaterialTheme.colorScheme.primary

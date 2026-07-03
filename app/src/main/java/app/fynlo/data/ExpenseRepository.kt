@@ -53,7 +53,7 @@ class ExpenseRepository constructor(
         recordOnFail("getTransactionsByDesc") { dao.getTransactionsByDesc(desc) }
     }
 
-    suspend fun getTransactionById(id: String): Transaction? = withContext(Dispatchers.IO) {
+    suspend fun getTransactionById(id: String): Transaction?= withContext(Dispatchers.IO) {
         recordOnFail("getTransactionById") { dao.getTransactionById(id) }
     }
 

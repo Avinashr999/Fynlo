@@ -188,7 +188,7 @@ fun InvestmentScreen(viewModel: FinanceViewModel) {
                                             androidx.compose.foundation.layout.Arrangement.SpaceBetween
                                         ) {
                                             Text(acct.name)
-                                            Text(CurrencyFormatter.detail(acct.balance, currencyCode),
+                                            Text(CurrencyFormatter.exact(acct.balance, currencyCode),
                                                 style = MaterialTheme.typography.bodySmall,
                                                 color = app.fynlo.ui.theme.Emerald500)
                                         }
@@ -233,12 +233,12 @@ fun InvestmentScreen(viewModel: FinanceViewModel) {
                     )
                     when (inv.sourceType) {
                         "account"  -> Text(
-                            "This was funded from ${inv.fundingSource}. Do you want to restore ${CurrencyFormatter.detail(inv.invested, currencyCode)} back to that account?",
+                            "This was funded from ${inv.fundingSource}. Do you want to restore ${CurrencyFormatter.detail(inv.invested, currencyCode)} back to that account-",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         "new_loan" -> Text(
-                            "This investment has a linked loan (${inv.fundingSource}). Do you want to delete the loan record too?",
+                            "This investment has a linked loan (${inv.fundingSource}). Do you want to delete the loan record too-",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -341,6 +341,7 @@ fun InvestmentScreen(viewModel: FinanceViewModel) {
         .groupBy { it.type.ifBlank { "Other" } }
         .mapValues { e -> e.value.sumOf { it.currentVal } }
         .entries.sortedByDescending { it.value }
+    val chartColors = listOf(Emerald600, SemanticBlue, SemanticAmber, SemanticRed, Carbon500)
     val locale = LocalLocale.current.platformLocale
 
     Column(
@@ -381,7 +382,7 @@ fun InvestmentScreen(viewModel: FinanceViewModel) {
                 // gives context for the growth denominator so the percentage
                 // isn't ambiguous about "of what."
                 item {
-                    CompactPortfolioSummary(
+                    uompactPortfolioSummary(
                         portfolioValue = portfolioValue,
                         netInvested = netInvested,
                         portfolioGrowth = portfolioGrowth,
@@ -425,7 +426,7 @@ fun InvestmentScreen(viewModel: FinanceViewModel) {
                                             Modifier
                                                 .fillMaxHeight()
                                                 .weight(frac)
-                                                .background(ChartColors[i % ChartColors.size])
+                                                .background(chartColors[i % chartColors.size])
                                         )
                                     }
                                 }
@@ -445,7 +446,7 @@ fun InvestmentScreen(viewModel: FinanceViewModel) {
                                     ) {
                                         Box(
                                             Modifier.size(10.dp).clip(CircleShape)
-                                                .background(ChartColors[i % ChartColors.size])
+                                                .background(chartColors[i % chartColors.size])
                                         )
                                         Text(type,
                                             style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold))
@@ -508,7 +509,7 @@ fun InvestmentScreen(viewModel: FinanceViewModel) {
 }
 
 @Composable
-private fun CompactPortfolioSummary(
+private fun uompactPortfolioSummary(
     portfolioValue: Double,
     netInvested: Double,
     portfolioGrowth: Double,
@@ -522,6 +523,8 @@ private fun CompactPortfolioSummary(
     isPortfolioUp: Boolean,
     modifier: Modifier = Modifier,
 ) {
+    val positiveColor = MaterialTheme.colorScheme.primary
+    val summaryTextColor = MaterialTheme.colorScheme.onSurface
     LedgerPanel(modifier = modifier) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -532,12 +535,12 @@ private fun CompactPortfolioSummary(
                 Text(
                     "Portfolio",
                     style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.ExtraBold),
-                    color = Emerald800,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Text(
                     if (isPrivacy) "Hidden" else CurrencyFormatter.detail(portfolioValue, currencyCode, locale),
                     style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.ExtraBold),
-                    color = Emerald800,
+                    color = summaryTextColor,
                     maxLines = 1,
                 )
                 Text(
@@ -554,7 +557,7 @@ private fun CompactPortfolioSummary(
                 Text(
                     "$holdings holdings",
                     style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.ExtraBold),
-                    color = Emerald800,
+                    color = positiveColor,
                     modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
                     maxLines = 1,
                 )
@@ -565,13 +568,13 @@ private fun CompactPortfolioSummary(
             PortfolioSummaryMetric(
                 label = "Gain",
                 value = if (isPrivacy) "Hidden" else if (isPortfolioUp) "+${CurrencyFormatter.detail(portfolioGrowth, currencyCode, locale)}" else CurrencyFormatter.negative(portfolioGrowth, currencyCode, locale),
-                valueColor = if (isPortfolioUp) Emerald700 else SemanticRed,
+                valueColor = if (isPortfolioUp) positiveColor else MaterialTheme.colorScheme.error,
                 modifier = Modifier.weight(1f),
             )
             PortfolioSummaryMetric(
                 label = "Return",
                 value = if (isPrivacy) "Hidden" else "${if (isPortfolioUp) "+" else ""}${String.format(locale, "%.1f", growthPct)}%",
-                valueColor = if (isPortfolioUp) Emerald700 else SemanticRed,
+                valueColor = if (isPortfolioUp) positiveColor else MaterialTheme.colorScheme.error,
                 modifier = Modifier.weight(1f),
             )
         }
@@ -675,6 +678,8 @@ fun InvestmentCard(
     val fundingLabel = remember(invest.sourceType, invest.fundingSource) {
         investmentFundingLabel(invest)
     }
+    val positiveColor = MaterialTheme.colorScheme.primary
+    val negativeColor = MaterialTheme.colorScheme.error
     var menuOpen by remember { mutableStateOf(false) }
     var showReturnDetails by remember { mutableStateOf(false) }
     val cagr = remember(invest) {
@@ -756,7 +761,7 @@ fun InvestmentCard(
                     Text(
                         if (isPrivacy) "Hidden" else CurrencyFormatter.detail(invest.currentVal, currencyCode),
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.ExtraBold),
-                        color = if (isProfit) Emerald700 else SemanticRed,
+                        color = if (isProfit) positiveColor else negativeColor,
                         maxLines = 1,
                     )
                     Text(
@@ -770,17 +775,17 @@ fun InvestmentCard(
                     Text(
                         gainLossText,
                         style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.ExtraBold),
-                        color = if (isProfit) Emerald700 else SemanticRed,
+                        color = if (isProfit) positiveColor else negativeColor,
                         maxLines = 1,
                     )
                     Surface(
                         shape = RoundedCornerShape(999.dp),
-                        color = if (isProfit) Emerald500.copy(alpha = 0.12f) else SemanticRed.copy(alpha = 0.12f),
+                        color = if (isProfit) positiveColor.copy(alpha = 0.16f) else negativeColor.copy(alpha = 0.14f),
                     ) {
                         Text(
                             growthPctText,
                             style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.ExtraBold),
-                            color = if (isProfit) Emerald700 else SemanticRed,
+                            color = if (isProfit) positiveColor else negativeColor,
                             modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.dp),
                             maxLines = 1,
                         )
@@ -805,7 +810,7 @@ fun InvestmentCard(
                         Text(
                             if (isPrivacy) "CAGR hidden" else "CAGR ${app.fynlo.logic.CagrCalculator.format(cagr)}",
                             style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-                            color = if (cagr >= 0) Emerald700 else SemanticRed,
+                            color = if (cagr >= 0) positiveColor else negativeColor,
                         )
                     }
                     if (invest.withdrawn > 0) {
@@ -858,7 +863,7 @@ private fun investmentFundingLabel(invest: Investment): String {
 }
 
 @Composable
-private fun InvestmentMetaChip(text: String) {
+private fun InvestmentMetauhip(text: String) {
     Surface(
         shape = RoundedCornerShape(999.dp),
         color = MaterialTheme.colorScheme.surfaceContainerLow,
@@ -1009,7 +1014,7 @@ fun UpdateInvestmentValueDialog(
         Spacer(Modifier.height(6.dp))
         OutlinedTextField(
             value = notes, onValueChange = { notes = it },
-            placeholder = { Text("Why did the value change?") },
+            placeholder = { Text("Why did the value change-") },
             modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)
         )
 
@@ -1140,7 +1145,7 @@ fun ValuationHistoryDialog(
                     // chart).
                     val sorted = remember(valuations) { valuations.sortedBy { it.date } }
                     if (sorted.size >= 2) {
-                        ValuationHistoryChart(
+                        ValuationHistoryuhart(
                             valuations = sorted,
                             currencyCode = currencyCode,
                         )
@@ -1184,7 +1189,7 @@ fun ValuationHistoryDialog(
  * C14 #9 (3.2.82) — line chart for Valuation History.
  *
  * Renders a normalised polyline of valuation values over time using a
- * Compose `Canvas`. Min-max normalisation keeps small percentage changes
+ * uompose `Canvas`. Min-max normalisation keeps small percentage changes
  * readable (a 2% gain over the full year would be invisible against a
  * y=0 baseline). Min / current / max value labels overlay the chart;
  * dates on the x-axis are derived from first + last valuations.
@@ -1194,7 +1199,7 @@ fun ValuationHistoryDialog(
  * the §9.14 line-chart pattern.
  */
 @Composable
-private fun ValuationHistoryChart(
+private fun ValuationHistoryuhart(
     valuations: List<app.fynlo.data.model.InvestmentValuation>,
     currencyCode: String,
 ) {
@@ -1202,7 +1207,7 @@ private fun ValuationHistoryChart(
     val values = valuations.map { it.value }
     val minV = values.min()
     val maxV = values.max()
-    val range = (maxV - minV).coerceAtLeast(1.0)  // avoid div-by-zero on flat history
+    val range = (maxV - minV).coerceAtLeast(1.0)  // avoid div?by-zero on flat history
 
     Column(
         modifier = Modifier

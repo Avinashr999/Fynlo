@@ -36,7 +36,7 @@ fun AddLendingDialog(
     viewModel: FinanceViewModel,
     onDismiss: () -> Unit,
     onConfirm: (Borrower, String) -> Unit,
-    initialBorrower: Borrower? = null,
+    initialBorrower: Borrower?= null,
     currencyCode: String = "INR",
 ) {
     val people by viewModel.people.collectAsState()
@@ -52,6 +52,7 @@ fun AddLendingDialog(
     var notes by remember { mutableStateOf(initialBorrower?.notes ?: "") }
     val isPro by app.fynlo.billing.BillingManager.isPro.collectAsState()
     var selectedType by remember { mutableStateOf(initialBorrower?.intType ?: "Simple Interest") }
+    var stopInterestAfterDue by remember { mutableStateOf(initialBorrower?.stopInterestAfterDue ?: false) }
 
     val accountOptions = if (accounts.isNotEmpty()) accounts
         else listOf(app.fynlo.data.model.Account(id = "cash", name = "Personal Cash", type = "Cash", balance = 0.0))
@@ -101,7 +102,7 @@ fun AddLendingDialog(
                     }
                 Spacer(Modifier.height(16.dp))
 
-                // ── Amount hero ───────────────────────────────────────────────
+                // -- Amount hero -----------------------------------------------
                 Box(Modifier.fillMaxWidth(), Alignment.Center) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(CurrencyUtils.symbolFor(currencyCode), fontSize = 32.sp, fontWeight = FontWeight.Bold,
@@ -125,7 +126,7 @@ fun AddLendingDialog(
                 }
                 Spacer(Modifier.height(24.dp))
 
-                // ── Borrower ──────────────────────────────────────────────────
+                // -- Borrower --------------------------------------------------
                 Text("Borrower", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Spacer(Modifier.height(8.dp))
                 if (isEdit) {
@@ -181,7 +182,7 @@ fun AddLendingDialog(
                         label = { Text(if (isEdit) "Lent from" else "Lend from") },
                         supportingText = {
                             Text(
-                                "${selectedAccount.type}  -  Balance: ${CurrencyFormatter.detail(selectedAccount.balance, currencyCode, locale)}",
+                                "${selectedAccount.type}  -  Balance: ${CurrencyFormatter.exact(selectedAccount.balance, currencyCode, locale)}",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = Emerald500,
                             )
@@ -213,7 +214,7 @@ fun AddLendingDialog(
                                             )
                                         }
                                         Text(
-                                            CurrencyFormatter.detail(acct.balance, currencyCode, locale),
+                                            CurrencyFormatter.exact(acct.balance, currencyCode, locale),
                                             style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
                                             color = if (acct.balance >= 0) Emerald500 else MaterialTheme.colorScheme.error,
                                         )
@@ -230,14 +231,14 @@ fun AddLendingDialog(
 
                 Spacer(Modifier.height(20.dp))
 
-                // ── Interest type ─────────────────────────────────────────────
-                // 3.2.26 — unified with DebtDialog's widget (audit consistency
+                // -- Interest type ---------------------------------------------
+                // 3.2.26 - unified with DebtDialog's widget (audit consistency
                 // surfaced during C12 Stage 1 smoke). Was a `FlowRow<FilterChip>`
                 // with Simple Interest always visible and a `Pro`-gated
                 // "Advanced options" TextButton that revealed Reducing / Compound
                 // / SI+CI chips. Now: a single `ExposedDropdownMenuBox` matching
                 // DebtDialog. Free vs Pro gating is preserved by varying the
-                // dropdown's options — free users see only "Simple Interest";
+                // dropdown's options - free users see only "Simple Interest";
                 // Pro users see all 4. Eliminates the extra-tap "Advanced
                 // options" affordance for Pro users (they already paid for
                 // these options, no point hiding them) while still gating
@@ -246,7 +247,7 @@ fun AddLendingDialog(
                 // Edge case: if a free user has a borrower previously saved
                 // with an advanced type (Pro downgrade or admin override),
                 // the field still displays it correctly via `InterestEngine.label`,
-                // and the dropdown won't offer the advanced types — they
+                // and the dropdown won't offer the advanced types - they
                 // can only switch back to Simple Interest from there.
                 Text("Interest type", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Spacer(Modifier.height(8.dp))
@@ -289,13 +290,35 @@ fun AddLendingDialog(
                 Spacer(Modifier.height(12.dp))
                 DatePickerField(value = due, onValueChange = { due = it }, label = "Due date", optional = true)
                 Spacer(Modifier.height(12.dp))
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text("Stop interest after due date", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold))
+                            Text(
+                                "Use when you give grace time and do not want extra interest after the due date.",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        Switch(checked = stopInterestAfterDue, onCheckedChange = { stopInterestAfterDue = it })
+                    }
+                }
+                Spacer(Modifier.height(12.dp))
                 LendSoftField(notes, "Notes (optional)", KeyboardType.Text) { notes = it }
 
                 Spacer(Modifier.height(24.dp))
 
-                Button(
+                FormPrimaryButton(
+                    text = if (isEdit) "Save changes" else "Add loan",
                     onClick = {
-                        if (submitting) return@Button
+                        if (submitting) return@FormPrimaryButton
                         submitting = true
                         val finalSource = selectedAccount.name
                         val rawId = initialBorrower?.id ?: ""
@@ -310,6 +333,7 @@ fun AddLendingDialog(
                         )).copy(
                             id = finalId,
                             sourceAccount = selectedAccount.name,
+                            stopInterestAfterDue = stopInterestAfterDue,
                             name = selectedPerson?.name ?: initialBorrower?.name ?: "Unknown",
                             phone = selectedPerson?.phone ?: initialBorrower?.phone ?: "",
                             amount = amount.toDoubleOrNull() ?: 0.0,
@@ -325,17 +349,11 @@ fun AddLendingDialog(
                         onConfirm(borrower, finalSource)
                     },
                     enabled = (selectedPerson != null || isEdit) && (amount.toDoubleOrNull() ?: 0.0) > 0.0 && !submitting,
-                    modifier = Modifier.fillMaxWidth().height(52.dp),
-                    shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Emerald500)
-                ) {
-                    Text(if (isEdit) "Save Changes" else "Add Loan",
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
-                }
-                // C17 (3.2.42) — surface which field is blocking the Add.
+                )
+                // C17 (3.2.42) - surface which field is blocking the Add.
                 run {
                     val amt = amount.toDoubleOrNull() ?: 0.0
-                    val reason: String? = when {
+                    val reason: String?= when {
                         !isEdit && selectedPerson == null -> "Pick a borrower to continue"
                         amt <= 0.0                        -> "Enter the loan amount to continue"
                         else                              -> null

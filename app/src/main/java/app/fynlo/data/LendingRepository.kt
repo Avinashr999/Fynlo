@@ -47,7 +47,7 @@ class LendingRepository constructor(
         recordOnFail("deleteBorrowerRecord") { dao.deleteBorrower(borrower) }
     }
 
-    suspend fun getBorrowerById(id: String): Borrower? = withContext(Dispatchers.IO) {
+    suspend fun getBorrowerById(id: String): Borrower?= withContext(Dispatchers.IO) {
         recordOnFail("getBorrowerById") { dao.getBorrowerById(id) }
     }
 

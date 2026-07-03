@@ -1,4 +1,4 @@
-package app.fynlo.ui.screens
+﻿package app.fynlo.ui.screens
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize

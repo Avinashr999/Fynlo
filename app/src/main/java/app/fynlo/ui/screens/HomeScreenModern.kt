@@ -35,6 +35,7 @@ import app.fynlo.FinanceViewModel
 import app.fynlo.data.SyncStatus
 import app.fynlo.data.model.Account
 import app.fynlo.logic.CurrencyFormatter
+import app.fynlo.logic.isGeneratedJournalEntry
 import app.fynlo.logic.LedgerAccountabilityReport
 import app.fynlo.ui.components.AddTransactionDialog
 import app.fynlo.ui.components.PortfolioBreakdownSheet
@@ -73,14 +74,14 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
     // C02 step 3: surface lastRecalcAt as a small "Last updated X ago"
     // subtitle below the hero net-worth number. Tells the user the figures
     // are fresh; reassures them the auto-recalc-on-launch (Stage 1) actually
-    // ran. 0L means "no recalc has ever run" — rendered as "Not recalculated yet".
+    // ran. 0L means "no recalc has ever run" - rendered as "Not recalculated yet".
     val context = LocalContext.current
     val lastRecalcAt by app.fynlo.data.UserPreferences
         .lastRecalcAt(context).collectAsState(initial = 0L)
 
     fun fmt(v: Double) = if (isPrivacy) "••••" else CurrencyFormatter.hero(v, currencyCode, locale)
 
-    // Map account name → an icon based on its type (Bank/Cash/UPI/Trading)
+    // Map account name -> an icon based on its type (Bank/Cash/UPI/Trading)
     val typeByName = remember(accounts) { accounts.associate { it.name to it.type.lowercase() } }
     val iconFor: (String) -> ImageVector = { name ->
         when (typeByName[name]) {
@@ -92,7 +93,7 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
         }
     }
 
-    // 3.2.59 — collect account/transaction lists once for both AddTxn dialog
+    // 3.2.59 - collect account/transaction lists once for both AddTxn dialog
     // and the orphan-repair banner.
     val allInvestmentsHome by viewModel.investments.collectAsState()
     val allDebtsHome by viewModel.debts.collectAsState()
@@ -197,7 +198,7 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
             },
             rememberLastCategory = { isIncome -> viewModel.rememberLastTransactionCategory(isIncome) },
             onRecordCategory = { isIncome, cat -> viewModel.recordTransactionCategory(isIncome, cat) },
-            // 3.2.81 (C13 #5) — "Repeat monthly?" → also create a recurring template.
+            // 3.2.81 (C13 #5) - "Repeat monthly?" -> also create a recurring template.
             onRepeatMonthly = { txn -> viewModel.addRecurringTransaction(app.fynlo.logic.toRecurringTemplate(txn)) },
             currencyCode    = currencyCode,
             initialIsIncome = addTxnIncome,
@@ -229,6 +230,7 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
             onConfirm = { account ->
                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                 viewModel.saveAccountFromDialog(initial, account)
+                viewModel.showFeedback(if (initial == null) "Account added" else "Account updated")
                 showAccountDialog = false
             },
             onTransfer = initial?.let { account ->
@@ -242,6 +244,7 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
                 {
                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                     viewModel.closeAccount(account)
+                    viewModel.showFeedback("Account closed")
                     showAccountDialog = false
                 }
             },
@@ -249,6 +252,7 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
                 {
                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                     viewModel.deleteUnusedAccount(account)
+                    viewModel.showFeedback("Account deleted")
                     showAccountDialog = false
                 }
             },
@@ -265,6 +269,7 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
                 if (from.id != to.id) {
                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                     viewModel.transferBetweenAccounts(from, to, amount)
+                    viewModel.showFeedback("Transfer saved")
                     showTransferDialog = false
                 }
             },
@@ -298,7 +303,7 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
             BreakdownType.HAND_LOANS -> Icons.Default.Handshake
             else -> Icons.Default.Info
         }
-        // 3.2.65 — fallback was Color.Gray; theme-aware now.
+        // 3.2.65 - fallback was Color.Gray; theme-aware now.
         val unknownTypeTint = MaterialTheme.colorScheme.onSurfaceVariant
         val color = when (activeBreakdownType) {
             BreakdownType.IDLE_CASH -> SemanticBlue
@@ -328,7 +333,7 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
         Box(Modifier.fillMaxSize(), Alignment.Center) {
             Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 CircularProgressIndicator(color = Emerald500)
-                Text("Syncing your data…", style = MaterialTheme.typography.bodyMedium,
+                Text("Checking cloud backup...", style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
@@ -337,10 +342,10 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
 
     val greeting = remember {
         when (java.time.LocalTime.now().hour) {
-            in 5..11  -> "Good morning ☀️"
-            in 12..16 -> "Good afternoon 🌤️"
-            in 17..20 -> "Good evening 🌆"
-            else      -> "Good night 🌙"
+            in 5..11  -> "Good morning"
+            in 12..16 -> "Good afternoon"
+            in 17..20 -> "Good evening"
+            else      -> "Good night"
         }
     }
 
@@ -353,7 +358,7 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
     ) {
         Spacer(Modifier.height(8.dp))
 
-        // 3.2.59 — orphan-transaction banner. Pre-3.2.59 the AddTransaction
+        // 3.2.59 - orphan-transaction banner. Pre-3.2.59 the AddTransaction
         // dialog accepted free-text bank names that could miss the
         // canonical account row; surface the count + a one-tap repair
         // action so users can re-attach orphans to real accounts (which
@@ -390,7 +395,7 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
             Spacer(Modifier.height(12.dp))
         }
 
-        // ── Greeting + project switcher ───────────────────────────────────────
+        // -- Greeting + project switcher ---------------------------------------
         if (isFreshBook) {
             FirstRunChecklistCard(
                 onAddAccount = {
@@ -437,7 +442,7 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
 
         Spacer(Modifier.height(10.dp))
 
-        // ── Hero: big net worth number — tap to open Net Worth History ────────
+        // -- Hero: big net worth number - tap to open Net Worth History --------
         if (isFreshBook) {
             FreshStartCard(
                 projectName = currentProject?.name ?: "Personal",
@@ -479,15 +484,15 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
 
         Spacer(Modifier.height(12.dp))
 
-        // ── Net-worth trend chart card (tap → full history) ───────────────────
-        val bookNeedsReview = ledgerReport.criticalCount + ledgerReport.warningCount > 0
-        if (isFreshBook || bookNeedsReview) {
+        // -- Net-worth trend chart card (tap -> full history) -------------------
+        val bookNeedsAttention = ledgerReport.criticalCount > 0
+        if (bookNeedsAttention) {
             DashboardConfidenceCard(
                 report = ledgerReport,
                 syncStatus = syncStatus,
                 updatedAt = latestMoneyActivityAt,
                 isFreshBook = isFreshBook,
-                onOpenBookCheck = { onNavigateToScreen("settings") },
+                onOpenBookCheck = { onNavigateToScreen("book_check") },
             )
             Spacer(Modifier.height(12.dp))
         }
@@ -504,7 +509,7 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
             }
         }
 
-        // ── Quick actions ─────────────────────────────────────────────────────
+        // -- Quick actions -----------------------------------------------------
         LedgerPanel {
             LedgerSectionTitle("Quick actions")
             Spacer(Modifier.height(10.dp))
@@ -520,28 +525,22 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
             }
         }
 
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(6.dp))
 
         if (!isFreshBook) {
             DashboardNudges(
                 dueSoonCount = dueSoonCount,
                 recentActivityCount = recentActivityCount,
-                bookCheckCount = ledgerReport.criticalCount + ledgerReport.warningCount,
                 onOpenDues = { onNavigateToScreen("collection_calendar") },
-                onOpenBookCheck = { onNavigateToScreen("settings") },
                 onAddTransaction = {
                     addTxnIncome = false
                     showAddTxn = true
                 },
             )
-            Spacer(Modifier.height(12.dp))
-        } else {
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(6.dp))
         }
 
-        Spacer(Modifier.height(8.dp))
-
-        // ── Accounts ──────────────────────────────────────────────────────────
+        // -- Accounts ----------------------------------------------------------
         val activeAccountByName = activeAccounts.associateBy { it.name }
         val visibleAccountEntries = summary.accountBreakdown.entries.filter { activeAccountByName[it.key] != null }
         LedgerPanel {
@@ -580,7 +579,7 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
                     val account = activeAccountByName[entry.key]
                     NeoAccountRow(
                         name = entry.key,
-                        balance = fmt(entry.value),
+                        balance = CurrencyFormatter.exact(entry.value, currencyCode, locale),
                         icon = iconFor(entry.key),
                         onClick = { onNavigateToScreen("statement/${entry.key}") },
                         onEdit = account?.let { account ->
@@ -594,9 +593,9 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
             }
         }
 
-        Spacer(Modifier.height(14.dp))
+        Spacer(Modifier.height(20.dp))
 
-        // ── Insights ──────────────────────────────────────────────────────────
+        // -- Insights ----------------------------------------------------------
         if (!isFreshBook && (todayMovement.entries > 0 || monthMovement.entries > 0)) {
             DashboardMovementStrip(
                 todayMovement = todayMovement,
@@ -607,7 +606,7 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
                 onOpenHistory = { onNavigateToScreen("history") },
                 onOpenMonthly = { onNavigateToScreen("monthly") },
             )
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(14.dp))
         }
 
         LedgerPanel {
@@ -633,7 +632,6 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
     }
     }
 }
-
 private const val CLOSED_ACCOUNT_MARKER = "[fynlo:closed-account]"
 
 private fun Account.isClosedAccount(): Boolean = notes.contains(CLOSED_ACCOUNT_MARKER)
@@ -680,7 +678,7 @@ private fun buildAutomationSummary(
     val recurringDue = recurring.count { it.isActive && !today.isBefore(nextRecurringDueDate(it, today)) }
     val currentMonth = java.time.YearMonth.from(today)
     val monthlyExpenseByCategory = transactions
-        .filter { it.type.equals("Expense", ignoreCase = true) && it.tags != "journal_only" }
+        .filter { it.type.equals("Expense", ignoreCase = true) && !it.isGeneratedJournalEntry() }
         .filter { txn -> runCatching { java.time.YearMonth.from(java.time.LocalDate.parse(txn.date)) }.getOrNull() == currentMonth }
         .groupBy { it.category.trim().lowercase() }
         .mapValues { (_, rows) -> rows.sumOf { it.amount } }
@@ -693,7 +691,7 @@ private fun buildAutomationSummary(
     val recentLargeEntriesWithoutProof = transactions.count { txn ->
         val txnDate = runCatching { java.time.LocalDate.parse(txn.date) }.getOrNull()
         txn.amount >= 50_000.0 &&
-            txn.tags.split(',').none { tag -> tag.trim().equals("journal_only", ignoreCase = true) } &&
+            !txn.isGeneratedJournalEntry() &&
             txn.id !in proofOwnerIds &&
             txnDate != null &&
             !txnDate.isBefore(recentProofWindowStart)
@@ -919,7 +917,6 @@ private fun MonthlyReviewCard(
         }
     }
 }
-
 @Composable
 private fun MonthlyReviewMetric(
     label: String,
@@ -1093,9 +1090,8 @@ private fun DashboardConfidenceCard(
         else -> Emerald500
     }
     val title = when {
-        isFreshBook -> "Book ready"
         report.criticalCount > 0 -> "Book check needs attention"
-        report.warningCount > 0 -> "Review ${report.warningCount} money links"
+        report.warningCount > 0 -> "Review available in Settings"
         else -> "Books checked"
     }
     val syncLabel = when (syncStatus) {
@@ -1200,23 +1196,10 @@ private fun FreshStartCard(
 private fun DashboardNudges(
     dueSoonCount: Int,
     recentActivityCount: Int,
-    bookCheckCount: Int,
     onOpenDues: () -> Unit,
-    onOpenBookCheck: () -> Unit,
     onAddTransaction: () -> Unit,
 ) {
     val items = buildList {
-        if (bookCheckCount > 0) {
-            add(
-                NudgeItem(
-                    title = "$bookCheckCount book checks",
-                    subtitle = "Open Settings to review missing links or duplicates",
-                    icon = Icons.AutoMirrored.Filled.Rule,
-                    color = SemanticAmber,
-                    onClick = onOpenBookCheck,
-                )
-            )
-        }
         if (dueSoonCount > 0) {
             add(
                 NudgeItem(
@@ -1404,7 +1387,7 @@ private fun NeoAccountRow(
     balance: String,
     icon: ImageVector,
     onClick: () -> Unit,
-    onEdit: (() -> Unit)? = null,
+    onEdit: (() -> Unit)?= null,
 ) {
     Row(
         modifier = Modifier
@@ -1470,9 +1453,69 @@ private fun AccountManageDialog(
         mutableStateOf(initial?.balance?.toBigDecimal()?.stripTrailingZeros()?.toPlainString() ?: "")
     }
     var expanded by remember { mutableStateOf(false) }
+    var showCloseConfirm by remember { mutableStateOf(false) }
+    var showDeleteConfirm by remember { mutableStateOf(false) }
+    var showBalanceConfirm by remember { mutableStateOf(false) }
+    var pendingSave by remember { mutableStateOf<Account?>(null) }
     val accountTypes = listOf("Bank", "Cash", "UPI", "Trading")
     val amount = balance.toDoubleOrNull()
     val isValid = name.isNotBlank() && amount != null
+    val balanceChanged = initial != null && amount != null && kotlin.math.abs(amount - initial.balance) > 0.005
+
+    fun buildAccount(): Account = Account(
+        id = initial?.id?.takeIf { it.isNotBlank() } ?: app.fynlo.logic.Ids.newId(),
+        name = name.trim(),
+        type = type,
+        balance = amount ?: 0.0,
+        icon = initial?.icon ?: "",
+        color = initial?.color ?: "#3b82f6",
+        notes = initial?.notes ?: "",
+        projectId = initial?.projectId ?: "personal",
+        createdAt = initial?.createdAt ?: 0L,
+    )
+
+    if (showCloseConfirm && initial != null) {
+        app.fynlo.ui.components.FynloConfirmDialog(
+            title = "Close account?",
+            message = "${initial.name} will be hidden from new entries. Its old transactions stay in history.",
+            confirmText = "Close account",
+            onDismiss = { showCloseConfirm = false },
+            onConfirm = {
+                showCloseConfirm = false
+                onClose?.invoke()
+            },
+        )
+    }
+    if (showDeleteConfirm && initial != null) {
+        app.fynlo.ui.components.FynloConfirmDialog(
+            title = "Delete account?",
+            message = "${initial.name} has no linked transactions, so it can be removed. This cannot be undone.",
+            confirmText = "Delete",
+            destructive = true,
+            onDismiss = { showDeleteConfirm = false },
+            onConfirm = {
+                showDeleteConfirm = false
+                onDelete?.invoke()
+            },
+        )
+    }
+    if (showBalanceConfirm) {
+        app.fynlo.ui.components.FynloConfirmDialog(
+            title = "Save balance change?",
+            message = "This will add a balance correction so the account total matches your entry. Transaction history stays intact.",
+            confirmText = "Save",
+            onDismiss = {
+                showBalanceConfirm = false
+                pendingSave = null
+            },
+            onConfirm = {
+                val account = pendingSave
+                showBalanceConfirm = false
+                pendingSave = null
+                if (account != null) onConfirm(account)
+            },
+        )
+    }
 
     app.fynlo.ui.components.FormDialog(
         title = if (initial == null) "Add Account" else "Edit Account",
@@ -1553,7 +1596,7 @@ private fun AccountManageDialog(
             Spacer(Modifier.height(8.dp))
             OutlinedButton(
                 enabled = canClose && onClose != null,
-                onClick = { onClose?.invoke() },
+                onClick = { showCloseConfirm = true },
                 modifier = Modifier.fillMaxWidth().height(48.dp),
                 shape = RoundedCornerShape(14.dp),
                 border = BorderStroke(0.8.dp, TemplateBorder),
@@ -1571,7 +1614,7 @@ private fun AccountManageDialog(
             )
             OutlinedButton(
                 enabled = canDelete && onDelete != null,
-                onClick = { onDelete?.invoke() },
+                onClick = { showDeleteConfirm = true },
                 modifier = Modifier.fillMaxWidth().height(48.dp),
                 shape = RoundedCornerShape(14.dp),
                 border = BorderStroke(0.8.dp, SemanticRed.copy(alpha = 0.28f)),
@@ -1595,19 +1638,13 @@ private fun AccountManageDialog(
             enabled = isValid,
             modifier = Modifier.fillMaxWidth(),
             onClick = {
-                onConfirm(
-                    Account(
-                        id = initial?.id?.takeIf { it.isNotBlank() } ?: app.fynlo.logic.Ids.newId(),
-                        name = name.trim(),
-                        type = type,
-                        balance = amount ?: 0.0,
-                        icon = initial?.icon ?: "",
-                        color = initial?.color ?: "#3b82f6",
-                        notes = initial?.notes ?: "",
-                        projectId = initial?.projectId ?: "personal",
-                        createdAt = initial?.createdAt ?: 0L,
-                    )
-                )
+                val account = buildAccount()
+                if (balanceChanged) {
+                    pendingSave = account
+                    showBalanceConfirm = true
+                } else {
+                    onConfirm(account)
+                }
             },
         )
         app.fynlo.ui.components.DisabledButtonHint(
@@ -1660,7 +1697,7 @@ private fun AccountTransferDialog(
                 color = MaterialTheme.colorScheme.onSurface,
             )
             Text(
-                CurrencyFormatter.detail(from.balance, currencyCode, LocalLocale.current.platformLocale),
+                CurrencyFormatter.exact(from.balance, currencyCode, LocalLocale.current.platformLocale),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -1683,7 +1720,7 @@ private fun AccountTransferDialog(
                 ) {
                     accounts.forEach { account ->
                         DropdownMenuItem(
-                            text = { Text("${account.name} · ${CurrencyFormatter.detail(account.balance, currencyCode, LocalLocale.current.platformLocale)}") },
+                            text = { Text("${account.name} - ${CurrencyFormatter.exact(account.balance, currencyCode, LocalLocale.current.platformLocale)}") },
                             onClick = {
                                 source = account
                                 sourceExpanded = false
@@ -1714,7 +1751,7 @@ private fun AccountTransferDialog(
             ) {
                 transferTargets.forEach { account ->
                     DropdownMenuItem(
-                        text = { Text("${account.name} · ${CurrencyFormatter.detail(account.balance, currencyCode, LocalLocale.current.platformLocale)}") },
+                        text = { Text("${account.name} - ${CurrencyFormatter.exact(account.balance, currencyCode, LocalLocale.current.platformLocale)}") },
                         onClick = {
                             target = account
                             targetExpanded = false
@@ -1765,7 +1802,7 @@ private fun NeoInsightRow(
     label: String,
     value: String,
     color: Color,
-    subtitle: String? = null,
+    subtitle: String?= null,
     onClick: () -> Unit,
 ) {
     Row(

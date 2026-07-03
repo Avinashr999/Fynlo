@@ -10,7 +10,7 @@ import com.google.firebase.analytics.FirebaseAnalytics
  */
 object Analytics {
 
-    private var firebaseAnalytics: FirebaseAnalytics? = null
+    private var firebaseAnalytics: FirebaseAnalytics?= null
 
     fun init(context: Context) {
         firebaseAnalytics = FirebaseAnalytics.getInstance(context)

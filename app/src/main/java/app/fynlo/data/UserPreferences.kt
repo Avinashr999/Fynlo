@@ -187,7 +187,7 @@ object UserPreferences {
     /**
      * C18 sub-toggle setter. Also updates the master `notificationsEnabled`
      * via OR-with-the-other-sub: master is ON when EITHER sub-toggle is ON
-     * (so the [ReminderScheduler] keeps scheduling work). When BOTH sub-
+     * (so the [ReminderScheduler] keeps scheduling work). When BOTH sub?
      * toggles are off, the master flips to OFF and the scheduler stops.
      */
     suspend fun setLoanRemindersEnabled(context: Context, enabled: Boolean) {

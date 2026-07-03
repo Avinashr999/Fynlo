@@ -50,7 +50,7 @@ class DebtRepository constructor(
         recordOnFail("deleteDebtById") { dao.deleteDebtById(id) }
     }
 
-    suspend fun getDebtById(id: String): Debt? = withContext(Dispatchers.IO) {
+    suspend fun getDebtById(id: String): Debt?= withContext(Dispatchers.IO) {
         recordOnFail("getDebtById") { dao.getDebtById(id) }
     }
 
