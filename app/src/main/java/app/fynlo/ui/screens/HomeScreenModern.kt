@@ -241,9 +241,9 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
                 }
             },
             onClose = initial?.let { account ->
-                {
+                { updatedAccount ->
                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                    viewModel.closeAccount(account)
+                    viewModel.saveAndCloseAccountFromDialog(account, updatedAccount)
                     viewModel.showFeedback("Account closed")
                     showAccountDialog = false
                 }
@@ -1444,7 +1444,7 @@ private fun AccountManageDialog(
     onDismiss: () -> Unit,
     onConfirm: (Account) -> Unit,
     onTransfer: (() -> Unit)?,
-    onClose: (() -> Unit)?,
+    onClose: ((Account) -> Unit)?,
     onDelete: (() -> Unit)?,
 ) {
     var name by remember(initial) { mutableStateOf(initial?.name ?: "") }
@@ -1461,6 +1461,7 @@ private fun AccountManageDialog(
     val amount = balance.toDoubleOrNull()
     val isValid = name.isNotBlank() && amount != null
     val balanceChanged = initial != null && amount != null && kotlin.math.abs(amount - initial.balance) > 0.005
+    val canCloseEnteredAccount = initial != null && amount != null && kotlin.math.abs(amount) <= 0.005
 
     fun buildAccount(): Account = Account(
         id = initial?.id?.takeIf { it.isNotBlank() } ?: app.fynlo.logic.Ids.newId(),
@@ -1482,7 +1483,7 @@ private fun AccountManageDialog(
             onDismiss = { showCloseConfirm = false },
             onConfirm = {
                 showCloseConfirm = false
-                onClose?.invoke()
+                onClose?.invoke(buildAccount())
             },
         )
     }
@@ -1595,7 +1596,7 @@ private fun AccountManageDialog(
             }
             Spacer(Modifier.height(8.dp))
             OutlinedButton(
-                enabled = canClose && onClose != null,
+                enabled = canCloseEnteredAccount && onClose != null,
                 onClick = { showCloseConfirm = true },
                 modifier = Modifier.fillMaxWidth().height(48.dp),
                 shape = RoundedCornerShape(14.dp),
@@ -1606,8 +1607,11 @@ private fun AccountManageDialog(
                 Text("Close account")
             }
             Text(
-                if (canClose) "Closed accounts are hidden from new entries but history stays intact."
-                else "Transfer the remaining balance before closing.",
+                when {
+                    canCloseEnteredAccount && balanceChanged -> "This will save the zero balance correction, then hide the account from new entries."
+                    canCloseEnteredAccount -> "Closed accounts are hidden from new entries but history stays intact."
+                    else -> "Set the balance to 0 or transfer the remaining balance before closing."
+                },
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = 4.dp, bottom = 8.dp),

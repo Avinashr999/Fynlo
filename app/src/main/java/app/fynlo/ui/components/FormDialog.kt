@@ -59,7 +59,7 @@ import app.fynlo.ui.theme.Emerald700
 fun FormDialog(
     title: String,
     onDismiss: () -> Unit,
-    subtitle: String = "Review the details before saving",
+    subtitle: String = "",
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Dialog(
@@ -107,11 +107,14 @@ fun FormDialog(
                                 style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold),
                                 color = MaterialTheme.colorScheme.onSurface,
                             )
-                            Text(
-                                subtitle,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
+                            if (subtitle.isNotBlank()) {
+                                Spacer(Modifier.height(2.dp))
+                                Text(
+                                    subtitle,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
                         }
                         Surface(
                             onClick = onDismiss,
@@ -189,11 +192,7 @@ fun FormActionRow(
             onClick = onPrimary,
             enabled = primaryEnabled,
             shape = RoundedCornerShape(16.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = if (destructive) SemanticRed else TemplateAction,
-                disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.62f),
-            ),
+            colors = formButtonColors(destructive),
         ) {
             Text(
                 primaryText,
@@ -218,11 +217,7 @@ fun FormPrimaryButton(
             .fillMaxWidth()
             .height(52.dp),
         shape = RoundedCornerShape(16.dp),
-        colors = ButtonDefaults.buttonColors(
-            containerColor = if (destructive) SemanticRed else TemplateAction,
-            disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-            disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.62f),
-        ),
+        colors = formButtonColors(destructive),
     ) {
         Text(
             text,
@@ -230,3 +225,10 @@ fun FormPrimaryButton(
         )
     }
 }
+@Composable
+private fun formButtonColors(destructive: Boolean) = ButtonDefaults.buttonColors(
+    containerColor = if (destructive) SemanticRed else TemplateAction,
+    contentColor = MaterialTheme.colorScheme.onPrimary,
+    disabledContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.10f),
+    disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.56f),
+)

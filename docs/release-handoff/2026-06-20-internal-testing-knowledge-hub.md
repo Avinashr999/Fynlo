@@ -1427,3 +1427,9 @@ Phone smoke still recommended before a new AAB:
 - Normal payments now use the standard green action style; red remains reserved for destructive or warning actions.
 - Cleaned visible Book Check severity copy from technical severity wording toward user-facing repair language.
 - Scope: UI/UX consistency only. No calculation logic, schema migration, account balance mutation, or sync behavior change.
+
+### 2026-07-04 - Mostly-done minimalism cleanup
+- Shared form dialogs no longer show the generic "Review the details before saving" subtitle unless a screen supplies useful copy.
+- Shared form primary actions and template primary buttons now use the same pale disabled state before inputs are valid, then switch to the strong action color when ready.
+- Cloud backup wording in Settings was simplified to user language: Google backup, online sync, and replacing backup from this phone.
+- Scope: UI wording and shared action styling only. No calculation logic, account balance mutation, database migration, or sync engine change.

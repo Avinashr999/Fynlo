@@ -678,7 +678,7 @@ fun SettingsScreen(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     Icon(Icons.Default.CloudDone, null, Modifier.size(18.dp), tint = Green)
-                    Text("Auto-backup on  -  synced to cloud in real-time",
+                    Text("Google backup is on. Changes sync when you are online.",
                         style = MaterialTheme.typography.bodyMedium, color = Green)
                 }
                 SettingsDivider()
@@ -1127,13 +1127,13 @@ fun SettingsScreen(
                     icon  = Icons.Default.CloudOff,
                     color = Amber,
                     title = "Replace cloud backup with this phone",
-                    subtitle = "Use this if old cloud data keeps coming back after launch."
+                    subtitle = "Use this only when old backup data keeps coming back."
                 ) { showResetCloudConfirm = true }
 
                 if (showResetCloudConfirm) {
                     FynloConfirmDialog(
                         title = "Replace cloud backup?",
-                        message = "This replaces the cloud backup with the data currently on this phone. Local data stays untouched. Other devices signed in to the same account will update from this phone on their next launch.",
+                        message = "This replaces the Google backup with the records currently on this phone. Local data stays untouched. Other devices signed in to the same account will update from this phone later.",
                         confirmText = if (resetCloudInFlight) "Replacing..." else "Replace cloud backup",
                         destructive = true,
                         onDismiss = { if (!resetCloudInFlight) showResetCloudConfirm = false },
@@ -1145,8 +1145,8 @@ fun SettingsScreen(
                                 showResetCloudConfirm = false
                                 android.widget.Toast.makeText(
                                     context,
-                                    if (ok) "Cloud backup replaced. Close and reopen the app to check it."
-                                    else "Reset failed - check your network and try again.",
+                                    if (ok) "Cloud backup replaced. Reopen the app to check it."
+                                    else "Cloud backup was not replaced. Check your network and try again.",
                                     android.widget.Toast.LENGTH_LONG,
                                 ).show()
                             }

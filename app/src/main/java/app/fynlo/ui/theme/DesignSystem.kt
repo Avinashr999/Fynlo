@@ -618,8 +618,8 @@ fun TemplatePrimaryButton(
         colors = ButtonDefaults.buttonColors(
             containerColor = TemplateAction,
             contentColor = Color.White,
-            disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-            disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            disabledContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.10f),
+            disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.56f),
         ),
         elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp, pressedElevation = 0.dp),
     ) {

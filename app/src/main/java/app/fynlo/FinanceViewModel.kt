@@ -1143,6 +1143,35 @@ class FinanceViewModel @Inject constructor(
         saveAccount(account.copy(notes = notes))
     }
 
+    fun saveAndCloseAccountFromDialog(previous: Account?, account: Account) {
+        if (previous == null || kotlin.math.abs(account.balance) > 0.005) return
+        viewModelScope.launch(Dispatchers.IO) {
+            val now = System.currentTimeMillis()
+            val normalized = account.copy(
+                projectId = pid,
+                updatedAt = now,
+                createdAt = if (account.createdAt > 0L) account.createdAt else previous.createdAt,
+            )
+            val metadataAccount = normalized.copy(balance = previous.balance)
+            repository.upsertAccount(metadataAccount)
+
+            if (kotlin.math.abs(normalized.balance - previous.balance) > 0.005) {
+                repository.quickEditBalance(
+                    accountName = normalized.name,
+                    newBalance = normalized.balance,
+                    oldBalance = previous.balance,
+                    accountId = normalized.id,
+                )
+            }
+
+            val marker = "[fynlo:closed-account]"
+            val notes = if (normalized.notes.contains(marker)) normalized.notes else listOf(normalized.notes, marker)
+                .filter { it.isNotBlank() }
+                .joinToString("\n")
+            repository.upsertAccount(normalized.copy(notes = notes, updatedAt = System.currentTimeMillis()))
+        }
+    }
+
     fun deleteUnusedAccount(account: Account) {
         viewModelScope.launch(Dispatchers.IO) {
             repository.deleteUnusedAccount(account)
