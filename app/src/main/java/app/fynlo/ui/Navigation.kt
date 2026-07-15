@@ -208,6 +208,39 @@ fun MainNavigation(viewModel: FinanceViewModel) {
     val hasRatedApp by UserPreferences.reviewPromptRated(context).collectAsState(initial = false)
     val reviewLastShownAt by UserPreferences.reviewPromptLastShownAt(context).collectAsState(initial = 0L)
     var showReviewPrompt by remember { mutableStateOf(false) }
+    var startupSyncStartedFeedbackShown by remember { mutableStateOf(false) }
+    var startupSyncFinishedFeedbackShown by remember { mutableStateOf(false) }
+
+    LaunchedEffect(syncStatus, isLoggedIn, isPinUnlocked) {
+        if (!isLoggedIn || !isPinUnlocked) return@LaunchedEffect
+        when (syncStatus) {
+            SyncStatus.Initialising,
+            SyncStatus.Syncing -> {
+                if (!startupSyncStartedFeedbackShown) {
+                    startupSyncStartedFeedbackShown = true
+                    viewModel.showFeedback("Checking cloud backup...")
+                }
+            }
+            SyncStatus.Synced -> {
+                if (startupSyncStartedFeedbackShown && !startupSyncFinishedFeedbackShown) {
+                    startupSyncFinishedFeedbackShown = true
+                    viewModel.showFeedback("Cloud backup synced")
+                }
+            }
+            SyncStatus.Offline -> {
+                if (startupSyncStartedFeedbackShown && !startupSyncFinishedFeedbackShown) {
+                    startupSyncFinishedFeedbackShown = true
+                    viewModel.showFeedback("Offline - changes sync when reconnected")
+                }
+            }
+            is SyncStatus.Error -> {
+                if (startupSyncStartedFeedbackShown && !startupSyncFinishedFeedbackShown) {
+                    startupSyncFinishedFeedbackShown = true
+                    viewModel.showFeedback("Cloud backup needs attention")
+                }
+            }
+        }
+    }
 
     LaunchedEffect(transactionsForReview.size, hasRatedApp, reviewLastShownAt, isLoggedIn, isPinUnlocked) {
         val now = System.currentTimeMillis()

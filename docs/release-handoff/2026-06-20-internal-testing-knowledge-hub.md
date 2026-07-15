@@ -1433,3 +1433,11 @@ Phone smoke still recommended before a new AAB:
 - Shared form primary actions and template primary buttons now use the same pale disabled state before inputs are valid, then switch to the strong action color when ready.
 - Cloud backup wording in Settings was simplified to user language: Google backup, online sync, and replacing backup from this phone.
 - Scope: UI wording and shared action styling only. No calculation logic, account balance mutation, database migration, or sync engine change.
+
+### 2026-07-10 - Cloud sync startup feedback and shared-phone guard
+- Startup signed-in flow now gives brief cloud backup feedback: checking, synced, offline, or needs attention.
+- Google sign-in from first launch and Profile & Security now checks for existing local records before enabling cloud backup.
+- If the phone already has local ledger records, users must confirm that the selected Google account owns this phone's data before those local records are backed up.
+- This reduces shared-device mistakes. It does not change Firestore ownership: records still live under `users/{uid}/...`, and rules remain owner-only.
+- Scope: auth/sync safety UX only. No calculation logic, account balance mutation, migration, or release build.
+- Verification: `:app:compileProdDebugKotlin` and `:app:testProdDebugUnitTest` passed.

@@ -23,8 +23,10 @@ import androidx.compose.ui.unit.sp
 import app.fynlo.BuildConfig
 import app.fynlo.FynloApplication
 import app.fynlo.data.GoogleSignInHelper
+import app.fynlo.data.localLedgerSummary
 import app.fynlo.ui.components.FynloBrandMark
 import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInAccount
 import com.google.android.gms.auth.api.signin.GoogleSignInStatusCodes
 import com.google.android.gms.common.api.ApiException
 import kotlinx.coroutines.launch
@@ -38,6 +40,41 @@ fun LoginScreen(onSignedIn: () -> Unit) {
     var loading        by remember { mutableStateOf(false) }
     var error          by remember { mutableStateOf("") }
     var hasTriedSignIn by remember { mutableStateOf(false) }
+    var pendingGoogleAccount by remember { mutableStateOf<GoogleSignInAccount?>(null) }
+    var pendingLocalRecords by remember { mutableStateOf(0) }
+    var showLocalBackupConfirm by remember { mutableStateOf(false) }
+
+    fun clearPendingSignIn() {
+        pendingGoogleAccount = null
+        pendingLocalRecords = 0
+        showLocalBackupConfirm = false
+        hasTriedSignIn = false
+        loading = false
+    }
+
+    fun completeGoogleSignIn(account: GoogleSignInAccount) {
+        scope.launch {
+            loading = true
+            error = ""
+            runCatching {
+                val idToken = account.idToken ?: throw Exception("No ID token")
+                val signInResult = app.authManager.signInWithGoogle(idToken)
+                if (signInResult.isSuccess) {
+                    Analytics.signIn("google")
+                    app.onGoogleSignInComplete(app.authManager.userId)
+                    clearPendingSignIn()
+                    onSignedIn()
+                } else {
+                    error = signInResult.exceptionOrNull()?.let(::friendlyGoogleSignInError)
+                        ?: "Google sign-in failed. Please try again."
+                    clearPendingSignIn()
+                }
+            }.onFailure { ex ->
+                error = friendlyGoogleSignInError(ex)
+                clearPendingSignIn()
+            }
+        }
+    }
 
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
@@ -48,21 +85,54 @@ fun LoginScreen(onSignedIn: () -> Unit) {
             runCatching {
                 val task    = GoogleSignIn.getSignedInAccountFromIntent(result.data)
                 val account = task.getResult(ApiException::class.java)
-                val idToken = account.idToken ?: throw Exception("No ID token")
-                val signInResult = app.authManager.signInWithGoogle(idToken)
-                if (signInResult.isSuccess) {
-                    Analytics.signIn("google")
-                    app.onGoogleSignInComplete(app.authManager.userId)
-                    onSignedIn()
+                val localSummary = app.dao.localLedgerSummary()
+                if (localSummary.hasUserData) {
+                    pendingGoogleAccount = account
+                    pendingLocalRecords = localSummary.totalRecords
+                    showLocalBackupConfirm = true
+                    loading = false
                 } else {
-                    error = signInResult.exceptionOrNull()?.let(::friendlyGoogleSignInError)
-                        ?: "Google sign-in failed. Please try again."
+                    completeGoogleSignIn(account)
                 }
             }.onFailure { ex ->
                 error = friendlyGoogleSignInError(ex)
+                loading = false
+                hasTriedSignIn = false
             }
-            loading = false
         }
+    }
+
+    if (showLocalBackupConfirm) {
+        val email = pendingGoogleAccount?.email.orEmpty().ifBlank { "this Google account" }
+        AlertDialog(
+            onDismissRequest = {
+                GoogleSignInHelper.getClient(context).signOut()
+                clearPendingSignIn()
+            },
+            title = { Text("Back up this phone?") },
+            text = {
+                Text(
+                    "This phone already has $pendingLocalRecords local records. If you continue, they will be backed up to $email. Continue only if this is your data."
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showLocalBackupConfirm = false
+                        pendingGoogleAccount?.let(::completeGoogleSignIn)
+                    },
+                    enabled = !loading
+                ) { Text("Continue") }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        GoogleSignInHelper.getClient(context).signOut()
+                        clearPendingSignIn()
+                    }
+                ) { Text("Cancel") }
+            }
+        )
     }
 
     // ── Root: emerald gradient matching the app's PremiumScreenHeader ─────

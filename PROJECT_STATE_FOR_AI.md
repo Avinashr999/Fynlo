@@ -2195,3 +2195,11 @@ The user approved the combined future roadmap below. Do not treat these as compl
 - Normal payments now use the standard green action style; red remains reserved for destructive or warning actions.
 - Cleaned visible Book Check severity copy from technical severity wording toward user-facing repair language.
 - Scope: UI/UX consistency only. No calculation logic, schema migration, account balance mutation, or sync behavior change.
+
+### 2026-07-10 - Cloud sync startup feedback and shared-phone guard
+- Startup now gives short feedback for signed-in users: checking cloud backup, synced, offline, or needs attention. This is UX-only and does not change sync ordering or money logic.
+- First-launch Google sign-in and Profile & Security Google sign-in now check whether the phone already has local ledger records before starting cloud backup.
+- If local records exist, the app asks the user to confirm before backing up this phone to the selected Google account. This prevents a shared-phone/wrong-account mistake from silently uploading one person's local records into another person's cloud backup.
+- Firestore data remains scoped under `users/{uid}/...`, and production rules remain owner-only. This change is about preventing local-device mixups before sync begins.
+- Scope: auth/sync safety UX only. No schema migration, no account balance mutation, and no calculation logic change.
+- Verification: `:app:compileProdDebugKotlin` and `:app:testProdDebugUnitTest` passed.

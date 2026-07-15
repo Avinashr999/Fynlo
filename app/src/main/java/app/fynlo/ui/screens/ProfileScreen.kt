@@ -38,10 +38,12 @@ import app.fynlo.billing.BillingManager
 import app.fynlo.data.Analytics
 import app.fynlo.data.GoogleSignInHelper
 import app.fynlo.data.PinManager
+import app.fynlo.data.localLedgerSummary
 import app.fynlo.ui.components.FynloConfirmDialog
 import app.fynlo.ui.screens.PinMode
 import app.fynlo.ui.theme.*
 import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInAccount
 import com.google.android.gms.auth.api.signin.GoogleSignInStatusCodes
 import com.google.android.gms.common.api.ApiException
 import kotlinx.coroutines.launch
@@ -71,7 +73,58 @@ fun ProfileScreen(
     var signingIn by remember { mutableStateOf(false) }
     var signInError by remember { mutableStateOf("") }
     var hasStartedSignIn by remember { mutableStateOf(false) }
+    var pendingGoogleAccount by remember { mutableStateOf<GoogleSignInAccount?>(null) }
+    var pendingLocalRecords by remember { mutableStateOf(0) }
+    var showLocalBackupConfirm by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
+
+    fun clearPendingSignIn() {
+        pendingGoogleAccount = null
+        pendingLocalRecords = 0
+        showLocalBackupConfirm = false
+        signingIn = false
+        hasStartedSignIn = false
+    }
+
+    fun completeGoogleSignIn(account: GoogleSignInAccount) {
+        scope.launch {
+            signingIn = true
+            signInError = ""
+            runCatching {
+                val idToken = account.idToken ?: run {
+                    Log.w("FynloAuth", "Google sign-in returned no token for ${context.packageName}")
+                    throw IllegalStateException("Missing Google token")
+                }
+                val signInResult = app.authManager.signInWithGoogle(idToken)
+                if (signInResult.isSuccess) {
+                    Analytics.signIn("google")
+                    app.onGoogleSignInComplete(app.authManager.userId)
+                    signInError = ""
+                    clearPendingSignIn()
+                    android.widget.Toast
+                        .makeText(context, "Signed in. Cloud backup is starting.", android.widget.Toast.LENGTH_SHORT)
+                        .show()
+                } else {
+                    Log.w(
+                        "FynloAuth",
+                        "Firebase Google sign-in failed for ${context.packageName}",
+                        signInResult.exceptionOrNull()
+                    )
+                    signInError = profileSignInError(signInResult.exceptionOrNull())
+                    clearPendingSignIn()
+                }
+            }.onFailure { ex ->
+                val status = (ex as? ApiException)?.statusCode
+                Log.w(
+                    "FynloAuth",
+                    "Google sign-in failed for ${context.packageName}; status=$status; message=${ex.message}",
+                    ex
+                )
+                signInError = profileSignInError(ex)
+                clearPendingSignIn()
+            }
+        }
+    }
 
     val signInLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
@@ -83,25 +136,14 @@ fun ProfileScreen(
             runCatching {
                 val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
                 val account = task.getResult(ApiException::class.java)
-                val idToken = account.idToken ?: run {
-                    Log.w("FynloAuth", "Google sign-in returned no token for ${context.packageName}")
-                    throw IllegalStateException("Missing Google token")
-                }
-                val signInResult = app.authManager.signInWithGoogle(idToken)
-                if (signInResult.isSuccess) {
-                    Analytics.signIn("google")
-                    app.onGoogleSignInComplete(app.authManager.userId)
-                    signInError = ""
-                    android.widget.Toast
-                        .makeText(context, "Signed in. Cloud backup is starting.", android.widget.Toast.LENGTH_SHORT)
-                        .show()
+                val localSummary = app.dao.localLedgerSummary()
+                if (localSummary.hasUserData) {
+                    pendingGoogleAccount = account
+                    pendingLocalRecords = localSummary.totalRecords
+                    showLocalBackupConfirm = true
+                    signingIn = false
                 } else {
-                    Log.w(
-                        "FynloAuth",
-                        "Firebase Google sign-in failed for ${context.packageName}",
-                        signInResult.exceptionOrNull()
-                    )
-                    signInError = profileSignInError(signInResult.exceptionOrNull())
+                    completeGoogleSignIn(account)
                 }
             }.onFailure { ex ->
                 val status = (ex as? ApiException)?.statusCode
@@ -111,10 +153,28 @@ fun ProfileScreen(
                     ex
                 )
                 signInError = profileSignInError(ex)
+                signingIn = false
+                hasStartedSignIn = false
             }
-            signingIn = false
-            hasStartedSignIn = false
         }
+    }
+
+    if (showLocalBackupConfirm) {
+        val email = pendingGoogleAccount?.email.orEmpty().ifBlank { "this Google account" }
+        FynloConfirmDialog(
+            title = "Back up this phone?",
+            message = "This phone already has $pendingLocalRecords local records. If you continue, they will be backed up to $email. Continue only if this is your data.",
+            confirmText = "Continue",
+            destructive = false,
+            onDismiss = {
+                GoogleSignInHelper.getClient(context).signOut()
+                clearPendingSignIn()
+            },
+            onConfirm = {
+                showLocalBackupConfirm = false
+                pendingGoogleAccount?.let(::completeGoogleSignIn)
+            }
+        )
     }
 
     // Full-screen PIN set/change flow (same as the lock screen).
