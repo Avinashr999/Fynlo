@@ -1441,3 +1441,12 @@ Phone smoke still recommended before a new AAB:
 - This reduces shared-device mistakes. It does not change Firestore ownership: records still live under `users/{uid}/...`, and rules remain owner-only.
 - Scope: auth/sync safety UX only. No calculation logic, account balance mutation, migration, or release build.
 - Verification: `:app:compileProdDebugKotlin` and `:app:testProdDebugUnitTest` passed.
+
+### 2026-07-15 - Google sign-in deprecation cleanup and Play bundle
+- Modernized Google sign-in from the deprecated intent API to Android Credential Manager with Google ID tokens.
+- First-launch sign-in and Profile & Security sign-in now use the same helper, loading state, local-data confirmation guard, and plain failure copy.
+- Removed the direct `play-services-auth` app dependency; keep `androidx.credentials-play-services-auth` because it is the Credential Manager bridge.
+- Play upload candidate: `versionName 3.2.113`, `versionCode 237`.
+- Fresh AAB: `app/build/outputs/bundle/prodRelease/app-prod-release.aab`.
+- Installed on connected phone: `app.fynlo` = `3.2.113`, `app.fynlo.dev` = `3.2.113-dev`.
+- Verification: `:app:compileProdDebugKotlin`, `:app:testProdDebugUnitTest`, `:app:installProdDebug`, `:app:installDevDebug`, launch sanity for both packages, and `:app:bundleProdRelease` passed.

@@ -2203,3 +2203,12 @@ The user approved the combined future roadmap below. Do not treat these as compl
 - Firestore data remains scoped under `users/{uid}/...`, and production rules remain owner-only. This change is about preventing local-device mixups before sync begins.
 - Scope: auth/sync safety UX only. No schema migration, no account balance mutation, and no calculation logic change.
 - Verification: `:app:compileProdDebugKotlin` and `:app:testProdDebugUnitTest` passed.
+
+### 2026-07-15 - Google sign-in API modernization
+- Replaced deprecated Google Sign-In API usage with Android Credential Manager + Google ID token flow.
+- Updated both first-launch login and Profile & Security sign-in so they share the same modern helper and still preserve the local-data-before-cloud-backup guard.
+- Removed the legacy `play-services-auth` dependency from app code; the remaining credential bridge is `androidx.credentials:credentials-play-services-auth`.
+- Version bumped to `3.2.113` / `versionCode 237`; production and developer debug builds were installed on the connected phone.
+- Release AAB generated at `app/build/outputs/bundle/prodRelease/app-prod-release.aab`.
+- Scope: auth entry point modernization only. No schema migration, no account balance mutation, and no calculation logic change.
+- Verification: `:app:compileProdDebugKotlin`, `:app:testProdDebugUnitTest`, `:app:installProdDebug`, `:app:installDevDebug`, app launch sanity for `app.fynlo` and `app.fynlo.dev`, and `:app:bundleProdRelease` passed.

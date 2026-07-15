@@ -1,11 +1,6 @@
-﻿@file:Suppress("DEPRECATION")
-
 package app.fynlo.ui.screens
 
 import android.annotation.SuppressLint
-import android.util.Log
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.BorderStroke
@@ -37,15 +32,13 @@ import app.fynlo.FynloApplication
 import app.fynlo.billing.BillingManager
 import app.fynlo.data.Analytics
 import app.fynlo.data.GoogleSignInHelper
+import app.fynlo.data.GoogleSignInResult
 import app.fynlo.data.PinManager
 import app.fynlo.data.localLedgerSummary
 import app.fynlo.ui.components.FynloConfirmDialog
 import app.fynlo.ui.screens.PinMode
 import app.fynlo.ui.theme.*
-import com.google.android.gms.auth.api.signin.GoogleSignIn
-import com.google.android.gms.auth.api.signin.GoogleSignInAccount
-import com.google.android.gms.auth.api.signin.GoogleSignInStatusCodes
-import com.google.android.gms.common.api.ApiException
+import androidx.credentials.exceptions.GetCredentialCancellationException
 import kotlinx.coroutines.launch
 
 @SuppressLint("InlinedApi")
@@ -72,8 +65,7 @@ fun ProfileScreen(
     var deleting by remember { mutableStateOf(false) }
     var signingIn by remember { mutableStateOf(false) }
     var signInError by remember { mutableStateOf("") }
-    var hasStartedSignIn by remember { mutableStateOf(false) }
-    var pendingGoogleAccount by remember { mutableStateOf<GoogleSignInAccount?>(null) }
+    var pendingGoogleAccount by remember { mutableStateOf<GoogleSignInResult?>(null) }
     var pendingLocalRecords by remember { mutableStateOf(0) }
     var showLocalBackupConfirm by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
@@ -83,19 +75,14 @@ fun ProfileScreen(
         pendingLocalRecords = 0
         showLocalBackupConfirm = false
         signingIn = false
-        hasStartedSignIn = false
     }
 
-    fun completeGoogleSignIn(account: GoogleSignInAccount) {
+    fun completeGoogleSignIn(account: GoogleSignInResult) {
         scope.launch {
             signingIn = true
             signInError = ""
             runCatching {
-                val idToken = account.idToken ?: run {
-                    Log.w("FynloAuth", "Google sign-in returned no token for ${context.packageName}")
-                    throw IllegalStateException("Missing Google token")
-                }
-                val signInResult = app.authManager.signInWithGoogle(idToken)
+                val signInResult = app.authManager.signInWithGoogle(account.idToken)
                 if (signInResult.isSuccess) {
                     Analytics.signIn("google")
                     app.onGoogleSignInComplete(app.authManager.userId)
@@ -105,37 +92,23 @@ fun ProfileScreen(
                         .makeText(context, "Signed in. Cloud backup is starting.", android.widget.Toast.LENGTH_SHORT)
                         .show()
                 } else {
-                    Log.w(
-                        "FynloAuth",
-                        "Firebase Google sign-in failed for ${context.packageName}",
-                        signInResult.exceptionOrNull()
-                    )
                     signInError = profileSignInError(signInResult.exceptionOrNull())
                     clearPendingSignIn()
                 }
             }.onFailure { ex ->
-                val status = (ex as? ApiException)?.statusCode
-                Log.w(
-                    "FynloAuth",
-                    "Google sign-in failed for ${context.packageName}; status=$status; message=${ex.message}",
-                    ex
-                )
                 signInError = profileSignInError(ex)
                 clearPendingSignIn()
             }
         }
     }
 
-    val signInLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.StartActivityForResult()
-    ) { result ->
-        if (!hasStartedSignIn) return@rememberLauncherForActivityResult
+    fun startGoogleSignIn() {
+        if (signingIn) return
         scope.launch {
             signingIn = true
             signInError = ""
             runCatching {
-                val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
-                val account = task.getResult(ApiException::class.java)
+                val account = GoogleSignInHelper.signIn(context)
                 val localSummary = app.dao.localLedgerSummary()
                 if (localSummary.hasUserData) {
                     pendingGoogleAccount = account
@@ -146,15 +119,8 @@ fun ProfileScreen(
                     completeGoogleSignIn(account)
                 }
             }.onFailure { ex ->
-                val status = (ex as? ApiException)?.statusCode
-                Log.w(
-                    "FynloAuth",
-                    "Google sign-in failed for ${context.packageName}; status=$status; message=${ex.message}",
-                    ex
-                )
                 signInError = profileSignInError(ex)
                 signingIn = false
-                hasStartedSignIn = false
             }
         }
     }
@@ -167,7 +133,7 @@ fun ProfileScreen(
             confirmText = "Continue",
             destructive = false,
             onDismiss = {
-                GoogleSignInHelper.getClient(context).signOut()
+                scope.launch { GoogleSignInHelper.clearCredentialState(context) }
                 clearPendingSignIn()
             },
             onConfirm = {
@@ -305,11 +271,7 @@ fun ProfileScreen(
                 onClick = {
                     if (signingIn) return@Button
                     haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                    signInError = ""
-                    signingIn = true
-                    hasStartedSignIn = true
-                    val client = GoogleSignInHelper.getClient(context)
-                    signInLauncher.launch(client.signInIntent)
+                    startGoogleSignIn()
                 },
                 enabled = !signingIn,
                 modifier = Modifier.fillMaxWidth().height(52.dp),
@@ -495,7 +457,7 @@ fun ProfileScreen(
                 onClick  = {
                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                     app.authManager.signOut()
-                    GoogleSignInHelper.getClient(context).signOut()
+                    scope.launch { GoogleSignInHelper.clearCredentialState(context) }
                     onSignOut()
                 },
                 modifier = Modifier.fillMaxWidth().height(52.dp),
@@ -572,13 +534,13 @@ fun ProfileScreen(
 
 
 private fun profileSignInError(error: Throwable?): String {
-    val api = error as? ApiException
-    return when (api?.statusCode) {
-        GoogleSignInStatusCodes.SIGN_IN_CANCELLED -> ""
-        GoogleSignInStatusCodes.SIGN_IN_CURRENTLY_IN_PROGRESS ->
-            "Sign-in is already in progress."
-        GoogleSignInStatusCodes.SIGN_IN_FAILED ->
-            "Sign-in failed. Please try again."
+    val message = error?.message.orEmpty()
+    return when {
+        error is GetCredentialCancellationException -> ""
+        message.contains("10:", ignoreCase = true) ||
+            message.contains("developer console", ignoreCase = true) ||
+            message.contains("configuration", ignoreCase = true) ->
+            "Google sign-in setup is missing for this build."
         else -> "Sign-in failed. Please try again."
     }
 }

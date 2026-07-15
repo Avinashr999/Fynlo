@@ -48,8 +48,8 @@ android {
         applicationId = "app.fynlo"
         minSdk = 26
         targetSdk = 36
-        versionCode = 236
-        versionName = "3.2.112"
+        versionCode = 237
+        versionName = "3.2.113"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -208,7 +208,9 @@ dependencies {
     implementation(libs.biometric)
     implementation(libs.androidx.fragment.ktx)
     implementation(libs.androidx.appcompat)
-    implementation(libs.google.signin)
+    implementation(libs.androidx.credentials)
+    implementation(libs.androidx.credentials.play.services.auth)
+    implementation(libs.googleid)
     implementation(libs.billing.ktx)
 
     // Baseline Profile installer (consumes profile produced by :macrobenchmark)

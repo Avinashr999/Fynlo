@@ -1,7 +1,5 @@
 package app.fynlo.ui.screens
 
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.*
 import app.fynlo.data.Analytics
 import androidx.compose.foundation.background
@@ -23,12 +21,10 @@ import androidx.compose.ui.unit.sp
 import app.fynlo.BuildConfig
 import app.fynlo.FynloApplication
 import app.fynlo.data.GoogleSignInHelper
+import app.fynlo.data.GoogleSignInResult
 import app.fynlo.data.localLedgerSummary
 import app.fynlo.ui.components.FynloBrandMark
-import com.google.android.gms.auth.api.signin.GoogleSignIn
-import com.google.android.gms.auth.api.signin.GoogleSignInAccount
-import com.google.android.gms.auth.api.signin.GoogleSignInStatusCodes
-import com.google.android.gms.common.api.ApiException
+import androidx.credentials.exceptions.GetCredentialCancellationException
 import kotlinx.coroutines.launch
 import app.fynlo.ui.theme.*
 
@@ -39,8 +35,7 @@ fun LoginScreen(onSignedIn: () -> Unit) {
     val scope   = rememberCoroutineScope()
     var loading        by remember { mutableStateOf(false) }
     var error          by remember { mutableStateOf("") }
-    var hasTriedSignIn by remember { mutableStateOf(false) }
-    var pendingGoogleAccount by remember { mutableStateOf<GoogleSignInAccount?>(null) }
+    var pendingGoogleAccount by remember { mutableStateOf<GoogleSignInResult?>(null) }
     var pendingLocalRecords by remember { mutableStateOf(0) }
     var showLocalBackupConfirm by remember { mutableStateOf(false) }
 
@@ -48,17 +43,15 @@ fun LoginScreen(onSignedIn: () -> Unit) {
         pendingGoogleAccount = null
         pendingLocalRecords = 0
         showLocalBackupConfirm = false
-        hasTriedSignIn = false
         loading = false
     }
 
-    fun completeGoogleSignIn(account: GoogleSignInAccount) {
+    fun completeGoogleSignIn(account: GoogleSignInResult) {
         scope.launch {
             loading = true
             error = ""
             runCatching {
-                val idToken = account.idToken ?: throw Exception("No ID token")
-                val signInResult = app.authManager.signInWithGoogle(idToken)
+                val signInResult = app.authManager.signInWithGoogle(account.idToken)
                 if (signInResult.isSuccess) {
                     Analytics.signIn("google")
                     app.onGoogleSignInComplete(app.authManager.userId)
@@ -76,15 +69,12 @@ fun LoginScreen(onSignedIn: () -> Unit) {
         }
     }
 
-    val launcher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.StartActivityForResult()
-    ) { result ->
-        if (!hasTriedSignIn) return@rememberLauncherForActivityResult
+    fun startGoogleSignIn() {
+        if (loading) return
         scope.launch {
             loading = true; error = ""
             runCatching {
-                val task    = GoogleSignIn.getSignedInAccountFromIntent(result.data)
-                val account = task.getResult(ApiException::class.java)
+                val account = GoogleSignInHelper.signIn(context)
                 val localSummary = app.dao.localLedgerSummary()
                 if (localSummary.hasUserData) {
                     pendingGoogleAccount = account
@@ -97,7 +87,6 @@ fun LoginScreen(onSignedIn: () -> Unit) {
             }.onFailure { ex ->
                 error = friendlyGoogleSignInError(ex)
                 loading = false
-                hasTriedSignIn = false
             }
         }
     }
@@ -106,7 +95,7 @@ fun LoginScreen(onSignedIn: () -> Unit) {
         val email = pendingGoogleAccount?.email.orEmpty().ifBlank { "this Google account" }
         AlertDialog(
             onDismissRequest = {
-                GoogleSignInHelper.getClient(context).signOut()
+                scope.launch { GoogleSignInHelper.clearCredentialState(context) }
                 clearPendingSignIn()
             },
             title = { Text("Back up this phone?") },
@@ -127,7 +116,7 @@ fun LoginScreen(onSignedIn: () -> Unit) {
             dismissButton = {
                 TextButton(
                     onClick = {
-                        GoogleSignInHelper.getClient(context).signOut()
+                        scope.launch { GoogleSignInHelper.clearCredentialState(context) }
                         clearPendingSignIn()
                     }
                 ) { Text("Cancel") }
@@ -222,9 +211,7 @@ fun LoginScreen(onSignedIn: () -> Unit) {
             // ── Google Sign-In button ─────────────────────────────────────
             Button(
                 onClick = {
-                    hasTriedSignIn = true
-                    val client = GoogleSignInHelper.getClient(context)
-                    launcher.launch(client.signInIntent)
+                    startGoogleSignIn()
                 },
                 enabled  = !loading,
                 modifier = Modifier.fillMaxWidth().height(56.dp),
@@ -310,20 +297,11 @@ fun LoginScreen(onSignedIn: () -> Unit) {
 }
 
 private fun friendlyGoogleSignInError(error: Throwable): String {
-    val api = error as? ApiException
-    return when (api?.statusCode) {
-        GoogleSignInStatusCodes.SIGN_IN_CANCELLED -> ""
-        GoogleSignInStatusCodes.SIGN_IN_CURRENTLY_IN_PROGRESS ->
-            "Google sign-in is already in progress."
-        GoogleSignInStatusCodes.SIGN_IN_FAILED ->
-            "Google sign-in failed. Please try again."
-        10 -> loginGoogleSetupMissingMessage()
-        else -> when {
-            error.message?.contains("cancel", ignoreCase = true) == true -> ""
-            error.message?.startsWith("10") == true ->
-                loginGoogleSetupMissingMessage()
-            else -> "Google sign-in failed. Please try again."
-        }
+    return when {
+        error is GetCredentialCancellationException -> ""
+        error.message?.contains("10:", ignoreCase = true) == true -> loginGoogleSetupMissingMessage()
+        error.message?.contains("developer console", ignoreCase = true) == true -> loginGoogleSetupMissingMessage()
+        else -> "Google sign-in failed. Please try again."
     }
 }
 
