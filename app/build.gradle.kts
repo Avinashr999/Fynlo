@@ -1,5 +1,41 @@
 import java.util.Properties
+import org.gradle.api.DefaultTask
+import org.gradle.api.file.RegularFileProperty
+import org.gradle.api.tasks.InputFile
+import org.gradle.api.tasks.TaskAction
+import org.gradle.api.tasks.bundling.Zip
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
+abstract class VerifyPlayReadinessTask : DefaultTask() {
+    @get:InputFile
+    abstract val aabFile: RegularFileProperty
+
+    @get:InputFile
+    abstract val mappingFile: RegularFileProperty
+
+    @get:InputFile
+    abstract val nativeSymbolsFile: RegularFileProperty
+
+    @TaskAction
+    fun verify() {
+        val aab = aabFile.get().asFile
+        val mapping = mappingFile.get().asFile
+        val nativeSymbols = nativeSymbolsFile.get().asFile
+
+        check(aab.isFile) { "Missing prod release AAB: ${aab.absolutePath}" }
+        check(mapping.isFile && mapping.length() > 0L) { "Missing R8 mapping file: ${mapping.absolutePath}" }
+        check(nativeSymbols.isFile && nativeSymbols.length() > 0L) {
+            "Missing native symbols zip: ${nativeSymbols.absolutePath}"
+        }
+
+        logger.lifecycle("Play readiness verified:")
+        logger.lifecycle(" - R8 minification: minifyProdReleaseWithR8 completed")
+        logger.lifecycle(" - Resource shrinking: optimizeProdReleaseResources completed")
+        logger.lifecycle(" - AAB: ${aab.absolutePath}")
+        logger.lifecycle(" - Mapping: ${mapping.absolutePath}")
+        logger.lifecycle(" - Native symbols: ${nativeSymbols.absolutePath}")
+    }
+}
 
 plugins {
     alias(libs.plugins.android.application)
@@ -48,8 +84,8 @@ android {
         applicationId = "app.fynlo"
         minSdk = 26
         targetSdk = 36
-        versionCode = 237
-        versionName = "3.2.113"
+        versionCode = 238
+        versionName = "3.2.114"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -129,11 +165,6 @@ android {
 
     lint {
         disable += "ExtraTranslation"
-        // Adopt lint on the existing codebase: record current issues as a baseline
-        // so CI fails only on NEW lint errors. Regenerate with:
-        //   ./gradlew :app:updateLintBaselineProdRelease
-        // Tracked as INF02 in UX_AUDIT_2026-05-25.md (burn the baseline down over time).
-        baseline = file("lint-baseline.xml")
     }
 
     // Room schema export for migration validation
@@ -236,4 +267,31 @@ dependencies {
     androidTestImplementation(libs.androidx.junit)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     debugImplementation(libs.androidx.compose.ui.tooling)
+}
+
+val prodReleaseNativeSymbols by tasks.registering(Zip::class) {
+    group = "release"
+    description = "Packages prod release native symbol tables for Play Console upload."
+    dependsOn("stripProdReleaseDebugSymbols")
+
+    from(layout.buildDirectory.dir("intermediates/stripped_native_libs/prodRelease/stripProdReleaseDebugSymbols/out/lib")) {
+        include("**/*.so")
+    }
+
+    archiveFileName.set("fynlo-prod-release-native-symbols.zip")
+    destinationDirectory.set(layout.buildDirectory.dir("outputs/native-debug-symbols/prodRelease"))
+}
+
+tasks.matching { it.name == "bundleProdRelease" }.configureEach {
+    finalizedBy(prodReleaseNativeSymbols)
+}
+
+tasks.register<VerifyPlayReadinessTask>("verifyProdReleasePlayReadiness") {
+    group = "verification"
+    description = "Verifies the Play upload artifacts that silence R8 and native-symbol warnings."
+    dependsOn("bundleProdRelease", "minifyProdReleaseWithR8", "optimizeProdReleaseResources", prodReleaseNativeSymbols)
+
+    aabFile.set(layout.buildDirectory.file("outputs/bundle/prodRelease/app-prod-release.aab"))
+    mappingFile.set(layout.buildDirectory.file("outputs/mapping/prodRelease/mapping.txt"))
+    nativeSymbolsFile.set(prodReleaseNativeSymbols.flatMap { it.archiveFile })
 }

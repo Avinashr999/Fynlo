@@ -1,6 +1,8 @@
 package app.fynlo.ui.theme
 
-import android.app.Activity
+import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
+import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Shapes
@@ -106,14 +108,25 @@ fun FynloTheme(
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {
-            val window = (view.context as Activity).window
-            @Suppress("DEPRECATION")
-            fun applyStatusBarColor() {
-                window.statusBarColor = colorScheme.background.toArgb()
+            val activity = view.context as? ComponentActivity ?: return@SideEffect
+            val systemBarColor = colorScheme.background.toArgb()
+            val useDarkIcons = colorScheme.background == LightBackground
+            activity.enableEdgeToEdge(
+                statusBarStyle = SystemBarStyle.auto(
+                    lightScrim = systemBarColor,
+                    darkScrim = systemBarColor,
+                    detectDarkMode = { !useDarkIcons }
+                ),
+                navigationBarStyle = SystemBarStyle.auto(
+                    lightScrim = systemBarColor,
+                    darkScrim = systemBarColor,
+                    detectDarkMode = { !useDarkIcons }
+                )
+            )
+            WindowCompat.getInsetsController(activity.window, view).apply {
+                isAppearanceLightStatusBars = useDarkIcons
+                isAppearanceLightNavigationBars = useDarkIcons
             }
-            applyStatusBarColor()
-            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars =
-                colorScheme.background == LightBackground
         }
     }
 

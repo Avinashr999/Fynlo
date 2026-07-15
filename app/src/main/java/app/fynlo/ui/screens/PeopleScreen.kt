@@ -55,27 +55,27 @@ import androidx.compose.ui.semantics.testTagsAsResourceId
 
 
 // ── Country code data ─────────────────────────────────────────────────────────
-data class CountryCode(val code: String, val flag: String, val name: String) {
+data class CountryCode(val code: String, val name: String) {
     val display get() = code
     val full    get() = "$code $name"
 }
 
 val COUNTRY_CODES = listOf(
-    CountryCode("+91",  "🇮🇳", "India"),
-    CountryCode("+1",   "🇺🇸", "USA/Canada"),
-    CountryCode("+44",  "🇬🇧", "UK"),
-    CountryCode("+61",  "🇦🇺", "Australia"),
-    CountryCode("+971", "🇦🇪", "UAE"),
-    CountryCode("+65",  "🇸🇬", "Singapore"),
-    CountryCode("+60",  "🇲🇾", "Malaysia"),
-    CountryCode("+966", "🇸🇦", "Saudi Arabia"),
-    CountryCode("+974", "🇶🇦", "Qatar"),
-    CountryCode("+968", "🇴🇲", "Oman"),
-    CountryCode("+973", "🇧🇭", "Bahrain"),
-    CountryCode("+49",  "🇩🇪", "Germany"),
-    CountryCode("+33",  "🇫🇷", "France"),
-    CountryCode("+81",  "🇯🇵", "Japan"),
-    CountryCode("+86",  "🇨🇳", "China")
+    CountryCode("+91", "India"),
+    CountryCode("+1", "USA/Canada"),
+    CountryCode("+44", "UK"),
+    CountryCode("+61", "Australia"),
+    CountryCode("+971", "UAE"),
+    CountryCode("+65", "Singapore"),
+    CountryCode("+60", "Malaysia"),
+    CountryCode("+966", "Saudi Arabia"),
+    CountryCode("+974", "Qatar"),
+    CountryCode("+968", "Oman"),
+    CountryCode("+973", "Bahrain"),
+    CountryCode("+49", "Germany"),
+    CountryCode("+33", "France"),
+    CountryCode("+81", "Japan"),
+    CountryCode("+86", "China")
 )
 
 private fun displayContactId(name: String, id: String): String {
@@ -93,7 +93,7 @@ private fun displayContactId(name: String, id: String): String {
 }
 
 /** Parse a saved phone string into (CountryCode, localNumber).
- *  e.g. "+919876543210" → ("+91 🇮🇳 India", "9876543210")
+ *  e.g. "+919876543210" becomes ("+91 India", "9876543210")
  *  Falls back to +91 India if no match. */
 fun parsePhone(saved: String): Pair<CountryCode, String> {
     val clean = saved.trim()

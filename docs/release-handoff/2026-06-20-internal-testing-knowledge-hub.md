@@ -1455,3 +1455,20 @@ Phone smoke still recommended before a new AAB:
 - Theme warning: only known remaining `DEPRECATION` text is the compatibility suppression in `Theme.kt`. Review and replace only if edge-to-edge/status-bar behavior remains stable on phone.
 - Native debug-symbol warning: Play says the AAB contains native code without uploaded symbols. Release builds already request `SYMBOL_TABLE`; next pass should find the generated symbols artifact, verify Play's expected upload format, and upload/document it with the next AAB.
 - R8/app optimization note: release builds already enable R8 minify, resource shrinking, and `proguard-android-optimize.txt`. Next pass should verify no Gradle property disables full mode and decide whether a configuration-analyzer pass is useful before public rollout.
+
+### 2026-07-15 - Play warning cleanup completed
+- Theme deprecation: replaced the deprecated status-bar color compatibility path with `ComponentActivity.enableEdgeToEdge(...)`. The old `@Suppress("DEPRECATION")` is gone.
+- Native debug symbols: the prod release pipeline now creates `app/build/outputs/native-debug-symbols/prodRelease/fynlo-prod-release-native-symbols.zip`. Upload this ZIP in Play Console when the native-code warning appears.
+- R8/app optimization: release still uses `isMinifyEnabled = true`, `isShrinkResources = true`, and `proguard-android-optimize.txt`. `:app:verifyProdReleasePlayReadiness` now checks the AAB, R8 mapping file, optimized resource task, and symbol ZIP.
+- No version bump, install, commit, push, or Play release was done in this pass. Do those later when the phone is available.
+- Verification passed: `:app:compileProdDebugKotlin`, `:app:testProdDebugUnitTest`, and `:app:verifyProdReleasePlayReadiness`.
+
+### 2026-07-15 - 3.2.114 internal-test candidate
+- Version: `versionName 3.2.114`, `versionCode 238`.
+- User-facing cleanup: contact country-code picker no longer uses flag emoji; options are plain code/name labels.
+- Source hygiene: app source emoji/flag scan is clean for `app/src/main` and `app/src/dev`; dev setup notes no longer use warning glyphs/arrows.
+- Warning cleanup: removed the stale lint baseline that contained old SDK warning entries no longer reported by release lint.
+- Installed on phone: `app.fynlo` and `app.fynlo.dev`; both launch sanity checks passed.
+- Fresh AAB: `app/build/outputs/bundle/prodRelease/app-prod-release.aab`.
+- Native symbols ZIP for Play Console: `app/build/outputs/native-debug-symbols/prodRelease/fynlo-prod-release-native-symbols.zip`.
+- Verification passed: `:app:compileProdDebugKotlin`, `:app:testProdDebugUnitTest`, `:app:installProdDebug`, `:app:installDevDebug`, launch sanity for both packages, and `:app:verifyProdReleasePlayReadiness`.

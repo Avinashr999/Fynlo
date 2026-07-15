@@ -2217,3 +2217,22 @@ The user approved the combined future roadmap below. Do not treat these as compl
 - Remaining warning 1: theme compatibility `@Suppress("DEPRECATION")` in `app/src/main/java/app/fynlo/ui/theme/Theme.kt`. Review whether the deprecated system UI/status-bar path can be replaced safely without regressing edge-to-edge and dark-mode readability.
 - Remaining warning 2: Play Console native debug-symbol warning for the release AAB. Release and benchmark builds already set `ndk.debugSymbolLevel = "SYMBOL_TABLE"`; next pass should locate the generated native-symbol artifact, confirm whether Play accepts it, and document/upload it with the AAB if needed.
 - Play/R8 note from console: release builds already use `isMinifyEnabled = true`, `isShrinkResources = true`, and `proguard-android-optimize.txt`. Next pass should verify no `android.enableR8.fullMode=false` override exists and decide whether any R8 analyzer/optimized-resource-shrinking follow-up is needed.
+
+### 2026-07-15 - Play Warning Cleanup
+- Replaced the deprecated theme status-bar color path in `Theme.kt` with `ComponentActivity.enableEdgeToEdge(...)`, removing the local `@Suppress("DEPRECATION")` compatibility workaround.
+- Added a prod release native-symbol ZIP task. After `bundleProdRelease`, upload `app/build/outputs/native-debug-symbols/prodRelease/fynlo-prod-release-native-symbols.zip` to Play Console alongside the AAB if the native-symbol warning appears.
+- Added `:app:verifyProdReleasePlayReadiness`, which verifies R8 minification, optimized resource processing, the release AAB, the R8 mapping file, and the native-symbol ZIP.
+- Confirmed no `android.enableR8.fullMode=false`, `android.builtInKotlin=false`, or `android.newDsl=false` compatibility override is present.
+- No version bump, install, commit, push, or new Play release was done in this pass because the phone was unavailable and the user requested warning cleanup first.
+- Verification: `:app:compileProdDebugKotlin`, `:app:testProdDebugUnitTest`, and `:app:verifyProdReleasePlayReadiness` passed.
+
+### 2026-07-15 - Version 3.2.114 Install and Play Bundle
+- Removed flag emoji/country-symbol display from the contact country-code picker; country choices now show code plus country name only, e.g. `+91 India`.
+- Cleaned the dev Firebase README to remove warning glyph/arrow symbols while keeping the same setup instructions.
+- Removed the stale lint baseline file that only contained old SDK warning entries; release lint now runs without carrying obsolete baseline noise.
+- Version bumped to `3.2.114` / `versionCode 238`.
+- Installed on connected phone: production package `app.fynlo` and developer package `app.fynlo.dev`.
+- Play upload candidate: `app/build/outputs/bundle/prodRelease/app-prod-release.aab`.
+- Play native symbols for the native-code warning: `app/build/outputs/native-debug-symbols/prodRelease/fynlo-prod-release-native-symbols.zip`.
+- Scope: release hygiene and display cleanup only. No schema migration, no account balance mutation, and no calculation logic change.
+- Verification: emoji/flag scan under `app/src/main` and `app/src/dev` returned no matches; `:app:compileProdDebugKotlin`, `:app:testProdDebugUnitTest`, installs for both packages, launch sanity for both packages, and `:app:verifyProdReleasePlayReadiness` passed.
