@@ -2212,3 +2212,8 @@ The user approved the combined future roadmap below. Do not treat these as compl
 - Release AAB generated at `app/build/outputs/bundle/prodRelease/app-prod-release.aab`.
 - Scope: auth entry point modernization only. No schema migration, no account balance mutation, and no calculation logic change.
 - Verification: `:app:compileProdDebugKotlin`, `:app:testProdDebugUnitTest`, `:app:installProdDebug`, `:app:installDevDebug`, app launch sanity for `app.fynlo` and `app.fynlo.dev`, and `:app:bundleProdRelease` passed.
+
+### 2026-07-15 - Next warning cleanup queue
+- Remaining warning 1: theme compatibility `@Suppress("DEPRECATION")` in `app/src/main/java/app/fynlo/ui/theme/Theme.kt`. Review whether the deprecated system UI/status-bar path can be replaced safely without regressing edge-to-edge and dark-mode readability.
+- Remaining warning 2: Play Console native debug-symbol warning for the release AAB. Release and benchmark builds already set `ndk.debugSymbolLevel = "SYMBOL_TABLE"`; next pass should locate the generated native-symbol artifact, confirm whether Play accepts it, and document/upload it with the AAB if needed.
+- Play/R8 note from console: release builds already use `isMinifyEnabled = true`, `isShrinkResources = true`, and `proguard-android-optimize.txt`. Next pass should verify no `android.enableR8.fullMode=false` override exists and decide whether any R8 analyzer/optimized-resource-shrinking follow-up is needed.

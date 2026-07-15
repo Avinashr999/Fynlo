@@ -1450,3 +1450,8 @@ Phone smoke still recommended before a new AAB:
 - Fresh AAB: `app/build/outputs/bundle/prodRelease/app-prod-release.aab`.
 - Installed on connected phone: `app.fynlo` = `3.2.113`, `app.fynlo.dev` = `3.2.113-dev`.
 - Verification: `:app:compileProdDebugKotlin`, `:app:testProdDebugUnitTest`, `:app:installProdDebug`, `:app:installDevDebug`, launch sanity for both packages, and `:app:bundleProdRelease` passed.
+
+### 2026-07-15 - Warning cleanup queue for next Play pass
+- Theme warning: only known remaining `DEPRECATION` text is the compatibility suppression in `Theme.kt`. Review and replace only if edge-to-edge/status-bar behavior remains stable on phone.
+- Native debug-symbol warning: Play says the AAB contains native code without uploaded symbols. Release builds already request `SYMBOL_TABLE`; next pass should find the generated symbols artifact, verify Play's expected upload format, and upload/document it with the next AAB.
+- R8/app optimization note: release builds already enable R8 minify, resource shrinking, and `proguard-android-optimize.txt`. Next pass should verify no Gradle property disables full mode and decide whether a configuration-analyzer pass is useful before public rollout.
