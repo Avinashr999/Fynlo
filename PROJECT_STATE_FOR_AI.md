@@ -1,3 +1,33 @@
+## 2026-07-16 - Scrollable Headers and Compact Action Fix
+
+- Dashboard quick actions were tightened from oversized tinted tiles into compact minimal action surfaces after phone screenshots showed the row looked visually corrupted.
+- Invest portfolio summary was reduced from a large hero-style card to a compact portfolio card so holdings appear sooner and the screen feels less spacious.
+- Invest, Loans, Reports, and Expenses now place their page header/hero content inside the scrollable content area instead of keeping those sections pinned below the app chrome.
+- Scope was UI/UX only. No accounting, Firestore, sync, account, loan, debt, investment, auth, or schema logic changed.
+- Verification passed: `:app:compileProdDebugKotlin --no-daemon` and `:app:testProdDebugUnitTest --no-daemon`.
+## 2026-07-15 - Premium Motion and Loading UX Pass
+
+- Added an adaptive bottom navigation behavior inspired by iOS/Instagram-style content focus: bottom tabs stay full with labels normally, then compress into a shorter icon-first floating bar while users scroll down on main tab screens, and expand again when they scroll up.
+- Replaced the dashboard's initial cloud-check spinner with calm skeleton loading blocks so startup/sync feels more intentional and less frozen.
+- Scope was UI/UX only. No accounting, Firestore, sync, account, loan, debt, investment, or calculation logic was changed.
+- Verification passed: `:app:compileProdDebugKotlin --no-daemon` and `:app:testProdDebugUnitTest --no-daemon`.
+
+## 2026-07-15 - Behind-the-App Credibility Check
+
+- User phone smoke was reported good; this pass checked the non-visual layer behind that smoke.
+- Verification passed: `:app:compileProdDebugKotlin --no-daemon` and `:app:testProdDebugUnitTest --no-daemon`.
+- Production-safety checks:
+  - Developer/test tools in Settings are gated behind `BuildConfig.DEBUG && BuildConfig.FLAVOR == "dev"`, so production users should not see Load Test Data, Wipe ALL Data, or Crashlytics test tools.
+  - Main network security config keeps cleartext traffic disabled and trusts only system certificates; debug overrides are isolated under the debug source set.
+  - Android backup/data-extraction rules exclude the Room database, PIN prefs, and DataStore so stale local financial data should not be restored by Android Auto Backup after reinstall/reset.
+  - Firestore rules keep user data under `/users/{userId}`, require authenticated owner access for user collections, and deny all other unmatched paths with a catch-all rule. No broad public read/write rule was found.
+  - App label remains `Fynlo Ledger`.
+  - Release artifacts from the latest build are present: prod AAB, R8 mapping, and native-symbol ZIP.
+- Secret-style scan of app/docs/migration package found no actual secret/API-key/private-key matches. One live hit was only a password field variable in the backup-password UI, not a stored secret.
+- User confirmed the controlled cloud round-trip check was completed after this pass. Treat cloud/local parity as `PHONE VERIFIED BY USER` unless a later mismatch is reported.
+- Lint/release-readiness Gradle tasks did not fail, but exceeded the local timeout window in this pass. Treat them as not completed in this check and rerun with a longer timeout before the next Play upload.
+- No production code was changed in this credibility check.
+
 # §0 — REQUIRED READING (read this first, every session)
 
 ## 2026-07-03 - Search Insets and Book Check Grouping
@@ -10,8 +40,8 @@
 ## 2026-07-03 - Final Hardening Audit Status
 
 - User manually phone-verified the 17 latest local UI/accounting audit items in the developer app. Treat those items as `PHONE VERIFIED BY USER` for local phone behavior.
-- Cloud/local parity is only `LOCAL VERIFIED, CLOUD ROUND-TRIP PENDING` until the real cloud path is tested: sign in, sync, restart or fresh install, reload from cloud, and compare dashboard/account/loan/debt/investment numbers.
-- Do not build a release AAB or call the app release-ready until cloud round-trip is either verified or explicitly accepted as a pending release risk.
+- Cloud/local parity was later user-confirmed as completed after sign-in/sync testing. Treat it as `PHONE VERIFIED BY USER` unless a new mismatch is reported.
+- Release AAB is no longer blocked by the cloud round-trip item, but still requires the usual longer lint/release-readiness checks before Play upload.
 - Release-gate auth fix: Profile & Security now has a real guest-mode `Sign in with Google` action with loading, safe error text, signed-in state refresh, and cloud-backup start after success. Developer app install/launch and UI hierarchy confirmed the button is visible and enabled. User must still complete account selection before cloud round-trip can be marked verified.
 
 ## 2026-07-02 - Loan Balance Clarity and Interest Period Review
@@ -2236,3 +2266,28 @@ The user approved the combined future roadmap below. Do not treat these as compl
 - Play native symbols for the native-code warning: `app/build/outputs/native-debug-symbols/prodRelease/fynlo-prod-release-native-symbols.zip`.
 - Scope: release hygiene and display cleanup only. No schema migration, no account balance mutation, and no calculation logic change.
 - Verification: emoji/flag scan under `app/src/main` and `app/src/dev` returned no matches; `:app:compileProdDebugKotlin`, `:app:testProdDebugUnitTest`, installs for both packages, launch sanity for both packages, and `:app:verifyProdReleasePlayReadiness` passed.
+
+### 2026-07-15 - Premium Minimal Design-System Pass
+- Standardized the shared design direction around Premium Minimal + Soft Neo-Glass + Bento structure.
+- Shared cards, ledger panels, metric cards, and ledger rows now use a softer glass-like surface treatment with subtle borders and low elevation instead of flat disconnected surfaces.
+- Added reusable `PremiumSoftGlassPanel` and `PremiumSkeletonBlock` primitives so future screens can use the same premium panel/loading language instead of local one-off skeletons.
+- Dashboard cloud-check loading now uses the shared premium skeleton primitives.
+- Bottom navigation now uses theme-aware soft glass colors, smoother selected-state scaling, and selected colors that work in both light and dark mode.
+- Global shape tokens were tuned slightly larger for a calmer, more premium app-wide feel while keeping readability and touch targets intact.
+- Scope: UI/UX design-system and motion polish only. No calculation logic, account balance mutation, Firestore behavior, auth behavior, or schema migration changed.
+- Verification: `:app:compileProdDebugKotlin` and `:app:testProdDebugUnitTest` passed.
+
+### 2026-07-16 - Visible Premium Dashboard/Invest Pass
+- Strengthened the visible Premium Minimal + Soft Neo-Glass treatment after user feedback that the previous pass looked too subtle.
+- Dashboard hero sub-metrics now use bordered glass tiles, quick actions use compact premium action tiles, and account rows use softly raised tappable cards instead of flat divider rows.
+- Investment portfolio summary now uses the shared emerald hero treatment, holding count badge, glass gain/return tiles, and stronger holding-card surfaces.
+- Investment holding value blocks now sit inside a soft accent panel so value/invested/funding details scan more clearly.
+- Scope: visual hierarchy and surface polish only. No calculation logic, account balance mutation, Firestore behavior, auth behavior, or schema migration changed.
+- Verification: `:app:compileProdDebugKotlin` and `:app:testProdDebugUnitTest` passed.
+
+### 2026-07-16 - Dashboard Caption Consistency Cleanup
+- Dashboard micro-copy now uses a single caption style for movement cards, monthly review, book-check confidence, and empty account helper text.
+- Removed the repeated `Statement` caption under account rows because it was visually noisy and did not add useful information.
+- Privacy placeholders on dashboard summary text now use plain `Hidden` wording instead of symbol placeholders.
+- Scope: dashboard visual consistency only. No calculation logic, account balance mutation, Firestore behavior, auth behavior, or schema migration changed.
+- Verification: `:app:compileProdDebugKotlin`, `:app:testProdDebugUnitTest`, `:app:installProdDebug`, `:app:installDevDebug`, and launch sanity for both packages passed.

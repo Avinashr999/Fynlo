@@ -1,0 +1,37 @@
+﻿id,type,path_or_source,access,status,notes
+SRC-001,doc,PROJECT_STATE_FOR_AI.md,local,used,Primary project state and running release notes
+SRC-002,doc,docs/release-handoff/2026-06-20-internal-testing-knowledge-hub.md,local,used,Play/internal testing and release knowledge hub
+SRC-003,doc,RELEASE_WORKLOG_2026-06-12_TO_2026-06-15.md,local,used,Pre-window worklog context
+SRC-004,doc,docs/superpowers/specs/2026-06-17-template-lock-revamp-design.md,local,used,Approved visual language reference
+SRC-005,source,app/build.gradle.kts,local,used,Build config/version/R8/Firebase/native symbols
+SRC-006,source,app/src/main/java/app/fynlo/data/FynloDatabase.kt,local,used,Room database and migrations
+SRC-007,source,app/src/main/java/app/fynlo/data/FynloDao.kt,local,used,Queries/rebuild/order logic
+SRC-008,source,app/src/main/java/app/fynlo/data/FinanceRepository.kt,local,referenced,Core repository orchestration
+SRC-009,source,app/src/main/java/app/fynlo/data/LendingRepository.kt,local,referenced,Loan-given logic
+SRC-010,source,app/src/main/java/app/fynlo/data/DebtRepository.kt,local,referenced,Debt logic
+SRC-011,source,app/src/main/java/app/fynlo/data/InvestmentRepository.kt,local,referenced,Investment funding/withdrawal
+SRC-012,source,app/src/main/java/app/fynlo/data/InterestEngine.kt,local,used,Raw interest calculation
+SRC-013,source,app/src/main/java/app/fynlo/data/InterestPolicy.kt,local,used,Due/paid-ahead/period policy
+SRC-014,source,app/src/main/java/app/fynlo/data/LedgerAccountability.kt,local,used,Book Check rules
+SRC-015,source,app/src/main/java/app/fynlo/data/SyncManager.kt,local,used,Cloud sync lifecycle
+SRC-016,source,app/src/main/java/app/fynlo/data/FirestoreRepository.kt,local,referenced,Firestore persistence
+SRC-017,source,app/src/main/java/app/fynlo/auth/GoogleSignInHelper.kt,local,used,Credential Manager sign-in
+SRC-018,source,app/src/main/java/app/fynlo/auth/AuthManager.kt,local,used,Auth state and errors
+SRC-019,source,app/src/main/java/app/fynlo/ui/HomeScreenModern.kt,local,referenced,Dashboard UI
+SRC-020,source,app/src/main/java/app/fynlo/ui/LendingScreen.kt,local,referenced,Borrower/loan UI
+SRC-021,source,app/src/main/java/app/fynlo/ui/DebtScreen.kt,local,referenced,Debt UI
+SRC-022,source,app/src/main/java/app/fynlo/ui/InvestmentScreen.kt,local,referenced,Investment UI
+SRC-023,source,app/src/main/java/app/fynlo/ui/SettingsScreen.kt,local,referenced,Settings/Book Check/auth entry
+SRC-024,source,app/src/main/java/app/fynlo/ui/GlobalSearchScreen.kt,local,referenced,Search UI
+SRC-025,source,app/src/main/java/app/fynlo/ui/LoanCalculatorScreen.kt,local,referenced,EMI calculator UI
+SRC-026,test,app/src/test/java/app/fynlo/InterestPolicyTest.kt,local,used,Interest regression tests
+SRC-027,test,app/src/test/java/app/fynlo/LedgerAccountabilityTest.kt,local,used,Book Check regression tests
+SRC-028,test,app/src/test/java/app/fynlo/MoneyActionIdempotencyDataIntegrityTest.kt,local,used,Duplicate action tests
+SRC-029,test,app/src/test/java/app/fynlo/FinancialSummaryCalculationTest.kt,local,referenced,Summary tests
+SRC-030,test,app/src/test/java/app/fynlo/SyncLogicTest.kt,local,referenced,Sync tests
+SRC-031,doc,app/src/dev/README.md,local,used,Dev Google sign-in setup caveat
+SRC-101,git,git log 2026-06-15..2026-07-15,local,used,103 commits in range
+SRC-102,conversation,current thread summary,local summary,used,Compacted conversation evidence
+SRC-103,attachments,screenshots and pasted text,partially accessible,partial,Not all raw attachments were re-read before migration
+SRC-104,manual,user phone testing reports,conversation,used,Manual verification claims are labeled separately
+SRC-105,external,Google Play Console screens/uploads,user-reported,used,No direct Play Console access in this extraction

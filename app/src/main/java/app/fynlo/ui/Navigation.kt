@@ -7,6 +7,10 @@
 package app.fynlo.ui
 
 import androidx.compose.animation.*
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -23,9 +27,14 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -202,6 +211,23 @@ fun MainNavigation(viewModel: FinanceViewModel) {
         currentRoute?.startsWith("customer/") == true ||
         currentRoute?.startsWith("debt/") == true ||
         currentRoute?.startsWith("statement/") == true
+    val isBottomNavRoute = bottomNavItems.any { it.route == baseRoute }
+    var isBottomNavCompact by remember { mutableStateOf(false) }
+    val bottomNavScrollConnection = remember(isBottomNavRoute) {
+        object : NestedScrollConnection {
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                if (!isBottomNavRoute) {
+                    isBottomNavCompact = false
+                    return Offset.Zero
+                }
+                when {
+                    available.y < -10f -> isBottomNavCompact = true
+                    available.y > 10f -> isBottomNavCompact = false
+                }
+                return Offset.Zero
+            }
+        }
+    }
 
     val syncStatus by viewModel.syncStatus.collectAsState()
     val transactionsForReview by viewModel.transactions.collectAsState()
@@ -544,6 +570,7 @@ fun MainNavigation(viewModel: FinanceViewModel) {
         }  // close drawerContent
     ) {
         Scaffold(
+            modifier = Modifier.nestedScroll(bottomNavScrollConnection),
             contentWindowInsets = WindowInsets(0.dp),
             topBar = {
                 if (!isFullScreenRoute) {
@@ -605,6 +632,7 @@ fun MainNavigation(viewModel: FinanceViewModel) {
                 LedgerBottomNav(
                     items = bottomNavItems,
                     selectedRoute = baseRoute,
+                    compact = isBottomNavCompact,
                     onSelect = { screen ->
                                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                 if (baseRoute != screen.route) {
@@ -1095,22 +1123,48 @@ private fun LedgerShellButton(
 private fun LedgerBottomNav(
     items: List<Screen>,
     selectedRoute: String?,
+    compact: Boolean,
     onSelect: (Screen) -> Unit,
 ) {
+    val wrapperHeight by animateDpAsState(
+        targetValue = if (compact) 66.dp else 92.dp,
+        animationSpec = tween(220, easing = FastOutSlowInEasing),
+        label = "bottom-nav-wrapper-height",
+    )
+    val barHeight by animateDpAsState(
+        targetValue = if (compact) 50.dp else 68.dp,
+        animationSpec = tween(220, easing = FastOutSlowInEasing),
+        label = "bottom-nav-bar-height",
+    )
+    val horizontalPadding by animateDpAsState(
+        targetValue = if (compact) 54.dp else 14.dp,
+        animationSpec = tween(220, easing = FastOutSlowInEasing),
+        label = "bottom-nav-horizontal-padding",
+    )
+    val itemTopPadding by animateDpAsState(
+        targetValue = if (compact) 3.dp else 6.dp,
+        animationSpec = tween(220, easing = FastOutSlowInEasing),
+        label = "bottom-nav-item-top-padding",
+    )
+    val labelAlpha by animateFloatAsState(
+        targetValue = if (compact) 0f else 1f,
+        animationSpec = tween(140, easing = FastOutSlowInEasing),
+        label = "bottom-nav-label-alpha",
+    )
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(92.dp)
+            .height(wrapperHeight)
             .navigationBarsPadding()
-            .padding(start = 14.dp, end = 14.dp, top = 4.dp, bottom = 10.dp),
+            .padding(start = horizontalPadding, end = horizontalPadding, top = 4.dp, bottom = 10.dp),
         contentAlignment = Alignment.Center,
     ) {
         Surface(
-            modifier = Modifier.fillMaxWidth().height(68.dp),
-            shape = RoundedCornerShape(24.dp),
-            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f),
+            modifier = Modifier.fillMaxWidth().height(barHeight),
+            shape = RoundedCornerShape(if (compact) 999.dp else 24.dp),
+            color = MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = if (compact) 0.92f else 0.94f),
             tonalElevation = 0.dp,
-            shadowElevation = 8.dp,
+            shadowElevation = if (compact) 5.dp else 8.dp,
             border = androidx.compose.foundation.BorderStroke(
                 0.5.dp,
                 MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f),
@@ -1123,23 +1177,44 @@ private fun LedgerBottomNav(
             ) {
                 items.forEach { screen ->
                     val selected = selectedRoute == screen.route
+                    val selectedScale by animateFloatAsState(
+                        targetValue = if (selected) 1.06f else 1f,
+                        animationSpec = tween(TemplateMotionDurationMs, easing = FastOutSlowInEasing),
+                        label = "bottom-nav-selected-scale",
+                    )
+                    val selectedPillAlpha by animateFloatAsState(
+                        targetValue = if (selected) 0.92f else 0f,
+                        animationSpec = tween(TemplateMotionDurationMs, easing = FastOutSlowInEasing),
+                        label = "bottom-nav-selected-pill",
+                    )
                     Column(
                         modifier = Modifier
                             .weight(1f)
                             .fillMaxHeight()
                             .clip(RoundedCornerShape(18.dp))
                             .clickable { onSelect(screen) }
-                            .padding(top = 6.dp, bottom = 6.dp),
+                            .padding(top = itemTopPadding, bottom = 4.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Center,
                     ) {
                         Box(
                             modifier = Modifier
-                                .height(30.dp)
-                                .width(if (selected) 58.dp else 38.dp)
+                                .height(if (compact) 36.dp else 30.dp)
+                                .width(
+                                    when {
+                                        compact && selected -> 46.dp
+                                        compact -> 38.dp
+                                        selected -> 58.dp
+                                        else -> 38.dp
+                                    }
+                                )
                                 .clip(RoundedCornerShape(18.dp))
+                                .graphicsLayer(
+                                    scaleX = selectedScale,
+                                    scaleY = selectedScale,
+                                )
                                 .background(
-                                    if (selected) Emerald100.copy(alpha = 0.92f)
+                                    if (selected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = selectedPillAlpha)
                                     else Color.Transparent
                                 ),
                             contentAlignment = Alignment.Center,
@@ -1148,18 +1223,21 @@ private fun LedgerBottomNav(
                                 imageVector = screen.icon,
                                 contentDescription = screen.label,
                                 modifier = Modifier.size(if (selected) 22.dp else 20.dp),
-                                tint = if (selected) Emerald700 else MaterialTheme.colorScheme.onSurfaceVariant,
+                                tint = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
-                        Spacer(Modifier.height(2.dp))
-                        Text(
-                            screen.label,
-                            style = MaterialTheme.typography.labelMedium.copy(
-                                fontWeight = if (selected) FontWeight.ExtraBold else FontWeight.SemiBold,
-                            ),
-                            color = if (selected) Emerald700 else MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                        )
+                        if (!compact || labelAlpha > 0f) {
+                            Spacer(Modifier.height(2.dp))
+                            Text(
+                                screen.label,
+                                modifier = Modifier.graphicsLayer(alpha = labelAlpha),
+                                style = MaterialTheme.typography.labelMedium.copy(
+                                    fontWeight = if (selected) FontWeight.ExtraBold else FontWeight.SemiBold,
+                                ),
+                                color = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                            )
+                        }
                     }
                 }
             }

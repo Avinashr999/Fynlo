@@ -59,7 +59,7 @@ import androidx.compose.ui.platform.LocalLocale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> Unit = {}, onNavigateToCalendar: () -> Unit = {}, showHeader: Boolean = true) {
+fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> Unit = {}, onNavigateToCalendar: () -> Unit = {}, showHeader: Boolean = true, topContent: (@Composable () -> Unit)? = null) {
     LaunchedEffect(Unit) { app.fynlo.data.Analytics.screenView("Lending") }
     val haptic        = LocalHapticFeedback.current
     val borrowers     by viewModel.borrowers.collectAsState()
@@ -141,7 +141,6 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
     // back to it any time.
 
     Column(modifier = Modifier.fillMaxSize()) {
-        if (showHeader) PremiumScreenHeader("Lending", subtitle = "Interest loans & hand loans")
         Box(modifier = Modifier.weight(1f)) {
         app.fynlo.ui.components.PullRefresh(viewModel) {
         LazyColumn(
@@ -149,6 +148,12 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
             verticalArrangement = Arrangement.spacedBy(10.dp),
             contentPadding = PaddingValues(bottom = FabBottomPadding)
         ) {
+            if (topContent != null || showHeader) {
+                item {
+                    if (topContent != null) topContent() else PremiumScreenHeader("Lending", subtitle = "Interest loans & hand loans")
+                }
+            }
+
             // C12 Stage 2 - top toolbar row: EMI calculator + Calendar shortcut.
             // The stats line ("X interest - Y hand - Z settled") is gone - the
             // segmented filter below shows per-status counts, which is more

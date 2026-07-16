@@ -27,6 +27,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -344,38 +345,63 @@ fun InvestmentScreen(viewModel: FinanceViewModel) {
     val chartColors = listOf(Emerald600, SemanticBlue, SemanticAmber, SemanticRed, Carbon500)
     val locale = LocalLocale.current.platformLocale
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-    ) {
-        PremiumScreenHeader(
-            title = "Invest",
-            subtitle = "Track value, allocation, and returns without crowding the screen",
-            action = {
-                FilledIconButton(
-                    onClick = {
-                        editingInvest = Investment(id = "", name = "", type = "", invested = 0.0, currentVal = 0.0, date = "", notes = "", projectId = "")
-                    },
-                    shape = RoundedCornerShape(14.dp),
-                    colors = IconButtonDefaults.filledIconButtonColors(
-                        containerColor = Emerald500,
-                        contentColor = Color.White,
-                    ),
-                ) {
-                    Icon(Icons.Default.Add, contentDescription = "Add Investment")
-                }
-            }
-        )
-
+    Column(modifier = Modifier.fillMaxSize()) {
         Box(modifier = Modifier.weight(1f)) {
         if (visibleInvestments.isEmpty()) {
-            EmptyInvestState(onAdd = { editingInvest = Investment(id = "", name = "", type = "", invested = 0.0, currentVal = 0.0, date = "", notes = "", projectId = "") })
+            LazyColumn(
+                modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
+                contentPadding = PaddingValues(bottom = FabBottomPadding)
+            ) {
+                item {
+                    PremiumScreenHeader(
+                        title = "Invest",
+                        subtitle = "Track value, allocation, and returns without crowding the screen",
+                        action = {
+                            FilledIconButton(
+                                onClick = {
+                                    editingInvest = Investment(id = "", name = "", type = "", invested = 0.0, currentVal = 0.0, date = "", notes = "", projectId = "")
+                                },
+                                shape = RoundedCornerShape(14.dp),
+                                colors = IconButtonDefaults.filledIconButtonColors(
+                                    containerColor = Emerald500,
+                                    contentColor = Color.White,
+                                ),
+                            ) {
+                                Icon(Icons.Default.Add, contentDescription = "Add Investment")
+                            }
+                        }
+                    )
+                }
+                item {
+                    EmptyInvestState(onAdd = { editingInvest = Investment(id = "", name = "", type = "", invested = 0.0, currentVal = 0.0, date = "", notes = "", projectId = "") })
+                }
+            }
         } else {
             app.fynlo.ui.components.PullRefresh(viewModel) {
             LazyColumn(
                 modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
                 contentPadding = PaddingValues(bottom = FabBottomPadding)
             ) {
+                item {
+                    PremiumScreenHeader(
+                        title = "Invest",
+                        subtitle = "Track value, allocation, and returns without crowding the screen",
+                        action = {
+                            FilledIconButton(
+                                onClick = {
+                                    editingInvest = Investment(id = "", name = "", type = "", invested = 0.0, currentVal = 0.0, date = "", notes = "", projectId = "")
+                                },
+                                shape = RoundedCornerShape(14.dp),
+                                colors = IconButtonDefaults.filledIconButtonColors(
+                                    containerColor = Emerald500,
+                                    contentColor = Color.White,
+                                ),
+                            ) {
+                                Icon(Icons.Default.Add, contentDescription = "Add Investment")
+                            }
+                        }
+                    )
+                }
                 // C14 hero (audit #1): Portfolio Value + growth ₹ + growth %.
                 // The growth amount + percent share the colour semantic
                 // (Emerald = profit, Red = loss). Currently-Invested subtitle
@@ -523,79 +549,94 @@ private fun uompactPortfolioSummary(
     isPortfolioUp: Boolean,
     modifier: Modifier = Modifier,
 ) {
-    val positiveColor = MaterialTheme.colorScheme.primary
-    val summaryTextColor = MaterialTheme.colorScheme.onSurface
-    LedgerPanel(modifier = modifier) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.Top,
+    val positiveColor = Color.White
+    val negativeColor = Color(0xFFFFDAD6)
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(22.dp),
+        color = Emerald700,
+        shadowElevation = 3.dp,
+        tonalElevation = 0.dp,
+    ) {
+        Column(
+            modifier = Modifier
+                .background(
+                    Brush.linearGradient(
+                        listOf(Emerald700, Emerald600, Emerald500.copy(alpha = 0.92f))
+                    )
+                )
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(
-                    "Portfolio",
-                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.ExtraBold),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Text(
-                    if (isPrivacy) "Hidden" else CurrencyFormatter.detail(portfolioValue, currencyCode, locale),
-                    style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.ExtraBold),
-                    color = summaryTextColor,
-                    maxLines = 1,
-                )
-                Text(
-                    "${if (isPrivacy) "Hidden" else CurrencyFormatter.detail(netInvested, currencyCode, locale)} invested",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                )
-            }
-            Surface(
-                shape = RoundedCornerShape(999.dp),
-                color = Emerald500.copy(alpha = 0.12f),
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Top,
             ) {
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        "Portfolio value",
+                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                        color = Color.White.copy(alpha = 0.74f),
+                    )
+                    Text(
+                        if (isPrivacy) "Hidden" else CurrencyFormatter.detail(portfolioValue, currencyCode, locale),
+                        style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold),
+                        color = Color.White,
+                        maxLines = 1,
+                    )
+                    Text(
+                        "${if (isPrivacy) "Hidden" else CurrencyFormatter.detail(netInvested, currencyCode, locale)} invested",
+                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                        color = Color.White.copy(alpha = 0.78f),
+                        maxLines = 1,
+                    )
+                }
+                Surface(
+                    shape = RoundedCornerShape(999.dp),
+                    color = Color.White.copy(alpha = 0.14f),
+                    border = BorderStroke(0.5.dp, Color.White.copy(alpha = 0.18f)),
+                ) {
+                    Text(
+                        "$holdings holdings",
+                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.ExtraBold),
+                        color = Color.White,
+                        modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp),
+                        maxLines = 1,
+                    )
+                }
+            }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                PortfolioMiniMetric(
+                    label = "Gain",
+                    value = if (isPrivacy) "Hidden" else if (isPortfolioUp) "+${CurrencyFormatter.detail(portfolioGrowth, currencyCode, locale)}" else CurrencyFormatter.negative(portfolioGrowth, currencyCode, locale),
+                    valueColor = if (isPortfolioUp) positiveColor else negativeColor,
+                    modifier = Modifier.weight(1f),
+                )
+                PortfolioMiniMetric(
+                    label = "Return",
+                    value = if (isPrivacy) "Hidden" else "${if (isPortfolioUp) "+" else ""}${String.format(locale, "%.1f", growthPct)}%",
+                    valueColor = if (isPortfolioUp) positiveColor else negativeColor,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+            val hasCagr = !cagr.isNaN()
+            val hasXirr = !xirr.isNaN()
+            if (hasCagr || hasXirr) {
                 Text(
-                    "$holdings holdings",
-                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.ExtraBold),
-                    color = positiveColor,
-                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                    buildString {
+                        if (hasCagr) append("CAGR ${app.fynlo.logic.CagrCalculator.format(cagr)}")
+                        if (hasCagr && hasXirr) append("  |  ")
+                        if (hasXirr) append("XIRR ${app.fynlo.logic.XirrCalculator.format(xirr)}")
+                    },
+                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                    color = Color.White.copy(alpha = 0.78f),
                     maxLines = 1,
                 )
             }
-        }
-        Spacer(Modifier.height(10.dp))
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            PortfolioSummaryMetric(
-                label = "Gain",
-                value = if (isPrivacy) "Hidden" else if (isPortfolioUp) "+${CurrencyFormatter.detail(portfolioGrowth, currencyCode, locale)}" else CurrencyFormatter.negative(portfolioGrowth, currencyCode, locale),
-                valueColor = if (isPortfolioUp) positiveColor else MaterialTheme.colorScheme.error,
-                modifier = Modifier.weight(1f),
-            )
-            PortfolioSummaryMetric(
-                label = "Return",
-                value = if (isPrivacy) "Hidden" else "${if (isPortfolioUp) "+" else ""}${String.format(locale, "%.1f", growthPct)}%",
-                valueColor = if (isPortfolioUp) positiveColor else MaterialTheme.colorScheme.error,
-                modifier = Modifier.weight(1f),
-            )
-        }
-        val hasCagr = !cagr.isNaN()
-        val hasXirr = !xirr.isNaN()
-        if (hasCagr || hasXirr) {
-            Spacer(Modifier.height(8.dp))
-            Text(
-                buildString {
-                    if (hasCagr) append("CAGR ${app.fynlo.logic.CagrCalculator.format(cagr)}")
-                    if (hasCagr && hasXirr) append("  |  ")
-                    if (hasXirr) append("XIRR ${app.fynlo.logic.XirrCalculator.format(xirr)}")
-                },
-                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-            )
         }
     }
 }
-
 @Composable
 private fun PortfolioSummaryMetric(
     label: String,
@@ -630,15 +671,17 @@ private fun PortfolioSummaryMetric(
 private fun PortfolioMiniMetric(
     label: String,
     value: String,
+    valueColor: Color = Color.White,
     modifier: Modifier = Modifier,
 ) {
     Surface(
-        modifier = modifier.heightIn(min = 58.dp),
+        modifier = modifier.heightIn(min = 46.dp),
         shape = RoundedCornerShape(14.dp),
         color = Color.White.copy(alpha = 0.13f),
+        border = BorderStroke(0.6.dp, Color.White.copy(alpha = 0.16f)),
     ) {
         Column(
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 9.dp),
+            modifier = Modifier.padding(horizontal = 9.dp, vertical = 7.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             Text(
@@ -650,7 +693,7 @@ private fun PortfolioMiniMetric(
             Text(
                 value,
                 style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.ExtraBold),
-                color = Color.White,
+                color = valueColor,
                 maxLines = 1,
             )
         }
@@ -688,23 +731,24 @@ fun InvestmentCard(
 
     Surface(
         modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-        shape = RoundedCornerShape(18.dp),
-        color = MaterialTheme.colorScheme.surface,
+        shape = RoundedCornerShape(20.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = 0.94f),
         tonalElevation = 1.dp,
+        shadowElevation = 2.dp,
         border = androidx.compose.foundation.BorderStroke(
-            0.5.dp,
-            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.32f),
+            0.7.dp,
+            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.42f),
         ),
     ) {
-        Column(modifier = Modifier.fillMaxWidth().padding(12.dp)) {
+        Column(modifier = Modifier.fillMaxWidth().padding(14.dp)) {
             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.Top) {
                 Row(verticalAlignment = Alignment.Top, modifier = Modifier.weight(1f)) {
                     Box(
-                        Modifier.size(40.dp).clip(RoundedCornerShape(12.dp))
-                            .background(typeAccent.copy(alpha = 0.14f)),
+                        Modifier.size(44.dp).clip(RoundedCornerShape(16.dp))
+                            .background(typeAccent.copy(alpha = 0.16f)),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(Icons.AutoMirrored.Filled.TrendingUp, null, Modifier.size(20.dp), tint = typeAccent)
+                        Icon(Icons.AutoMirrored.Filled.TrendingUp, null, Modifier.size(22.dp), tint = typeAccent)
                     }
                     Spacer(Modifier.width(10.dp))
                     Column(Modifier.weight(1f)) {
@@ -752,7 +796,13 @@ fun InvestmentCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.Bottom,
             ) {
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Surface(
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(16.dp),
+                    color = typeAccent.copy(alpha = 0.08f),
+                    border = BorderStroke(0.5.dp, typeAccent.copy(alpha = 0.16f)),
+                ) {
+                    Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                     Text(
                         "Value",
                         style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
@@ -770,7 +820,9 @@ fun InvestmentCard(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
                     )
+                    }
                 }
+                Spacer(Modifier.width(10.dp))
                 Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(5.dp)) {
                     Text(
                         gainLossText,
@@ -899,7 +951,7 @@ private fun InvestmentValueTile(
         ),
     ) {
         Column(
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 9.dp),
+            modifier = Modifier.padding(horizontal = 9.dp, vertical = 7.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             Text(

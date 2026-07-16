@@ -15,6 +15,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -23,13 +24,60 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
 val TemplateScreenPadding = 18.dp
-val TemplateCardRadius = 14.dp
-val TemplatePanelRadius = 22.dp
+val TemplateCardRadius = 16.dp
+val TemplatePanelRadius = 24.dp
+val TemplateHeroRadius = 26.dp
+val TemplateMotionDurationMs = 220
 val TemplateBorder = Color(0xFFDCE8E0)
 val TemplateMutedText = Carbon600
 val TemplateCanvas = LightBackground
 val TemplateAction = Emerald500
 val TemplateActionDark = Emerald700
+
+@Composable
+fun PremiumSoftGlassPanel(
+    modifier: Modifier = Modifier,
+    radius: Dp = TemplatePanelRadius,
+    borderAlpha: Float = 0.48f,
+    contentPadding: PaddingValues = PaddingValues(16.dp),
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(radius),
+        color = MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = 0.92f),
+        tonalElevation = 0.dp,
+        shadowElevation = 1.dp,
+        border = BorderStroke(
+            0.7.dp,
+            MaterialTheme.colorScheme.outlineVariant.copy(alpha = borderAlpha),
+        ),
+    ) {
+        Column(
+            modifier = Modifier.padding(contentPadding),
+            content = content,
+        )
+    }
+}
+
+@Composable
+fun PremiumSkeletonBlock(
+    modifier: Modifier = Modifier,
+    height: Dp,
+    radius: Dp = TemplateCardRadius,
+) {
+    Surface(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(height),
+        shape = RoundedCornerShape(radius),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.28f),
+        border = BorderStroke(
+            0.5.dp,
+            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.20f),
+        ),
+    ) {}
+}
 
 // ── Fynlo Premium Design System ───────────────────────────────────────────────
 // Deep Emerald + Carbon — inspired by premium fintech apps
@@ -297,10 +345,10 @@ fun PremiumCard(
     Surface(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(TemplateCardRadius),
-        color = MaterialTheme.colorScheme.surface,
+        color = MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = 0.94f),
         tonalElevation = 0.dp,
-        shadowElevation = 0.dp,
-        border = BorderStroke(0.8.dp, borderColor),
+        shadowElevation = 1.dp,
+        border = BorderStroke(0.7.dp, borderColor.copy(alpha = 0.82f)),
     ) {
         Column(
             modifier = Modifier.padding(14.dp),
@@ -368,12 +416,12 @@ fun LedgerPanel(
     Surface(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(TemplateCardRadius),
-        color = MaterialTheme.colorScheme.surface,
+        color = MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = 0.94f),
         tonalElevation = 0.dp,
-        shadowElevation = 0.dp,
+        shadowElevation = 1.dp,
         border = BorderStroke(
-            0.8.dp,
-            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f),
+            0.7.dp,
+            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.46f),
         ),
     ) {
         Column(
@@ -441,11 +489,12 @@ fun LedgerMetricCard(
     Surface(
         modifier = modifier.heightIn(min = 78.dp),
         shape = RoundedCornerShape(TemplateCardRadius),
-        color = MaterialTheme.colorScheme.surface,
+        color = MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = 0.94f),
         tonalElevation = 0.dp,
+        shadowElevation = 1.dp,
         border = BorderStroke(
-            0.8.dp,
-            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f),
+            0.7.dp,
+            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.46f),
         ),
     ) {
         Column(
@@ -479,11 +528,25 @@ fun LedgerHeroPanel(
 ) {
     Surface(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(22.dp),
-        color = containerColor,
+        shape = RoundedCornerShape(TemplateHeroRadius),
+        color = Color.Transparent,
         tonalElevation = 0.dp,
+        shadowElevation = 5.dp,
     ) {
-        Column(Modifier.fillMaxWidth().padding(18.dp)) {
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .background(
+                    Brush.linearGradient(
+                        colors = listOf(
+                            containerColor,
+                            containerColor.copy(alpha = 0.92f),
+                            Emerald500.copy(alpha = 0.86f),
+                        ),
+                    ),
+                )
+                .padding(18.dp)
+        ) {
             Text(
                 label,
                 style = MaterialTheme.typography.labelMedium,
@@ -543,11 +606,12 @@ fun LedgerRow(
     Surface(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(TemplateCardRadius),
-        color = MaterialTheme.colorScheme.surface,
+        color = MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = 0.94f),
         tonalElevation = 0.dp,
+        shadowElevation = 1.dp,
         border = BorderStroke(
-            0.8.dp,
-            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f),
+            0.7.dp,
+            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.46f),
         ),
         onClick = onClick,
     ) {

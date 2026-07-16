@@ -330,13 +330,7 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
     }
 
     if (!isSyncReady) {
-        Box(Modifier.fillMaxSize(), Alignment.Center) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                CircularProgressIndicator(color = Emerald500)
-                Text("Checking cloud backup...", style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-        }
+        DashboardLoadingSkeleton()
         return
     }
 
@@ -460,7 +454,7 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
             Spacer(Modifier.height(16.dp))
         }
 
-        val nwText = if (isPrivacy) "••••" else CurrencyFormatter.hero(summary.netWorth, currencyCode, locale)
+        val nwText = if (isPrivacy) "Hidden" else CurrencyFormatter.hero(summary.netWorth, currencyCode, locale)
         val lastUpdatedLabel = dashboardFreshnessLabel(latestMoneyActivityAt, isFreshBook, locale)
         LedgerHeroPanel(
             label = "Total net worth",
@@ -470,14 +464,33 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
             modifier = Modifier.clickable { onNavigateToScreen("net_worth_hist") },
         ) {
             Row(Modifier.fillMaxWidth(), Arrangement.spacedBy(8.dp)) {
-                Column(Modifier.weight(1f).clip(RoundedCornerShape(12.dp)).clickable { onNavigateToScreen("reports_hub") }.background(Color.White.copy(alpha = 0.12f)).padding(10.dp)) {
-                    Text("Assets", style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.72f))
-                    Text(fmt(summary.totalAssets), style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold), color = Color.White)
+                Surface(
+                    onClick = { onNavigateToScreen("reports_hub") },
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(14.dp),
+                    color = Color.White.copy(alpha = 0.14f),
+                    border = BorderStroke(0.6.dp, Color.White.copy(alpha = 0.18f)),
+                ) {
+                    Column(Modifier.padding(11.dp)) {
+                        Text("Assets", style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.72f))
+                        Text(fmt(summary.totalAssets), style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.ExtraBold), color = Color.White)
+                    }
                 }
-                Column(Modifier.weight(1f).clip(RoundedCornerShape(12.dp)).clickable { onNavigateToScreen("loans_hub?tab=1") }.background(Color.White.copy(alpha = 0.12f)).padding(10.dp)) {
-                    Text("Debt owed", style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.72f))
-                    Text(fmt(summary.totalDebtPrincipal + summary.totalDebtInterest),
-                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold), color = Color.White)
+                Surface(
+                    onClick = { onNavigateToScreen("loans_hub?tab=1") },
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(14.dp),
+                    color = Color.White.copy(alpha = 0.14f),
+                    border = BorderStroke(0.6.dp, Color.White.copy(alpha = 0.18f)),
+                ) {
+                    Column(Modifier.padding(11.dp)) {
+                        Text("Debt owed", style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.72f))
+                        Text(
+                            fmt(summary.totalDebtPrincipal + summary.totalDebtInterest),
+                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.ExtraBold),
+                            color = Color.White,
+                        )
+                    }
                 }
             }
         }
@@ -573,9 +586,7 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
                     },
                 )
             } else {
-                visibleAccountEntries.forEachIndexed { idx, entry ->
-                    if (idx > 0) HorizontalDivider(thickness = 0.5.dp,
-                        color = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f))
+                visibleAccountEntries.forEach { entry ->
                     val account = activeAccountByName[entry.key]
                     NeoAccountRow(
                         name = entry.key,
@@ -792,6 +803,30 @@ private fun DashboardMovementStrip(
 }
 
 @Composable
+private fun DashboardLoadingSkeleton() {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = TemplateScreenPadding),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+        Spacer(Modifier.height(8.dp))
+        Text(
+            "Checking cloud backup...",
+            style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        PremiumSkeletonBlock(height = 150.dp, radius = TemplateHeroRadius)
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            PremiumSkeletonBlock(Modifier.weight(1f), height = 72.dp)
+            PremiumSkeletonBlock(Modifier.weight(1f), height = 72.dp)
+        }
+        PremiumSkeletonBlock(height = 116.dp, radius = TemplatePanelRadius)
+        PremiumSkeletonBlock(height = 92.dp, radius = TemplateCardRadius)
+    }
+}
+
+@Composable
 private fun MovementMiniCard(
     title: String,
     value: String,
@@ -808,11 +843,27 @@ private fun MovementMiniCard(
         border = BorderStroke(0.5.dp, color.copy(alpha = 0.20f)),
     ) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-            Text(title, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            DashboardCaption(title)
             Text(value, style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.ExtraBold), color = color, maxLines = 1)
-            Text(detail, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+            DashboardCaption(detail, maxLines = 1)
         }
     }
+}
+
+@Composable
+private fun DashboardCaption(
+    text: String,
+    modifier: Modifier = Modifier,
+    maxLines: Int = 2,
+    color: Color = MaterialTheme.colorScheme.onSurfaceVariant,
+) {
+    Text(
+        text,
+        modifier = modifier,
+        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium),
+        color = color.copy(alpha = 0.86f),
+        maxLines = maxLines,
+    )
 }
 
 @Composable
@@ -823,7 +874,7 @@ private fun TodayNetWorthMovementCard(
     isPrivacy: Boolean,
     onOpenHistory: () -> Unit,
 ) {
-    val netText = if (isPrivacy) "••••" else CurrencyFormatter.listRow(movement.netFlow, currencyCode, locale)
+    val netText = if (isPrivacy) "Hidden" else CurrencyFormatter.listRow(movement.netFlow, currencyCode, locale)
     val title = when {
         movement.entries == 0 -> "No money changes today"
         movement.netFlow > 0.005 -> "Net worth moved up today"
@@ -861,11 +912,7 @@ private fun TodayNetWorthMovementCard(
                     title,
                     style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.ExtraBold),
                 )
-                Text(
-                    detail,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                DashboardCaption(detail)
             }
             Icon(Icons.AutoMirrored.Default.ArrowForward, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
@@ -881,7 +928,7 @@ private fun MonthlyReviewCard(
     onOpenMonthly: () -> Unit,
 ) {
     fun money(value: Double): String =
-        if (isPrivacy) "••••" else CurrencyFormatter.listRow(value, currencyCode, locale)
+        if (isPrivacy) "Hidden" else CurrencyFormatter.listRow(value, currencyCode, locale)
 
     Surface(
         onClick = onOpenMonthly,
@@ -901,11 +948,7 @@ private fun MonthlyReviewCard(
                         "Review this month",
                         style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.ExtraBold),
                     )
-                    Text(
-                        "${movement.entries} ledger entries recorded",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                    DashboardCaption("${movement.entries} ledger entries recorded")
                 }
                 Icon(Icons.AutoMirrored.Default.ArrowForward, null, tint = Emerald500)
             }
@@ -930,7 +973,7 @@ private fun MonthlyReviewMetric(
         color = color.copy(alpha = 0.10f),
     ) {
         Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            DashboardCaption(label, maxLines = 1)
             Text(value, style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold), color = color, maxLines = 1)
         }
     }
@@ -1140,11 +1183,7 @@ private fun DashboardConfidenceCard(
                     style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.ExtraBold),
                     color = MaterialTheme.colorScheme.onSurface,
                 )
-                Text(
-                    "$syncLabel - Last activity $freshness",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                DashboardCaption("$syncLabel - Last activity $freshness", maxLines = 1)
             }
             Text(
                 "${report.score}/100",
@@ -1322,7 +1361,7 @@ private fun EmptyAccountsCard(
                 }
                 Column(Modifier.weight(1f)) {
                     Text("No accounts yet", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold))
-                    Text("Add cash or a bank account to start tracking balances.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    DashboardCaption("Add cash or a bank account to start tracking balances.")
                 }
             }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -1367,16 +1406,30 @@ private fun SectionHeader(title: String) {
 
 @Composable
 private fun NeoAction(label: String, icon: ImageVector, color: Color, modifier: Modifier, onClick: () -> Unit) {
-    Column(
-        modifier = modifier.clip(RoundedCornerShape(16.dp)).clickable(onClick = onClick).padding(vertical = 4.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+    Surface(
+        onClick = onClick,
+        modifier = modifier.heightIn(min = 58.dp),
+        shape = RoundedCornerShape(15.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = 0.86f),
+        tonalElevation = 0.dp,
+        shadowElevation = 0.dp,
+        border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.34f)),
     ) {
-        Box(Modifier.size(52.dp).clip(RoundedCornerShape(16.dp)).background(color.copy(alpha = 0.12f)), Alignment.Center) {
-            Icon(icon, null, Modifier.size(22.dp), tint = color)
+        Column(
+            modifier = Modifier.padding(horizontal = 5.dp, vertical = 8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(5.dp),
+        ) {
+            Box(Modifier.size(30.dp).clip(RoundedCornerShape(12.dp)).background(color.copy(alpha = 0.11f)), Alignment.Center) {
+                Icon(icon, null, Modifier.size(18.dp), tint = color)
+            }
+            Text(
+                label,
+                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+            )
         }
-        Text(label, style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium),
-            color = MaterialTheme.colorScheme.onSurface)
     }
 }
 
@@ -1389,45 +1442,48 @@ private fun NeoAccountRow(
     onClick: () -> Unit,
     onEdit: (() -> Unit)?= null,
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .combinedClickable(
-                onClick = onClick,
-                onLongClick = onEdit,
-            )
-            .padding(vertical = 10.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
+    Surface(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 5.dp),
+        shape = RoundedCornerShape(18.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.60f),
+        border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.28f)),
+        tonalElevation = 0.dp,
     ) {
         Row(
-            modifier = Modifier.weight(1f),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .combinedClickable(
+                onClick = onClick,
+                onLongClick = onEdit,
+                )
+                .padding(horizontal = 12.dp, vertical = 10.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Box(Modifier.size(34.dp).clip(CircleShape).background(Emerald500.copy(alpha = 0.10f)), Alignment.Center) {
-                Icon(icon, null, Modifier.size(18.dp), tint = Emerald500)
+            Row(
+                modifier = Modifier.weight(1f),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Box(Modifier.size(38.dp).clip(RoundedCornerShape(14.dp)).background(Emerald500.copy(alpha = 0.12f)), Alignment.Center) {
+                    Icon(icon, null, Modifier.size(19.dp), tint = Emerald500)
+                }
+                Column(verticalArrangement = Arrangement.spacedBy(0.dp)) {
+                    Text(
+                        name,
+                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.ExtraBold),
+                        maxLines = 1,
+                    )
+                }
             }
-            Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
-                Text(
-                    name,
-                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
-                    maxLines = 1,
-                )
-                Text(
-                    "Tap for statement",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                )
-            }
+            Spacer(Modifier.width(12.dp))
+            Text(
+                balance,
+                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.ExtraBold),
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+            )
         }
-        Spacer(Modifier.width(12.dp))
-        Text(
-            balance,
-            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.ExtraBold),
-            maxLines = 1,
-        )
     }
 }
 

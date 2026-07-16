@@ -1,0 +1,62 @@
+{
+    "generated_at":  "2026-07-15T16:33:45+05:30",
+    "timezone":  "Asia/Kolkata",
+    "date_range":  {
+                       "start":  "2026-06-15",
+                       "end":  "2026-07-15"
+                   },
+    "repository":  "C:\\Users\\user\\AndroidStudioProjects\\Fynlo",
+    "branch":  "master",
+    "head":  "0b9673d29e7ab5e798d9ae04ff55a9ac2bb9d97b",
+    "package_purpose":  "Local forensic knowledge extraction and migration package for Fynlo/Fynlo Ledger.",
+    "rules":  [
+                  "production code not modified",
+                  "nothing uploaded",
+                  "secrets redacted if encountered",
+                  "manual verification separated from automated tests"
+              ],
+    "counts":  {
+                   "requirements":  32,
+                   "decisions":  20,
+                   "bugs":  26,
+                   "fixes":  28,
+                   "tests":  18,
+                   "verifications":  16,
+                   "open_issues":  10,
+                   "git_commits_in_range":  103,
+                   "source_index_rows":  36,
+                   "cloud_ingestion_chunks":  16
+               },
+    "files":  [
+                  "00_EXECUTIVE_OVERVIEW.md",
+                  "01_MASTER_PROJECT_CONTEXT.md",
+                  "02_MONTHLY_CHANGELOG.md",
+                  "03_REQUIREMENTS_AND_DECISIONS.md",
+                  "04_BUG_AND_FIX_REGISTER.md",
+                  "05_FINANCIAL_LOGIC_SPEC.md",
+                  "06_TEST_AND_VERIFICATION_MATRIX.md",
+                  "07_OPEN_ISSUES_AND_RELEASE_PLAN.md",
+                  "08_ARCHITECTURE_AND_FILE_MAP.md",
+                  "09_USER_PRODUCT_PREFERENCES.md",
+                  "10_SOURCE_INDEX.csv",
+                  "11_MIGRATION_MANIFEST.json",
+                  "12_CONTRADICTIONS_AND_UNCERTAINTIES.md",
+                  "13_NEW_AGENT_BOOTSTRAP_PROMPT.md",
+                  "14_CLOUD_INGESTION_CHUNKS.jsonl"
+              ],
+    "top_unresolved_risks":  [
+                                 "Full production cloud round-trip needs a fresh controlled verification record.",
+                                 "Dev Google sign-in requires real dev Firebase/OAuth configuration or a clear disabled-state message.",
+                                 "Old historical interest rows can still require user review instead of automatic guessing.",
+                                 "Dark mode and inset-sensitive screens should be visually audited before each release.",
+                                 "External internal-tester mismatches reported on older versions must be retested on the latest build."
+                             ],
+    "inaccessible_or_partial_sources":  [
+                                            "Some screenshots and pasted attachments from the long conversation were not individually re-read during this extraction.",
+                                            "Google Play Console state is based on user reports/screenshots, not direct console API export.",
+                                            "Phone verification claims are preserved as user-reported unless explicitly tied to automated commands."
+                                        ],
+    "redaction_policy":  "No secrets, private auth data, SHA values, or credentials are included. If encountered, use [REDACTED].",
+    "last_updated_at":  "2026-07-16T08:45:00+05:30",
+    "latest_update_note":  "2026-07-16 scrollable headers and compact quick actions logged; no accounting or sync logic changed."
+}

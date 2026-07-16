@@ -1,3 +1,27 @@
+## 2026-07-16 - Scrollable Headers and Compact Action Fix
+
+- Dashboard quick actions were redesigned as compact minimal action surfaces after phone screenshots showed the row looked corrupted.
+- Invest portfolio summary was reduced so the holdings list appears sooner and the screen does not feel oversized.
+- Invest, Loans, Reports, and Expenses now keep page headers/hero sections inside their scroll content instead of pinning them under the app chrome.
+- No accounting, Firestore, sync, account, loan, debt, investment, auth, or schema logic changed.
+- Verification passed: prod-debug Kotlin compile and prod-debug unit tests.
+## 2026-07-15 - Premium Motion and Loading UX Pass
+
+- Added adaptive bottom navigation: main tab screens keep the full labeled floating bar at rest, compress to a shorter icon-focused bar while scrolling down, and expand again on upward scroll.
+- Dashboard cloud-check/loading now uses skeleton blocks instead of a center spinner.
+- No financial/accounting/sync logic changed.
+- Verification passed: prod-debug Kotlin compile and prod-debug unit tests.
+
+## 2026-07-15 - Behind-the-App Credibility Check
+
+- User reported manual phone smoke as good; this pass checked backend/config/release safety behind the visible app.
+- Passed: prod-debug Kotlin compile and prod-debug unit tests.
+- Checked: developer tools are dev-debug gated, production network security disables cleartext, Android Auto Backup excludes Room/PIN/DataStore, app label remains Fynlo Ledger, and latest release artifacts exist.
+- Checked: Firestore rules keep user data under `/users/{userId}`, require authenticated owner access for user collections, and deny all other unmatched paths.
+- Secret-style scan found no actual committed secrets in app/docs/migration package.
+- User confirmed the controlled cloud round-trip check was completed. Treat cloud/local parity as `PHONE VERIFIED BY USER` unless a later mismatch is reported.
+- Limitation: lint and full release-readiness Gradle verification exceeded the local timeout window; rerun those with a longer timeout before the next Play upload.
+
 # Fynlo Ledger Release Knowledge Hub - Internal Testing 3.2.106
 
 ## 2026-07-03 - Search Insets and Book Check Grouping
@@ -10,8 +34,8 @@
 ## 2026-07-03 - Audit Matrix Status
 
 - The user manually phone-verified the latest 17 local UI/accounting audit items in the developer app. Mark those local phone checks as `PHONE VERIFIED BY USER`.
-- Cloud/local parity remains `LOCAL VERIFIED, CLOUD ROUND-TRIP PENDING` until a signed-in sync, restart or fresh install, cloud reload, and number-by-number comparison is completed.
-- Release AAB work remains gated by that cloud round-trip check unless the owner explicitly accepts the pending risk.
+- Cloud/local parity was later user-confirmed as completed after sign-in/sync testing. Treat it as `PHONE VERIFIED BY USER` unless a new mismatch is reported.
+- Release AAB work is no longer gated by that cloud round-trip item, but still needs normal longer lint/release-readiness verification before Play upload.
 - Profile & Security guest-mode sign-in was fixed: the screen now exposes an enabled `Sign in with Google` button, shows `Signing in...` / safe failure text / `Cloud backup active`, and starts cloud backup after successful auth. Developer app install/launch plus UI hierarchy confirmed the button is visible and tappable. Account selection and full cloud round-trip remain pending user-side confirmation.
 
 ## 2026-07-01 - Phone Visual Fixes After User Screenshots
@@ -1472,3 +1496,20 @@ Phone smoke still recommended before a new AAB:
 - Fresh AAB: `app/build/outputs/bundle/prodRelease/app-prod-release.aab`.
 - Native symbols ZIP for Play Console: `app/build/outputs/native-debug-symbols/prodRelease/fynlo-prod-release-native-symbols.zip`.
 - Verification passed: `:app:compileProdDebugKotlin`, `:app:testProdDebugUnitTest`, `:app:installProdDebug`, `:app:installDevDebug`, launch sanity for both packages, and `:app:verifyProdReleasePlayReadiness`.
+
+### 2026-07-15 - Premium Minimal design-system pass
+- Direction applied: Premium Minimal + Soft Neo-Glass + Bento structure, with clarity first and visual effects kept light for performance.
+- Shared ledger cards, panels, rows, and metric cards now use the same soft surface, subtle border, and low-elevation treatment.
+- Added reusable premium primitives: `PremiumSoftGlassPanel` for future hero/confirmation/bento sections and `PremiumSkeletonBlock` for loading states.
+- Dashboard initial cloud-check loading now uses shared skeleton blocks instead of a private one-off skeleton.
+- Bottom navigation now has theme-aware soft-glass color, smoother selected-state scaling, and selected colors that remain readable in dark mode.
+- Global Material shape tokens were tuned slightly more premium while preserving readable, compact finance layouts.
+- Scope: visual system, loading, and navigation polish only. No accounting, sync, Firestore, auth, or schema behavior changed.
+- Verification passed: `:app:compileProdDebugKotlin` and `:app:testProdDebugUnitTest`.
+
+### 2026-07-16 - Visible premium dashboard/invest pass
+- User feedback: the premium style was still too subtle on-phone, especially on Dashboard and Invest.
+- Dashboard now shows stronger glass tiles inside the net-worth hero, compact premium quick-action tiles, and softly raised account rows instead of divider-only rows.
+- Invest now uses the emerald hero style for portfolio value and stronger soft-glass holding cards with clearer value/invested/funding grouping.
+- Scope: visible UI hierarchy only. No accounting, loan/debt/investment calculation logic, balance mutation, sync, Firestore, auth, or schema behavior changed.
+- Verification passed: `:app:compileProdDebugKotlin` and `:app:testProdDebugUnitTest`.

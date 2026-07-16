@@ -149,7 +149,7 @@ fun LoansHubScreen(
         )
     }
 
-    Column(Modifier.fillMaxSize()) {
+    val hubTopContent: @Composable () -> Unit = {
         PremiumScreenHeader(
             title = "Loans",
             subtitle = if (tab == 0) "Money you've lent out" else "Money you owe",
@@ -172,9 +172,6 @@ fun LoansHubScreen(
             },
         )
 
-        // C12 Stage 1 hero block — Total Outstanding for the active tab,
-        // hidden when the tab has zero entries (the Lent/Owed segmented +
-        // empty-state messaging in the child screen handles that case).
         LoansReadableSummary(
             countLabel = if (tab == 0) "Borrowers" else "Debtors",
             count = heroCount,
@@ -184,11 +181,11 @@ fun LoansHubScreen(
             interestLabel = if (tab == 0) "Interest Due" else "Interest Payable",
             interestValue = if (isPrivacy) "Hidden" else CurrencyFormatter.detail(interestAmount, currencyCode, locale),
             interestColor = if (interestAmount > 0.0) SemanticRed else MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(horizontal = TemplateScreenPadding, vertical = 8.dp),
+            modifier = Modifier.padding(vertical = 8.dp),
         )
 
         Row(
-            Modifier.fillMaxWidth().padding(horizontal = TemplateScreenPadding, vertical = 4.dp),
+            Modifier.fillMaxWidth().padding(vertical = 4.dp),
             horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp),
         ) {
             TemplatePill(
@@ -204,13 +201,17 @@ fun LoansHubScreen(
                 modifier = Modifier.weight(1f),
             )
         }
+    }
+
+    Column(Modifier.fillMaxSize()) {
         Box(Modifier.weight(1f)) {
             if (tab == 0) {
                 LendingScreen(
                     viewModel = viewModel,
                     onNavigateToDetail = onNavigateToDetail,
                     onNavigateToCalendar = onNavigateToCalendar,
-                    showHeader = false
+                    showHeader = false,
+                    topContent = hubTopContent,
                 )
             } else {
                 DebtScreen(
@@ -218,6 +219,7 @@ fun LoansHubScreen(
                     onNavigateToDetail     = onNavigateToDebtDetail,
                     onNavigateToPayoffPlan = onNavigateToPayoffPlan,
                     showHeader             = false,
+                    topContent             = hubTopContent,
                 )
             }
         }

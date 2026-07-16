@@ -128,7 +128,12 @@ val transactions by viewModel.transactions.collectAsState()
         )
     }
 
-    Column(modifier = Modifier.fillMaxSize()) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 16.dp)
+            .verticalScroll(rememberScrollState())
+    ) {
         PremiumScreenHeader(
             title = "Expenses",
             subtitle = "Track where your money goes",
@@ -145,9 +150,6 @@ val transactions by viewModel.transactions.collectAsState()
                 }
             },
         )
-        Column(
-        modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp)
-    ) {
         // C13 (3.2.23) - removed the in-page "Add" FilledTonalButton row that
         // sat above the Month selector. Per audit fix #4 ("remove duplicate
         // add entry points"), the Scaffold-level FAB owned by Navigation
@@ -171,8 +173,7 @@ val transactions by viewModel.transactions.collectAsState()
                 }
             }
 
-            Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-                // C13 (3.2.23) - Home archetype hero. Per audit acceptance
+            // C13 (3.2.23) - Home archetype hero. Per audit acceptance
                 // "1-second readability": big number + MoM delta + top-category
                 // callout. The delta line uses an arrow + colour to signal
                 // direction (down green = spent less / up red = spent more). Hidden
@@ -340,8 +341,6 @@ val transactions by viewModel.transactions.collectAsState()
                 Spacer(Modifier.height(FabBottomPadding))
             }
     }
-    }
-}
 
 @Composable
 private fun ExpenseRow(

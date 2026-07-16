@@ -147,13 +147,12 @@ fun ReportsHubScreen(
     val red   = SemanticRed
     val blue  = SemanticBlue
 
-    Column(modifier = Modifier.fillMaxSize()) {
+    Column(
+        modifier = Modifier.fillMaxSize()
+            .padding(horizontal = 16.dp)
+            .verticalScroll(rememberScrollState())
+    ) {
         PremiumScreenHeader("Reports", subtitle = "Open a report to drill in")
-        Column(
-            modifier = Modifier.fillMaxSize()
-                .padding(horizontal = 16.dp)
-                .verticalScroll(rememberScrollState())
-        ) {
             // Export-PDF button kept - top-right utility, shared across detail
             // screens. PDF is generated against the active range below.
             Row(
@@ -318,7 +317,6 @@ fun ReportsHubScreen(
 
             Spacer(Modifier.height(48.dp))
         }
-    }
 }
 
 @Composable

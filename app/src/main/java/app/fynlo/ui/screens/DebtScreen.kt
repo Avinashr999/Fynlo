@@ -53,7 +53,8 @@ fun DebtScreen(
     // bottom-nav "Debts" tab couldn't see the planner; adding an explicit
     // tile here surfaces it where users actually look for debt features.
     onNavigateToPayoffPlan: () -> Unit = {},
-    showHeader: Boolean = true
+    showHeader: Boolean = true,
+    topContent: (@Composable () -> Unit)? = null,
 ) {
     LaunchedEffect(Unit) { app.fynlo.data.Analytics.screenView("Debts") }
         val haptic = LocalHapticFeedback.current
@@ -122,13 +123,17 @@ val debts by viewModel.debts.collectAsState()
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        if (showHeader) PremiumScreenHeader("My Debts", subtitle = "Loans you owe to others")
         Box(modifier = Modifier.weight(1f)) {
         app.fynlo.ui.components.PullRefresh(viewModel) {
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
             contentPadding = PaddingValues(bottom = FabBottomPadding)
         ) {
+        if (topContent != null || showHeader) {
+            item {
+                if (topContent != null) topContent() else PremiumScreenHeader("My Debts", subtitle = "Loans you owe to others")
+            }
+        }
         item {
         if (showHeader) {
             Row(Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 4.dp), Arrangement.End, Alignment.CenterVertically) {
