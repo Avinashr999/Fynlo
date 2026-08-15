@@ -202,6 +202,7 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
             onRepeatMonthly = { txn -> viewModel.addRecurringTransaction(app.fynlo.logic.toRecurringTemplate(txn)) },
             currencyCode    = currencyCode,
             initialIsIncome = addTxnIncome,
+            cashAccounts    = accounts.filter { it.type.equals("Cash", ignoreCase = true) }.map { it.name },
             bankAccounts    = activeAccountNames,
             investmentNames = allInvestmentsHome.map { it.name },
             debtNames       = allDebtsHome.map { it.name },
@@ -1116,7 +1117,7 @@ private fun dashboardFreshnessLabel(
         )
         .toString()
         .replaceFirstChar { it.lowercase(locale) }
-    return "Updated $label"
+    return "Records updated $label"
 }
 
 @Composable

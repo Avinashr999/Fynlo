@@ -48,6 +48,12 @@ import app.fynlo.ui.theme.ThemeController
 import app.fynlo.ui.theme.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 
 private val Green = Emerald500
 private val Blue  = SemanticBlue
@@ -996,11 +1002,11 @@ fun SettingsScreen(
                 SettingsActionRow(
                     icon = Icons.Default.SyncProblem,
                     color = if (openSyncConflicts.isEmpty()) Green else Amber,
-                    title = "Sync conflict review",
+                    title = "Cloud backup review",
                     subtitle = if (openSyncConflicts.isEmpty()) {
-                        "No offline edit conflicts waiting."
+                        "No phone/cloud edit conflicts waiting."
                     } else {
-                        "${openSyncConflicts.size} offline edits need review before you fully trust cloud sync."
+                        "${openSyncConflicts.size} edit${if (openSyncConflicts.size == 1) "" else "s"} changed on this phone and cloud. Review before trusting backup."
                     }
                 ) { showSyncConflicts = true }
 
@@ -2204,13 +2210,13 @@ private fun SyncConflictDialog(
     onDismiss: () -> Unit,
 ) {
     FormDialog(
-        title = "Sync conflict review",
-        subtitle = if (conflicts.isEmpty()) "No open conflicts" else "${conflicts.size} item${if (conflicts.size == 1) "" else "s"} need review",
+        title = "Cloud backup review",
+        subtitle = if (conflicts.isEmpty()) "No open conflicts" else "${conflicts.size} item${if (conflicts.size == 1) "" else "s"} need a choice",
         onDismiss = onDismiss,
     ) {
         if (conflicts.isEmpty()) {
             Text(
-                "Offline and cloud data are aligned right now.",
+                "This phone and cloud backup are aligned right now.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -2227,11 +2233,11 @@ private fun SyncConflictDialog(
                             verticalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
                             Text(
-                                "${conflict.collection.replace('_', ' ').replaceFirstChar { it.uppercase() }} conflict",
+                                "${friendlyConflictCollection(conflict.collection)} changed in two places",
                                 style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
                             )
                             Text(
-                                "A cloud copy and this phone both changed this item while offline. Choose which copy should become the final ledger record.",
+                                "This phone and cloud backup both changed this item. Choose the copy that should be kept.",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -2247,7 +2253,7 @@ private fun SyncConflictDialog(
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                             ) {
                                 ConflictSnapshotCard(
-                                    title = "This phone",
+                                    title = "Phone copy",
                                     value = conflict.localJson,
                                     modifier = Modifier.weight(1f),
                                 )
@@ -2325,21 +2331,67 @@ private fun ConflictSnapshotCard(
 
 private fun readableConflictPreview(value: String): String {
     if (value.isBlank()) return "No saved preview"
-    return value
-        .trim()
-        .removePrefix("{")
-        .removeSuffix("}")
-        .split("\",\"")
-        .map { it.replace("\"", "").replace("\\/", "/").replace(":", ": ") }
-        .filterNot { item ->
-            item.startsWith("id: ") ||
-                item.startsWith("projectId: ") ||
-                item.startsWith("createdAt: ") ||
-                item.startsWith("updatedAt: ")
+    return runCatching {
+        val fields = Json.parseToJsonElement(value).jsonObject
+        friendlyConflictFields(fields)
+    }.getOrNull()
+        ?.takeIf { it.isNotBlank() }
+        ?: value.take(220)
+}
+
+private fun friendlyConflictCollection(collection: String): String {
+    return when (collection.lowercase()) {
+        "accounts" -> "Account"
+        "transactions" -> "Transaction"
+        "borrowers", "lending" -> "Loan"
+        "debts" -> "Debt"
+        "investments" -> "Investment"
+        "projects" -> "Book"
+        else -> collection.replace('_', ' ').replaceFirstChar { it.uppercase() }
+    }
+}
+
+private fun friendlyConflictFields(fields: JsonObject): String {
+    val priority = listOf(
+        "name", "title", "description", "category", "type", "date", "loanDate", "borrowedDate", "dueDate",
+        "amount", "principal", "balance", "paid", "paidPrincipal", "paidInterest", "rate",
+        "account", "fromAcct", "fromAcctId", "toAcct", "toAcctId", "fundingSource", "currentValue", "invested",
+    )
+    return priority
+        .mapNotNull { key ->
+            val label = friendlyConflictLabel(key) ?: return@mapNotNull null
+            val raw = (fields[key] as? JsonPrimitive)?.jsonPrimitive?.contentOrNull
+                ?: fields[key]?.toString()?.trim('"')
+                ?: return@mapNotNull null
+            raw.takeIf { it.isNotBlank() && it != "null" }?.let { "$label: $it" }
         }
         .take(5)
         .joinToString("\n")
-        .ifBlank { value.take(260) }
+}
+
+private fun friendlyConflictLabel(key: String): String? {
+    return when (key) {
+        "name", "title" -> "Name"
+        "description" -> "Note"
+        "category" -> "Category"
+        "type" -> "Type"
+        "date", "loanDate", "borrowedDate" -> "Date"
+        "dueDate" -> "Due date"
+        "amount" -> "Amount"
+        "principal" -> "Principal"
+        "balance" -> "Balance"
+        "paid" -> "Paid"
+        "paidPrincipal" -> "Principal paid"
+        "paidInterest" -> "Interest paid"
+        "rate" -> "Interest rate"
+        "account" -> "Account"
+        "fromAcct", "fromAcctId" -> "From account"
+        "toAcct", "toAcctId" -> "To account"
+        "fundingSource" -> "Funded from"
+        "currentValue" -> "Current value"
+        "invested" -> "Invested"
+        else -> null
+    }
 }
 
 private data class ProofGap(
@@ -2501,12 +2553,11 @@ private fun ProofVaultDialog(
                 }
             }
 
-            Button(
+            TemplatePrimaryButton(
+                text = "Done",
                 onClick = onDismiss,
                 modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(containerColor = Emerald500),
-                shape = RoundedCornerShape(14.dp),
-            ) { Text("Done") }
+            )
         }
     }
 }
@@ -2704,12 +2755,11 @@ private fun LaunchReadinessDialog(
                 LaunchReadinessRow(item)
             }
 
-            Button(
+            TemplatePrimaryButton(
+                text = "Done",
                 onClick = onDismiss,
                 modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(containerColor = Emerald500),
-                shape = RoundedCornerShape(14.dp),
-            ) { Text("Done") }
+            )
         }
     }
 }
@@ -3178,8 +3228,6 @@ private fun LedgerIssueRow(
         title = userFacingLedgerIssueTitle(issue),
         detail = userFacingLedgerIssueDetail(issue),
         accent = color,
-        explanation = ledgerIssueExplanation(issue),
-        suggestion = ledgerIssueSuggestion(issue),
         onClick = onOpen,
     )
 }
@@ -3202,7 +3250,7 @@ private fun userFacingLedgerIssueTitle(issue: app.fynlo.logic.LedgerIssue): Stri
 }
 
 private fun userFacingLedgerIssueDetail(issue: app.fynlo.logic.LedgerIssue): String {
-    return issue.detail
+    val cleaned = issue.detail
         .replace("ledger trace", "money path", ignoreCase = true)
         .replace("trace", "money path", ignoreCase = true)
         .replace("ledger", "book", ignoreCase = true)
@@ -3210,6 +3258,14 @@ private fun userFacingLedgerIssueDetail(issue: app.fynlo.logic.LedgerIssue): Str
         .replace("linked-row", "saved record", ignoreCase = true)
         .replace("source account id", "source account", ignoreCase = true)
         .replace("destination account id", "destination account", ignoreCase = true)
+    return when {
+        "interest payment" in issue.title.lowercase() ->
+            cleaned
+                .substringBefore(". Choose whether")
+                .substringBefore(". Open this")
+                .let { "$it. Review where this interest belongs." }
+        else -> cleaned
+    }
 }
 @Composable
 private fun LedgerInfoCard(

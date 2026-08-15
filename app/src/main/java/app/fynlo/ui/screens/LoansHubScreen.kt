@@ -41,8 +41,7 @@ import app.fynlo.ui.theme.Emerald500
 import app.fynlo.ui.theme.SemanticRed
 import app.fynlo.ui.theme.PremiumScreenHeader
 import app.fynlo.ui.theme.TemplatePill
-import app.fynlo.ui.theme.TemplateScreenPadding
-import app.fynlo.ui.theme.TemplateBorder
+import app.fynlo.ui.theme.Emerald100
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 
@@ -181,11 +180,11 @@ fun LoansHubScreen(
             interestLabel = if (tab == 0) "Interest Due" else "Interest Payable",
             interestValue = if (isPrivacy) "Hidden" else CurrencyFormatter.detail(interestAmount, currencyCode, locale),
             interestColor = if (interestAmount > 0.0) SemanticRed else MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(vertical = 8.dp),
+            modifier = Modifier.padding(top = 4.dp, bottom = 6.dp),
         )
 
         Row(
-            Modifier.fillMaxWidth().padding(vertical = 4.dp),
+            Modifier.fillMaxWidth().padding(bottom = 4.dp),
             horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp),
         ) {
             TemplatePill(
@@ -240,11 +239,11 @@ private fun LoansReadableSummary(
 ) {
     Surface(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
-        color = MaterialTheme.colorScheme.surface,
-        border = BorderStroke(0.8.dp, TemplateBorder),
+        shape = RoundedCornerShape(18.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerLowest,
+        border = BorderStroke(0.7.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f)),
     ) {
-        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
             Row(
                 Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -257,18 +256,18 @@ private fun LoansReadableSummary(
                 )
                 Surface(
                     shape = RoundedCornerShape(999.dp),
-                    color = Emerald500.copy(alpha = 0.10f),
-                    border = BorderStroke(0.6.dp, Emerald500.copy(alpha = 0.18f)),
+                    color = if (count > 0) Emerald100.copy(alpha = 0.7f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.65f),
+                    border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)),
                 ) {
                     Text(
                         "$count $countLabel",
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                        modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.dp),
                         style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-                        color = Emerald500,
+                        color = if (count > 0) Emerald500 else MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 LoanMoneyStat(
                     label = principalLabel,
                     value = principalValue,
@@ -294,13 +293,13 @@ private fun LoanMoneyStat(
     modifier: Modifier = Modifier,
 ) {
     Surface(
-        modifier = modifier.height(76.dp),
-        shape = RoundedCornerShape(16.dp),
-        color = color.copy(alpha = 0.08f),
+        modifier = modifier.height(68.dp),
+        shape = RoundedCornerShape(14.dp),
+        color = color.copy(alpha = if (color == SemanticRed) 0.075f else 0.065f),
     ) {
         Column(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
-            verticalArrangement = Arrangement.spacedBy(5.dp),
+            modifier = Modifier.padding(horizontal = 11.dp, vertical = 9.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             Text(
                 label.uppercase(),
@@ -311,7 +310,7 @@ private fun LoanMoneyStat(
             )
             Text(
                 value,
-                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.ExtraBold),
+                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.ExtraBold),
                 color = color,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,

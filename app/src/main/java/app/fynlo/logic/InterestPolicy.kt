@@ -74,6 +74,66 @@ object InterestPolicy {
         asOf = effectiveAsOf(debt.due, debt.stopInterestAfterDue, asOf),
     )
 
+    private fun earlierDate(first: String, second: String): String =
+        runCatching {
+            val a = LocalDate.parse(first, ledgerFormatter)
+            val b = LocalDate.parse(second, ledgerFormatter)
+            if (a.isAfter(b)) second else first
+        }.getOrDefault(first)
+
+    private fun paymentAwareAccrued(
+        principal: Double,
+        rate: Double,
+        startDate: String,
+        interestType: String,
+        dueDate: String,
+        stopAfterDue: Boolean,
+        principalPayments: List<Pair<String, Double>>,
+        asOf: String,
+    ): Double {
+        if (principal <= 0.0 || rate == 0.0 || startDate.isBlank()) return 0.0
+        val effectiveAsOf = effectiveAsOf(dueDate, stopAfterDue, asOf)
+        val asOfDate = runCatching { LocalDate.parse(effectiveAsOf, ledgerFormatter) }.getOrNull() ?: return 0.0
+        var remainingPrincipal = principal
+        var accrued = 0.0
+
+        principalPayments
+            .filter { (_, amount) -> amount > 0.0 }
+            .mapNotNull { (date, amount) ->
+                val paidOn = runCatching { LocalDate.parse(date, ledgerFormatter) }.getOrNull() ?: return@mapNotNull null
+                if (paidOn.isAfter(asOfDate)) null else Triple(date, paidOn, amount)
+            }
+            .sortedBy { it.second }
+            .forEach { (paidDate, _, rawAmount) ->
+                val principalPortion = rawAmount.coerceAtMost(remainingPrincipal).coerceAtLeast(0.0)
+                if (principalPortion > 0.0) {
+                    accrued += InterestEngine.calcIntAccrued(
+                        amount = principalPortion,
+                        rate = rate,
+                        loanDate = startDate,
+                        intType = interestType,
+                        dueDate = dueDate,
+                        totalPaid = 0.0,
+                        asOf = earlierDate(paidDate, effectiveAsOf),
+                    )
+                    remainingPrincipal = (remainingPrincipal - principalPortion).coerceAtLeast(0.0)
+                }
+            }
+
+        if (remainingPrincipal > 0.0) {
+            accrued += InterestEngine.calcIntAccrued(
+                amount = remainingPrincipal,
+                rate = rate,
+                loanDate = startDate,
+                intType = interestType,
+                dueDate = dueDate,
+                totalPaid = 0.0,
+                asOf = effectiveAsOf,
+            )
+        }
+        return accrued
+    }
+
     fun borrowerInterestOutstanding(
         borrower: Borrower,
         asOf: String = LocalDate.now().format(ledgerFormatter),
@@ -107,8 +167,21 @@ object InterestPolicy {
         payments: List<Payment>,
         asOf: String = LocalDate.now().format(ledgerFormatter),
     ): InterestBreakdown {
-        val accrued = accruedForBorrower(borrower, asOf)
         val rows = payments.filter { it.loanId == borrower.id }
+        val accrued = if (borrower.status == "Defaulted" && borrower.frozenInterest > 0.0) {
+            borrower.frozenInterest
+        } else {
+            paymentAwareAccrued(
+                principal = borrower.amount,
+                rate = borrower.rate,
+                startDate = borrower.date,
+                interestType = borrower.intType,
+                dueDate = borrower.due,
+                stopAfterDue = borrower.stopInterestAfterDue,
+                principalPayments = rows.map { it.date to it.principal },
+                asOf = asOf,
+            )
+        }
         val currentPaid = rows
             .filter { isCurrentPeriodInterestPayment(it.interestAllocationType, paymentInterestAmount(it), it.interestPeriodStartDate, borrower.date) }
             .sumOf { paymentInterestAmount(it) }
@@ -160,8 +233,17 @@ object InterestPolicy {
         payments: List<DebtPayment>,
         asOf: String = LocalDate.now().format(ledgerFormatter),
     ): InterestBreakdown {
-        val accrued = accruedForDebt(debt, asOf)
         val rows = payments.filter { it.debtId == debt.id }
+        val accrued = paymentAwareAccrued(
+            principal = debt.amount,
+            rate = debt.rate,
+            startDate = debt.date,
+            interestType = debt.intType,
+            dueDate = debt.due,
+            stopAfterDue = debt.stopInterestAfterDue,
+            principalPayments = rows.map { it.date to it.principal },
+            asOf = asOf,
+        )
         val currentPaid = rows
             .filter { isCurrentPeriodInterestPayment(it.interestAllocationType, debtPaymentInterestAmount(it), it.interestPeriodStartDate, debt.date) }
             .sumOf { debtPaymentInterestAmount(it) }

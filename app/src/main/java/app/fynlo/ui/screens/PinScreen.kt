@@ -20,6 +20,7 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -129,7 +130,7 @@ fun PinScreen(
     }
 
     fun onKey(key: String) {
-        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
         if (pin.length >= 4) return
         val newPin = pin + key
         pin = newPin
@@ -183,13 +184,13 @@ fun PinScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
-            .padding(horizontal = 22.dp, vertical = 28.dp),
+            .padding(horizontal = 22.dp, vertical = 24.dp),
         contentAlignment = Alignment.Center,
     ) {
         Surface(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(28.dp),
-            color = MaterialTheme.colorScheme.surface,
+            color = MaterialTheme.colorScheme.surfaceContainerLowest,
             tonalElevation = 2.dp,
             shadowElevation = 0.dp,
             border = androidx.compose.foundation.BorderStroke(
@@ -199,8 +200,8 @@ fun PinScreen(
         ) {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(22.dp),
-                modifier = Modifier.padding(horizontal = 22.dp, vertical = 26.dp),
+                verticalArrangement = Arrangement.spacedBy(20.dp),
+                modifier = Modifier.padding(horizontal = 22.dp, vertical = 24.dp),
             ) {
                 Box(
                     modifier = Modifier
@@ -227,6 +228,7 @@ fun PinScreen(
                         subtitle,
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
                     )
                 }
 

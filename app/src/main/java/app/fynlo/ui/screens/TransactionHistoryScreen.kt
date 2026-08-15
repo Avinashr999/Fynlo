@@ -51,6 +51,7 @@ fun TransactionHistoryScreen(viewModel: FinanceViewModel) {
     val searchQuery by viewModel.searchQuery.collectAsState()
     val currentProject by viewModel.currentProject.collectAsState()
     val isPrivacy by viewModel.isPrivacyMode.collectAsState()
+    val syncStatus by viewModel.syncStatus.collectAsState()
     // 3.2.81 - account names for the edit dialog's new Account picker (C13 #9).
     val allAccounts by viewModel.accounts.collectAsState()
     val currencyCode = currentProject?.currency ?: "INR"
@@ -95,6 +96,9 @@ fun TransactionHistoryScreen(viewModel: FinanceViewModel) {
         selectedType != "All" ||
         fromDate.isNotBlank() ||
         toDate.isNotBlank()
+    val isInitialLoading = syncStatus is app.fynlo.data.SyncStatus.Initialising &&
+        allProjectTransactions.isEmpty() &&
+        !hasActiveFilters
     val hairline = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f)
     var bulkDeleteInProgress by remember { mutableStateOf(false) }
 
@@ -323,7 +327,15 @@ fun TransactionHistoryScreen(viewModel: FinanceViewModel) {
 
         Spacer(Modifier.height(8.dp))
 
-        if (filteredHistory.isEmpty()) {
+        if (isInitialLoading) {
+            Text(
+                "Loading history",
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.padding(top = 8.dp, bottom = 8.dp),
+            )
+            PremiumSkeletonList(rows = 5)
+        } else if (filteredHistory.isEmpty()) {
             EmptyTransactionState(
                 hasActiveFilters = hasActiveFilters,
                 onClearFilters = {
@@ -829,33 +841,45 @@ private fun RunningBalanceStrip(
     }
 
     Surface(
-        modifier = Modifier.padding(top = 7.dp),
-        shape = RoundedCornerShape(11.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.34f),
-        border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.34f)),
+        modifier = Modifier.fillMaxWidth().padding(top = 7.dp),
+        shape = RoundedCornerShape(13.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.28f),
+        border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.32f)),
     ) {
-        Row(
-            Modifier.padding(horizontal = 9.dp, vertical = 6.dp),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-            verticalAlignment = Alignment.CenterVertically,
+        Column(
+            Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
+            verticalArrangement = Arrangement.spacedBy(5.dp),
         ) {
-            RunningBalanceMetric(
-                label = "Before",
-                value = if (isPrivacy) "Hidden" else CurrencyFormatter.exact(impact.before, currencyCode, locale),
+            Text(
+                "Balance moved",
+                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
             )
-            Text("->", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            RunningBalanceMetric(
-                label = "Change",
-                value = changeText,
-                color = deltaColor,
-            )
-            Text("->", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            RunningBalanceMetric(
-                label = "After",
-                value = if (isPrivacy) "Hidden" else CurrencyFormatter.exact(impact.after, currencyCode, locale),
-                color = MaterialTheme.colorScheme.onSurface,
-            )
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                RunningBalanceMetric(
+                    label = "Before",
+                    value = if (isPrivacy) "Hidden" else CurrencyFormatter.exact(impact.before, currencyCode, locale),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.weight(1f),
+                )
+                RunningBalanceMetric(
+                    label = "Change",
+                    value = changeText,
+                    color = deltaColor,
+                    modifier = Modifier.weight(1f),
+                )
+                RunningBalanceMetric(
+                    label = "After",
+                    value = if (isPrivacy) "Hidden" else CurrencyFormatter.exact(impact.after, currencyCode, locale),
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.weight(1f),
+                )
+            }
         }
     }
 }
@@ -892,7 +916,7 @@ private fun transactionAccountTrace(
     val to = txn.displayToAcct(accountIdToName).takeIf { it.isNotBlank() }
     return when (txn.type.lowercase()) {
         "transfer" -> when {
-            from != null && to != null -> "From $from -> To $to"
+            from != null && to != null -> "Moved from $from to $to"
             from != null -> "From $from"
             to != null -> "To $to"
             else -> ""

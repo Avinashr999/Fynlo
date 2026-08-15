@@ -58,6 +58,7 @@ fun AddTransactionDialog(
     // is appended so genuinely-new accounts/investments/debts can still
     // be created. Defaults are empty so test/preview call sites still
     // construct cleanly - they just see the free-text fallback.
+    cashAccounts:    List<String> = emptyList(),
     bankAccounts:    List<String> = emptyList(),
     investmentNames: List<String> = emptyList(),
     debtNames:       List<String> = emptyList(),
@@ -135,6 +136,9 @@ fun AddTransactionDialog(
     val sources = listOf("Cash", "Bank", "Investment", "Debts", "Custom")
     var selectedSrc by remember { mutableStateOf(sources[0]) }
     var sourceDetailName by remember { mutableStateOf("") }
+    val resolvedCashAccounts = remember(cashAccounts) {
+        cashAccounts.distinct().ifEmpty { listOf("Personal Cash") }
+    }
 
     val accent = if (isIncome) Emerald500 else SemanticRed
     val dialogTitle = when {
@@ -232,8 +236,12 @@ fun AddTransactionDialog(
                     },
                 )
                 val sourceLabel = when (selectedSrc) {
-                    "Bank" -> "Which bank?"; "Investment" -> "Which investment?"
-                    "Debts" -> "Which debt / loan?"; "Custom" -> "Custom source name"; else -> ""
+                    "Cash" -> "Which cash account?"
+                    "Bank" -> "Which bank?"
+                    "Investment" -> "Which investment?"
+                    "Debts" -> "Which debt / loan?"
+                    "Custom" -> "Custom source name"
+                    else -> ""
                 }
                 // 3.2.59 - for Bank / Investment / Debts, pick the right
                 // backing list and render a dropdown of existing entities
@@ -243,6 +251,7 @@ fun AddTransactionDialog(
                 // accounts/investments/debts yet) the dropdown collapses
                 // to free-text so the user can still create one inline.
                 val sourceList: List<String> = when (selectedSrc) {
+                    "Cash"       -> resolvedCashAccounts
                     "Bank"       -> bankAccounts
                     "Investment" -> investmentNames
                     "Debts"      -> debtNames
@@ -322,7 +331,7 @@ fun AddTransactionDialog(
 
                 val previewAmount = amount.toDoubleOrNull() ?: 0.0
                 val previewAccount = when (selectedSrc) {
-                    "Cash" -> "Personal Cash"
+                    "Cash" -> sourceDetailName.ifBlank { resolvedCashAccounts.first() }
                     "Custom" -> sourceDetailName
                     else -> sourceDetailName.ifEmpty { selectedSrc }
                 }
@@ -404,7 +413,7 @@ fun AddTransactionDialog(
                         if (submitting) return@FormPrimaryButton
                         submitting = true
                         val finalAccount = when (selectedSrc) {
-                            "Cash" -> "Personal Cash"
+                            "Cash" -> sourceDetailName.ifBlank { resolvedCashAccounts.first() }
                             "Custom" -> sourceDetailName
                             else -> sourceDetailName.ifEmpty { selectedSrc }
                         }
@@ -573,7 +582,7 @@ private fun BasicTextFieldAmount(value: String, accent: androidx.compose.ui.grap
  *
  * - When the user has at least one matching entity, the dropdown lists
  *   them with the first option pre-selected on open.
- * - A trailing "+ Create newâ€¦" sentinel reveals a free-text input so
+ * - A trailing "+ Create new..." sentinel reveals a free-text input so
  *   genuinely-new entities can still be created inline.
  * - Custom is intentionally not routed here - Custom is the affordance
  *   for arbitrary names (e.g. "Friend Vikas") so free-text is correct.
@@ -586,7 +595,7 @@ private fun SourceDropdown(
     selected: String,
     onPick: (String) -> Unit,
 ) {
-    val createNew = "+ Create newâ€¦"
+    val createNew = "+ Create new..."
     var expanded by remember { mutableStateOf(false) }
     var createMode by remember(options) {
         // If the current value isn't in the option list AND isn't blank,

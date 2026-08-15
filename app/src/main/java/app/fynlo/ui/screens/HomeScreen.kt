@@ -76,6 +76,7 @@ fun HomeScreen(viewModel: FinanceViewModel, onNavigateToScreen: (String) -> Unit
             // 3.2.81 (C13 #5) — "Repeat monthly?" → also create a recurring template.
             onRepeatMonthly = { txn -> viewModel.addRecurringTransaction(app.fynlo.logic.toRecurringTemplate(txn)) },
             currencyCode    = currencyCode,
+            cashAccounts    = accounts.filter { it.type.equals("Cash", ignoreCase = true) }.map { it.name },
             bankAccounts    = accounts.map { it.name },
             investmentNames = allInvestments.map { it.name },
             debtNames       = allDebts.map { it.name },

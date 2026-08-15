@@ -308,7 +308,7 @@ fun CollectPaymentDialog(
                         readOnly = true,
                         label = { Text("Deposit into account") },
                         supportingText = {
-                            Text("${selectedAccount.type}  *  Balance: ${CurrencyFormatter.exact(selectedAccount.balance, currencyCode, locale)}",
+                            Text("${selectedAccount.type} - Balance: ${CurrencyFormatter.exact(selectedAccount.balance, currencyCode, locale)}",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.primary)
                         },
@@ -351,10 +351,10 @@ fun CollectPaymentDialog(
                 }
                 Spacer(Modifier.height(12.dp))
 
-                OutlinedTextField(
-                    value = date, onValueChange = { date = it },
-                    label = { Text("Payment Date (DD-MM-YYYY)") },
-                    modifier = Modifier.fillMaxWidth()
+                DatePickerField(
+                    value = date,
+                    onValueChange = { date = it },
+                    label = "Payment Date",
                 )
                 Spacer(Modifier.height(12.dp))
 
@@ -624,7 +624,7 @@ fun PayDebtDialog(
                     OutlinedTextField(value = selectedAccount.name, onValueChange = {}, readOnly = true,
                         label = { Text("Pay from account") },
                         supportingText = {
-                            Text("${selectedAccount.type}  *  Balance: ${CurrencyFormatter.exact(selectedAccount.balance, currencyCode, locale)}",
+                            Text("${selectedAccount.type} - Balance: ${CurrencyFormatter.exact(selectedAccount.balance, currencyCode, locale)}",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.primary)
                         },
@@ -665,8 +665,11 @@ fun PayDebtDialog(
                 }
                 Spacer(Modifier.height(12.dp))
 
-                OutlinedTextField(value = date, onValueChange = { date = it },
-                    label = { Text("Payment Date (DD-MM-YYYY)") }, modifier = Modifier.fillMaxWidth())
+                DatePickerField(
+                    value = date,
+                    onValueChange = { date = it },
+                    label = "Payment Date",
+                )
                 Spacer(Modifier.height(12.dp))
 
                 OutlinedTextField(value = notes, onValueChange = { notes = it },

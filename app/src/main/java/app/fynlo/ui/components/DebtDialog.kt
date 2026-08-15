@@ -155,7 +155,7 @@ fun AddDebtDialog(
                             readOnly = true,
                             label = { Text("Received into Account") },
                             supportingText = {
-                                Text("${selectedAccount.type}  *  Balance: ${CurrencyFormatter.exact(selectedAccount.balance, currencyCode, locale)}",
+                                Text("${selectedAccount.type} - Balance: ${CurrencyFormatter.exact(selectedAccount.balance, currencyCode, locale)}",
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.primary)
                             },

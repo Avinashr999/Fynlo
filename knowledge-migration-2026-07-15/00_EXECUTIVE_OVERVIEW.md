@@ -31,13 +31,13 @@ Major themes:
 | Open issues / risks | 10 |
 | Git commits in date range | 103 |
 
-## Top 5 Unresolved Risks
+## Top 5 Remaining Gates After 2026-08-15 Cleanup
 
-1. Full cloud round-trip verification needs one clean recorded run on the latest build.
-2. Developer Google sign-in still depends on correct dev Firebase/OAuth configuration.
-3. Old historical interest rows can still need user review rather than automatic guessing.
-4. Dark mode and inset-sensitive screens need final visual checks after each UI pass.
-5. Internal testers who saw mismatched totals on older builds should retest on the latest build.
+1. Repeat cloud round-trip only when auth/sync code changes again; latest project state records it as phone-verified by user.
+2. Developer Google sign-in remains configuration-gated unless Firebase/OAuth/SHA setup is completed for `app.fynlo.dev`.
+3. Old historical interest rows may still need user review; the app must not guess and mutate old money history silently.
+4. Dark mode and inset-sensitive screens need a short visual sweep before every release build.
+5. Internal testers who saw mismatched totals on older builds should retest the latest internal build with known clean data.
 
 ## Most Important Rule For Future Work
 

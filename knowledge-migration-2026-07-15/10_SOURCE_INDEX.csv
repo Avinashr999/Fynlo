@@ -1,4 +1,4 @@
-﻿id,type,path_or_source,access,status,notes
+id,type,path_or_source,access,status,notes
 SRC-001,doc,PROJECT_STATE_FOR_AI.md,local,used,Primary project state and running release notes
 SRC-002,doc,docs/release-handoff/2026-06-20-internal-testing-knowledge-hub.md,local,used,Play/internal testing and release knowledge hub
 SRC-003,doc,RELEASE_WORKLOG_2026-06-12_TO_2026-06-15.md,local,used,Pre-window worklog context
@@ -35,3 +35,14 @@ SRC-102,conversation,current thread summary,local summary,used,Compacted convers
 SRC-103,attachments,screenshots and pasted text,partially accessible,partial,Not all raw attachments were re-read before migration
 SRC-104,manual,user phone testing reports,conversation,used,Manual verification claims are labeled separately
 SRC-105,external,Google Play Console screens/uploads,user-reported,used,No direct Play Console access in this extraction
+SRC-201,attachment,.codex-remote-attachments/019ecb17-965a-7de1-a4f8-a74733ff8aa6/29344168-928d-4341-8a51-9fdd423b1463/1-Photo-1.jpg,local image cache,indexed-not-transcribed,"Local screenshot/photo attachment, 98438 bytes; not treated as durable tracked evidence"
+SRC-202,attachment,.codex-remote-attachments/019ecb17-965a-7de1-a4f8-a74733ff8aa6/29344168-928d-4341-8a51-9fdd423b1463/2-Photo-2.jpg,local image cache,indexed-not-transcribed,"Local screenshot/photo attachment, 23406 bytes; not treated as durable tracked evidence"
+SRC-203,attachment,.codex-remote-attachments/019ecb17-965a-7de1-a4f8-a74733ff8aa6/5e45fc96-aff8-4640-b0c7-8edad899100f/1-Photo-1.jpg,local image cache,indexed-not-transcribed,"Local screenshot/photo attachment, 37536 bytes; not treated as durable tracked evidence"
+SRC-204,attachment,.codex-remote-attachments/019ecb17-965a-7de1-a4f8-a74733ff8aa6/5e45fc96-aff8-4640-b0c7-8edad899100f/2-Photo-2.jpg,local image cache,indexed-not-transcribed,"Local screenshot/photo attachment, 50645 bytes; not treated as durable tracked evidence"
+SRC-205,attachment,.codex-remote-attachments/019ecb17-965a-7de1-a4f8-a74733ff8aa6/6f5a60d0-863a-4c19-b7e3-aa2ea4cecd67/1-Photo-1.jpg,local image cache,indexed-not-transcribed,"Local screenshot/photo attachment, 43216 bytes; not treated as durable tracked evidence"
+SRC-206,attachment,.codex-remote-attachments/019ecb17-965a-7de1-a4f8-a74733ff8aa6/6f5a60d0-863a-4c19-b7e3-aa2ea4cecd67/2-Photo-2.jpg,local image cache,indexed-not-transcribed,"Local screenshot/photo attachment, 21387 bytes; not treated as durable tracked evidence"
+SRC-207,attachment,.codex-remote-attachments/019ecb17-965a-7de1-a4f8-a74733ff8aa6/6f5a60d0-863a-4c19-b7e3-aa2ea4cecd67/3-Photo-3.jpg,local image cache,indexed-not-transcribed,"Local screenshot/photo attachment, 22457 bytes; not treated as durable tracked evidence"
+SRC-208,attachment,.codex-remote-attachments/019ecb17-965a-7de1-a4f8-a74733ff8aa6/73a1071b-0430-465f-a0c5-96a873ecefaa/1-Photo-1.jpg,local image cache,indexed-not-transcribed,"Local screenshot/photo attachment, 55339 bytes; not treated as durable tracked evidence"
+SRC-209,attachment,.codex-remote-attachments/019ecb17-965a-7de1-a4f8-a74733ff8aa6/73a1071b-0430-465f-a0c5-96a873ecefaa/2-Photo-2.jpg,local image cache,indexed-not-transcribed,"Local screenshot/photo attachment, 52212 bytes; not treated as durable tracked evidence"
+SRC-210,attachment,.codex-remote-attachments/019ecb17-965a-7de1-a4f8-a74733ff8aa6/e1ca751f-f1a6-4581-88c4-ce18adff322d/1-Photo-1.jpg,local image cache,indexed-not-transcribed,"Local screenshot/photo attachment, 42052 bytes; not treated as durable tracked evidence"
+SRC-211,attachment,.codex-remote-attachments/019ecb17-965a-7de1-a4f8-a74733ff8aa6/e1ca751f-f1a6-4581-88c4-ce18adff322d/2-Photo-2.jpg,local image cache,indexed-not-transcribed,"Local screenshot/photo attachment, 49624 bytes; not treated as durable tracked evidence"

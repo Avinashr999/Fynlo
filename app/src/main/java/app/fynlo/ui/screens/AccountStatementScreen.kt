@@ -230,15 +230,12 @@ private fun QuickBalanceEditDialog(
         }
 
         Spacer(Modifier.height(20.dp))
-        Button(
+        TemplatePrimaryButton(
+            text = "Update Balance",
             onClick = { newBalance?.let { onConfirm(it) } },
             enabled = newBalance != null,
-            modifier = Modifier.fillMaxWidth().height(52.dp),
-            shape = RoundedCornerShape(16.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Emerald500),
-        ) {
-            Text("Update Balance", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
-        }
+            modifier = Modifier.fillMaxWidth(),
+        )
         app.fynlo.ui.components.DisabledButtonHint(
             if (newBalance == null) "Enter a valid amount to continue" else null
         )

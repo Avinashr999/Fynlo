@@ -58,6 +58,7 @@ fun InvestmentScreen(viewModel: FinanceViewModel) {
     val accounts       by viewModel.accounts.collectAsState()
     val debts          by viewModel.debts.collectAsState()
     val proofAttachments by viewModel.proofAttachments.collectAsState()
+    val syncStatus     by viewModel.syncStatus.collectAsState()
     val haptic = LocalHapticFeedback.current
     val currentProject by viewModel.currentProject.collectAsState()
     val currencyCode   = currentProject?.currency ?: "INR"
@@ -71,6 +72,8 @@ fun InvestmentScreen(viewModel: FinanceViewModel) {
     var viewingHistory by remember { mutableStateOf<Investment?>(null) }
     var pendingDeleteIds by remember { mutableStateOf(emptySet<String>()) }
     val visibleInvestments = investments.filterNot { it.id in pendingDeleteIds }
+    val isInitialLoading = syncStatus is app.fynlo.data.SyncStatus.Initialising &&
+        visibleInvestments.isEmpty()
 
     // ── Edit dialog ────────────────────────────────────────────────────────────
     if (editingInvest != null) {
@@ -372,8 +375,29 @@ fun InvestmentScreen(viewModel: FinanceViewModel) {
                         }
                     )
                 }
-                item {
-                    EmptyInvestState(onAdd = { editingInvest = Investment(id = "", name = "", type = "", invested = 0.0, currentVal = 0.0, date = "", notes = "", projectId = "") })
+                if (isInitialLoading) {
+                    item {
+                        PremiumSkeletonBlock(
+                            modifier = Modifier.padding(top = 10.dp, bottom = 10.dp),
+                            height = 150.dp,
+                            radius = TemplateHeroRadius,
+                        )
+                    }
+                    item {
+                        Text(
+                            "Loading holdings",
+                            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                            color = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.padding(top = 4.dp, bottom = 8.dp),
+                        )
+                    }
+                    item {
+                        PremiumSkeletonList(rows = 3)
+                    }
+                } else {
+                    item {
+                        EmptyInvestState(onAdd = { editingInvest = Investment(id = "", name = "", type = "", invested = 0.0, currentVal = 0.0, date = "", notes = "", projectId = "") })
+                    }
                 }
             }
         } else {

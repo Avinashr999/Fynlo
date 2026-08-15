@@ -64,8 +64,11 @@ fun GlobalSearchScreen(
     val transactions by viewModel.transactions.collectAsState()
     val investments  by viewModel.investments.collectAsState()
     val currentProject by viewModel.currentProject.collectAsState()
+    val syncStatus by viewModel.syncStatus.collectAsState()
     val currencyCode = currentProject?.currency ?: "INR"
     val focusManager = LocalFocusManager.current
+    val topInset = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+    val searchTopPadding = if (topInset > 28.dp) 28.dp else topInset
 
     val recentSearches by UserPreferences.recentSearches(context).collectAsState(initial = emptyList())
 
@@ -144,6 +147,11 @@ fun GlobalSearchScreen(
             // Cap result list — anything past 60 is noise the user won't scroll to.
             .take(60)
     }
+    val isInitialLoading = syncStatus is app.fynlo.data.SyncStatus.Initialising &&
+        borrowers.isEmpty() &&
+        debts.isEmpty() &&
+        transactions.isEmpty() &&
+        investments.isEmpty()
 
     Scaffold(
         contentWindowInsets = WindowInsets(0.dp),
@@ -156,9 +164,8 @@ fun GlobalSearchScreen(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .statusBarsPadding()
-                        .height(58.dp)
-                        .padding(horizontal = 12.dp, vertical = 4.dp),
+                        .padding(top = searchTopPadding, start = 12.dp, end = 12.dp, bottom = 4.dp)
+                        .height(54.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
@@ -183,7 +190,7 @@ fun GlobalSearchScreen(
                         onValueChange = { query = it },
                         placeholder   = { Text("Search loans, debts, transactions") },
                         singleLine    = true,
-                        modifier      = Modifier.weight(1f).heightIn(min = 56.dp),
+                        modifier      = Modifier.weight(1f).heightIn(min = 52.dp),
                         shape         = RoundedCornerShape(16.dp),
                         leadingIcon   = { Icon(Icons.Default.Search, null, tint = Emerald500) },
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
@@ -295,6 +302,17 @@ fun GlobalSearchScreen(
                                     color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         }
+                    }
+                } else if (isInitialLoading) {
+                    item {
+                        Text(
+                            "Searching your records",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    item {
+                        PremiumSkeletonList(rows = 4)
                     }
                 } else if (results.isEmpty()) {
                     item {

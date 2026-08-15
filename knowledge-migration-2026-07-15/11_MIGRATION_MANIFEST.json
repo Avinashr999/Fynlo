@@ -24,8 +24,8 @@
                    "verifications":  16,
                    "open_issues":  10,
                    "git_commits_in_range":  103,
-                   "source_index_rows":  36,
-                   "cloud_ingestion_chunks":  16
+                   "source_index_rows":  47,
+                   "cloud_ingestion_chunks":  20
                },
     "files":  [
                   "00_EXECUTIVE_OVERVIEW.md",
@@ -45,18 +45,66 @@
                   "14_CLOUD_INGESTION_CHUNKS.jsonl"
               ],
     "top_unresolved_risks":  [
-                                 "Full production cloud round-trip needs a fresh controlled verification record.",
-                                 "Dev Google sign-in requires real dev Firebase/OAuth configuration or a clear disabled-state message.",
-                                 "Old historical interest rows can still require user review instead of automatic guessing.",
-                                 "Dark mode and inset-sensitive screens should be visually audited before each release.",
-                                 "External internal-tester mismatches reported on older versions must be retested on the latest build."
+                                 "Repeat cloud round-trip if auth/sync code changes.",
+                                 "Complete or explicitly gate dev Google OAuth/SHA setup for app.fynlo.dev.",
+                                 "Retest external tester mismatch reports on latest internal build.",
+                                 "Run dark-mode and inset-sensitive visual sweep before release.",
+                                 "Upload matching mapping/native symbols for each new AAB."
                              ],
     "inaccessible_or_partial_sources":  [
-                                            "Some screenshots and pasted attachments from the long conversation were not individually re-read during this extraction.",
-                                            "Google Play Console state is based on user reports/screenshots, not direct console API export.",
-                                            "Phone verification claims are preserved as user-reported unless explicitly tied to automated commands."
+                                            "Play Console state remains user-reported; no direct Play Console export was pulled.",
+                                            "External tester mismatch report cannot be reproduced locally without tester/device data.",
+                                            "Local screenshot attachments are indexed but not durable tracked release evidence unless copied into repo docs/assets."
                                         ],
     "redaction_policy":  "No secrets, private auth data, SHA values, or credentials are included. If encountered, use [REDACTED].",
-    "last_updated_at":  "2026-07-16T08:45:00+05:30",
-    "latest_update_note":  "2026-07-16 scrollable headers and compact quick actions logged; no accounting or sync logic changed."
+    "last_updated_at":  "2026-08-15T23:40:00+05:30",
+    "latest_update_note":  "Release-gate execution: prod debug compile/tests passed, prod/dev debug installed, prod release AAB built, Play artifacts verified, and dark-mode/global-search phone evidence captured.",
+    "resolved_or_reduced_risks":  [
+                                      "Cloud round-trip moved from undocumented to PHONE VERIFIED BY USER based on newer project state.",
+                                      "Old Book Check interest noise moved from open risk to mitigated grouped review behavior.",
+                                      "Global search/top inset moved from open risk to mitigated but retained in smoke checklist.",
+                                      "Play native symbols/mapping moved from warning risk to per-AAB checklist after user upload confirmation.",
+                                      "Local attachment limitation reduced by indexing 11 workspace attachment files."
+                                  ],
+    "remaining_gates":  [
+                            "Repeat cloud round-trip if auth/sync code changes.",
+                            "Complete or explicitly gate dev Google OAuth/SHA setup for app.fynlo.dev.",
+                            "Retest external tester mismatch reports on latest internal build.",
+                            "Run dark-mode and inset-sensitive visual sweep before release.",
+                            "Upload matching mapping/native symbols for each new AAB."
+                        ],
+    "gate_execution_2026_08_15":  {
+                                      "prod_debug_compile":  "passed",
+                                      "prod_debug_unit_tests":  "passed",
+                                      "installed_prod_debug":  {
+                                                                   "status":  "passed",
+                                                                   "package":  "app.fynlo",
+                                                                   "version_name":  "3.2.114",
+                                                                   "version_code":  238
+                                                               },
+                                      "installed_dev_debug":  {
+                                                                  "status":  "passed",
+                                                                  "package":  "app.fynlo.dev",
+                                                                  "version_name":  "3.2.114-dev",
+                                                                  "version_code":  238
+                                                              },
+                                      "prod_release_aab":  {
+                                                               "status":  "built",
+                                                               "path":  "app/build/outputs/bundle/prodRelease/app-prod-release.aab"
+                                                           },
+                                      "play_console_artifacts":  {
+                                                                     "r8_mapping":  "app/build/outputs/mapping/prodRelease/mapping.txt",
+                                                                     "native_symbols":  "app/build/outputs/native-debug-symbols/prodRelease/fynlo-prod-release-native-symbols.zip"
+                                                                 },
+                                      "phone_visual_evidence":  [
+                                                                    "knowledge-migration-2026-07-15/gate-evidence-2026-08-15/dark-dashboard.png",
+                                                                    "knowledge-migration-2026-07-15/gate-evidence-2026-08-15/global-search.png",
+                                                                    "knowledge-migration-2026-07-15/gate-evidence-2026-08-15/global-search-keyboard.png"
+                                                                ],
+                                      "remaining_non_local_gates":  [
+                                                                        "Dev Google sign-in requires Firebase/Google OAuth/SHA confirmation for app.fynlo.dev.",
+                                                                        "External tester mismatch requires the tester to retest the latest internal build.",
+                                                                        "Cloud round-trip should be repeated only if auth or sync code changes again."
+                                                                    ]
+                                  }
 }

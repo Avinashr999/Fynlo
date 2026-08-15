@@ -49,6 +49,7 @@ fun SpendScreen(viewModel: FinanceViewModel) {
 val transactions by viewModel.transactions.collectAsState()
     val budgets      by viewModel.budgets.collectAsState()
     val currentProject by viewModel.currentProject.collectAsState()
+    val syncStatus by viewModel.syncStatus.collectAsState()
     val currencyCode = currentProject?.currency ?: "INR"
     val locale       = LocalLocale.current.platformLocale
     var showDialog   by remember { mutableStateOf(false) }
@@ -63,6 +64,8 @@ val transactions by viewModel.transactions.collectAsState()
     val allExpenses = remember(transactions) {
         transactions.filter { it.type.equals("expense", ignoreCase = true) }
     }
+    val isInitialLoading = syncStatus is app.fynlo.data.SyncStatus.Initialising &&
+        allExpenses.isEmpty()
     val expenses = remember(allExpenses, monthKey) {
         allExpenses.filter { it.date.startsWith(monthKey) }
     }
@@ -121,6 +124,7 @@ val transactions by viewModel.transactions.collectAsState()
             // one-time insert.
             onRepeatMonthly = { txn -> viewModel.addRecurringTransaction(toRecurringTemplate(txn)) },
             currencyCode    = currencyCode,
+            cashAccounts    = allAccounts.filter { it.type.equals("Cash", ignoreCase = true) }.map { it.name },
             bankAccounts    = allAccounts.map { it.name },
             investmentNames = allInvestments.map { it.name },
             debtNames       = allDebts.map { it.name },
@@ -331,6 +335,11 @@ val transactions by viewModel.transactions.collectAsState()
                             Spacer(Modifier.height(8.dp))
                         }
                     }
+                } else if (isInitialLoading) {
+                    Text("Loading expenses",
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
+                    Spacer(Modifier.height(8.dp))
+                    PremiumSkeletonList(rows = 4)
                 } else {
                     app.fynlo.ui.components.EmptyStateIllustration(
                         type        = app.fynlo.ui.components.EmptyStateType.SPENDING,

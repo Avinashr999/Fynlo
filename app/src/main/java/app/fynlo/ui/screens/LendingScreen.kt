@@ -67,6 +67,7 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
     val summary       by viewModel.financialSummary.collectAsState()
     val isPrivacy     by viewModel.isPrivacyMode.collectAsState()
     val currentProject by viewModel.currentProject.collectAsState()
+    val syncStatus    by viewModel.syncStatus.collectAsState()
     val currencyCode = currentProject?.currency ?: "INR"
     val locale = LocalLocale.current.platformLocale
     var showEmiCalc by remember { mutableStateOf(false) }
@@ -109,9 +110,12 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
             else b.paidPrincipal < b.amount
         )
     }
-    val activeLoans  = remember(processed) { processed.filter { isActive(it) } }
-    val overdueLoans = remember(activeLoans) {
-        activeLoans.filter { it.due.isNotBlank() && it.due < today }
+    val openLoans = remember(processed) { processed.filter { isActive(it) } }
+    val overdueLoans = remember(openLoans) {
+        openLoans.filter { it.due.isNotBlank() && it.due < today }
+    }
+    val activeLoans = remember(openLoans, overdueLoans) {
+        openLoans.filterNot { loan -> overdueLoans.any { it.id == loan.id } }
     }
     val closedLoans  = remember(processed) { processed.filterNot { isActive(it) } }
     val displayed = when (statusFilter) {
@@ -119,6 +123,9 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
         "Closed"  -> closedLoans
         else      -> activeLoans
     }
+    val isInitialLoading = syncStatus is app.fynlo.data.SyncStatus.Initialising &&
+        borrowers.isEmpty() &&
+        searchQuery.isBlank()
 
     if (showEmiCalc) { EmiCalculatorDialog(currencyCode = currencyCode, onDismiss = { showEmiCalc = false }) }
     if (showAddDialog) {
@@ -145,7 +152,7 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
         app.fynlo.ui.components.PullRefresh(viewModel) {
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
             contentPadding = PaddingValues(bottom = FabBottomPadding)
         ) {
             if (topContent != null || showHeader) {
@@ -161,7 +168,7 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
             // uses a fixed overdue-first / amount-desc sort.
             item {
                 Row(
-                    Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 4.dp),
+                    Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 2.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
@@ -200,7 +207,7 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
                     placeholder = { Text("Search borrowers") },
                     leadingIcon = { Icon(Icons.Default.Search, null, tint = Emerald500) },
                     trailingIcon = { if (searchQuery.isNotBlank()) IconButton(onClick = { searchQuery = "" }) { Icon(Icons.Default.Clear, null, Modifier.size(18.dp)) } },
-                    singleLine = true, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp),
+                    singleLine = true, modifier = Modifier.fillMaxWidth().padding(top = 2.dp), shape = RoundedCornerShape(16.dp),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedContainerColor   = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
                         unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
@@ -225,13 +232,20 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
                     options = filters.map { (label, count) -> "$label  $count" },
                     selectedIndex = filters.indexOfFirst { it.first == statusFilter }.coerceAtLeast(0),
                     onSelected = { idx -> statusFilter = filters[idx].first },
-                    modifier = Modifier.padding(vertical = 4.dp),
+                    modifier = Modifier.padding(top = 2.dp, bottom = 4.dp),
                 )
             }
 
             // List of borrowers for the current filter. Filter-specific empty
             // messages make the absence of rows informative instead of just blank.
-            if (displayed.isEmpty()) {
+            if (isInitialLoading) {
+                item {
+                    LoanListSectionHeader("Loading borrowers", 4)
+                }
+                item {
+                    PremiumSkeletonList(rows = 4)
+                }
+            } else if (displayed.isEmpty()) {
                 item {
                     val msg = when (statusFilter) {
                         "Overdue" -> "No overdue loans. You're up to date."
@@ -253,9 +267,17 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
                     }
                 }
             } else {
-                itemsIndexed(displayed, key = { _, it -> it.id }) { idx, borrower ->
-                    if (idx > 0) HorizontalDivider(thickness = 0.5.dp,
-                        color = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f))
+                item {
+                    LoanListSectionHeader(
+                        title = when (statusFilter) {
+                            "Overdue" -> "Overdue borrowers"
+                            "Closed" -> "Closed borrowers"
+                            else -> "Active borrowers"
+                        },
+                        count = displayed.size,
+                    )
+                }
+                items(displayed, key = { it.id }) { borrower ->
                     LendingCard(
                         borrower     = borrower,
                         payments     = payments.filter { it.loanId == borrower.id },
@@ -295,98 +317,129 @@ fun LendingCard(
     }
     val outstanding = (borrower.amount - borrower.paidPrincipal).coerceAtLeast(0.0) + interestDue
 
-    Row(
+    Surface(
+        onClick = onClick,
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onClick() }
-            .padding(vertical = 14.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
+            .padding(vertical = 1.dp)
+            .heightIn(min = 74.dp),
+        shape = RoundedCornerShape(18.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerLowest,
+        border = androidx.compose.foundation.BorderStroke(
+            0.7.dp,
+            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.42f),
+        ),
     ) {
-        androidx.compose.foundation.layout.Box(
-            modifier = Modifier
-                .size(40.dp)
-                .clip(androidx.compose.foundation.shape.CircleShape)
-                .background((if (isOverdue) SemanticRed else Emerald500).copy(alpha = 0.15f)),
-            contentAlignment = Alignment.Center
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(11.dp)
         ) {
-            Icon(
-                Icons.Default.Person,
-                contentDescription = null,
-                tint = if (isOverdue) SemanticRed else Emerald500,
-                modifier = Modifier.size(20.dp)
-            )
-        }
-        Column(Modifier.weight(1f)) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                Text(
-                    borrower.name,
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold)
-                )
-                if (isOverdue) {
-                    Surface(color = SemanticRed.copy(alpha = 0.18f), shape = RoundedCornerShape(4.dp)) {
-                        Text(
-                            "OVERDUE",
-                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                            color = SemanticRed,
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                        )
-                    }
-                }
-            }
-            val source = borrower.sourceAccount.ifBlank { "Unknown account" }
-            val sub = if (borrower.due.isNotBlank()) "Due ${DateUtils.formatToDisplay(borrower.due)}"
-                      else "Lent ${DateUtils.formatToDisplay(borrower.date)}"
-            Text(
-                sub,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
+            androidx.compose.foundation.layout.Box(
+                modifier = Modifier
+                    .size(38.dp)
+                    .clip(androidx.compose.foundation.shape.CircleShape)
+                    .background((if (isOverdue) SemanticRed else Emerald500).copy(alpha = 0.14f)),
+                contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    Icons.Default.AccountBalanceWallet,
+                    Icons.Default.Person,
                     contentDescription = null,
-                    modifier = Modifier.size(12.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    tint = if (isOverdue) SemanticRed else Emerald500,
+                    modifier = Modifier.size(19.dp)
+                )
+            }
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Text(
+                    borrower.name,
+                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                )
+                val source = borrower.sourceAccount.ifBlank { "Unknown account" }
+                val sub = when {
+                    isOverdue && borrower.due.isNotBlank() -> "Overdue since ${DateUtils.formatToDisplay(borrower.due)}"
+                    borrower.due.isNotBlank() -> "Due ${DateUtils.formatToDisplay(borrower.due)}"
+                    else -> "Lent ${DateUtils.formatToDisplay(borrower.date)}"
+                }
+                Text(
+                    sub,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = if (isOverdue) SemanticRed else MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Icon(
+                        Icons.Default.AccountBalanceWallet,
+                        contentDescription = null,
+                        modifier = Modifier.size(12.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Text(
+                        "From $source",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                    )
+                }
+            }
+            Column(
+                modifier = Modifier.widthIn(min = 92.dp, max = 128.dp),
+                horizontalAlignment = Alignment.End,
+            ) {
+                // C16 (3.2.41) - Outstanding on the Lent side is a receivable
+                // (asset), not a debt to the user. Colour: green for normal
+                // (asset), red for overdue (urgency). Pre-C16 normal state was
+                // neutral onSurface - audit said it should signal asset-ness.
+                val outstandingText = if (isPrivacy) "----" else CurrencyFormatter.detail(outstanding, currencyCode, locale)
+                Text(
+                    text = outstandingText,
+                    style = MaterialTheme.typography.titleSmall.copy(
+                        fontWeight = FontWeight.Bold,
+                        color = if (isOverdue) SemanticRed else Emerald500
+                    ),
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                 )
                 Text(
-                    "From $source",
+                    "To collect",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                 )
             }
-        }
-        Column(horizontalAlignment = Alignment.End) {
-            // C16 (3.2.41) - Outstanding on the Lent side is a receivable
-            // (asset), not a debt to the user. Colour: green for normal
-            // (asset), red for overdue (urgency). Pre-C16 normal state was
-            // neutral onSurface - audit said it should signal asset-ness.
-            val outstandingText = if (isPrivacy) "----" else CurrencyFormatter.detail(outstanding, currencyCode, locale)
-            Text(
-                text = outstandingText,
-                style = MaterialTheme.typography.titleMedium.copy(
-                    fontWeight = FontWeight.Bold,
-                    color = if (isOverdue) SemanticRed else Emerald500
-                )
-            )
-            Text(
-                "Outstanding",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+            Icon(
+                Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                modifier = Modifier.size(18.dp)
             )
         }
-        Icon(
-            Icons.AutoMirrored.Filled.KeyboardArrowRight,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-            modifier = Modifier.size(20.dp)
+    }
+}
+
+@Composable
+private fun LoanListSectionHeader(title: String, count: Int) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(top = 6.dp, bottom = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Text(
+            title,
+            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+        Text(
+            count.toString(),
+            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
 }
@@ -580,13 +633,10 @@ fun EmiCalculatorDialog(currencyCode: String, onDismiss: () -> Unit) {
         }
 
         Spacer(Modifier.height(20.dp))
-        Button(
+        TemplatePrimaryButton(
+            text = "Close",
             onClick = onDismiss,
-            modifier = Modifier.fillMaxWidth().height(52.dp),
-            shape = RoundedCornerShape(16.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Emerald500),
-        ) {
-            Text("Close", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
-        }
+            modifier = Modifier.fillMaxWidth(),
+        )
     }
     }

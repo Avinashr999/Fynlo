@@ -489,6 +489,146 @@ class InterestPolicyTest {
         assertEquals(breakdown.accrued, breakdown.due, 0.01)
     }
 
+    @Test
+    fun `borrower interest stops accruing after principal is fully collected`() {
+        val borrower = Borrower(
+            id = "principal-cleared-loan",
+            name = "Principal Cleared Borrower",
+            amount = 100_000.0,
+            rate = 18.0,
+            date = "2026-01-01",
+            intType = "Simple Interest",
+        )
+        val principalOnly = Payment(
+            id = "principal-only",
+            loanId = borrower.id,
+            name = borrower.name,
+            date = "2026-02-01",
+            type = "Principal Only",
+            amount = 100_000.0,
+            principal = 100_000.0,
+            interestAllocationType = InterestPolicy.PRINCIPAL_REPAYMENT,
+        )
+
+        val breakdown = InterestPolicy.borrowerBreakdown(borrower, listOf(principalOnly), asOf = "2026-03-01")
+        val expectedAtPrincipalClear = InterestPolicy.accruedForBorrower(borrower, asOf = "2026-02-01")
+
+        assertEquals(expectedAtPrincipalClear, breakdown.accrued, 0.01)
+        assertTrue(InterestPolicy.accruedForBorrower(borrower, asOf = "2026-03-01") > breakdown.accrued)
+    }
+
+    @Test
+    fun `borrower partial principal payment accrues future interest only on remaining principal`() {
+        val borrower = Borrower(
+            id = "partial-principal-loan",
+            name = "Partial Principal Borrower",
+            amount = 100_000.0,
+            rate = 18.0,
+            date = "2026-01-01",
+            intType = "Simple Interest",
+        )
+        val principalOnly = Payment(
+            id = "partial-principal",
+            loanId = borrower.id,
+            name = borrower.name,
+            date = "2026-02-01",
+            type = "Principal Only",
+            amount = 40_000.0,
+            principal = 40_000.0,
+            interestAllocationType = InterestPolicy.PRINCIPAL_REPAYMENT,
+        )
+
+        val breakdown = InterestPolicy.borrowerBreakdown(borrower, listOf(principalOnly), asOf = "2026-03-01")
+        val paidPortionInterest = InterestEngine.calcIntAccrued(
+            amount = 40_000.0,
+            rate = 18.0,
+            loanDate = "2026-01-01",
+            intType = "Simple Interest",
+            asOf = "2026-02-01",
+        )
+        val remainingPortionInterest = InterestEngine.calcIntAccrued(
+            amount = 60_000.0,
+            rate = 18.0,
+            loanDate = "2026-01-01",
+            intType = "Simple Interest",
+            asOf = "2026-03-01",
+        )
+
+        assertEquals(paidPortionInterest + remainingPortionInterest, breakdown.accrued, 0.01)
+        assertEquals(60_000.0, borrower.amount - principalOnly.principal, 0.01)
+        assertTrue(InterestPolicy.accruedForBorrower(borrower, asOf = "2026-03-01") > breakdown.accrued)
+    }
+
+    @Test
+    fun `debt interest stops accruing after principal is fully paid`() {
+        val debt = Debt(
+            id = "principal-cleared-debt",
+            name = "Principal Cleared Debt",
+            amount = 100_000.0,
+            rate = 18.0,
+            date = "2026-01-01",
+            intType = "Simple Interest",
+        )
+        val principalOnly = DebtPayment(
+            id = "principal-only",
+            debtId = debt.id,
+            name = debt.name,
+            date = "2026-02-01",
+            type = "Principal Only",
+            amount = 100_000.0,
+            principal = 100_000.0,
+            interestAllocationType = InterestPolicy.PRINCIPAL_REPAYMENT,
+        )
+
+        val breakdown = InterestPolicy.debtBreakdown(debt, listOf(principalOnly), asOf = "2026-03-01")
+        val expectedAtPrincipalClear = InterestPolicy.accruedForDebt(debt, asOf = "2026-02-01")
+
+        assertEquals(expectedAtPrincipalClear, breakdown.accrued, 0.01)
+        assertTrue(InterestPolicy.accruedForDebt(debt, asOf = "2026-03-01") > breakdown.accrued)
+    }
+
+    @Test
+    fun `debt partial principal payment accrues future interest only on remaining principal`() {
+        val debt = Debt(
+            id = "partial-principal-debt",
+            name = "Partial Principal Debt",
+            amount = 100_000.0,
+            rate = 18.0,
+            date = "2026-01-01",
+            intType = "Simple Interest",
+        )
+        val principalOnly = DebtPayment(
+            id = "partial-principal",
+            debtId = debt.id,
+            name = debt.name,
+            date = "2026-02-01",
+            type = "Principal Only",
+            amount = 40_000.0,
+            principal = 40_000.0,
+            interestAllocationType = InterestPolicy.PRINCIPAL_REPAYMENT,
+        )
+
+        val breakdown = InterestPolicy.debtBreakdown(debt, listOf(principalOnly), asOf = "2026-03-01")
+        val paidPortionInterest = InterestEngine.calcIntAccrued(
+            amount = 40_000.0,
+            rate = 18.0,
+            loanDate = "2026-01-01",
+            intType = "Simple Interest",
+            asOf = "2026-02-01",
+        )
+        val remainingPortionInterest = InterestEngine.calcIntAccrued(
+            amount = 60_000.0,
+            rate = 18.0,
+            loanDate = "2026-01-01",
+            intType = "Simple Interest",
+            asOf = "2026-03-01",
+        )
+
+        assertEquals(paidPortionInterest + remainingPortionInterest, breakdown.accrued, 0.01)
+        assertEquals(60_000.0, debt.amount - principalOnly.principal, 0.01)
+        assertTrue(InterestPolicy.accruedForDebt(debt, asOf = "2026-03-01") > breakdown.accrued)
+    }
+
     private fun borrower(stopInterestAfterDue: Boolean) = Borrower(
         id = "loan-1",
         name = "Test Borrower",

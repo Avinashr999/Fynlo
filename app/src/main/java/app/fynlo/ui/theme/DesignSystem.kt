@@ -1,5 +1,11 @@
 package app.fynlo.ui.theme
 
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -12,8 +18,10 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -62,21 +70,104 @@ fun PremiumSoftGlassPanel(
 
 @Composable
 fun PremiumSkeletonBlock(
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier.fillMaxWidth(),
     height: Dp,
     radius: Dp = TemplateCardRadius,
 ) {
+    val transition = rememberInfiniteTransition(label = "premiumSkeleton")
+    val pulse by transition.animateFloat(
+        initialValue = 0.34f,
+        targetValue = 0.68f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 850, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "premiumSkeletonPulse",
+    )
     Surface(
         modifier = modifier
-            .fillMaxWidth()
-            .height(height),
+            .height(height)
+            .alpha(pulse),
         shape = RoundedCornerShape(radius),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.28f),
+        color = MaterialTheme.colorScheme.surfaceVariant,
         border = BorderStroke(
             0.5.dp,
             MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.20f),
         ),
     ) {}
+}
+
+@Composable
+fun PremiumSkeletonList(
+    modifier: Modifier = Modifier,
+    rows: Int = 4,
+    showAmount: Boolean = true,
+) {
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        repeat(rows) {
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(18.dp),
+                color = MaterialTheme.colorScheme.surfaceContainerLowest,
+                border = BorderStroke(
+                    0.7.dp,
+                    MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.32f),
+                ),
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 11.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(11.dp),
+                ) {
+                    PremiumSkeletonBlock(
+                        modifier = Modifier.size(38.dp),
+                        height = 38.dp,
+                        radius = 19.dp,
+                    )
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(7.dp),
+                    ) {
+                        PremiumSkeletonBlock(
+                            modifier = Modifier.fillMaxWidth(0.72f),
+                            height = 15.dp,
+                            radius = 8.dp,
+                        )
+                        PremiumSkeletonBlock(
+                            modifier = Modifier.fillMaxWidth(0.48f),
+                            height = 11.dp,
+                            radius = 8.dp,
+                        )
+                        PremiumSkeletonBlock(
+                            modifier = Modifier.fillMaxWidth(0.62f),
+                            height = 10.dp,
+                            radius = 8.dp,
+                        )
+                    }
+                    if (showAmount) {
+                        Column(
+                            horizontalAlignment = Alignment.End,
+                            verticalArrangement = Arrangement.spacedBy(7.dp),
+                        ) {
+                            PremiumSkeletonBlock(
+                                modifier = Modifier.width(82.dp),
+                                height = 14.dp,
+                                radius = 8.dp,
+                            )
+                            PremiumSkeletonBlock(
+                                modifier = Modifier.width(48.dp),
+                                height = 10.dp,
+                                radius = 8.dp,
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 // ── Fynlo Premium Design System ───────────────────────────────────────────────
@@ -141,7 +232,7 @@ fun LedgerDetailTopBar(
         ) {
             Surface(
                 onClick = onNavigateBack,
-                modifier = Modifier.size(44.dp),
+                modifier = Modifier.size(40.dp),
                 shape = RoundedCornerShape(14.dp),
                 color = MaterialTheme.colorScheme.surfaceContainerLowest,
                 tonalElevation = 1.dp,
@@ -197,7 +288,7 @@ fun LedgerTopBarActionButton(
 ) {
     Surface(
         onClick = onClick,
-        modifier = modifier.size(44.dp),
+        modifier = modifier.size(40.dp),
         shape = RoundedCornerShape(14.dp),
         color = containerColor,
         tonalElevation = 1.dp,
@@ -210,7 +301,7 @@ fun LedgerTopBarActionButton(
             Icon(
                 icon,
                 contentDescription = contentDescription,
-                modifier = Modifier.size(21.dp),
+                modifier = Modifier.size(20.dp),
                 tint = tint,
             )
         }

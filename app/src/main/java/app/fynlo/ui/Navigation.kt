@@ -336,6 +336,7 @@ fun MainNavigation(viewModel: FinanceViewModel) {
             // `_root_ide_package_.app.fynlo.logic.…` not needed; use the import alias via toRecurringTemplate.
             onRepeatMonthly = { txn -> viewModel.addRecurringTransaction(toRecurringTemplate(txn)) },
             currencyCode    = navCurrencyCode,
+            cashAccounts    = navAccounts.filter { it.type.equals("Cash", ignoreCase = true) }.map { it.name },
             bankAccounts    = navAccounts.map { it.name },
             investmentNames = allInvestments.map { it.name },
             debtNames       = navDebts.map { it.name },
@@ -401,7 +402,7 @@ fun MainNavigation(viewModel: FinanceViewModel) {
         drawerContent   = {
             ModalDrawerSheet(
                 drawerContainerColor = MaterialTheme.colorScheme.background,
-                modifier = Modifier.width(300.dp)
+                modifier = Modifier.width(288.dp)
             ) {
                 Column(
                     modifier = Modifier.fillMaxHeight().verticalScroll(rememberScrollState())
@@ -426,25 +427,25 @@ fun MainNavigation(viewModel: FinanceViewModel) {
 
                     Surface(
                         modifier = Modifier.fillMaxWidth()
-                            .padding(start = 14.dp, end = 14.dp, top = 28.dp, bottom = 12.dp),
-                        shape = RoundedCornerShape(18.dp),
+                            .padding(start = 16.dp, end = 16.dp, top = 18.dp, bottom = 10.dp),
+                        shape = RoundedCornerShape(20.dp),
                         color = MaterialTheme.colorScheme.surfaceContainerLowest,
                         tonalElevation = 0.dp,
                         border = androidx.compose.foundation.BorderStroke(
                             0.8.dp,
-                            TemplateBorder,
+                            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f),
                         ),
                     ) {
                         Row(
-                            modifier = Modifier.fillMaxWidth().padding(16.dp),
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 13.dp),
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
-                            FynloBrandMark(size = 42.dp)
+                            FynloBrandMark(size = 36.dp)
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
                                     drawerUserName,
-                                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.ExtraBold),
+                                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
                                     maxLines = 1,
                                     overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                                 )
@@ -458,12 +459,13 @@ fun MainNavigation(viewModel: FinanceViewModel) {
                                 Spacer(Modifier.height(6.dp))
                                 Surface(
                                     shape = RoundedCornerShape(999.dp),
-                                    color = Emerald100.copy(alpha = 0.75f),
+                                    color = if (hasSignedInProfile) Emerald100.copy(alpha = 0.75f)
+                                    else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
                                 ) {
                                     Text(
-                                        "Local ledger",
+                                        if (hasSignedInProfile) "Cloud backup ready" else "Local ledger",
                                         style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                                        color = Emerald700,
+                                        color = if (hasSignedInProfile) Emerald700 else MaterialTheme.colorScheme.onSurfaceVariant,
                                         modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.dp),
                                     )
                                 }
@@ -477,7 +479,7 @@ fun MainNavigation(viewModel: FinanceViewModel) {
                         color = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f)
                     )
 
-                    Spacer(Modifier.height(8.dp))
+                    Spacer(Modifier.height(6.dp))
 
                     // ── C20 (3.2.44) — Items ordered by usage frequency per audit
                     // §C20 fix #3 ("Order items by usage frequency, not semantic
@@ -1032,10 +1034,10 @@ private fun LedgerAppTopBar(
             modifier = Modifier
                 .fillMaxWidth()
                 .statusBarsPadding()
-                .height(56.dp)
-                .padding(horizontal = 14.dp),
+                .height(54.dp)
+                .padding(horizontal = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             LedgerShellButton(
                 icon = if (canNavigateBack) Icons.AutoMirrored.Filled.ArrowBack else Icons.AutoMirrored.Filled.Segment,
@@ -1047,17 +1049,19 @@ private fun LedgerAppTopBar(
                     .weight(1f)
                     .clip(RoundedCornerShape(12.dp))
                     .clickable(onClick = onHome)
-                    .padding(horizontal = 2.dp, vertical = 6.dp),
+                    .padding(horizontal = 2.dp, vertical = 5.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(7.dp),
             ) {
-                FynloBrandMark(size = 30.dp)
+                FynloBrandMark(size = 28.dp)
                 Text(
-                    "Fynlo Ledger",
-                    style = MaterialTheme.typography.titleLarge.copy(
-                        fontWeight = FontWeight.ExtraBold,
+                    "Fynlo",
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = FontWeight.Bold,
                         color = Emerald700,
                     ),
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                 )
             }
             LedgerShellButton(
@@ -1072,7 +1076,7 @@ private fun LedgerAppTopBar(
             )
             Surface(
                 onClick = onSyncClick,
-                modifier = Modifier.size(40.dp),
+                modifier = Modifier.size(38.dp),
                 shape = RoundedCornerShape(12.dp),
                 color = MaterialTheme.colorScheme.surface,
                 tonalElevation = 0.dp,
@@ -1098,7 +1102,7 @@ private fun LedgerShellButton(
 ) {
     Surface(
         onClick = onClick,
-        modifier = Modifier.size(40.dp),
+        modifier = Modifier.size(38.dp),
         shape = RoundedCornerShape(12.dp),
         color = MaterialTheme.colorScheme.surface,
         tonalElevation = 0.dp,
@@ -1112,7 +1116,7 @@ private fun LedgerShellButton(
             Icon(
                 imageVector = icon,
                 contentDescription = contentDescription,
-                modifier = Modifier.size(20.dp),
+                modifier = Modifier.size(19.dp),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
@@ -1127,12 +1131,12 @@ private fun LedgerBottomNav(
     onSelect: (Screen) -> Unit,
 ) {
     val wrapperHeight by animateDpAsState(
-        targetValue = if (compact) 66.dp else 92.dp,
+        targetValue = if (compact) 62.dp else 82.dp,
         animationSpec = tween(220, easing = FastOutSlowInEasing),
         label = "bottom-nav-wrapper-height",
     )
     val barHeight by animateDpAsState(
-        targetValue = if (compact) 50.dp else 68.dp,
+        targetValue = if (compact) 48.dp else 62.dp,
         animationSpec = tween(220, easing = FastOutSlowInEasing),
         label = "bottom-nav-bar-height",
     )
@@ -1156,22 +1160,22 @@ private fun LedgerBottomNav(
             .fillMaxWidth()
             .height(wrapperHeight)
             .navigationBarsPadding()
-            .padding(start = horizontalPadding, end = horizontalPadding, top = 4.dp, bottom = 10.dp),
+            .padding(start = horizontalPadding, end = horizontalPadding, top = 2.dp, bottom = 6.dp),
         contentAlignment = Alignment.Center,
     ) {
         Surface(
             modifier = Modifier.fillMaxWidth().height(barHeight),
-            shape = RoundedCornerShape(if (compact) 999.dp else 24.dp),
-            color = MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = if (compact) 0.92f else 0.94f),
+            shape = RoundedCornerShape(if (compact) 999.dp else 28.dp),
+            color = MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = if (compact) 0.90f else 0.88f),
             tonalElevation = 0.dp,
-            shadowElevation = if (compact) 5.dp else 8.dp,
+            shadowElevation = if (compact) 6.dp else 12.dp,
             border = androidx.compose.foundation.BorderStroke(
                 0.5.dp,
-                MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f),
+                MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.34f),
             ),
         ) {
             Row(
-                modifier = Modifier.fillMaxSize().padding(horizontal = 6.dp),
+                modifier = Modifier.fillMaxSize().padding(horizontal = 5.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
@@ -1199,13 +1203,13 @@ private fun LedgerBottomNav(
                     ) {
                         Box(
                             modifier = Modifier
-                                .height(if (compact) 36.dp else 30.dp)
+                                .height(if (compact) 34.dp else 28.dp)
                                 .width(
                                     when {
-                                        compact && selected -> 46.dp
-                                        compact -> 38.dp
-                                        selected -> 58.dp
-                                        else -> 38.dp
+                                        compact && selected -> 44.dp
+                                        compact -> 36.dp
+                                        selected -> 54.dp
+                                        else -> 36.dp
                                     }
                                 )
                                 .clip(RoundedCornerShape(18.dp))

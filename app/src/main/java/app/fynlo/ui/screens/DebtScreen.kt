@@ -64,6 +64,7 @@ val debts by viewModel.debts.collectAsState()
     val accounts by viewModel.accounts.collectAsState()
     val isPrivacy by viewModel.isPrivacyMode.collectAsState()
     val currentProject by viewModel.currentProject.collectAsState()
+    val syncStatus by viewModel.syncStatus.collectAsState()
     val currencyCode = currentProject?.currency ?: "INR"
     val locale = LocalLocale.current.platformLocale
     var searchQuery by remember { mutableStateOf("") }
@@ -92,9 +93,12 @@ val debts by viewModel.debts.collectAsState()
             it.notes.contains(searchQuery, ignoreCase = true)
         }
     }
-    val activeDebts  = remember(searched) { searched.filter { it.paid < it.amount } }
-    val overdueDebts = remember(activeDebts, todayKey) {
-        activeDebts.filter { it.due.isNotBlank() && it.due < todayKey }
+    val openDebts = remember(searched) { searched.filter { it.paid < it.amount } }
+    val overdueDebts = remember(openDebts, todayKey) {
+        openDebts.filter { it.due.isNotBlank() && it.due < todayKey }
+    }
+    val activeDebts = remember(openDebts, overdueDebts) {
+        openDebts.filterNot { debt -> overdueDebts.any { it.id == debt.id } }
     }
     val closedDebts  = remember(searched) { searched.filter { it.paid >= it.amount } }
     val filteredDebts = when (statusFilter) {
@@ -102,6 +106,9 @@ val debts by viewModel.debts.collectAsState()
         "Closed"  -> closedDebts
         else      -> activeDebts
     }
+    val isInitialLoading = syncStatus is app.fynlo.data.SyncStatus.Initialising &&
+        debts.isEmpty() &&
+        searchQuery.isBlank()
     var showAddDialog by remember { mutableStateOf(false) }
 
     // C12 Stage 3 (3.2.28) — Edit + Pay flows moved to DebtDetailScreen per
@@ -127,6 +134,7 @@ val debts by viewModel.debts.collectAsState()
         app.fynlo.ui.components.PullRefresh(viewModel) {
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
             contentPadding = PaddingValues(bottom = FabBottomPadding)
         ) {
         if (topContent != null || showHeader) {
@@ -248,11 +256,18 @@ val debts by viewModel.debts.collectAsState()
                     options = filters.map { (label, count) -> "$label  $count" },
                     selectedIndex = filters.indexOfFirst { it.first == statusFilter }.coerceAtLeast(0),
                     onSelected = { idx -> statusFilter = filters[idx].first },
-                    modifier = Modifier.padding(top = 4.dp, bottom = 8.dp),
+                    modifier = Modifier.padding(top = 2.dp, bottom = 4.dp),
                 )
             }
         }
-        if (filteredDebts.isEmpty()) {
+        if (isInitialLoading) {
+            item {
+                DebtListSectionHeader("Loading debts", 4)
+            }
+            item {
+                PremiumSkeletonList(rows = 4)
+            }
+        } else if (filteredDebts.isEmpty()) {
             item {
                 if (debts.isEmpty()) {
                     EmptyDebtState(onAdd = { showAddDialog = true })
@@ -270,7 +285,17 @@ val debts by viewModel.debts.collectAsState()
                 }
             }
         } else {
-            itemsIndexed(filteredDebts, key = { _, d -> d.id }) { index, debt ->
+            item {
+                DebtListSectionHeader(
+                    title = when (statusFilter) {
+                        "Overdue" -> "Overdue debtors"
+                        "Closed" -> "Closed debtors"
+                        else -> "Active debtors"
+                    },
+                    count = filteredDebts.size,
+                )
+            }
+            items(filteredDebts, key = { it.id }) { debt ->
                     DebtCard(
                         debt = debt,
                         payments = paymentsByDebt[debt.id].orEmpty(),
@@ -279,10 +304,6 @@ val debts by viewModel.debts.collectAsState()
                         isPrivacy = isPrivacy,
                         onClick = { onNavigateToDetail(debt.id) }
                     )
-                    if (index < filteredDebts.lastIndex) {
-                        HorizontalDivider(thickness = 0.5.dp,
-                            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f))
-                    }
                 }
             }
         }
@@ -314,49 +335,50 @@ fun DebtCard(
     val liability = app.fynlo.logic.DebtLiabilityCalculator.outstanding(debt, payments)
     val outstanding = liability.total
 
-    Row(
+    Surface(
+        onClick = onClick,
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onClick() }
-            .padding(vertical = 14.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
+            .padding(vertical = 1.dp)
+            .heightIn(min = 74.dp),
+        shape = RoundedCornerShape(18.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerLowest,
+        border = androidx.compose.foundation.BorderStroke(
+            0.7.dp,
+            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.42f),
+        ),
     ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(11.dp)
+        ) {
         Box(
-            Modifier.size(40.dp).clip(CircleShape).background(SemanticRed.copy(alpha = 0.15f)),
+            Modifier.size(38.dp).clip(CircleShape).background(SemanticRed.copy(alpha = 0.14f)),
             contentAlignment = Alignment.Center
         ) {
-            Icon(Icons.Default.CreditCard, null, tint = SemanticRed, modifier = Modifier.size(20.dp))
+            Icon(Icons.Default.CreditCard, null, tint = SemanticRed, modifier = Modifier.size(19.dp))
         }
-        Column(Modifier.weight(1f)) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                Text(
-                    debt.name,
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold)
-                )
-                if (isOverdue) {
-                    Surface(color = SemanticRed.copy(alpha = 0.18f), shape = RoundedCornerShape(4.dp)) {
-                        Text(
-                            "OVERDUE",
-                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                            color = SemanticRed,
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                        )
-                    }
-                }
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+            Text(
+                debt.name,
+                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                maxLines = 1,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+            )
+            val sub = when {
+                isOverdue && debt.due.isNotBlank() -> "Overdue since ${DateUtils.formatToDisplay(debt.due)}"
+                debt.due.isNotBlank() -> "Due ${DateUtils.formatToDisplay(debt.due)}"
+                else -> "Borrowed ${DateUtils.formatToDisplay(debt.date)}"
             }
-            val sub = if (debt.due.isNotBlank()) "Due ${DateUtils.formatToDisplay(debt.due)}"
-                      else "Borrowed ${DateUtils.formatToDisplay(debt.date)}"
             Text(
                 sub,
                 style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = if (isOverdue) SemanticRed else MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
             )
             if (receivedIntoAccount.isNotBlank()) {
-                Spacer(Modifier.height(4.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
                         Icons.Default.AccountBalanceWallet,
@@ -369,31 +391,60 @@ fun DebtCard(
                         "Into $receivedIntoAccount",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                     )
                 }
             }
         }
-        Column(horizontalAlignment = Alignment.End) {
+        Column(
+            modifier = Modifier.widthIn(min = 92.dp, max = 128.dp),
+            horizontalAlignment = Alignment.End,
+        ) {
             val outstandingText = if (isPrivacy) "••••" else CurrencyFormatter.detail(outstanding, currencyCode, locale)
             Text(
                 text = outstandingText,
-                style = MaterialTheme.typography.titleMedium.copy(
+                style = MaterialTheme.typography.titleSmall.copy(
                     fontWeight = FontWeight.Bold,
                     color = if (isOverdue) SemanticRed else MaterialTheme.colorScheme.onSurface
-                )
+                ),
+                maxLines = 1,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
             )
             Text(
-                "Outstanding",
+                "To pay",
                 style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
             )
         }
         Icon(
             Icons.AutoMirrored.Filled.KeyboardArrowRight,
             contentDescription = null,
             tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-            modifier = Modifier.size(20.dp)
+            modifier = Modifier.size(18.dp)
+        )
+    }
+    }
+}
+
+@Composable
+private fun DebtListSectionHeader(title: String, count: Int) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(top = 6.dp, bottom = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Text(
+            title,
+            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+        Text(
+            count.toString(),
+            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
 }

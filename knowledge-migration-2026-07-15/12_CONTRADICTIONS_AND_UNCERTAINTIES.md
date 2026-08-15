@@ -44,3 +44,11 @@ If a future agent sees a conflict between:
 4. Old conversation notes,
 
 then prefer current data plus tests, but never silently rewrite financial records. Present the difference plainly and ask for confirmation before changing money history.
+
+
+## 2026-08-15 Limitation Cleanup
+
+- Local attachment availability improved: 11 `.codex-remote-attachments` image files are now indexed in `10_SOURCE_INDEX.csv` as local cache evidence. They are still not treated as durable release documentation unless copied into tracked docs/assets.
+- Cloud round-trip uncertainty was reduced by newer `PROJECT_STATE_FOR_AI.md` evidence: cloud/local parity is now recorded as `PHONE VERIFIED BY USER`. Future agents should still repeat the test if auth/sync code changes.
+- Play Console native-symbol/mapping uncertainty was reduced by newer project evidence and user confirmation that mapping/native symbols were uploaded. Future AABs still need matching artifacts.
+- Dev Google sign-in remains a configuration gate, not a proven code bug: config files exist, but dev OAuth/SHA correctness must be verified in Firebase/Google Console if real dev sign-in is required.
