@@ -67,8 +67,6 @@ fun GlobalSearchScreen(
     val syncStatus by viewModel.syncStatus.collectAsState()
     val currencyCode = currentProject?.currency ?: "INR"
     val focusManager = LocalFocusManager.current
-    val topInset = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
-    val searchTopPadding = if (topInset > 28.dp) 28.dp else topInset
 
     val recentSearches by UserPreferences.recentSearches(context).collectAsState(initial = emptyList())
 
@@ -157,25 +155,27 @@ fun GlobalSearchScreen(
         contentWindowInsets = WindowInsets(0.dp),
         topBar = {
             Surface(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .statusBarsPadding(),
                 color = MaterialTheme.colorScheme.surface,
                 tonalElevation = 0.dp,
             ) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = searchTopPadding, start = 12.dp, end = 12.dp, bottom = 4.dp)
-                        .height(54.dp),
+                        .padding(start = 14.dp, end = 14.dp, top = 8.dp, bottom = 8.dp)
+                        .height(50.dp),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     Surface(
                         onClick = onNavigateBack,
                         modifier = Modifier.size(42.dp),
                         shape = RoundedCornerShape(13.dp),
-                        color = MaterialTheme.colorScheme.surface,
+                        color = MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = 0.86f),
                         tonalElevation = 1.dp,
-                        shadowElevation = 4.dp,
+                        shadowElevation = 1.dp,
                         border = androidx.compose.foundation.BorderStroke(
                             0.5.dp,
                             MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f),
@@ -185,30 +185,11 @@ fun GlobalSearchScreen(
                             Icon(Icons.AutoMirrored.Filled.ArrowBack, null, Modifier.size(21.dp))
                         }
                     }
-                    OutlinedTextField(
-                        value         = query,
+                    PremiumSearchField(
+                        value = query,
                         onValueChange = { query = it },
-                        placeholder   = { Text("Search loans, debts, transactions") },
-                        singleLine    = true,
-                        modifier      = Modifier.weight(1f).heightIn(min = 52.dp),
-                        shape         = RoundedCornerShape(16.dp),
-                        leadingIcon   = { Icon(Icons.Default.Search, null, tint = Emerald500) },
-                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                        keyboardActions = KeyboardActions(onSearch = { focusManager.clearFocus() }),
-                        trailingIcon  = {
-                            if (query.isNotBlank()) {
-                                IconButton(onClick = { query = "" }) {
-                                    Icon(Icons.Default.Clear, null)
-                                }
-                            }
-                        },
-                        colors        = OutlinedTextFieldDefaults.colors(
-                            focusedContainerColor   = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
-                            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
-                            focusedBorderColor      = Color.Transparent,
-                            unfocusedBorderColor    = Color.Transparent,
-                            cursorColor             = Emerald500
-                        )
+                        placeholder = "Search loans, debts, transactions",
+                        modifier = Modifier.weight(1f),
                     )
                 }
             }

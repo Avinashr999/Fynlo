@@ -554,10 +554,6 @@ fun InvestmentScreen(viewModel: FinanceViewModel) {
                         debts = debts,
                         transactions = transactions,
                     )
-                    if (index < visibleInvestments.lastIndex) {
-                        HorizontalDivider(thickness = 0.5.dp,
-                            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f))
-                    }
                 }
             }
             }
@@ -598,7 +594,7 @@ private fun uompactPortfolioSummary(
                     )
                 )
                 .padding(horizontal = 16.dp, vertical = 14.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -707,14 +703,14 @@ private fun PortfolioMiniMetric(
     modifier: Modifier = Modifier,
 ) {
     Surface(
-        modifier = modifier.heightIn(min = 46.dp),
-        shape = RoundedCornerShape(14.dp),
+        modifier = modifier.heightIn(min = 42.dp),
+        shape = RoundedCornerShape(13.dp),
         color = Color.White.copy(alpha = 0.13f),
         border = BorderStroke(0.6.dp, Color.White.copy(alpha = 0.16f)),
     ) {
         Column(
-            modifier = Modifier.padding(horizontal = 9.dp, vertical = 7.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
+            modifier = Modifier.padding(horizontal = 9.dp, vertical = 6.dp),
+            verticalArrangement = Arrangement.spacedBy(3.dp),
         ) {
             Text(
                 label,
@@ -769,31 +765,31 @@ fun InvestmentCard(
     }
 
     Surface(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-        shape = RoundedCornerShape(20.dp),
+        modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp),
+        shape = RoundedCornerShape(18.dp),
         color = MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = 0.94f),
         tonalElevation = 1.dp,
-        shadowElevation = 2.dp,
+        shadowElevation = 1.dp,
         border = androidx.compose.foundation.BorderStroke(
             0.7.dp,
             MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.42f),
         ),
     ) {
-        Column(modifier = Modifier.fillMaxWidth().padding(14.dp)) {
+        Column(modifier = Modifier.fillMaxWidth().padding(12.dp)) {
             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.Top) {
                 Row(verticalAlignment = Alignment.Top, modifier = Modifier.weight(1f)) {
                     Box(
-                        Modifier.size(44.dp).clip(RoundedCornerShape(16.dp))
+                        Modifier.size(40.dp).clip(RoundedCornerShape(14.dp))
                             .background(typeAccent.copy(alpha = 0.16f)),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(Icons.AutoMirrored.Filled.TrendingUp, null, Modifier.size(22.dp), tint = typeAccent)
+                        Icon(Icons.AutoMirrored.Filled.TrendingUp, null, Modifier.size(20.dp), tint = typeAccent)
                     }
-                    Spacer(Modifier.width(10.dp))
+                    Spacer(Modifier.width(9.dp))
                     Column(Modifier.weight(1f)) {
                         Text(
                             invest.name,
-                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.ExtraBold),
+                            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.ExtraBold),
                             color = MaterialTheme.colorScheme.onSurface,
                             maxLines = 2,
                         )
@@ -822,7 +818,7 @@ fun InvestmentCard(
                 }
             }
 
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(8.dp))
 
             val gainLossText = if (isPrivacy) "Hidden"
             else if (isProfit) "+${CurrencyFormatter.hero(growth, currencyCode)}"
@@ -861,8 +857,8 @@ fun InvestmentCard(
                     )
                     }
                 }
-                Spacer(Modifier.width(10.dp))
-                Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                Spacer(Modifier.width(8.dp))
+                Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(
                         gainLossText,
                         style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.ExtraBold),

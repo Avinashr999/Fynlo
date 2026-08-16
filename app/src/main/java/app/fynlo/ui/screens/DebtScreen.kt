@@ -213,23 +213,13 @@ val debts by viewModel.debts.collectAsState()
             onExpandedChange = {},
             modifier = Modifier.padding(bottom = 12.dp)
         ) {
-            OutlinedTextField(
-                value         = searchQuery,
+            PremiumSearchField(
+                value = searchQuery,
                 onValueChange = { searchQuery = it; expanded = true },
-                placeholder   = { Text("Search debts") },
-                leadingIcon   = { Icon(Icons.Default.Search, null) },
-                trailingIcon  = { if (searchQuery.isNotBlank()) IconButton(onClick = { searchQuery = ""; expanded = false }) { Icon(Icons.Default.Clear, null, Modifier.size(18.dp)) } },
-                singleLine    = true,
-                modifier      = Modifier.fillMaxWidth().menuAnchor(androidx.compose.material3.ExposedDropdownMenuAnchorType.PrimaryNotEditable, true),
-                shape         = RoundedCornerShape(16.dp),
-                colors        = OutlinedTextFieldDefaults.colors(
-                    focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
-                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
-                    focusedBorderColor = Emerald500,
-                    unfocusedBorderColor = Color.Transparent,
-                    focusedLeadingIconColor = Emerald500,
-                    cursorColor = Emerald500
-                )
+                placeholder = "Search debts",
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .menuAnchor(androidx.compose.material3.ExposedDropdownMenuAnchorType.PrimaryNotEditable, true),
             )
             ExposedDropdownMenu(expanded = expanded && suggestions.isNotEmpty(), onDismissRequest = { expanded = false }) {
                 suggestions.forEach { name ->

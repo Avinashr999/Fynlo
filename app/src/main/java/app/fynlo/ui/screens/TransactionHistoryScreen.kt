@@ -530,27 +530,12 @@ private fun HistorySoftField(
     leading: ImageVector,
     onChange: (String) -> Unit
 ) {
-    OutlinedTextField(
+    PremiumSearchField(
         value = value,
         onValueChange = onChange,
+        placeholder = placeholder,
         modifier = Modifier.fillMaxWidth(),
-        placeholder = { Text(placeholder) },
-        leadingIcon = { Icon(leading, contentDescription = null) },
-        trailingIcon = {
-            if (value.isNotEmpty()) {
-                IconButton(onClick = { onChange("") }) { Icon(Icons.Default.Close, "Clear") }
-            }
-        },
-        singleLine = true,
-        shape = RoundedCornerShape(16.dp),
-        colors = OutlinedTextFieldDefaults.colors(
-            focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
-            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
-            focusedBorderColor = Emerald500,
-            unfocusedBorderColor = androidx.compose.ui.graphics.Color.Transparent,
-            focusedLeadingIconColor = Emerald500,
-            cursorColor = Emerald500
-        )
+        leadingIcon = leading,
     )
 }
 

@@ -1076,11 +1076,11 @@ private fun LedgerAppTopBar(
             )
             Surface(
                 onClick = onSyncClick,
-                modifier = Modifier.size(38.dp),
-                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier.size(42.dp),
+                shape = RoundedCornerShape(14.dp),
                 color = MaterialTheme.colorScheme.surface,
                 tonalElevation = 0.dp,
-                shadowElevation = 2.dp,
+                shadowElevation = 1.dp,
                 border = androidx.compose.foundation.BorderStroke(
                     0.5.dp,
                     MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f),
@@ -1102,11 +1102,11 @@ private fun LedgerShellButton(
 ) {
     Surface(
         onClick = onClick,
-        modifier = Modifier.size(38.dp),
-        shape = RoundedCornerShape(12.dp),
+        modifier = Modifier.size(42.dp),
+        shape = RoundedCornerShape(14.dp),
         color = MaterialTheme.colorScheme.surface,
         tonalElevation = 0.dp,
-        shadowElevation = 2.dp,
+        shadowElevation = 1.dp,
         border = androidx.compose.foundation.BorderStroke(
             0.5.dp,
             MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f),
@@ -1116,7 +1116,7 @@ private fun LedgerShellButton(
             Icon(
                 imageVector = icon,
                 contentDescription = contentDescription,
-                modifier = Modifier.size(19.dp),
+                modifier = Modifier.size(20.dp),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
@@ -1131,17 +1131,17 @@ private fun LedgerBottomNav(
     onSelect: (Screen) -> Unit,
 ) {
     val wrapperHeight by animateDpAsState(
-        targetValue = if (compact) 62.dp else 82.dp,
+        targetValue = if (compact) 58.dp else 74.dp,
         animationSpec = tween(220, easing = FastOutSlowInEasing),
         label = "bottom-nav-wrapper-height",
     )
     val barHeight by animateDpAsState(
-        targetValue = if (compact) 48.dp else 62.dp,
+        targetValue = if (compact) 48.dp else 58.dp,
         animationSpec = tween(220, easing = FastOutSlowInEasing),
         label = "bottom-nav-bar-height",
     )
     val horizontalPadding by animateDpAsState(
-        targetValue = if (compact) 54.dp else 14.dp,
+        targetValue = if (compact) 22.dp else 14.dp,
         animationSpec = tween(220, easing = FastOutSlowInEasing),
         label = "bottom-nav-horizontal-padding",
     )
@@ -1160,18 +1160,18 @@ private fun LedgerBottomNav(
             .fillMaxWidth()
             .height(wrapperHeight)
             .navigationBarsPadding()
-            .padding(start = horizontalPadding, end = horizontalPadding, top = 2.dp, bottom = 6.dp),
+            .padding(start = horizontalPadding, end = horizontalPadding, top = 0.dp, bottom = 4.dp),
         contentAlignment = Alignment.Center,
     ) {
         Surface(
             modifier = Modifier.fillMaxWidth().height(barHeight),
             shape = RoundedCornerShape(if (compact) 999.dp else 28.dp),
-            color = MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = if (compact) 0.90f else 0.88f),
+            color = MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = if (compact) 0.94f else 0.92f),
             tonalElevation = 0.dp,
-            shadowElevation = if (compact) 6.dp else 12.dp,
+            shadowElevation = if (compact) 5.dp else 10.dp,
             border = androidx.compose.foundation.BorderStroke(
                 0.5.dp,
-                MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.34f),
+                MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.38f),
             ),
         ) {
             Row(

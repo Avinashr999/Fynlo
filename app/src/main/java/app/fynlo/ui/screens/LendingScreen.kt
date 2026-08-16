@@ -202,19 +202,11 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
 
             // Search bar
             item {
-                OutlinedTextField(
-                    value = searchQuery, onValueChange = { searchQuery = it },
-                    placeholder = { Text("Search borrowers") },
-                    leadingIcon = { Icon(Icons.Default.Search, null, tint = Emerald500) },
-                    trailingIcon = { if (searchQuery.isNotBlank()) IconButton(onClick = { searchQuery = "" }) { Icon(Icons.Default.Clear, null, Modifier.size(18.dp)) } },
-                    singleLine = true, modifier = Modifier.fillMaxWidth().padding(top = 2.dp), shape = RoundedCornerShape(16.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedContainerColor   = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
-                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
-                        focusedBorderColor      = Color.Transparent,
-                        unfocusedBorderColor    = Color.Transparent,
-                        cursorColor             = Emerald500
-                    )
+                PremiumSearchField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    placeholder = "Search borrowers",
+                    modifier = Modifier.padding(top = 2.dp),
                 )
             }
 

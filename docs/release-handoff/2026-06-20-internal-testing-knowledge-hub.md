@@ -1513,3 +1513,11 @@ Phone smoke still recommended before a new AAB:
 - Invest now uses the emerald hero style for portfolio value and stronger soft-glass holding cards with clearer value/invested/funding grouping.
 - Scope: visible UI hierarchy only. No accounting, loan/debt/investment calculation logic, balance mutation, sync, Firestore, auth, or schema behavior changed.
 - Verification passed: `:app:compileProdDebugKotlin` and `:app:testProdDebugUnitTest`.
+
+### 2026-08-16 - Focused search, navigation, and investment polish
+- Bottom navigation was tightened to reduce unused side/bottom padding while keeping the rounded premium style.
+- Global search now uses cleaner status-bar spacing and the shared search field, addressing the large top-gap issue seen on phone.
+- Lending, debt, global search, and transaction history now share the same `PremiumSearchField` treatment.
+- Investment cards and portfolio metric tiles were compacted so the screen feels less spacious and more scannable.
+- Scope: UI/UX polish only. No calculation logic, balance mutation, cloud sync, auth, schema, or Play release behavior changed.
+- Verification passed: `:app:compileProdDebugKotlin`, `:app:testProdDebugUnitTest`, `:app:installProdDebug`, `:app:installDevDebug`, and launch sanity for `app.fynlo` / `app.fynlo.dev`.

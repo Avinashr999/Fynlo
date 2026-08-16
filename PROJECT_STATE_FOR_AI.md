@@ -2291,3 +2291,11 @@ The user approved the combined future roadmap below. Do not treat these as compl
 - Privacy placeholders on dashboard summary text now use plain `Hidden` wording instead of symbol placeholders.
 - Scope: dashboard visual consistency only. No calculation logic, account balance mutation, Firestore behavior, auth behavior, or schema migration changed.
 - Verification: `:app:compileProdDebugKotlin`, `:app:testProdDebugUnitTest`, `:app:installProdDebug`, `:app:installDevDebug`, and launch sanity for both packages passed.
+
+### 2026-08-16 - Focused Search/Nav/Invest Polish
+- Tightened the bottom navigation height and horizontal padding while keeping the rounded premium bar treatment.
+- Added shared `PremiumSearchField` and applied it to global search, lending search, debt search, and transaction history search.
+- Fixed the global search top inset treatment so the search bar uses status-bar padding cleanly instead of leaving a large blank gap.
+- Compact-polished the Investment screen: smaller holding cards, tighter portfolio metric tiles, softer spacing, and fewer divider-style interruptions.
+- Scope: UI/UX polish only. No calculation logic, account balance mutation, Firestore behavior, auth behavior, schema migration, or release AAB changed.
+- Verification: `:app:compileProdDebugKotlin`, `:app:testProdDebugUnitTest`, `:app:installProdDebug`, `:app:installDevDebug`, and launch sanity for both packages passed.
