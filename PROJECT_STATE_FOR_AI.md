@@ -1,3 +1,9 @@
+## 2026-08-16 - Dashboard Calm Pass
+
+- Removed the dashboard automation review card so the home screen stays focused on net worth, quick actions, accounts, money movement, and insights.
+- Tightened the floating bottom navigation wrapper by removing the extra background/safe-area padding behind the pill. The bottom nav now reads more like a single Instagram-style floating layer instead of a pill sitting in a larger bar.
+- Scope was UI structure only. Automation/proof/budget/recurring features remain available from their own screens; no accounting, Firestore, sync, or ledger calculation logic changed.
+
 ## 2026-08-16 - Daily Interest and Net-Worth Explanation
 
 - Added read-only daily interest movement to the dashboard so users can see how live interest accrual affects net worth: borrower receivable interest, debt payable interest, and the net daily effect.

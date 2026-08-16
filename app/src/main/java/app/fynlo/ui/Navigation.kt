@@ -1131,7 +1131,7 @@ private fun LedgerBottomNav(
     onSelect: (Screen) -> Unit,
 ) {
     val wrapperHeight by animateDpAsState(
-        targetValue = if (compact) 58.dp else 74.dp,
+        targetValue = if (compact) 50.dp else 62.dp,
         animationSpec = tween(220, easing = FastOutSlowInEasing),
         label = "bottom-nav-wrapper-height",
     )
@@ -1159,8 +1159,7 @@ private fun LedgerBottomNav(
         modifier = Modifier
             .fillMaxWidth()
             .height(wrapperHeight)
-            .navigationBarsPadding()
-            .padding(start = horizontalPadding, end = horizontalPadding, top = 0.dp, bottom = 4.dp),
+            .padding(start = horizontalPadding, end = horizontalPadding),
         contentAlignment = Alignment.Center,
     ) {
         Surface(

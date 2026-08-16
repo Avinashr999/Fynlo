@@ -1,3 +1,9 @@
+## 2026-08-16 - Dashboard Calm Pass
+
+- Dashboard automation review was removed from Home to reduce noise and space usage.
+- Bottom navigation wrapper was tightened so the floating pill no longer sits inside a visible padded background band.
+- Automation/proof/budget/recurring features remain available from their own screens. No accounting, Firestore, sync, or ledger calculation logic changed.
+
 ## 2026-08-16 - Daily Interest and Net-Worth Explanation
 
 - Dashboard now has a small read-only daily interest signal: receivable interest from borrowers, payable interest on debts, and the net daily effect.

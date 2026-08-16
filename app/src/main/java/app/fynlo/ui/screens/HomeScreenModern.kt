@@ -147,21 +147,6 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
         val month = java.time.YearMonth.from(today)
         allTransactionsHome.moneyMovementForMonth(month)
     }
-    val automationSummary = remember(
-        allTransactionsHome,
-        budgetsHome,
-        recurringHome,
-        proofAttachmentsHome,
-        today,
-    ) {
-        buildAutomationSummary(
-            transactions = allTransactionsHome,
-            budgets = budgetsHome,
-            recurring = recurringHome,
-            proofs = proofAttachmentsHome,
-            today = today,
-        )
-    }
     val isFreshBook = activeAccounts.isEmpty() &&
         allTransactionsHome.isEmpty() &&
         allInvestmentsHome.isEmpty() &&
@@ -509,18 +494,6 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
                 onOpenBookCheck = { onNavigateToScreen("book_check") },
             )
             Spacer(Modifier.height(12.dp))
-        }
-
-        if (!isFreshBook) {
-            if (automationSummary.needsAttention > 0) {
-                AutomationAssistantCard(
-                    summary = automationSummary,
-                    onOpenRecurring = { onNavigateToScreen("recurring") },
-                    onOpenBudgets = { onNavigateToScreen("budgets") },
-                    onOpenProofRecords = { onNavigateToScreen("settings") },
-                )
-                Spacer(Modifier.height(12.dp))
-            }
         }
 
         // -- Quick actions -----------------------------------------------------
