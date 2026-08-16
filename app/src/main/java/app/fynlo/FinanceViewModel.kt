@@ -426,9 +426,30 @@ class FinanceViewModel @Inject constructor(
         val net            = totalAssets - (totalDebtPrincipal + totalDebtInterest)
         val accountsMap    = accts.associate { it.name to it.balance }
 
+        // -- Daily derived interest movement -------------------------------------
+        // This is explanatory only. It does not create transactions or mutate
+        // balances; it shows how live accrual may move receivables/liabilities.
+        val todayDate = LocalDate.now()
+        val todayStr = todayDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
+        val tomorrowStr = todayDate.plusDays(1).format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
+        val borrowerDueToday = activeBrws.sumOf { b ->
+            if (b.rate <= 0.0) 0.0 else InterestPolicy.borrowerBreakdown(b, paymentsByLoan[b.id].orEmpty(), todayStr).due
+        }
+        val borrowerDueTomorrow = activeBrws.sumOf { b ->
+            if (b.rate <= 0.0) 0.0 else InterestPolicy.borrowerBreakdown(b, paymentsByLoan[b.id].orEmpty(), tomorrowStr).due
+        }
+        val debtDueToday = dbts.sumOf { debt ->
+            if (debt.rate <= 0.0) 0.0 else InterestPolicy.debtBreakdown(debt, paymentsByDebt[debt.id].orEmpty(), todayStr).due
+        }
+        val debtDueTomorrow = dbts.sumOf { debt ->
+            if (debt.rate <= 0.0) 0.0 else InterestPolicy.debtBreakdown(debt, paymentsByDebt[debt.id].orEmpty(), tomorrowStr).due
+        }
+        val dailyBorrowerInterest = (borrowerDueTomorrow - borrowerDueToday).coerceAtLeast(0.0)
+        val dailyDebtInterest = (debtDueTomorrow - debtDueToday).coerceAtLeast(0.0)
+        val dailyNetWorthInterestEffect = dailyBorrowerInterest - dailyDebtInterest
+
         // -- Performance Analytics (XIRR/CAGR) ----------------------------------
         // C14 #5 (3.2.82) - Portfolio-wide annualised metrics.
-        val todayStr = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
 
         // 1. Investment Performance
         val invCagr = CagrCalculator.portfolio(
@@ -506,6 +527,9 @@ class FinanceViewModel @Inject constructor(
             investmentTypeBreakdown  = invTypeMap,
             interestLendingBreakdown = interestBrwMap,
             handLendingBreakdown     = handBrwMap,
+            dailyBorrowerInterestAccrued = dailyBorrowerInterest,
+            dailyDebtInterestAccrued = dailyDebtInterest,
+            dailyNetWorthInterestEffect = dailyNetWorthInterestEffect,
             lendingYield           = avgYield,
             lendingXirr            = lendXirr,
             portfolioXirr          = portXirr,

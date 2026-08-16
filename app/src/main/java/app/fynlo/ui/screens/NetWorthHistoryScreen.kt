@@ -90,6 +90,16 @@ fun NetWorthHistoryScreen(viewModel: FinanceViewModel) {
 
             Spacer(Modifier.height(12.dp))
 
+            NetWorthCompositionCard(
+                totalAssets = summary.totalAssets,
+                totalDebt = summary.totalDebtPrincipal + summary.totalDebtInterest,
+                netWorth = summary.netWorth,
+                currencyCode = currencyCode,
+                locale = locale,
+            )
+
+            Spacer(Modifier.height(12.dp))
+
             OutlinedButton(
                 onClick = {
                     backfillBusy = true
@@ -163,6 +173,63 @@ fun NetWorthHistoryScreen(viewModel: FinanceViewModel) {
 
             Spacer(Modifier.height(48.dp))
         }
+    }
+}
+
+@Composable
+private fun NetWorthCompositionCard(
+    totalAssets: Double,
+    totalDebt: Double,
+    netWorth: Double,
+    currencyCode: String,
+    locale: Locale,
+) {
+    PremiumCard {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text(
+                "Why assets move",
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+            )
+            Text(
+                "Assets include accounts, investments, and money receivable. Debts reduce net worth separately.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            NetWorthCompositionRow("Assets", totalAssets, Emerald500, currencyCode, locale)
+            NetWorthCompositionRow("Debts owed", totalDebt, SemanticRed, currencyCode, locale)
+            NetWorthCompositionRow("Net worth", netWorth, if (netWorth >= 0) Emerald500 else SemanticRed, currencyCode, locale)
+            Text(
+                "If you repay a debt from cash, assets can reduce because cash leaves an account. The debt also reduces, so net worth changes only by the real difference.",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+@Composable
+private fun NetWorthCompositionRow(
+    label: String,
+    value: Double,
+    color: Color,
+    currencyCode: String,
+    locale: Locale,
+) {
+    Row(
+        Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            label,
+            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Text(
+            CurrencyFormatter.listRow(value, currencyCode, locale),
+            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.ExtraBold),
+            color = color,
+        )
     }
 }
 

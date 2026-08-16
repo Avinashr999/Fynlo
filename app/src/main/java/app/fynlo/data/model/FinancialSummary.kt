@@ -31,6 +31,9 @@ data class FinancialSummary(
     val lendingXirr: Double = Double.NaN,
     val interestLendingBreakdown: Map<String, Double> = emptyMap(),
     val handLendingBreakdown: Map<String, Double> = emptyMap(),
+    val dailyBorrowerInterestAccrued: Double = 0.0,
+    val dailyDebtInterestAccrued: Double = 0.0,
+    val dailyNetWorthInterestEffect: Double = 0.0,
 
     // ── Portfolio ──────────────────────────────────────────────────────────────
     val portfolioXirr: Double = Double.NaN,

@@ -1,3 +1,9 @@
+## 2026-08-16 - Daily Interest and Net-Worth Explanation
+
+- Dashboard now has a small read-only daily interest signal: receivable interest from borrowers, payable interest on debts, and the net daily effect.
+- Net Worth History now explains assets, debts owed, and net worth in plain language so debt repayments or corrected money sources do not look like mysterious asset loss.
+- This is explanation-only. It does not create entries, alter balances, change Firestore data, or repair old records.
+
 ## 2026-07-16 - Scrollable Headers and Compact Action Fix
 
 - Dashboard quick actions were redesigned as compact minimal action surfaces after phone screenshots showed the row looked corrupted.

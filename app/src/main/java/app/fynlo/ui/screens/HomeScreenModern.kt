@@ -608,10 +608,15 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
         Spacer(Modifier.height(20.dp))
 
         // -- Insights ----------------------------------------------------------
-        if (!isFreshBook && (todayMovement.entries > 0 || monthMovement.entries > 0)) {
+        val hasDailyInterest =
+            summary.dailyBorrowerInterestAccrued > 0.005 || summary.dailyDebtInterestAccrued > 0.005
+        if (!isFreshBook && (todayMovement.entries > 0 || monthMovement.entries > 0 || hasDailyInterest)) {
             DashboardMovementStrip(
                 todayMovement = todayMovement,
                 monthMovement = monthMovement,
+                dailyBorrowerInterest = summary.dailyBorrowerInterestAccrued,
+                dailyDebtInterest = summary.dailyDebtInterestAccrued,
+                dailyNetInterest = summary.dailyNetWorthInterestEffect,
                 currencyCode = currencyCode,
                 locale = locale,
                 isPrivacy = isPrivacy,
@@ -769,6 +774,9 @@ private fun List<app.fynlo.data.model.Transaction>.moneyMovement(
 private fun DashboardMovementStrip(
     todayMovement: MoneyMovementSummary,
     monthMovement: MoneyMovementSummary,
+    dailyBorrowerInterest: Double,
+    dailyDebtInterest: Double,
+    dailyNetInterest: Double,
     currencyCode: String,
     locale: Locale,
     isPrivacy: Boolean,
@@ -799,6 +807,23 @@ private fun DashboardMovementStrip(
                 modifier = Modifier.weight(1f),
                 onClick = onOpenMonthly,
             )
+        }
+        if (dailyBorrowerInterest > 0.005 || dailyDebtInterest > 0.005) {
+            Spacer(Modifier.height(8.dp))
+            MovementMiniCard(
+                title = "Daily interest",
+                value = if (isPrivacy) "Hidden" else CurrencyFormatter.listRow(dailyNetInterest, currencyCode, locale),
+                detail = if (isPrivacy) {
+                    "Hidden"
+                } else {
+                    "Receivable ${CurrencyFormatter.listRow(dailyBorrowerInterest, currencyCode, locale)} / Payable ${CurrencyFormatter.listRow(dailyDebtInterest, currencyCode, locale)}"
+                },
+                color = if (dailyNetInterest < 0) SemanticRed else Emerald500,
+                modifier = Modifier.fillMaxWidth(),
+                onClick = onOpenMonthly,
+            )
+            Spacer(Modifier.height(4.dp))
+            DashboardCaption("Live estimate only. Saved entries still control account balances.")
         }
     }
 }

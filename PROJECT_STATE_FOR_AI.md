@@ -1,3 +1,9 @@
+## 2026-08-16 - Daily Interest and Net-Worth Explanation
+
+- Added read-only daily interest movement to the dashboard so users can see how live interest accrual affects net worth: borrower receivable interest, debt payable interest, and the net daily effect.
+- Added a plain-language Net Worth History explanation showing assets, debts owed, and net worth together, including why assets can reduce when debt is repaid from cash.
+- Scope is explanatory/derived UI only. No account balances, transaction rows, principal, repayment rows, Firestore writes, or ledger history are mutated by this feature.
+
 ## 2026-07-16 - Scrollable Headers and Compact Action Fix
 
 - Dashboard quick actions were tightened from oversized tinted tiles into compact minimal action surfaces after phone screenshots showed the row looked visually corrupted.
