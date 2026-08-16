@@ -423,7 +423,7 @@ fun AddInvestmentDialog(
                                     name = name.trim(),
                                     type = type,
                                     invested = amountDouble,
-                                    currentVal = initialInvestment?.currentVal ?: amountDouble,
+                                    currentVal = if (isNew) amountDouble else initialInvestment.currentVal,
                                     date = parsedDate,
                                     notes = notes.trim(),
                                     sourceType = if (isNew) "" else sourceType,

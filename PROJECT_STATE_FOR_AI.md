@@ -1,3 +1,9 @@
+## 2026-08-16 - New Investment Current Value Default Fix
+
+- Fixed new investments opened from the blank add form saving `currentVal = 0` because the placeholder investment object had a zero current value.
+- New investments now save current value equal to the invested amount by default. Existing investment edits still preserve the tracked current value unless the user updates valuation separately.
+- Existing records already saved with zero current value may need a one-time value update from the investment card.
+
 ## 2026-08-16 - Dashboard Calm Pass
 
 - Removed the dashboard automation review card so the home screen stays focused on net worth, quick actions, accounts, money movement, and insights.

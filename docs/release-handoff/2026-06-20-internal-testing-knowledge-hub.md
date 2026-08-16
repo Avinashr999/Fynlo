@@ -1,3 +1,9 @@
+## 2026-08-16 - New Investment Current Value Default Fix
+
+- Fixed add-investment flow where a blank placeholder record could make a new holding save with current value `0` even when invested amount was entered.
+- New holdings now start with current value equal to invested amount. Existing holdings keep their current value during normal edits.
+- Any already-created zero-value holding should be corrected once using the investment value update action.
+
 ## 2026-08-16 - Dashboard Calm Pass
 
 - Dashboard automation review was removed from Home to reduce noise and space usage.
