@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalLocale
 import app.fynlo.FinanceViewModel
 import app.fynlo.logic.CurrencyFormatter
+import app.fynlo.logic.MoneyTrail
 import app.fynlo.logic.TransactionOrdering
 import app.fynlo.logic.matchesAccount
 import java.util.Locale
@@ -47,6 +48,9 @@ fun AccountStatementScreen(
         .let(TransactionOrdering::newestFirst)
     val balanceImpactsByTransaction = remember(transactions, accounts) {
         buildBalanceImpactsByTransaction(transactions, accounts)
+    }
+    val accountTrail = remember(account, transactions) {
+        account?.let { MoneyTrail.account(it, transactions) }
     }
 
     var showEditDialog by remember { mutableStateOf(false) }
@@ -128,6 +132,30 @@ fun AccountStatementScreen(
                             style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.ExtraBold),
                             color = if (account.balance >= 0) Emerald500 else SemanticRed,
                         )
+                        accountTrail?.let { trail ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                AccountTrailMetric(
+                                    label = "Opening",
+                                    value = CurrencyFormatter.detail(trail.openingBalance, currencyCode, locale),
+                                    modifier = Modifier.weight(1f),
+                                )
+                                AccountTrailMetric(
+                                    label = "In",
+                                    value = CurrencyFormatter.detail(trail.moneyIn, currencyCode, locale),
+                                    modifier = Modifier.weight(1f),
+                                    valueColor = Emerald500,
+                                )
+                                AccountTrailMetric(
+                                    label = "Out",
+                                    value = CurrencyFormatter.detail(trail.moneyOut, currencyCode, locale),
+                                    modifier = Modifier.weight(1f),
+                                    valueColor = SemanticRed,
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -179,6 +207,42 @@ fun AccountStatementScreen(
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun AccountTrailMetric(
+    label: String,
+    value: String,
+    modifier: Modifier = Modifier,
+    valueColor: Color = MaterialTheme.colorScheme.onSurface,
+) {
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.32f),
+        border = androidx.compose.foundation.BorderStroke(
+            0.5.dp,
+            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.32f),
+        ),
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 9.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            Text(
+                label,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+            )
+            Text(
+                value,
+                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.ExtraBold),
+                color = valueColor,
+                maxLines = 1,
+            )
         }
     }
 }

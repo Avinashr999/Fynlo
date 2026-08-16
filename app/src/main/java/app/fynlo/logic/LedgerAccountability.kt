@@ -78,6 +78,7 @@ object LedgerAccountability {
         val txByRef = transactions.groupBy { it.ref }.filterKeys { it.isNotBlank() }
         val paymentsByLoan = payments.groupBy { it.loanId }
         val debtPaymentsByDebt = debtPayments.groupBy { it.debtId }
+        val debtsById = debts.associateBy { it.id }
 
         fun addIssue(
             severity: LedgerIssueSeverity,
@@ -219,6 +220,32 @@ object LedgerAccountability {
             if (abs(paymentTotal - debt.paid) > 0.01) {
                 addIssue(LedgerIssueSeverity.CRITICAL, "Debt payment total mismatch", "${debt.name} paid total does not match payment rows.", "debt", debt.id)
             }
+            currentDebtPayments
+                .filter { it.amount > 0.01 }
+                .forEach { payment ->
+                    val sourceTxn = linked.firstOrNull { txn ->
+                        txn.category.equals("Debt Repayment", true) &&
+                            txn.date == payment.date &&
+                            abs(txn.amount - payment.amount) <= 0.01
+                    }
+                    if (sourceTxn == null) {
+                        addIssue(
+                            LedgerIssueSeverity.WARNING,
+                            "Debt payment account missing",
+                            "${debt.name} has a payment on ${DateUtils.formatToDisplay(payment.date)}, but the paying account is not linked.",
+                            "debt",
+                            debt.id,
+                        )
+                    } else if (sourceTxn.fromAcct.isBlank() && sourceTxn.fromAcctId.isBlank()) {
+                        addIssue(
+                            LedgerIssueSeverity.WARNING,
+                            "Debt payment account missing",
+                            "${debt.name} has a payment on ${DateUtils.formatToDisplay(payment.date)}, but the paying account is blank.",
+                            "debt",
+                            debt.id,
+                        )
+                    }
+                }
             val unclearDebtInterestPayments = currentDebtPayments.filter {
                 val interest = debtInterestForPaidTotal(it)
                 InterestPolicy.isUnclearInterestPayment(it.interestAllocationType, interest) ||
@@ -299,6 +326,36 @@ object LedgerAccountability {
                 )
             }
             if (investment.sourceType in setOf("existing_debt", "new_loan")) {
+                val linkedDebt = MoneyTrail.linkedDebtForInvestment(investment, debts)
+                if (linkedDebt == null) {
+                    addIssue(
+                        LedgerIssueSeverity.WARNING,
+                        "Investment source debt missing",
+                        "${investment.name} is debt-funded, but the source debt is not found.",
+                        "investment",
+                        investment.id,
+                    )
+                } else {
+                    val sourceById = investment.linkedDebtId.isNotBlank() && debtsById[investment.linkedDebtId] != null
+                    if (sourceById && investment.fundingSource.isNotBlank() && !investment.fundingSource.equals(linkedDebt.name, ignoreCase = true)) {
+                        addIssue(
+                            LedgerIssueSeverity.WARNING,
+                            "Investment source name changed",
+                            "${investment.name} is linked to ${linkedDebt.name}, but still shows ${investment.fundingSource} as the source.",
+                            "investment",
+                            investment.id,
+                        )
+                    }
+                    if (linkedDebt.amount + 0.01 < investment.invested) {
+                        addIssue(
+                            LedgerIssueSeverity.WARNING,
+                            "Investment source amount needs review",
+                            "${investment.name} is ${CurrencyFormatter.detail(investment.invested)}, but the linked source debt is only ${CurrencyFormatter.detail(linkedDebt.amount)}.",
+                            "investment",
+                            investment.id,
+                        )
+                    }
+                }
                 val movingTrace = investmentRows.firstOrNull { row ->
                     !row.type.equals("Info", true) ||
                         !hasTag(row, "journal_only") ||

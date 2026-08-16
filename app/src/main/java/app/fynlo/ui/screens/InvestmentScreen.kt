@@ -33,9 +33,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import app.fynlo.FinanceViewModel
+import app.fynlo.data.model.Account
+import app.fynlo.data.model.Debt
 import app.fynlo.data.model.Investment
+import app.fynlo.data.model.Transaction
 import app.fynlo.logic.CurrencyFormatter
 import app.fynlo.logic.DateUtils
+import app.fynlo.logic.MoneyTrail
 import app.fynlo.ui.components.AddInvestmentDialog
 import app.fynlo.ui.components.FormDialog
 import app.fynlo.ui.components.ProofAttachmentSection
@@ -57,6 +61,7 @@ fun InvestmentScreen(viewModel: FinanceViewModel) {
     val isPrivacy      by viewModel.isPrivacyMode.collectAsState()
     val accounts       by viewModel.accounts.collectAsState()
     val debts          by viewModel.debts.collectAsState()
+    val transactions   by viewModel.transactions.collectAsState()
     val proofAttachments by viewModel.proofAttachments.collectAsState()
     val syncStatus     by viewModel.syncStatus.collectAsState()
     val haptic = LocalHapticFeedback.current
@@ -545,6 +550,9 @@ fun InvestmentScreen(viewModel: FinanceViewModel) {
                             viewModel.addProofAttachment("investment", invest.id, name, type, uri)
                         },
                         onDeleteProof = viewModel::deleteProofAttachment,
+                        accounts = accounts,
+                        debts = debts,
+                        transactions = transactions,
                     )
                     if (index < visibleInvestments.lastIndex) {
                         HorizontalDivider(thickness = 0.5.dp,
@@ -737,6 +745,9 @@ fun InvestmentCard(
     proofAttachments: List<app.fynlo.data.model.ProofAttachment> = emptyList(),
     onAddProof: (String, String, String) -> Unit = { _, _, _ -> },
     onDeleteProof: (String) -> Unit = {},
+    accounts: List<Account> = emptyList(),
+    debts: List<Debt> = emptyList(),
+    transactions: List<Transaction> = emptyList(),
 ) {
     val growth = invest.currentVal - (invest.invested - invest.withdrawn)
     val growthPercent = if (invest.invested > 0) (growth / invest.invested) * 100 else 0.0
@@ -744,6 +755,10 @@ fun InvestmentCard(
     val typeAccent = remember(invest.type) { investmentTypeAccent(invest.type) }
     val fundingLabel = remember(invest.sourceType, invest.fundingSource) {
         investmentFundingLabel(invest)
+    }
+    val accountIdToName = remember(accounts) { accounts.associate { it.id to it.name } }
+    val moneyTrail = remember(invest, debts, transactions, accountIdToName) {
+        MoneyTrail.investment(invest, debts, transactions, accountIdToName)
     }
     val positiveColor = MaterialTheme.colorScheme.primary
     val negativeColor = MaterialTheme.colorScheme.error
@@ -869,14 +884,24 @@ fun InvestmentCard(
                 }
             }
 
-            if (fundingLabel.isNotBlank()) {
+            if (moneyTrail.fundedFrom.isNotBlank()) {
                 Spacer(Modifier.height(6.dp))
                 Text(
-                    fundingLabel,
+                    moneyTrail.fundedFrom.ifBlank { fundingLabel },
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
                 )
+                if (invest.sourceType in setOf("existing_debt", "new_loan")) {
+                    Spacer(Modifier.height(2.dp))
+                    Text(
+                        moneyTrail.sourceStatus,
+                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                        color = if (moneyTrail.sourceStatus.contains("cleared", ignoreCase = true)) Emerald500
+                            else MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                    )
+                }
             }
 
             if (showReturnDetails) {

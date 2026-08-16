@@ -36,6 +36,7 @@ import app.fynlo.logic.CurrencyFormatter
 import app.fynlo.logic.DateUtils
 import app.fynlo.logic.DebtPayoffPlanner
 import app.fynlo.logic.InterestEngine
+import app.fynlo.logic.MoneyTrail
 import app.fynlo.logic.displayFromAcct
 import app.fynlo.logic.displayToAcct
 import app.fynlo.ui.components.AddDebtDialog
@@ -103,6 +104,9 @@ fun DebtDetailScreen(
     }
     val receivedInto = remember(receivedTxn, accountIdToName) {
         receivedTxn?.displayToAcct(accountIdToName).orEmpty()
+    }
+    val moneyTrail = remember(debt, debtPayments, transactions, accountIdToName) {
+        MoneyTrail.debt(debt, debtPayments, transactions, accountIdToName)
     }
 
     var showEditDialog    by remember { mutableStateOf(false) }
@@ -295,6 +299,15 @@ fun DebtDetailScreen(
                             }
                         }
                     }
+                    Spacer(Modifier.height(8.dp))
+                    MoneyTrailSummaryCard(
+                        rows = listOf(
+                            "Received" to "${CurrencyFormatter.detail(moneyTrail.principalBorrowed, currencyCode, locale)} into ${moneyTrail.receivedInto}",
+                            "Principal paid" to CurrencyFormatter.detail(moneyTrail.principalRepaid, currencyCode, locale),
+                            "Remaining principal" to CurrencyFormatter.detail(moneyTrail.remainingPrincipal, currencyCode, locale),
+                            "Linked records" to "${moneyTrail.linkedTransactionCount} transactions, ${moneyTrail.paymentCount} payments",
+                        )
+                    )
                     Spacer(Modifier.height(8.dp))
                     Row(
                         modifier = Modifier

@@ -1,10 +1,14 @@
 package app.fynlo.logic
 
 import app.fynlo.data.SyncStatus
+import app.fynlo.data.model.Account
 import app.fynlo.data.model.Borrower
 import app.fynlo.data.model.Debt
 import app.fynlo.data.model.DebtPayment
+import app.fynlo.data.model.Investment
 import app.fynlo.data.model.Payment
+import app.fynlo.data.model.Transaction
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -584,5 +588,166 @@ class LedgerAccountabilityTest {
         assertTrue(groupedReviews.single().detail.contains("2 interest payments"))
         assertTrue(groupedReviews.single().detail.contains("Muhammed"))
         assertFalse(report.issues.any { it.recordType == "debt_payment" && it.title.contains("Interest payment") })
+    }
+
+    @Test
+    fun `money trail explains account opening in out and closing balance`() {
+        val account = Account(id = "acc-1", name = "Business Investment", type = "Bank", balance = 25_000.0)
+        val trail = MoneyTrail.account(
+            account = account,
+            transactions = listOf(
+                Transaction(
+                    id = "income-1",
+                    date = "2026-08-15",
+                    type = "Income",
+                    amount = 10_000.0,
+                    toAcct = account.name,
+                    toAcctId = account.id,
+                    category = "Income",
+                ),
+                Transaction(
+                    id = "expense-1",
+                    date = "2026-08-16",
+                    type = "Expense",
+                    amount = 5_000.0,
+                    fromAcct = account.name,
+                    fromAcctId = account.id,
+                    category = "Expense",
+                ),
+            ),
+        )
+
+        assertEquals(20_000.0, trail.openingBalance, 0.01)
+        assertEquals(10_000.0, trail.moneyIn, 0.01)
+        assertEquals(5_000.0, trail.moneyOut, 0.01)
+        assertEquals(25_000.0, trail.closingBalance, 0.01)
+    }
+
+    @Test
+    fun `book check warns when debt payment has no paying account trail`() {
+        val debt = Debt(
+            id = "debt-source",
+            name = "Kalyani",
+            amount = 100_000.0,
+            rate = 0.0,
+            date = "2026-08-01",
+            paid = 10_000.0,
+            paidPrincipal = 10_000.0,
+        )
+        val report = LedgerAccountability.inspect(
+            accounts = emptyList(),
+            transactions = emptyList(),
+            borrowers = emptyList(),
+            debts = listOf(debt),
+            investments = emptyList(),
+            payments = emptyList(),
+            debtPayments = listOf(
+                DebtPayment(
+                    id = "debt-payment-without-source",
+                    debtId = debt.id,
+                    name = debt.name,
+                    date = "2026-08-15",
+                    type = "Principal",
+                    amount = 10_000.0,
+                    principal = 10_000.0,
+                )
+            ),
+            syncStatus = SyncStatus.Synced,
+            today = LocalDate.parse("2026-08-16"),
+        )
+
+        assertTrue(report.issues.any {
+            it.title == "Debt payment account missing" &&
+                it.severity == LedgerIssueSeverity.WARNING &&
+                it.recordId == debt.id
+        })
+    }
+
+    @Test
+    fun `book check warns when debt funded investment points to renamed source debt`() {
+        val debt = Debt(id = "debt-1", name = "Kalyani Updated", amount = 100_000.0, rate = 0.0, date = "2026-08-01")
+        val investment = Investment(
+            id = "inv-1",
+            name = "Business Fund",
+            type = "Business",
+            invested = 100_000.0,
+            currentVal = 100_000.0,
+            date = "2026-08-15",
+            sourceType = "existing_debt",
+            fundingSource = "Kalyani Old",
+            linkedDebtId = debt.id,
+        )
+
+        val report = LedgerAccountability.inspect(
+            accounts = emptyList(),
+            transactions = listOf(
+                Transaction(
+                    id = "inv-trace",
+                    date = "2026-08-15",
+                    type = "Info",
+                    amount = 100_000.0,
+                    category = "Investment",
+                    ref = investment.id,
+                    tags = "journal_only",
+                )
+            ),
+            borrowers = emptyList(),
+            debts = listOf(debt),
+            investments = listOf(investment),
+            payments = emptyList(),
+            debtPayments = emptyList(),
+            syncStatus = SyncStatus.Synced,
+            today = LocalDate.parse("2026-08-16"),
+        )
+
+        assertTrue(report.issues.any {
+            it.title == "Investment source name changed" &&
+                it.severity == LedgerIssueSeverity.WARNING &&
+                it.recordId == investment.id
+        })
+    }
+
+    @Test
+    fun `book check warns when linked source debt is less than investment amount`() {
+        val debt = Debt(id = "debt-small", name = "Small Debt", amount = 50_000.0, rate = 0.0, date = "2026-08-01")
+        val investment = Investment(
+            id = "inv-large",
+            name = "Large Investment",
+            type = "Business",
+            invested = 75_000.0,
+            currentVal = 75_000.0,
+            date = "2026-08-15",
+            sourceType = "existing_debt",
+            fundingSource = debt.name,
+            linkedDebtId = debt.id,
+        )
+
+        val report = LedgerAccountability.inspect(
+            accounts = emptyList(),
+            transactions = listOf(
+                Transaction(
+                    id = "inv-large-trace",
+                    date = "2026-08-15",
+                    type = "Info",
+                    amount = 75_000.0,
+                    category = "Investment",
+                    ref = investment.id,
+                    tags = "journal_only",
+                )
+            ),
+            borrowers = emptyList(),
+            debts = listOf(debt),
+            investments = listOf(investment),
+            payments = emptyList(),
+            debtPayments = emptyList(),
+            syncStatus = SyncStatus.Synced,
+            today = LocalDate.parse("2026-08-16"),
+        )
+
+        assertTrue(report.issues.any {
+            it.title == "Investment source amount needs review" &&
+                it.severity == LedgerIssueSeverity.WARNING &&
+                it.recordId == investment.id
+        })
     }
 }

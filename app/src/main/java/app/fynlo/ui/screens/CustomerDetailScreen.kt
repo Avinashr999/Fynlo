@@ -37,6 +37,7 @@ import app.fynlo.data.model.Payment
 import app.fynlo.logic.CurrencyFormatter
 import app.fynlo.logic.DateUtils
 import app.fynlo.logic.InterestEngine
+import app.fynlo.logic.MoneyTrail
 import app.fynlo.ui.components.AddLendingDialog
 import app.fynlo.ui.components.CollectPaymentDialog
 import app.fynlo.ui.components.FynloConfirmDialog
@@ -62,6 +63,7 @@ val borrowers by viewModel.borrowers.collectAsState()
     val allPayments by viewModel.payments.collectAsState()
     val proofAttachments by viewModel.proofAttachments.collectAsState()
     val accounts by viewModel.accounts.collectAsState()
+    val transactions by viewModel.transactions.collectAsState()
     val currentProject by viewModel.currentProject.collectAsState()
     val currencyCode = currentProject?.currency ?: "INR"
     val locale = LocalLocale.current.platformLocale
@@ -89,6 +91,10 @@ val borrowers by viewModel.borrowers.collectAsState()
     val interestOutstanding = interestBreakdown.due
     val advanceInterest = interestBreakdown.paidAhead
     val totalOutstanding = (borrower.amount - borrower.paidPrincipal).coerceAtLeast(0.0) + interestOutstanding
+    val accountIdToName = remember(accounts) { accounts.associate { it.id to it.name } }
+    val moneyTrail = remember(borrower, loanPayments, transactions, accountIdToName) {
+        MoneyTrail.borrower(borrower, loanPayments, transactions, accountIdToName)
+    }
 
     val context = androidx.compose.ui.platform.LocalContext.current
 
@@ -507,11 +513,20 @@ val borrowers by viewModel.borrowers.collectAsState()
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                             Text(
-                                borrower.sourceAccount.ifBlank { "Unknown account" },
+                                moneyTrail.disbursedFrom,
                                 style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
                             )
                         }
                     }
+                    Spacer(Modifier.height(8.dp))
+                    MoneyTrailSummaryCard(
+                        rows = listOf(
+                            "Given" to "${CurrencyFormatter.detail(moneyTrail.principalGiven, currencyCode, locale)} from ${moneyTrail.disbursedFrom}",
+                            "Principal collected" to CurrencyFormatter.detail(moneyTrail.principalCollected, currencyCode, locale),
+                            "Remaining principal" to CurrencyFormatter.detail(moneyTrail.remainingPrincipal, currencyCode, locale),
+                            "Linked records" to "${moneyTrail.linkedTransactionCount} transactions, ${moneyTrail.paymentCount} payments",
+                        )
+                    )
                     Spacer(Modifier.height(8.dp))
                     Row(
                         modifier = Modifier
@@ -918,6 +933,53 @@ fun DetailItem(label: String, value: String, modifier: Modifier = Modifier) {
     Column(modifier = modifier) {
         Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Text(value, style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold))
+    }
+}
+
+@Composable
+fun MoneyTrailSummaryCard(
+    rows: List<Pair<String, String>>,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(14.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.32f),
+        border = androidx.compose.foundation.BorderStroke(
+            0.5.dp,
+            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f),
+        ),
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(
+                "Money trail",
+                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.ExtraBold),
+                color = MaterialTheme.colorScheme.primary,
+            )
+            rows.forEach { (label, value) ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.Top,
+                ) {
+                    Text(
+                        label,
+                        modifier = Modifier.weight(0.9f),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Text(
+                        value,
+                        modifier = Modifier.weight(1.25f),
+                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                }
+            }
+        }
     }
 }
 
