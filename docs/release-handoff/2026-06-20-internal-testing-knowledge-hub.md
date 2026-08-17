@@ -1539,3 +1539,10 @@ Phone smoke still recommended before a new AAB:
 - Investment cards and portfolio metric tiles were compacted so the screen feels less spacious and more scannable.
 - Scope: UI/UX polish only. No calculation logic, balance mutation, cloud sync, auth, schema, or Play release behavior changed.
 - Verification passed: `:app:compileProdDebugKotlin`, `:app:testProdDebugUnitTest`, `:app:installProdDebug`, `:app:installDevDebug`, and launch sanity for `app.fynlo` / `app.fynlo.dev`.
+
+### 2026-08-17 - Ledger trust and correction UX pass
+- Investment add/edit now shows a clear review panel before saving: account-funded investments move cash, debt-funded investments only link the debt source, and new-loan investments create the debt source.
+- New investments still default current value to invested amount; Book Check now also catches older or imported investments where current value is zero despite invested amount being present.
+- Book Check is grouped into `Needs action`, `Review only`, and old-record notes so testers can focus on real money-risk items first.
+- Regression coverage confirms cleared debt plus active debt-funded investment is valid and should not be treated as an error.
+- Smoke focus for next phone pass: add investment from account, add investment from existing debt, edit investment source, delete investment with/without reverse, run Book Check, and confirm the warnings are plain and actionable.

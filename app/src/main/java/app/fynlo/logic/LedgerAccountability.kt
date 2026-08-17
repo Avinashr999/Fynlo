@@ -299,6 +299,15 @@ object LedgerAccountability {
             val linked = txByRef[investment.id].orEmpty()
             val investmentRows = linked.filter { it.category.equals("Investment", true) }
             val exactInvestmentRows = investmentRows.filter { abs(it.amount - investment.invested) <= 0.01 }
+            if (investment.invested > 0.01 && investment.currentVal <= 0.01) {
+                addIssue(
+                    LedgerIssueSeverity.WARNING,
+                    "Investment value looks missing",
+                    "${investment.name} has invested ${CurrencyFormatter.detail(investment.invested)} but current value is ${CurrencyFormatter.detail(investment.currentVal)}. Update current value if this is not correct.",
+                    "investment",
+                    investment.id,
+                )
+            }
             if (investment.fundingSource.isBlank()) {
                 addIssue(LedgerIssueSeverity.INFO, "Investment funding trace missing", "${investment.name} was created before the funding source was captured. Future investments record this automatically.", "investment", investment.id)
             }

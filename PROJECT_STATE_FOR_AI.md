@@ -2317,3 +2317,11 @@ The user approved the combined future roadmap below. Do not treat these as compl
 - Compact-polished the Investment screen: smaller holding cards, tighter portfolio metric tiles, softer spacing, and fewer divider-style interruptions.
 - Scope: UI/UX polish only. No calculation logic, account balance mutation, Firestore behavior, auth behavior, schema migration, or release AAB changed.
 - Verification: `:app:compileProdDebugKotlin`, `:app:testProdDebugUnitTest`, `:app:installProdDebug`, `:app:installDevDebug`, and launch sanity for both packages passed.
+
+### 2026-08-17 - Ledger Trust and Correction UX Pass
+- Added a final investment money-movement preview so users can see whether money moves from an account, is linked to an existing debt, or creates a new debt before saving.
+- Book Check now warns when an investment has an invested amount but current value is zero, with plain user copy to update value if needed.
+- Book Check issues are grouped into `Needs action`, `Review only`, and old-record notes so the dialog is less noisy and more actionable.
+- Confirmed the desired accounting rule in tests: a debt-funded investment can remain active after its source debt is cleared and should not be treated as corruption.
+- Cleaned investment delete confirmation punctuation.
+- Scope: trust/UX and Book Check coverage only. No schema migration, no silent account balance mutation, no sync behavior change, and no release AAB in this pass.

@@ -394,6 +394,17 @@ fun AddInvestmentDialog(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
+                    InvestmentMoneyMovementPreview(
+                        isNew = isNew,
+                        amount = amountDouble,
+                        currencyCode = currencyCode,
+                        sourceType = sourceType,
+                        selectedAccount = selectedAccount,
+                        selectedDebt = selectedDebt,
+                        lenderName = lenderName,
+                        initialInvestment = initialInvestment,
+                        selectedDate = DateUtils.parseInput(date),
+                    )
                 }
 
                 // ── Buttons ───────────────────────────────────────────────────
@@ -490,6 +501,69 @@ fun AddInvestmentDialog(
                     )
                 }
                 DisabledButtonHint(disabledReason)
+        }
+    }
+}
+
+@Composable
+private fun InvestmentMoneyMovementPreview(
+    isNew: Boolean,
+    amount: Double,
+    currencyCode: String,
+    sourceType: String,
+    selectedAccount: Account?,
+    selectedDebt: Debt?,
+    lenderName: String,
+    initialInvestment: Investment?,
+    selectedDate: String,
+) {
+    if (amount <= 0.0) return
+    val money = CurrencyFormatter.detail(amount, currencyCode)
+    val sourceText = when (sourceType) {
+        SOURCE_EXISTING_DEBT -> {
+            val debtName = selectedDebt?.name ?: "selected debt"
+            "$money will be tracked as funded by debt: $debtName. Account cash will not change."
+        }
+        SOURCE_NEW_LOAN -> {
+            val lender = lenderName.ifBlank { "new lender" }
+            "$money will create a debt from $lender and fund this investment. Account cash will not change."
+        }
+        else -> {
+            val accountName = selectedAccount?.name ?: "selected account"
+            "$money will move from $accountName to this investment."
+        }
+    }
+    val sensitiveChange = !isNew && initialInvestment != null && (
+        kotlin.math.abs(initialInvestment.invested - amount) > 0.01 ||
+            initialInvestment.sourceType.ifBlank { SOURCE_ACCOUNT } != sourceType ||
+            initialInvestment.date != selectedDate
+    )
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.medium,
+        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.28f),
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Text(
+                "Review before saving",
+                style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                color = MaterialTheme.colorScheme.primary,
+            )
+            Text(
+                sourceText,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            if (sensitiveChange) {
+                Text(
+                    "This correction updates the saved money path. Existing payment history will stay as it is.",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         }
     }
 }

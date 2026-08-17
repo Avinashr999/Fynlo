@@ -750,4 +750,127 @@ class LedgerAccountabilityTest {
                 it.recordId == investment.id
         })
     }
+
+    @Test
+    fun `book check warns when investment current value is zero but invested amount exists`() {
+        val investment = Investment(
+            id = "inv-zero-value",
+            name = "CHR Investment",
+            type = "Business",
+            invested = 100_000.0,
+            currentVal = 0.0,
+            date = "2026-06-27",
+            sourceType = "account",
+            fundingSource = "Family Cash",
+        )
+
+        val report = LedgerAccountability.inspect(
+            accounts = emptyList(),
+            transactions = listOf(
+                Transaction(
+                    id = "inv-zero-value-trace",
+                    date = "2026-06-27",
+                    type = "Expense",
+                    amount = 100_000.0,
+                    category = "Investment",
+                    fromAcct = "Family Cash",
+                    ref = investment.id,
+                )
+            ),
+            borrowers = emptyList(),
+            debts = emptyList(),
+            investments = listOf(investment),
+            payments = emptyList(),
+            debtPayments = emptyList(),
+            syncStatus = SyncStatus.Synced,
+            today = LocalDate.parse("2026-08-17"),
+        )
+
+        assertTrue(report.issues.any {
+            it.title == "Investment value looks missing" &&
+                it.severity == LedgerIssueSeverity.WARNING &&
+                it.recordId == investment.id
+        })
+    }
+
+    @Test
+    fun `book check accepts cleared debt funded investment as valid money trail`() {
+        val debt = Debt(
+            id = "debt-cleared-source",
+            name = "Kalyani",
+            amount = 100_000.0,
+            rate = 0.0,
+            date = "2026-06-01",
+            paid = 100_000.0,
+            paidPrincipal = 100_000.0,
+            status = "Cleared",
+        )
+        val investment = Investment(
+            id = "inv-debt-funded-cleared",
+            name = "CHR Investment",
+            type = "Business",
+            invested = 100_000.0,
+            currentVal = 100_000.0,
+            date = "2026-06-27",
+            sourceType = "existing_debt",
+            fundingSource = debt.name,
+            linkedDebtId = debt.id,
+        )
+
+        val report = LedgerAccountability.inspect(
+            accounts = listOf(Account(id = "family-cash", name = "Family Cash", type = "Cash", balance = 0.0)),
+            transactions = listOf(
+                Transaction(
+                    id = "debt-received",
+                    date = "2026-06-01",
+                    type = "Income",
+                    amount = 100_000.0,
+                    category = "Debt Received",
+                    toAcct = "Family Cash",
+                    toAcctId = "family-cash",
+                    ref = debt.id,
+                ),
+                Transaction(
+                    id = "debt-repaid",
+                    date = "2026-08-15",
+                    type = "Expense",
+                    amount = 100_000.0,
+                    category = "Debt Repayment",
+                    fromAcct = "Family Cash",
+                    fromAcctId = "family-cash",
+                    ref = debt.id,
+                ),
+                Transaction(
+                    id = "inv-debt-funded-cleared-trace",
+                    date = "2026-06-27",
+                    type = "Info",
+                    amount = 100_000.0,
+                    category = "Investment",
+                    ref = investment.id,
+                    tags = "journal_only",
+                )
+            ),
+            borrowers = emptyList(),
+            debts = listOf(debt),
+            investments = listOf(investment),
+            payments = emptyList(),
+            debtPayments = listOf(
+                DebtPayment(
+                    id = "debt-cleared-payment",
+                    debtId = debt.id,
+                    name = debt.name,
+                    date = "2026-08-15",
+                    type = "Principal",
+                    amount = 100_000.0,
+                    principal = 100_000.0,
+                )
+            ),
+            syncStatus = SyncStatus.Synced,
+            today = LocalDate.parse("2026-08-17"),
+        )
+
+        assertEquals(0, report.criticalCount)
+        assertFalse(report.issues.any { it.title == "Debt-funded investment moves account balance" })
+        assertFalse(report.issues.any { it.title == "Investment source debt missing" })
+    }
 }

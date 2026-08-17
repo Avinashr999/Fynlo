@@ -2803,18 +2803,27 @@ private fun LedgerHealthDialog(
                 ReconciliationGuideCard(report)
             }
             if (report.issues.isNotEmpty()) {
-                LedgerDialogSectionTitle("Checks to review")
-                report.issues.take(12).forEach { issue ->
-                    LedgerIssueRow(
-                        issue = issue,
-                        onOpen = if (issue.recordType.isNotBlank() && issue.recordId.isNotBlank()) {
-                            { onOpenIssue(issue) }
-                        } else null,
+                LedgerIssueGroup(
+                    title = "Needs action",
+                    issues = report.issues.filter { it.severity == app.fynlo.logic.LedgerIssueSeverity.CRITICAL },
+                    onOpenIssue = onOpenIssue,
+                )
+                LedgerIssueGroup(
+                    title = "Review only",
+                    issues = report.issues.filter { it.severity == app.fynlo.logic.LedgerIssueSeverity.WARNING },
+                    onOpenIssue = onOpenIssue,
+                )
+                val infoIssues = report.issues.filter { it.severity == app.fynlo.logic.LedgerIssueSeverity.INFO }
+                if (showAdvancedTools) {
+                    LedgerIssueGroup(
+                        title = "Already okay / old records",
+                        issues = infoIssues,
+                        onOpenIssue = onOpenIssue,
+                        limit = 4,
                     )
-                }
-                if (report.issues.size > 12) {
+                } else if (infoIssues.isNotEmpty()) {
                     Text(
-                        "+${report.issues.size - 12} more checks",
+                        "${infoIssues.size} old-record notes are available in advanced review.",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -2853,6 +2862,32 @@ private fun LedgerHealthDialog(
                 shape = RoundedCornerShape(14.dp),
             ) { Text("Done") }
         }
+    }
+}
+
+@Composable
+private fun LedgerIssueGroup(
+    title: String,
+    issues: List<app.fynlo.logic.LedgerIssue>,
+    onOpenIssue: (app.fynlo.logic.LedgerIssue) -> Unit,
+    limit: Int = 6,
+) {
+    if (issues.isEmpty()) return
+    LedgerDialogSectionTitle(title)
+    issues.take(limit).forEach { issue ->
+        LedgerIssueRow(
+            issue = issue,
+            onOpen = if (issue.recordType.isNotBlank() && issue.recordId.isNotBlank()) {
+                { onOpenIssue(issue) }
+            } else null,
+        )
+    }
+    if (issues.size > limit) {
+        Text(
+            "+${issues.size - limit} more in this section",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 
@@ -3236,6 +3271,7 @@ private fun userFacingLedgerIssueTitle(issue: app.fynlo.logic.LedgerIssue): Stri
     val title = issue.title.lowercase()
     val detail = issue.detail.lowercase()
     return when {
+        "investment value" in title || ("investment" in title && "value" in title && "missing" in title) -> "Investment value looks missing"
         "interest payment" in title -> "Interest payment needs review"
         "duplicate" in title -> "Possible duplicate record"
         "amount mismatch" in title -> "Amount needs review"

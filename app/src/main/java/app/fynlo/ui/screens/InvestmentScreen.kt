@@ -242,12 +242,12 @@ fun InvestmentScreen(viewModel: FinanceViewModel) {
                     )
                     when (inv.sourceType) {
                         "account"  -> Text(
-                            "This was funded from ${inv.fundingSource}. Do you want to restore ${CurrencyFormatter.detail(inv.invested, currencyCode)} back to that account-",
+                            "This was funded from ${inv.fundingSource}. Do you want to restore ${CurrencyFormatter.detail(inv.invested, currencyCode)} back to that account?",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         "new_loan" -> Text(
-                            "This investment has a linked loan (${inv.fundingSource}). Do you want to delete the loan record too-",
+                            "This investment has a linked loan (${inv.fundingSource}). Do you want to delete the loan record too?",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
