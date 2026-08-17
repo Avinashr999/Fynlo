@@ -17,6 +17,7 @@ import app.fynlo.logic.CagrCalculator
 import app.fynlo.logic.InterestPolicy
 import app.fynlo.logic.LedgerAccountability
 import app.fynlo.logic.LedgerAccountabilityReport
+import app.fynlo.logic.NetWorthSnapshotSafety
 import app.fynlo.logic.isGeneratedJournalEntry
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -541,8 +542,35 @@ class FinanceViewModel @Inject constructor(
         )
     }.stateIn(viewModelScope, SharingStarted.Eagerly, FinancialSummary())
 
+    init {
+        repairNetWorthHistoryPlaceholdersAfterLedgerLoad()
+    }
+
     private val today get() = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
     private val pid   get() = _currentProjectId.value.ifEmpty { "personal" }
+
+    private fun repairNetWorthHistoryPlaceholdersAfterLedgerLoad() {
+        viewModelScope.launch(Dispatchers.IO) {
+            val (_, summary) = combine(
+                combine(accounts, transactions, borrowers) { accountRows, transactionRows, borrowerRows ->
+                    accountRows.isNotEmpty() || transactionRows.isNotEmpty() || borrowerRows.isNotEmpty()
+                },
+                combine(debts, investments) { debtRows, investmentRows ->
+                    debtRows.isNotEmpty() || investmentRows.isNotEmpty()
+                },
+                financialSummary,
+            ) { hasPrimaryLedgerData, hasPortfolioData, loadedSummary ->
+                (hasPrimaryLedgerData || hasPortfolioData) to loadedSummary
+            }
+                .filter { (hasLedgerData, loadedSummary) ->
+                    hasLedgerData && !NetWorthSnapshotSafety.shouldSkipSave(loadedSummary, hasLedgerData = true)
+                }
+                .first()
+
+            repository.deleteEmptyNetWorthSnapshots(pid)
+            saveNetWorthSnapshot(summary)
+        }
+    }
 
     fun withdrawFromInvestment(investment: app.fynlo.data.model.Investment, amount: Double, toAccount: String) {
         runMoneyAction { repository.withdrawFromInvestment(investment, amount, toAccount) }
@@ -1514,16 +1542,27 @@ class FinanceViewModel @Inject constructor(
     fun saveSnapshotNow() {
         viewModelScope.launch(Dispatchers.IO) {
             val s = financialSummary.value
-            repository.saveNetWorthSnapshot(
-                app.fynlo.data.model.NetWorthSnapshot(
-                    date             = today,
-                    netWorth         = s.netWorth,
-                    totalAssets      = s.totalAssets,
-                    totalLiabilities = s.totalDebtPrincipal + s.totalDebtInterest,
-                    projectId        = pid
-                )
-            )
+            val hasLedgerData = accounts.value.isNotEmpty() ||
+                transactions.value.isNotEmpty() ||
+                borrowers.value.isNotEmpty() ||
+                debts.value.isNotEmpty() ||
+                investments.value.isNotEmpty()
+            if (hasLedgerData) repository.deleteEmptyNetWorthSnapshots(pid)
+            if (NetWorthSnapshotSafety.shouldSkipSave(s, hasLedgerData)) return@launch
+            saveNetWorthSnapshot(s)
         }
+    }
+
+    private suspend fun saveNetWorthSnapshot(s: FinancialSummary) {
+        repository.saveNetWorthSnapshot(
+            app.fynlo.data.model.NetWorthSnapshot(
+                date             = today,
+                netWorth         = s.netWorth,
+                totalAssets      = s.totalAssets,
+                totalLiabilities = s.totalDebtPrincipal + s.totalDebtInterest,
+                projectId        = pid
+            )
+        )
     }
 
     /**
@@ -1562,7 +1601,11 @@ class FinanceViewModel @Inject constructor(
             val fmt    = DateTimeFormatter.ofPattern("yyyy-MM-dd")
             val today  = LocalDate.now()
             val currentNW = financialSummary.value.netWorth
-            val existingDates = repository.getNetWorthSnapshots(pid).first().map { it.date }.toSet()
+            repository.deleteEmptyNetWorthSnapshots(pid)
+            val existingDates = repository.getNetWorthSnapshots(pid).first()
+                .filterNot(NetWorthSnapshotSafety::isEmptyPlaceholder)
+                .map { it.date }
+                .toSet()
             val earliest = runCatching { LocalDate.parse(cashTxns.minOf { it.date }) }.getOrNull() ?: run {
                 kotlinx.coroutines.withContext(Dispatchers.Main) { onDone(0) }
                 return@launch

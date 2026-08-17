@@ -2325,3 +2325,12 @@ The user approved the combined future roadmap below. Do not treat these as compl
 - Confirmed the desired accounting rule in tests: a debt-funded investment can remain active after its source debt is cleared and should not be treated as corruption.
 - Cleaned investment delete confirmation punctuation.
 - Scope: trust/UX and Book Check coverage only. No schema migration, no silent account balance mutation, no sync behavior change, and no release AAB in this pass.
+
+### 2026-08-18 - Net-worth history placeholder repair
+- Fixed a startup/loading edge case where an all-zero net-worth snapshot could be saved as a real daily point before ledger flows had loaded.
+- Added a shared `NetWorthSnapshotSafety` guard so the app skips loading-zero saves when ledger data exists, removes old all-zero placeholder snapshots after real ledger load, and ignores those placeholders during backfill.
+- Phone DB verification after prod install showed zero all-zero snapshots and a real 2026-08-18 snapshot: net worth Rs. 38,50,958.74, total assets Rs. 38,50,958.74, total liabilities Rs. 0.
+- HDFC database reconciliation was checked and left unchanged: saved balance Rs. 3,20,107.74 equals implied opening Rs. 39,898 + money in Rs. 6,05,924 - money out Rs. 3,25,714.26.
+- Known UX/accountability note: Muhammed repayment Rs. 1,37,162 on 2026-06-30 was received into Business Investment and then transferred to HDFC, so HDFC history shows an account transfer rather than a direct loan repayment. This is not a balance corruption issue, but future money-trail UI should explain such indirect routes more clearly.
+- Scope: net-worth history repair only. No account balance mutation, no HDFC data change, no schema migration, and no release AAB in this pass.
+- Verification: `:app:clean :app:compileProdDebugKotlin`, `:app:testProdDebugUnitTest`, `:app:installProdDebug`, prod launch sanity, phone DB snapshot cleanup check, and phone DB account reconciliation passed.

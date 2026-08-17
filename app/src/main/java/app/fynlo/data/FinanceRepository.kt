@@ -3159,6 +3159,7 @@ class FinanceRepository(
      */
     fun getNetWorthSnapshots(pid: String) = dao.getNetWorthSnapshots(pid)
     suspend fun saveNetWorthSnapshot(s: app.fynlo.data.model.NetWorthSnapshot) = dao.insertNetWorthSnapshot(s)
+    suspend fun deleteEmptyNetWorthSnapshots(pid: String): Int = dao.deleteEmptyNetWorthSnapshots(pid)
 
     fun getAllRecurringTransactions() = dao.getAllRecurringTransactions()
     suspend fun insertRecurringTransaction(r: app.fynlo.data.model.RecurringTransaction) {

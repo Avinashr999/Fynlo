@@ -417,6 +417,17 @@ interface FynloDao {
     @Query("SELECT * FROM net_worth_snapshots WHERE projectId = :pid ORDER BY date DESC")
     suspend fun getNetWorthSnapshotsOnce(pid: String): List<app.fynlo.data.model.NetWorthSnapshot>
 
+    @Query(
+        """
+        DELETE FROM net_worth_snapshots
+        WHERE projectId = :pid
+          AND netWorth = 0.0
+          AND totalAssets = 0.0
+          AND totalLiabilities = 0.0
+        """
+    )
+    suspend fun deleteEmptyNetWorthSnapshots(pid: String): Int
+
     @androidx.room.Insert(onConflict = androidx.room.OnConflictStrategy.REPLACE)
     suspend fun insertOrUpdateNetWorthSnapshot(snapshot: app.fynlo.data.model.NetWorthSnapshot)
 

@@ -1546,3 +1546,12 @@ Phone smoke still recommended before a new AAB:
 - Book Check is grouped into `Needs action`, `Review only`, and old-record notes so testers can focus on real money-risk items first.
 - Regression coverage confirms cleared debt plus active debt-funded investment is valid and should not be treated as an error.
 - Smoke focus for next phone pass: add investment from account, add investment from existing debt, edit investment source, delete investment with/without reverse, run Book Check, and confirm the warnings are plain and actionable.
+
+### 2026-08-18 - Net-worth history and HDFC reconciliation note
+- Fixed net-worth history saving all-zero startup/loading snapshots as real daily snapshots.
+- App now skips loading-zero snapshot saves when ledger data already exists, deletes old all-zero placeholders after ledger load, and backfill ignores all-zero placeholder rows.
+- Phone DB verification after prod install showed zero all-zero snapshots and a real 2026-08-18 net-worth snapshot.
+- HDFC database reconciliation was checked and left unchanged: saved balance Rs. 3,20,107.74 matches implied opening Rs. 39,898 + money in Rs. 6,05,924 - money out Rs. 3,25,714.26.
+- Known UX/accountability note: Muhammed repayment Rs. 1,37,162 on 2026-06-30 was received into Business Investment and then transferred to HDFC, so HDFC history shows a transfer instead of a direct loan repayment. Treat this as a future money-trail clarity improvement, not a data repair.
+- Scope: net-worth history repair only. No HDFC data mutation, no account balance mutation, no schema migration, and no release AAB in this pass.
+- Verification passed: prod debug compile, prod debug unit tests, prod install, launch sanity, phone DB snapshot cleanup check, and phone DB account reconciliation.
