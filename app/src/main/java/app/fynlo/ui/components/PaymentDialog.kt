@@ -65,8 +65,13 @@ fun CollectPaymentDialog(
     // Accrued interest keeps running from the loan date; collected interest is separate.
     // Lean v1 (Simple/Compound/Reducing): money block + preview from InterestPolicy paise helpers.
     val usePaise = InterestPolicy.usesPaiseMethod(borrower.intType)
-    val paiseBalances = remember(borrower, usePaise) {
-        if (usePaise) InterestPolicy.paiseBalancesForBorrower(borrower) else null
+    var date by remember { mutableStateOf(today.format(java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy"))) }
+    val paymentAsOf = remember(date) {
+        runCatching { DateUtils.parseInput(date) }.getOrDefault("")
+            .ifBlank { java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd")) }
+    }
+    val paiseBalances = remember(borrower, usePaise, paymentAsOf) {
+        if (usePaise) InterestPolicy.paiseBalancesForBorrower(borrower, paymentAsOf) else null
     }
     val interestBreakdown = remember(borrower, payments) {
         if (payments.isEmpty()) {
@@ -88,10 +93,10 @@ fun CollectPaymentDialog(
     }
     val totalOutstanding = interestOutstanding + principalOutstanding
 
-    // Payment fields
+    // Payment fields — lean uses a single Amount; legacy keeps Principal + Interest.
+    var amountStr by remember { mutableStateOf("") }
     var principalStr by remember { mutableStateOf("") }
     var interestStr  by remember { mutableStateOf("") }
-    var date by remember { mutableStateOf(today.format(java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy"))) }
     var notes by remember { mutableStateOf("") }
     var expanded by remember { mutableStateOf(false) }
     var submitting by remember { mutableStateOf(false) }
@@ -101,12 +106,9 @@ fun CollectPaymentDialog(
     else listOf(Account(id = "cash", name = "Personal Cash", type = "Cash", balance = 0.0))
     val principalVal = principalStr.toDoubleOrNull() ?: 0.0
     val interestVal  = interestStr.toDoubleOrNull()  ?: 0.0
-    val totalAmount  = principalVal + interestVal
+    val amountVal    = amountStr.toDoubleOrNull() ?: 0.0
+    val totalAmount  = if (usePaise) amountVal else principalVal + interestVal
     val isValid      = totalAmount > 0.0
-    val paymentAsOf = remember(date) {
-        runCatching { DateUtils.parseInput(date) }.getOrDefault("")
-            .ifBlank { java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd")) }
-    }
     val paisePreview = remember(usePaise, totalAmount, borrower, paymentAsOf) {
         if (usePaise && totalAmount > 0.0) {
             InterestPolicy.previewBorrowerPaymentPaise(
@@ -163,7 +165,7 @@ fun CollectPaymentDialog(
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Spacer(Modifier.height(6.dp))
                         Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
-                            Text("Principal", style = MaterialTheme.typography.bodySmall)
+                            Text(if (usePaise) "Principal remaining" else "Principal", style = MaterialTheme.typography.bodySmall)
                             Text(CurrencyFormatter.detail(principalOutstanding, currencyCode, locale),
                                 style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
                                 color = SemanticRed)
@@ -227,8 +229,12 @@ fun CollectPaymentDialog(
                 if (borrower.rate > 0 && interestOutstanding > 0) {
                     Button(
                         onClick = {
-                            interestStr  = String.format(locale, "%.0f", interestOutstanding)
-                            principalStr = ""
+                            if (usePaise) {
+                                amountStr = String.format(locale, "%.0f", interestOutstanding)
+                            } else {
+                                interestStr  = String.format(locale, "%.0f", interestOutstanding)
+                                principalStr = ""
+                            }
                         },
                         modifier = Modifier.fillMaxWidth(),
                         shape    = RoundedCornerShape(10.dp)
@@ -243,8 +249,12 @@ fun CollectPaymentDialog(
                 if (totalOutstanding > 0) {
                     Button(
                         onClick = {
-                            interestStr  = String.format(locale, "%.0f", interestOutstanding)
-                            principalStr = String.format(locale, "%.0f", principalOutstanding)
+                            if (usePaise) {
+                                amountStr = String.format(locale, "%.0f", totalOutstanding)
+                            } else {
+                                interestStr  = String.format(locale, "%.0f", interestOutstanding)
+                                principalStr = String.format(locale, "%.0f", principalOutstanding)
+                            }
                         },
                         modifier = Modifier.fillMaxWidth(),
                         shape    = RoundedCornerShape(10.dp)
@@ -256,38 +266,56 @@ fun CollectPaymentDialog(
                     Spacer(Modifier.height(12.dp))
                 }
 
-                // -- Split entry fields ---------------------------------------
-                Text("Payment Breakdown", style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                // -- Amount entry ---------------------------------------------
+                Text(
+                    if (usePaise) "Payment amount" else "Payment Breakdown",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
                 Spacer(Modifier.height(8.dp))
 
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (usePaise) {
                     OutlinedTextField(
-                        value = principalStr,
-                        onValueChange = { principalStr = it },
-                        label = { Text("Principal") },
+                        value = amountStr,
+                        onValueChange = { amountStr = it },
+                        label = { Text("Amount") },
                         placeholder = { Text("0") },
                         prefix = { Text(CurrencyUtils.symbolFor(currencyCode)) },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.weight(1f),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = SemanticRed,
-                            focusedLabelColor  = SemanticRed
-                        )
+                        modifier = Modifier.fillMaxWidth(),
+                        supportingText = {
+                            Text("Split is automatic: interest first, then principal.")
+                        },
                     )
-                    OutlinedTextField(
-                        value = interestStr,
-                        onValueChange = { interestStr = it },
-                        label = { Text("Interest") },
-                        placeholder = { Text("0") },
-                        prefix = { Text(CurrencyUtils.symbolFor(currencyCode)) },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.weight(1f),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = SemanticAmber,
-                            focusedLabelColor  = SemanticAmber
+                } else {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedTextField(
+                            value = principalStr,
+                            onValueChange = { principalStr = it },
+                            label = { Text("Principal") },
+                            placeholder = { Text("0") },
+                            prefix = { Text(CurrencyUtils.symbolFor(currencyCode)) },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            modifier = Modifier.weight(1f),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = SemanticRed,
+                                focusedLabelColor  = SemanticRed
+                            )
                         )
-                    )
+                        OutlinedTextField(
+                            value = interestStr,
+                            onValueChange = { interestStr = it },
+                            label = { Text("Interest") },
+                            placeholder = { Text("0") },
+                            prefix = { Text(CurrencyUtils.symbolFor(currencyCode)) },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            modifier = Modifier.weight(1f),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = SemanticAmber,
+                                focusedLabelColor  = SemanticAmber
+                            )
+                        )
+                    }
                 }
 
                 // -- Total ----------------------------------------------------
@@ -337,7 +365,7 @@ fun CollectPaymentDialog(
                                     Text(
                                         CurrencyFormatter.detail(InterestEngine.paiseToRupees(split.penaltyPaise), currencyCode, locale),
                                         style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
-                                        color = MaterialTheme.colorScheme.primary,
+                                        color = SemanticAmber,
                                     )
                                 }
                             }
@@ -520,8 +548,13 @@ fun PayDebtDialog(
 ) {
     val locale = LocalLocale.current.platformLocale
     val usePaise = InterestPolicy.usesPaiseMethod(debt.intType)
-    val paiseBalances = remember(debt, usePaise) {
-        if (usePaise) InterestPolicy.paiseBalancesForDebt(debt) else null
+    var date by remember { mutableStateOf(java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy"))) }
+    val paymentAsOf = remember(date) {
+        runCatching { DateUtils.parseInput(date) }.getOrDefault("")
+            .ifBlank { java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd")) }
+    }
+    val paiseBalances = remember(debt, usePaise, paymentAsOf) {
+        if (usePaise) InterestPolicy.paiseBalancesForDebt(debt, paymentAsOf) else null
     }
     val interestBreakdown = remember(debt, payments) {
         if (payments.isEmpty()) {
@@ -543,9 +576,9 @@ fun PayDebtDialog(
     }
     val totalOutstanding     = interestOutstanding + principalOutstanding
 
+    var amountStr by remember { mutableStateOf("") }
     var principalStr by remember { mutableStateOf("") }
     var interestStr  by remember { mutableStateOf("") }
-    var date by remember { mutableStateOf(java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy"))) }
     var notes    by remember { mutableStateOf("") }
     var expanded by remember { mutableStateOf(false) }
     var submitting by remember { mutableStateOf(false) }
@@ -556,12 +589,9 @@ fun PayDebtDialog(
 
     val principalVal = principalStr.toDoubleOrNull() ?: 0.0
     val interestVal  = interestStr.toDoubleOrNull()  ?: 0.0
-    val totalAmount  = principalVal + interestVal
+    val amountVal    = amountStr.toDoubleOrNull() ?: 0.0
+    val totalAmount  = if (usePaise) amountVal else principalVal + interestVal
     val isValid      = totalAmount > 0.0
-    val paymentAsOf = remember(date) {
-        runCatching { DateUtils.parseInput(date) }.getOrDefault("")
-            .ifBlank { java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd")) }
-    }
     val paisePreview = remember(usePaise, totalAmount, debt, paymentAsOf) {
         if (usePaise && totalAmount > 0.0) {
             InterestPolicy.previewDebtPaymentPaise(
@@ -614,7 +644,7 @@ fun PayDebtDialog(
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Spacer(Modifier.height(6.dp))
                         Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
-                            Text("Principal", style = MaterialTheme.typography.bodySmall)
+                            Text(if (usePaise) "Principal remaining" else "Principal", style = MaterialTheme.typography.bodySmall)
                             Text(CurrencyFormatter.detail(principalOutstanding, currencyCode, locale),
                                 style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold))
                         }
@@ -673,7 +703,11 @@ fun PayDebtDialog(
                 // Auto-suggest buttons
                 if (debt.rate > 0 && interestOutstanding > 0) {
                     Button(onClick = {
-                        interestStr = String.format(locale, "%.0f", interestOutstanding); principalStr = ""
+                        if (usePaise) {
+                            amountStr = String.format(locale, "%.0f", interestOutstanding)
+                        } else {
+                            interestStr = String.format(locale, "%.0f", interestOutstanding); principalStr = ""
+                        }
                     }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(10.dp)) {
                         Icon(Icons.Default.AutoAwesome, null, Modifier.size(16.dp))
                         Spacer(Modifier.width(6.dp))
@@ -684,8 +718,12 @@ fun PayDebtDialog(
                 // Full Settlement - always show when any amount is outstanding
                 if (totalOutstanding > 0) {
                     Button(onClick = {
-                        interestStr  = String.format(locale, "%.0f", interestOutstanding)
-                        principalStr = String.format(locale, "%.0f", principalOutstanding)
+                        if (usePaise) {
+                            amountStr = String.format(locale, "%.0f", totalOutstanding)
+                        } else {
+                            interestStr  = String.format(locale, "%.0f", interestOutstanding)
+                            principalStr = String.format(locale, "%.0f", principalOutstanding)
+                        }
                     }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(10.dp),
                     colors = ButtonDefaults.filledTonalButtonColors(containerColor = Emerald500.copy(alpha = 0.15f))) {
                         Icon(Icons.Default.AutoAwesome, null, Modifier.size(16.dp), tint = Emerald500)
@@ -696,22 +734,40 @@ fun PayDebtDialog(
                 }
 
                 Spacer(Modifier.height(4.dp))
-                Text("Payment Breakdown", style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(
+                    if (usePaise) "Payment amount" else "Payment Breakdown",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
                 Spacer(Modifier.height(8.dp))
 
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(value = principalStr, onValueChange = { principalStr = it },
-                        label = { Text("Principal") }, placeholder = { Text("0") }, prefix = { Text(CurrencyUtils.symbolFor(currencyCode)) },
+                if (usePaise) {
+                    OutlinedTextField(
+                        value = amountStr,
+                        onValueChange = { amountStr = it },
+                        label = { Text("Amount") },
+                        placeholder = { Text("0") },
+                        prefix = { Text(CurrencyUtils.symbolFor(currencyCode)) },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.weight(1f))
-                    OutlinedTextField(value = interestStr, onValueChange = { interestStr = it },
-                        label = { Text("Interest") }, placeholder = { Text("0") }, prefix = { Text(CurrencyUtils.symbolFor(currencyCode)) },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.weight(1f),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = MaterialTheme.colorScheme.error,
-                            focusedLabelColor  = MaterialTheme.colorScheme.error))
+                        modifier = Modifier.fillMaxWidth(),
+                        supportingText = {
+                            Text("Split is automatic: interest first, then principal.")
+                        },
+                    )
+                } else {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedTextField(value = principalStr, onValueChange = { principalStr = it },
+                            label = { Text("Principal") }, placeholder = { Text("0") }, prefix = { Text(CurrencyUtils.symbolFor(currencyCode)) },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            modifier = Modifier.weight(1f))
+                        OutlinedTextField(value = interestStr, onValueChange = { interestStr = it },
+                            label = { Text("Interest") }, placeholder = { Text("0") }, prefix = { Text(CurrencyUtils.symbolFor(currencyCode)) },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            modifier = Modifier.weight(1f),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = MaterialTheme.colorScheme.error,
+                                focusedLabelColor  = MaterialTheme.colorScheme.error))
+                    }
                 }
 
                 if (totalAmount > 0) {
@@ -756,7 +812,7 @@ fun PayDebtDialog(
                                     Text(
                                         CurrencyFormatter.detail(InterestEngine.paiseToRupees(split.penaltyPaise), currencyCode, locale),
                                         style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
-                                        color = MaterialTheme.colorScheme.primary,
+                                        color = SemanticAmber,
                                     )
                                 }
                             }

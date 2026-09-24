@@ -251,8 +251,8 @@ fun DebtDetailScreen(
                             CurrencyFormatter.interest(interestOutstanding, currencyCode, locale),
                         )
                         DetailItem(
-                            if (usePaise && totalOutstanding <= 0.0) "Settled" else "Total Payable",
-                            if (usePaise && totalOutstanding <= 0.0) "Paid in full"
+                            if (usePaise && totalOutstanding <= 0.0) "Paid in full" else "Total Payable",
+                            if (usePaise && totalOutstanding <= 0.0) ""
                             else CurrencyFormatter.detail(totalOutstanding, currencyCode, locale),
                         )
                     }

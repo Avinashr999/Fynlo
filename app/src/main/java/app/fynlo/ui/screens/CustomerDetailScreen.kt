@@ -482,8 +482,8 @@ val borrowers by viewModel.borrowers.collectAsState()
                         )
                         DetailItem("Interest Due", CurrencyFormatter.interest(interestOutstanding, currencyCode, locale))
                         DetailItem(
-                            if (usePaise && totalOutstanding <= 0.0) "Settled" else "Total Receivable",
-                            if (usePaise && totalOutstanding <= 0.0) "Paid in full"
+                            if (usePaise && totalOutstanding <= 0.0) "Paid in full" else "Total Receivable",
+                            if (usePaise && totalOutstanding <= 0.0) ""
                             else CurrencyFormatter.detail(totalOutstanding, currencyCode, locale),
                         )
                     }
