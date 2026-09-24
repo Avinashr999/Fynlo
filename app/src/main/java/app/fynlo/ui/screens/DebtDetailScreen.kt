@@ -91,11 +91,24 @@ fun DebtDetailScreen(
         .sortedByDescending { it.date }
     val debtProofs = proofAttachments.filter { it.ownerType == "debt" && it.ownerId == debtId }
 
+    val usePaise = app.fynlo.logic.InterestPolicy.usesPaiseMethod(debt.intType)
+    val paiseBalances = if (usePaise) {
+        app.fynlo.logic.InterestPolicy.paiseBalancesForDebt(debt)
+    } else null
     val interestBreakdown = app.fynlo.logic.InterestPolicy.debtBreakdown(debt, debtPayments)
     val interest = interestBreakdown.accrued
-    val interestOutstanding = interestBreakdown.due
-    val advanceInterest = interestBreakdown.paidAhead
-    val totalOutstanding = (debt.amount - debt.paidPrincipal).coerceAtLeast(0.0) + interestOutstanding
+    val interestOutstanding = if (usePaise) {
+        InterestEngine.paiseToRupees(paiseBalances!!.interestDue)
+    } else {
+        interestBreakdown.due
+    }
+    val advanceInterest = if (usePaise) 0.0 else interestBreakdown.paidAhead
+    val principalOutstanding = if (usePaise) {
+        InterestEngine.paiseToRupees(paiseBalances!!.outstandingPrincipal)
+    } else {
+        (debt.amount - debt.paidPrincipal).coerceAtLeast(0.0)
+    }
+    val totalOutstanding = principalOutstanding + interestOutstanding
     val accountIdToName = remember(accounts) { accounts.associate { it.id to it.name } }
     val receivedTxn = remember(transactions, debt.id) {
         transactions
@@ -229,9 +242,19 @@ fun DebtDetailScreen(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        DetailItem("Principal Outstanding", CurrencyFormatter.detail((debt.amount - debt.paidPrincipal).coerceAtLeast(0.0), currencyCode, locale))
-                        DetailItem("Interest Payable", CurrencyFormatter.interest(interestOutstanding, currencyCode, locale))
-                        DetailItem("Total Payable", CurrencyFormatter.detail(totalOutstanding, currencyCode, locale))
+                        DetailItem(
+                            if (usePaise) "Principal remaining" else "Principal Outstanding",
+                            CurrencyFormatter.detail(principalOutstanding, currencyCode, locale),
+                        )
+                        DetailItem(
+                            if (usePaise) "Interest Due" else "Interest Payable",
+                            CurrencyFormatter.interest(interestOutstanding, currencyCode, locale),
+                        )
+                        DetailItem(
+                            if (usePaise && totalOutstanding <= 0.0) "Settled" else "Total Payable",
+                            if (usePaise && totalOutstanding <= 0.0) "Paid in full"
+                            else CurrencyFormatter.detail(totalOutstanding, currencyCode, locale),
+                        )
                     }
                     if (debt.interestWaived > 0.0) {
                         Spacer(Modifier.height(8.dp))

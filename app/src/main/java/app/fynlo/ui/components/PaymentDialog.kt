@@ -63,6 +63,11 @@ fun CollectPaymentDialog(
     val locale = LocalLocale.current.platformLocale
 
     // Accrued interest keeps running from the loan date; collected interest is separate.
+    // Lean v1 (Simple/Compound/Reducing): money block + preview from InterestPolicy paise helpers.
+    val usePaise = InterestPolicy.usesPaiseMethod(borrower.intType)
+    val paiseBalances = remember(borrower, usePaise) {
+        if (usePaise) InterestPolicy.paiseBalancesForBorrower(borrower) else null
+    }
     val interestBreakdown = remember(borrower, payments) {
         if (payments.isEmpty()) {
             app.fynlo.logic.InterestPolicy.borrowerBreakdown(borrower)
@@ -71,8 +76,14 @@ fun CollectPaymentDialog(
         }
     }
     val accruedInterest = interestBreakdown.accrued
-    val interestOutstanding = interestBreakdown.due
-    val principalOutstanding = remember(borrower) {
+    val interestOutstanding = if (usePaise) {
+        InterestEngine.paiseToRupees(paiseBalances!!.interestDue)
+    } else {
+        interestBreakdown.due
+    }
+    val principalOutstanding = if (usePaise) {
+        InterestEngine.paiseToRupees(paiseBalances!!.outstandingPrincipal)
+    } else {
         (borrower.amount - borrower.paidPrincipal).coerceAtLeast(0.0)
     }
     val totalOutstanding = interestOutstanding + principalOutstanding
@@ -92,12 +103,27 @@ fun CollectPaymentDialog(
     val interestVal  = interestStr.toDoubleOrNull()  ?: 0.0
     val totalAmount  = principalVal + interestVal
     val isValid      = totalAmount > 0.0
-    val periodMayNeedReview = remember(interestVal, interestOutstanding, accruedInterest, interestBreakdown.paid) {
-        val paidAheadAfter = (interestBreakdown.paid + interestVal - accruedInterest).coerceAtLeast(0.0)
-        interestVal > 0.0 && (
-            interestVal + 0.01 >= interestOutstanding ||
-                paidAheadAfter > 0.01
-        )
+    val paymentAsOf = remember(date) {
+        runCatching { DateUtils.parseInput(date) }.getOrDefault("")
+            .ifBlank { java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd")) }
+    }
+    val paisePreview = remember(usePaise, totalAmount, borrower, paymentAsOf) {
+        if (usePaise && totalAmount > 0.0) {
+            InterestPolicy.previewBorrowerPaymentPaise(
+                borrower,
+                InterestEngine.rupeesToPaise(totalAmount),
+                paymentAsOf,
+            )
+        } else null
+    }
+    val periodMayNeedReview = remember(interestVal, interestOutstanding, accruedInterest, interestBreakdown.paid, usePaise) {
+        if (usePaise) false else {
+            val paidAheadAfter = (interestBreakdown.paid + interestVal - accruedInterest).coerceAtLeast(0.0)
+            interestVal > 0.0 && (
+                interestVal + 0.01 >= interestOutstanding ||
+                    paidAheadAfter > 0.01
+            )
+        }
     }
     val preferredAccount = remember(accountOptions) { preferredMoneyAccount(accountOptions) }
     var selectedAccount by remember(accountOptions) { mutableStateOf(preferredAccount) }
@@ -276,10 +302,62 @@ fun CollectPaymentDialog(
                             color = Emerald500)
                     }
                 }
+                // Lean v1: show Backend-identical allocation preview (no local invent).
+                paisePreview?.let { split ->
+                    Spacer(Modifier.height(10.dp))
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f),
+                    ) {
+                        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text(
+                                "How this payment lands",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
+                                Text("Toward interest", style = MaterialTheme.typography.bodySmall)
+                                Text(
+                                    CurrencyFormatter.interest(InterestEngine.paiseToRupees(split.towardInterest), currencyCode, locale),
+                                    style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
+                                    color = SemanticAmber,
+                                )
+                            }
+                            Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
+                                Text("Toward principal", style = MaterialTheme.typography.bodySmall)
+                                Text(
+                                    CurrencyFormatter.detail(InterestEngine.paiseToRupees(split.towardPrincipal), currencyCode, locale),
+                                    style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
+                                    color = SemanticRed,
+                                )
+                            }
+                            if (split.penaltyPaise > 0L) {
+                                Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
+                                    Text("Penalty on this khatha", style = MaterialTheme.typography.bodySmall)
+                                    Text(
+                                        CurrencyFormatter.detail(InterestEngine.paiseToRupees(split.penaltyPaise), currencyCode, locale),
+                                        style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
+                                        color = MaterialTheme.colorScheme.primary,
+                                    )
+                                }
+                            }
+                            val remainingAfter = (paiseBalances!!.outstanding - split.towardInterest - split.towardPrincipal)
+                                .coerceAtLeast(0L)
+                            Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
+                                Text("Remaining outstanding after", style = MaterialTheme.typography.bodySmall)
+                                Text(
+                                    CurrencyFormatter.detail(InterestEngine.paiseToRupees(remainingAfter), currencyCode, locale),
+                                    style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
+                                )
+                            }
+                        }
+                    }
+                }
                 Spacer(Modifier.height(12.dp))
 
                 // -- Destination account --------------------------------------
-                if (interestVal > 0.0) {
+                // Lean v1 auto-allocates interest→principal; skip legacy period picker.
+                if (!usePaise && interestVal > 0.0) {
                     InterestPeriodSelector(
                         selected = interestAllocationType,
                         onSelected = { interestAllocationType = it },
@@ -372,23 +450,46 @@ fun CollectPaymentDialog(
                         onClick = {
                             if (submitting) return@Button
                             submitting = true
+                            val asOf = DateUtils.parseInput(date).ifBlank { paymentAsOf }
+                            val split = if (usePaise) {
+                                InterestPolicy.previewBorrowerPaymentPaise(
+                                    borrower,
+                                    InterestEngine.rupeesToPaise(totalAmount),
+                                    asOf,
+                                )
+                            } else null
+                            val finalPrincipal = split?.let { InterestEngine.paiseToRupees(it.towardPrincipal) } ?: principalVal
+                            val finalInterest = split?.let { InterestEngine.paiseToRupees(it.towardInterest) } ?: interestVal
+                            val penaltyNote = if (split != null && split.penaltyPaise > 0L) {
+                                "Penalty on this khatha ${InterestEngine.paiseToRupees(split.penaltyPaise)}"
+                            } else null
+                            val finalNotes = when {
+                                penaltyNote == null -> notes
+                                notes.isBlank() -> penaltyNote
+                                else -> "$notes\n$penaltyNote"
+                            }
                             val payment = Payment(
                                 id        = app.fynlo.logic.Ids.newId(),
                                 loanId    = borrower.id,
                                 name      = borrower.name,
-                                date      = DateUtils.parseInput(date),
+                                date      = asOf,
                                 type      = when {
-                                    principalVal > 0 && interestVal > 0 -> "Both"
-                                    principalVal > 0 -> "Principal Only"
-                                    else             -> "Interest Only"
+                                    finalPrincipal > 0 && finalInterest > 0 -> "Both"
+                                    finalPrincipal > 0 -> "Principal Only"
+                                    finalInterest > 0 -> "Interest Only"
+                                    else -> "Both"
                                 },
                                 amount    = totalAmount,
-                                principal = principalVal,
-                                interest  = interestVal,
-                                interestPeriodStartDate = InterestPolicy.periodStartFor(interestAllocationType, borrower.date),
-                                interestPeriodEndDate = InterestPolicy.periodEndFor(interestAllocationType, borrower.date, DateUtils.parseInput(date)),
-                                interestAllocationType = InterestPolicy.allocationFor(principalVal, interestVal, interestAllocationType),
-                                notes     = notes
+                                principal = finalPrincipal,
+                                interest  = finalInterest,
+                                interestPeriodStartDate = if (usePaise) borrower.date else InterestPolicy.periodStartFor(interestAllocationType, borrower.date),
+                                interestPeriodEndDate = if (usePaise) asOf else InterestPolicy.periodEndFor(interestAllocationType, borrower.date, asOf),
+                                interestAllocationType = if (usePaise) {
+                                    if (finalInterest > 0.0) InterestPolicy.CURRENT_PERIOD_INTEREST else InterestPolicy.PRINCIPAL_REPAYMENT
+                                } else {
+                                    InterestPolicy.allocationFor(finalPrincipal, finalInterest, interestAllocationType)
+                                },
+                                notes     = finalNotes
                             )
                             onConfirm(payment, selectedAccount.name)
                         },
@@ -418,6 +519,10 @@ fun PayDebtDialog(
     currencyCode: String = "INR",
 ) {
     val locale = LocalLocale.current.platformLocale
+    val usePaise = InterestPolicy.usesPaiseMethod(debt.intType)
+    val paiseBalances = remember(debt, usePaise) {
+        if (usePaise) InterestPolicy.paiseBalancesForDebt(debt) else null
+    }
     val interestBreakdown = remember(debt, payments) {
         if (payments.isEmpty()) {
             app.fynlo.logic.InterestPolicy.debtBreakdown(debt)
@@ -426,8 +531,16 @@ fun PayDebtDialog(
         }
     }
     val accruedInterest = interestBreakdown.accrued
-    val interestOutstanding = interestBreakdown.due
-    val principalOutstanding = (debt.amount - debt.paidPrincipal).coerceAtLeast(0.0)
+    val interestOutstanding = if (usePaise) {
+        InterestEngine.paiseToRupees(paiseBalances!!.interestDue)
+    } else {
+        interestBreakdown.due
+    }
+    val principalOutstanding = if (usePaise) {
+        InterestEngine.paiseToRupees(paiseBalances!!.outstandingPrincipal)
+    } else {
+        (debt.amount - debt.paidPrincipal).coerceAtLeast(0.0)
+    }
     val totalOutstanding     = interestOutstanding + principalOutstanding
 
     var principalStr by remember { mutableStateOf("") }
@@ -445,12 +558,27 @@ fun PayDebtDialog(
     val interestVal  = interestStr.toDoubleOrNull()  ?: 0.0
     val totalAmount  = principalVal + interestVal
     val isValid      = totalAmount > 0.0
-    val periodMayNeedReview = remember(interestVal, interestOutstanding, accruedInterest, interestBreakdown.paid) {
-        val paidAheadAfter = (interestBreakdown.paid + interestVal - accruedInterest).coerceAtLeast(0.0)
-        interestVal > 0.0 && (
-            interestVal + 0.01 >= interestOutstanding ||
-                paidAheadAfter > 0.01
-        )
+    val paymentAsOf = remember(date) {
+        runCatching { DateUtils.parseInput(date) }.getOrDefault("")
+            .ifBlank { java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd")) }
+    }
+    val paisePreview = remember(usePaise, totalAmount, debt, paymentAsOf) {
+        if (usePaise && totalAmount > 0.0) {
+            InterestPolicy.previewDebtPaymentPaise(
+                debt,
+                InterestEngine.rupeesToPaise(totalAmount),
+                paymentAsOf,
+            )
+        } else null
+    }
+    val periodMayNeedReview = remember(interestVal, interestOutstanding, accruedInterest, interestBreakdown.paid, usePaise) {
+        if (usePaise) false else {
+            val paidAheadAfter = (interestBreakdown.paid + interestVal - accruedInterest).coerceAtLeast(0.0)
+            interestVal > 0.0 && (
+                interestVal + 0.01 >= interestOutstanding ||
+                    paidAheadAfter > 0.01
+            )
+        }
     }
     val preferredAccount = remember(accountOptions) { preferredMoneyAccount(accountOptions) }
     var selectedAccount by remember(accountOptions) { mutableStateOf(preferredAccount) }
@@ -596,9 +724,57 @@ fun PayDebtDialog(
                             color = MaterialTheme.colorScheme.error)
                     }
                 }
+                paisePreview?.let { split ->
+                    Spacer(Modifier.height(10.dp))
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f),
+                    ) {
+                        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text(
+                                "How this payment lands",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
+                                Text("Toward interest", style = MaterialTheme.typography.bodySmall)
+                                Text(
+                                    CurrencyFormatter.interest(InterestEngine.paiseToRupees(split.towardInterest), currencyCode, locale),
+                                    style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
+                                )
+                            }
+                            Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
+                                Text("Toward principal", style = MaterialTheme.typography.bodySmall)
+                                Text(
+                                    CurrencyFormatter.detail(InterestEngine.paiseToRupees(split.towardPrincipal), currencyCode, locale),
+                                    style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
+                                )
+                            }
+                            if (split.penaltyPaise > 0L) {
+                                Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
+                                    Text("Penalty on this khatha", style = MaterialTheme.typography.bodySmall)
+                                    Text(
+                                        CurrencyFormatter.detail(InterestEngine.paiseToRupees(split.penaltyPaise), currencyCode, locale),
+                                        style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
+                                        color = MaterialTheme.colorScheme.primary,
+                                    )
+                                }
+                            }
+                            val remainingAfter = (paiseBalances!!.outstanding - split.towardInterest - split.towardPrincipal)
+                                .coerceAtLeast(0L)
+                            Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
+                                Text("Remaining outstanding after", style = MaterialTheme.typography.bodySmall)
+                                Text(
+                                    CurrencyFormatter.detail(InterestEngine.paiseToRupees(remainingAfter), currencyCode, locale),
+                                    style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
+                                )
+                            }
+                        }
+                    }
+                }
                 Spacer(Modifier.height(12.dp))
 
-                if (interestVal > 0.0) {
+                if (!usePaise && interestVal > 0.0) {
                     InterestPeriodSelector(
                         selected = interestAllocationType,
                         onSelected = { interestAllocationType = it },
@@ -683,23 +859,46 @@ fun PayDebtDialog(
                         onClick = {
                             if (submitting) return@Button
                             submitting = true
+                            val asOf = DateUtils.parseInput(date).ifBlank { paymentAsOf }
+                            val split = if (usePaise) {
+                                InterestPolicy.previewDebtPaymentPaise(
+                                    debt,
+                                    InterestEngine.rupeesToPaise(totalAmount),
+                                    asOf,
+                                )
+                            } else null
+                            val finalPrincipal = split?.let { InterestEngine.paiseToRupees(it.towardPrincipal) } ?: principalVal
+                            val finalInterest = split?.let { InterestEngine.paiseToRupees(it.towardInterest) } ?: interestVal
+                            val penaltyNote = if (split != null && split.penaltyPaise > 0L) {
+                                "Penalty on this khatha ${InterestEngine.paiseToRupees(split.penaltyPaise)}"
+                            } else null
+                            val finalNotes = when {
+                                penaltyNote == null -> notes
+                                notes.isBlank() -> penaltyNote
+                                else -> "$notes\n$penaltyNote"
+                            }
                             val payment = DebtPayment(
                                 id        = app.fynlo.logic.Ids.newId(),
                                 debtId    = debt.id,
                                 name      = debt.name,
-                                date      = DateUtils.parseInput(date),
+                                date      = asOf,
                                 type      = when {
-                                    principalVal > 0 && interestVal > 0 -> "Both"
-                                    principalVal > 0 -> "Principal Only"
-                                    else             -> "Interest Only"
+                                    finalPrincipal > 0 && finalInterest > 0 -> "Both"
+                                    finalPrincipal > 0 -> "Principal Only"
+                                    finalInterest > 0 -> "Interest Only"
+                                    else -> "Both"
                                 },
                                 amount    = totalAmount,
-                                principal = principalVal,
-                                interest  = interestVal,
-                                interestPeriodStartDate = InterestPolicy.periodStartFor(interestAllocationType, debt.date),
-                                interestPeriodEndDate = InterestPolicy.periodEndFor(interestAllocationType, debt.date, DateUtils.parseInput(date)),
-                                interestAllocationType = InterestPolicy.allocationFor(principalVal, interestVal, interestAllocationType),
-                                notes     = notes
+                                principal = finalPrincipal,
+                                interest  = finalInterest,
+                                interestPeriodStartDate = if (usePaise) debt.date else InterestPolicy.periodStartFor(interestAllocationType, debt.date),
+                                interestPeriodEndDate = if (usePaise) asOf else InterestPolicy.periodEndFor(interestAllocationType, debt.date, asOf),
+                                interestAllocationType = if (usePaise) {
+                                    if (finalInterest > 0.0) InterestPolicy.CURRENT_PERIOD_INTEREST else InterestPolicy.PRINCIPAL_REPAYMENT
+                                } else {
+                                    InterestPolicy.allocationFor(finalPrincipal, finalInterest, interestAllocationType)
+                                },
+                                notes     = finalNotes
                             )
                             onConfirm(payment, selectedAccount.name)
                         },

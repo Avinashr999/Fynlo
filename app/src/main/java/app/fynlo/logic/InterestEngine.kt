@@ -29,6 +29,7 @@ object InterestEngine {
      */
     fun label(storedType: String): String = when (storedType) {
         "Both" -> "SI + CI"
+        "Compound Interest" -> "Compound Interest (monthly)"
         else   -> storedType
     }
 
