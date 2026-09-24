@@ -1,6 +1,8 @@
 package app.fynlo.logic
 
 import app.fynlo.data.model.Borrower
+import app.fynlo.data.model.Debt
+import app.fynlo.data.model.DebtPayment
 import app.fynlo.data.model.Payment
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -80,4 +82,71 @@ class InterestPolicyPaisePostTest {
         assertEquals(InterestEngine.paiseToRupees(preview.penaltyPaise), penalty, 0.001)
         assertTrue(posted.notes.contains("Penalty on this account"))
     }
+
+    @Test
+    fun `reducing align uses prior payment date not original principal life`() {
+        val b = borrower(intType = "Reducing Balance")
+        val prior = listOf(
+            Payment(
+                id = "prior-1",
+                loanId = b.id,
+                name = b.name,
+                date = "2026-01-15",
+                type = "Both",
+                amount = 500.0,
+                principal = 453.98,
+                interest = 46.02,
+            ),
+        )
+        val asOf = "2026-02-01"
+        val amount = 200.0
+        val preview = InterestPolicy.previewBorrowerPaymentPaise(
+            b, InterestEngine.rupeesToPaise(amount), asOf, prior,
+        )
+        // After mid-month ₹500: principal 9546.02, interest due 53.36
+        assertEquals(5_336L, preview.towardInterest)
+        assertEquals(14_664L, preview.towardPrincipal)
+        assertEquals(0L, preview.penaltyPaise)
+
+        val posted = InterestPolicy.alignBorrowerPaymentToPaisePreview(
+            b,
+            Payment(
+                id = "p-new",
+                loanId = b.id,
+                name = b.name,
+                date = asOf,
+                type = "Both",
+                amount = amount,
+            ),
+            priorPayments = prior,
+            asOf = asOf,
+        )
+        assertEquals(InterestEngine.paiseToRupees(preview.towardInterest), posted.interest, 0.0)
+        assertEquals(InterestEngine.paiseToRupees(preview.towardPrincipal), posted.principal, 0.0)
+
+        val debt = Debt(
+            id = "debt-1",
+            name = "L",
+            amount = 10_000.0,
+            rate = 12.0,
+            date = "2026-01-01",
+            intType = "Reducing Balance",
+        )
+        val debtPrior = listOf(
+            DebtPayment(
+                id = "dprior",
+                debtId = debt.id,
+                name = debt.name,
+                date = "2026-01-15",
+                type = "Both",
+                amount = 500.0,
+            ),
+        )
+        val debtPreview = InterestPolicy.previewDebtPaymentPaise(
+            debt, InterestEngine.rupeesToPaise(amount), asOf, debtPrior,
+        )
+        assertEquals(preview.towardInterest, debtPreview.towardInterest)
+        assertEquals(preview.towardPrincipal, debtPreview.towardPrincipal)
+    }
+
 }

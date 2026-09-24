@@ -88,7 +88,7 @@ val borrowers by viewModel.borrowers.collectAsState()
 
     val usePaise = app.fynlo.logic.InterestPolicy.usesPaiseMethod(borrower.intType)
     val paiseBalances = if (usePaise) {
-        app.fynlo.logic.InterestPolicy.paiseBalancesForBorrower(borrower)
+        app.fynlo.logic.InterestPolicy.paiseBalancesForBorrower(borrower, payments = loanPayments)
     } else null
     val interestBreakdown = app.fynlo.logic.InterestPolicy.borrowerBreakdown(borrower, loanPayments)
     val interest = interestBreakdown.accrued

@@ -2689,7 +2689,10 @@ class FinanceRepository(
             val aligned = if (borrowerBefore != null &&
                 app.fynlo.logic.InterestPolicy.usesPaiseMethod(borrowerBefore.intType)
             ) {
-                app.fynlo.logic.InterestPolicy.alignBorrowerPaymentToPaisePreview(borrowerBefore, payment)
+                val prior = dao.getPaymentsForLoanOnce(payment.loanId)
+                app.fynlo.logic.InterestPolicy.alignBorrowerPaymentToPaisePreview(
+                    borrowerBefore, payment, priorPayments = prior,
+                )
             } else payment
             val p = aligned.copy(projectId = projectId, updatedAt = now, createdAt = if (aligned.createdAt == 0L) now else aligned.createdAt)
             dao.insertPayment(p)
@@ -2762,7 +2765,10 @@ class FinanceRepository(
             val aligned = if (debtBefore != null &&
                 app.fynlo.logic.InterestPolicy.usesPaiseMethod(debtBefore.intType)
             ) {
-                app.fynlo.logic.InterestPolicy.alignDebtPaymentToPaisePreview(debtBefore, payment)
+                val prior = dao.getDebtPaymentsForDebtOnce(payment.debtId)
+                app.fynlo.logic.InterestPolicy.alignDebtPaymentToPaisePreview(
+                    debtBefore, payment, priorPayments = prior,
+                )
             } else payment
             val p = aligned.copy(projectId = projectId, updatedAt = now, createdAt = if (aligned.createdAt == 0L) now else aligned.createdAt)
             dao.insertDebtPayment(p)

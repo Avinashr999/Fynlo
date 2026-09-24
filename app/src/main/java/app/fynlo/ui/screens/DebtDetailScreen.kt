@@ -93,7 +93,7 @@ fun DebtDetailScreen(
 
     val usePaise = app.fynlo.logic.InterestPolicy.usesPaiseMethod(debt.intType)
     val paiseBalances = if (usePaise) {
-        app.fynlo.logic.InterestPolicy.paiseBalancesForDebt(debt)
+        app.fynlo.logic.InterestPolicy.paiseBalancesForDebt(debt, payments = debtPayments)
     } else null
     val interestBreakdown = app.fynlo.logic.InterestPolicy.debtBreakdown(debt, debtPayments)
     val interest = interestBreakdown.accrued

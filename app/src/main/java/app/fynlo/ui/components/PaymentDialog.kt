@@ -70,8 +70,8 @@ fun CollectPaymentDialog(
         runCatching { DateUtils.parseInput(date) }.getOrDefault("")
             .ifBlank { java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd")) }
     }
-    val paiseBalances = remember(borrower, usePaise, paymentAsOf) {
-        if (usePaise) InterestPolicy.paiseBalancesForBorrower(borrower, paymentAsOf) else null
+    val paiseBalances = remember(borrower, payments, usePaise, paymentAsOf) {
+        if (usePaise) InterestPolicy.paiseBalancesForBorrower(borrower, paymentAsOf, payments) else null
     }
     val interestBreakdown = remember(borrower, payments) {
         if (payments.isEmpty()) {
@@ -109,12 +109,13 @@ fun CollectPaymentDialog(
     val amountVal    = amountStr.toDoubleOrNull() ?: 0.0
     val totalAmount  = if (usePaise) amountVal else principalVal + interestVal
     val isValid      = totalAmount > 0.0
-    val paisePreview = remember(usePaise, totalAmount, borrower, paymentAsOf) {
+    val paisePreview = remember(usePaise, totalAmount, borrower, payments, paymentAsOf) {
         if (usePaise && totalAmount > 0.0) {
             InterestPolicy.previewBorrowerPaymentPaise(
                 borrower,
                 InterestEngine.rupeesToPaise(totalAmount),
                 paymentAsOf,
+                payments,
             )
         } else null
     }
@@ -484,6 +485,7 @@ fun CollectPaymentDialog(
                                     borrower,
                                     InterestEngine.rupeesToPaise(totalAmount),
                                     asOf,
+                                    payments,
                                 )
                             } else null
                             val finalPrincipal = split?.let { InterestEngine.paiseToRupees(it.towardPrincipal) } ?: principalVal
@@ -553,8 +555,8 @@ fun PayDebtDialog(
         runCatching { DateUtils.parseInput(date) }.getOrDefault("")
             .ifBlank { java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd")) }
     }
-    val paiseBalances = remember(debt, usePaise, paymentAsOf) {
-        if (usePaise) InterestPolicy.paiseBalancesForDebt(debt, paymentAsOf) else null
+    val paiseBalances = remember(debt, payments, usePaise, paymentAsOf) {
+        if (usePaise) InterestPolicy.paiseBalancesForDebt(debt, paymentAsOf, payments) else null
     }
     val interestBreakdown = remember(debt, payments) {
         if (payments.isEmpty()) {
@@ -592,12 +594,13 @@ fun PayDebtDialog(
     val amountVal    = amountStr.toDoubleOrNull() ?: 0.0
     val totalAmount  = if (usePaise) amountVal else principalVal + interestVal
     val isValid      = totalAmount > 0.0
-    val paisePreview = remember(usePaise, totalAmount, debt, paymentAsOf) {
+    val paisePreview = remember(usePaise, totalAmount, debt, payments, paymentAsOf) {
         if (usePaise && totalAmount > 0.0) {
             InterestPolicy.previewDebtPaymentPaise(
                 debt,
                 InterestEngine.rupeesToPaise(totalAmount),
                 paymentAsOf,
+                payments,
             )
         } else null
     }
@@ -921,6 +924,7 @@ fun PayDebtDialog(
                                     debt,
                                     InterestEngine.rupeesToPaise(totalAmount),
                                     asOf,
+                                    payments,
                                 )
                             } else null
                             val finalPrincipal = split?.let { InterestEngine.paiseToRupees(it.towardPrincipal) } ?: principalVal

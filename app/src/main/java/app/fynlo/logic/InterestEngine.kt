@@ -313,6 +313,30 @@ object InterestEngine {
         return next to split
     }
 
+    /**
+     * Replay dated payments (amount paise), then accrue to [asOf].
+     * Day-count uses ChronoUnit between lastAccrual and each event — payment day
+     * is not counted (same-day open + pay → ₹0 interest).
+     * Payments after [asOf] are ignored. Same-date payments keep list order.
+     */
+    fun replayPaiseTo(
+        state: PaiseLoanState,
+        payments: List<Pair<LocalDate, Long>>,
+        asOf: LocalDate,
+    ): PaiseLoanState {
+        var s = state
+        val ordered = payments.filter { (date, amount) ->
+            !date.isAfter(asOf) && amount >= 0L
+        }
+        for ((date, payPaise) in ordered) {
+            s = accruePaiseTo(s, date)
+            if (payPaise > 0L) {
+                s = applyPaymentPaise(s, payPaise).first
+            }
+        }
+        return accruePaiseTo(s, asOf)
+    }
+
     private fun accruePaiseSimple(state: PaiseLoanState, asOf: LocalDate): PaiseLoanState {
         val days = ChronoUnit.DAYS.between(state.lastAccrualDate, asOf)
         if (days <= 0L) return state
