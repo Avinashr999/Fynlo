@@ -324,4 +324,106 @@ object InterestPolicy {
             periodStartDate != currentStartDate
 
     private val currentPeriodAllocations = setOf(CURRENT_PERIOD_INTEREST, ADVANCE_INTEREST)
+
+    // --- Temporary paise migration helpers (delegate to InterestEngine) ---
+
+    fun usesPaiseMethod(intType: String): Boolean = InterestEngine.isPaiseMethod(intType)
+
+    /**
+     * Snapshot balances for a lean-eligible borrower at [asOf].
+     * Accrues from loan start on original terms, then nets stored paid* fields in paise.
+     * Dated payment replay remains a future call-site concern.
+     */
+    fun paiseBalancesForBorrower(
+        borrower: Borrower,
+        asOf: String = LocalDate.now().format(ledgerFormatter),
+    ): InterestEngine.PaiseBalances {
+        val method = InterestEngine.paiseMethodOrNull(borrower.intType)
+            ?: error("intType '${borrower.intType}' is not paise-eligible")
+        return paiseBalancesFromTerms(
+            principalRupees = borrower.amount,
+            ratePercent = borrower.rate,
+            startDate = borrower.date,
+            paidPrincipalRupees = borrower.paidPrincipal,
+            paidInterestRupees = borrower.paidInterest,
+            waivedInterestRupees = borrower.interestWaived,
+            method = method,
+            asOf = asOf,
+        )
+    }
+
+    fun paiseBalancesForDebt(
+        debt: Debt,
+        asOf: String = LocalDate.now().format(ledgerFormatter),
+    ): InterestEngine.PaiseBalances {
+        val method = InterestEngine.paiseMethodOrNull(debt.intType)
+            ?: error("intType '${debt.intType}' is not paise-eligible")
+        return paiseBalancesFromTerms(
+            principalRupees = debt.amount,
+            ratePercent = debt.rate,
+            startDate = debt.date,
+            paidPrincipalRupees = debt.paidPrincipal,
+            paidInterestRupees = debt.paidInterest,
+            waivedInterestRupees = debt.interestWaived,
+            method = method,
+            asOf = asOf,
+        )
+    }
+
+    fun previewBorrowerPaymentPaise(
+        borrower: Borrower,
+        paymentPaise: Long,
+        asOf: String = LocalDate.now().format(ledgerFormatter),
+    ): InterestEngine.PaisePaymentSplit {
+        val bal = paiseBalancesForBorrower(borrower, asOf)
+        return InterestEngine.allocatePaymentPaise(
+            outstandingPrincipal = bal.outstandingPrincipal,
+            interestDue = bal.interestDue,
+            paymentPaise = paymentPaise,
+        )
+    }
+
+    fun previewDebtPaymentPaise(
+        debt: Debt,
+        paymentPaise: Long,
+        asOf: String = LocalDate.now().format(ledgerFormatter),
+    ): InterestEngine.PaisePaymentSplit {
+        val bal = paiseBalancesForDebt(debt, asOf)
+        return InterestEngine.allocatePaymentPaise(
+            outstandingPrincipal = bal.outstandingPrincipal,
+            interestDue = bal.interestDue,
+            paymentPaise = paymentPaise,
+        )
+    }
+
+    private fun paiseBalancesFromTerms(
+        principalRupees: Double,
+        ratePercent: Double,
+        startDate: String,
+        paidPrincipalRupees: Double,
+        paidInterestRupees: Double,
+        waivedInterestRupees: Double,
+        method: InterestEngine.PaiseMethod,
+        asOf: String,
+    ): InterestEngine.PaiseBalances {
+        val principalPaise = InterestEngine.rupeesToPaise(principalRupees)
+        val start = LocalDate.parse(startDate, ledgerFormatter)
+        val asOfDate = LocalDate.parse(asOf, ledgerFormatter)
+        var state = InterestEngine.openPaiseLoan(
+            principalPaise = principalPaise,
+            annualRateBps = InterestEngine.ratePercentToBps(ratePercent),
+            startDate = start,
+            method = method,
+        )
+        state = InterestEngine.accruePaiseTo(state, asOfDate)
+        val outstandingPrincipal = (principalPaise - InterestEngine.rupeesToPaise(paidPrincipalRupees))
+            .coerceAtLeast(0L)
+        val interestDue = (
+            state.interestDuePaise -
+                InterestEngine.rupeesToPaise(paidInterestRupees) -
+                InterestEngine.rupeesToPaise(waivedInterestRupees)
+            ).coerceAtLeast(0L)
+        return InterestEngine.PaiseBalances(outstandingPrincipal, interestDue)
+    }
 }
+

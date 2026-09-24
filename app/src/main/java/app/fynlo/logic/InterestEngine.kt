@@ -4,6 +4,13 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 
+/**
+ * Interest + outstanding math for lending.
+ *
+ * Existing Double APIs stay for current call sites (including legacy "Both").
+ * Integer-paise ledger helpers below are a temporary migration surface for lean v1
+ * fixtures (monthly compound, khatha penalty) — not a parallel money engine.
+ */
 object InterestEngine {
     private val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
 
@@ -173,4 +180,196 @@ object InterestEngine {
         ciTotal += ciTotal * rAnnual * (remDays.toDouble() / 365.0)
         return Pair(Math.round(siPortion).toDouble(), Math.round(ciTotal - baseForCI).toDouble())
     }
+
+    // -------------------------------------------------------------------------
+    // Temporary migration: integer-paise ledger (lean v1 money rules).
+    // Lives on InterestEngine — not a second money stack. Call sites bind later.
+    // -------------------------------------------------------------------------
+
+    /** annualRateBps: 1200 = 12%. Compound = monthly capitalize only. */
+    enum class PaiseMethod { SIMPLE, COMPOUND, REDUCING }
+
+    data class PaiseLoanState(
+        val method: PaiseMethod,
+        val annualRateBps: Int,
+        val startDate: LocalDate,
+        val originalPrincipalPaise: Long,
+        val outstandingPrincipalPaise: Long,
+        val interestDuePaise: Long,
+        val dayRemainder: Long = 0L,
+        val compoundRemainder: Long = 0L,
+        val lastAccrualDate: LocalDate,
+        val penaltyPaise: Long = 0L,
+    ) {
+        val outstandingPaise: Long get() = outstandingPrincipalPaise + interestDuePaise
+        val isCleared: Boolean
+            get() = outstandingPrincipalPaise == 0L && interestDuePaise == 0L
+    }
+
+    data class PaisePaymentSplit(
+        val towardInterest: Long,
+        val towardPrincipal: Long,
+        val penaltyPaise: Long,
+    )
+
+    data class PaiseBalances(
+        val outstandingPrincipal: Long,
+        val interestDue: Long,
+    ) {
+        val outstanding: Long get() = outstandingPrincipal + interestDue
+    }
+
+    private const val PAISE_DAY_DENOM = 10000L * 365L
+    private const val PAISE_MONTH_DENOM = 12L * 10000L
+
+    fun rupeesToPaise(rupees: Double): Long = Math.round(rupees * 100.0)
+
+    fun ratePercentToBps(ratePercent: Double): Int = Math.round(ratePercent * 100.0).toInt()
+
+    /** True for Simple / Compound / Reducing (and short aliases). False for Both/legacy. */
+    fun isPaiseMethod(intType: String): Boolean = paiseMethodOrNull(intType) != null
+
+    fun paiseMethodOrNull(intType: String): PaiseMethod? = when (intType.trim().lowercase()) {
+        "simple interest", "simple", "si" -> PaiseMethod.SIMPLE
+        "compound interest", "compound", "ci" -> PaiseMethod.COMPOUND
+        "reducing balance", "reducing", "rb" -> PaiseMethod.REDUCING
+        else -> null
+    }
+
+    fun openPaiseLoan(
+        principalPaise: Long,
+        annualRateBps: Int,
+        startDate: LocalDate,
+        method: PaiseMethod,
+    ): PaiseLoanState {
+        require(principalPaise >= 0L) { "principalPaise must be >= 0" }
+        require(annualRateBps >= 0) { "annualRateBps must be >= 0" }
+        return PaiseLoanState(
+            method = method,
+            annualRateBps = annualRateBps,
+            startDate = startDate,
+            originalPrincipalPaise = principalPaise,
+            outstandingPrincipalPaise = principalPaise,
+            interestDuePaise = 0L,
+            dayRemainder = 0L,
+            compoundRemainder = 0L,
+            lastAccrualDate = startDate,
+            penaltyPaise = 0L,
+        )
+    }
+
+    /** Accrue to [asOf]. Cleared loans do not accrue further. */
+    fun accruePaiseTo(state: PaiseLoanState, asOf: LocalDate): PaiseLoanState {
+        if (asOf <= state.lastAccrualDate) return state
+        if (state.isCleared) return state.copy(lastAccrualDate = asOf)
+        if (state.annualRateBps == 0) return state.copy(lastAccrualDate = asOf)
+        return when (state.method) {
+            PaiseMethod.SIMPLE -> accruePaiseSimple(state, asOf)
+            PaiseMethod.REDUCING -> accruePaiseReducing(state, asOf)
+            PaiseMethod.COMPOUND -> accruePaiseCompound(state, asOf)
+        }
+    }
+
+    fun paiseBalances(state: PaiseLoanState): PaiseBalances =
+        PaiseBalances(state.outstandingPrincipalPaise, state.interestDuePaise)
+
+    /**
+     * Interest due first, then principal. Excess → penalty_paise on same khatha
+     * (outstanding never negative).
+     */
+    fun allocatePaymentPaise(state: PaiseLoanState, paymentPaise: Long): PaisePaymentSplit =
+        allocatePaymentPaise(
+            outstandingPrincipal = state.outstandingPrincipalPaise,
+            interestDue = state.interestDuePaise,
+            paymentPaise = paymentPaise,
+        )
+
+    fun allocatePaymentPaise(
+        outstandingPrincipal: Long,
+        interestDue: Long,
+        paymentPaise: Long,
+    ): PaisePaymentSplit {
+        require(paymentPaise >= 0L) { "paymentPaise must be >= 0" }
+        require(outstandingPrincipal >= 0L && interestDue >= 0L)
+        val towardInterest = minOf(paymentPaise, interestDue)
+        var remaining = paymentPaise - towardInterest
+        val towardPrincipal = minOf(remaining, outstandingPrincipal)
+        remaining -= towardPrincipal
+        return PaisePaymentSplit(towardInterest, towardPrincipal, remaining)
+    }
+
+    fun applyPaymentPaise(
+        state: PaiseLoanState,
+        paymentPaise: Long,
+    ): Pair<PaiseLoanState, PaisePaymentSplit> {
+        val split = allocatePaymentPaise(state, paymentPaise)
+        val next = state.copy(
+            interestDuePaise = state.interestDuePaise - split.towardInterest,
+            outstandingPrincipalPaise = state.outstandingPrincipalPaise - split.towardPrincipal,
+            penaltyPaise = state.penaltyPaise + split.penaltyPaise,
+        )
+        return next to split
+    }
+
+    private fun accruePaiseSimple(state: PaiseLoanState, asOf: LocalDate): PaiseLoanState {
+        val days = ChronoUnit.DAYS.between(state.lastAccrualDate, asOf)
+        if (days <= 0L) return state
+        val principal = state.originalPrincipalPaise
+        if (principal <= 0L) return state.copy(lastAccrualDate = asOf)
+        val num = principal * state.annualRateBps.toLong() * days + state.dayRemainder
+        return state.copy(
+            interestDuePaise = state.interestDuePaise + num / PAISE_DAY_DENOM,
+            dayRemainder = num % PAISE_DAY_DENOM,
+            lastAccrualDate = asOf,
+        )
+    }
+
+    private fun accruePaiseReducing(state: PaiseLoanState, asOf: LocalDate): PaiseLoanState {
+        val days = ChronoUnit.DAYS.between(state.lastAccrualDate, asOf)
+        if (days <= 0L) return state
+        val principal = state.outstandingPrincipalPaise
+        if (principal <= 0L) return state.copy(lastAccrualDate = asOf)
+        val num = principal * state.annualRateBps.toLong() * days + state.dayRemainder
+        return state.copy(
+            interestDuePaise = state.interestDuePaise + num / PAISE_DAY_DENOM,
+            dayRemainder = num % PAISE_DAY_DENOM,
+            lastAccrualDate = asOf,
+        )
+    }
+
+    private fun accruePaiseCompound(state: PaiseLoanState, asOf: LocalDate): PaiseLoanState {
+        var s = state
+        var anniversary = nextMonthAnniversaryPaise(s.startDate, s.lastAccrualDate)
+        while (!anniversary.isAfter(asOf)) {
+            if (s.interestDuePaise > 0L) {
+                s = s.copy(
+                    outstandingPrincipalPaise = s.outstandingPrincipalPaise + s.interestDuePaise,
+                    interestDuePaise = 0L,
+                )
+            }
+            if (s.outstandingPrincipalPaise > 0L && s.annualRateBps > 0) {
+                val num = s.outstandingPrincipalPaise * s.annualRateBps.toLong() + s.compoundRemainder
+                s = s.copy(
+                    interestDuePaise = s.interestDuePaise + num / PAISE_MONTH_DENOM,
+                    compoundRemainder = num % PAISE_MONTH_DENOM,
+                )
+            }
+            s = s.copy(lastAccrualDate = anniversary)
+            anniversary = anniversary.plusMonths(1)
+        }
+        if (s.lastAccrualDate < asOf) {
+            s = s.copy(lastAccrualDate = asOf)
+        }
+        return s
+    }
+
+    /** First monthly anniversary of [start] strictly after [after]. */
+    internal fun nextMonthAnniversaryPaise(start: LocalDate, after: LocalDate): LocalDate {
+        var ann = start.plusMonths(1)
+        while (!ann.isAfter(after)) {
+            ann = ann.plusMonths(1)
+        }
+        return ann
+    }
 }
+
