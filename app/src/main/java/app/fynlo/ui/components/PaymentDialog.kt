@@ -333,7 +333,7 @@ fun CollectPaymentDialog(
                             }
                             if (split.penaltyPaise > 0L) {
                                 Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
-                                    Text("Penalty on this khatha", style = MaterialTheme.typography.bodySmall)
+                                    Text("Penalty on this account", style = MaterialTheme.typography.bodySmall)
                                     Text(
                                         CurrencyFormatter.detail(InterestEngine.paiseToRupees(split.penaltyPaise), currencyCode, locale),
                                         style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
@@ -461,7 +461,7 @@ fun CollectPaymentDialog(
                             val finalPrincipal = split?.let { InterestEngine.paiseToRupees(it.towardPrincipal) } ?: principalVal
                             val finalInterest = split?.let { InterestEngine.paiseToRupees(it.towardInterest) } ?: interestVal
                             val penaltyNote = if (split != null && split.penaltyPaise > 0L) {
-                                "Penalty on this khatha ${InterestEngine.paiseToRupees(split.penaltyPaise)}"
+                                "Penalty on this account ${InterestEngine.paiseToRupees(split.penaltyPaise)}"
                             } else null
                             val finalNotes = when {
                                 penaltyNote == null -> notes
@@ -752,7 +752,7 @@ fun PayDebtDialog(
                             }
                             if (split.penaltyPaise > 0L) {
                                 Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
-                                    Text("Penalty on this khatha", style = MaterialTheme.typography.bodySmall)
+                                    Text("Penalty on this account", style = MaterialTheme.typography.bodySmall)
                                     Text(
                                         CurrencyFormatter.detail(InterestEngine.paiseToRupees(split.penaltyPaise), currencyCode, locale),
                                         style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
@@ -870,7 +870,7 @@ fun PayDebtDialog(
                             val finalPrincipal = split?.let { InterestEngine.paiseToRupees(it.towardPrincipal) } ?: principalVal
                             val finalInterest = split?.let { InterestEngine.paiseToRupees(it.towardInterest) } ?: interestVal
                             val penaltyNote = if (split != null && split.penaltyPaise > 0L) {
-                                "Penalty on this khatha ${InterestEngine.paiseToRupees(split.penaltyPaise)}"
+                                "Penalty on this account ${InterestEngine.paiseToRupees(split.penaltyPaise)}"
                             } else null
                             val finalNotes = when {
                                 penaltyNote == null -> notes
