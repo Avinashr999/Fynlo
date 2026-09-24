@@ -223,6 +223,7 @@ object InterestEngine {
     private const val PAISE_MONTH_DENOM = 12L * 10000L
 
     fun rupeesToPaise(rupees: Double): Long = Math.round(rupees * 100.0)
+    fun paiseToRupees(paise: Long): Double = paise / 100.0
 
     fun ratePercentToBps(ratePercent: Double): Int = Math.round(ratePercent * 100.0).toInt()
 

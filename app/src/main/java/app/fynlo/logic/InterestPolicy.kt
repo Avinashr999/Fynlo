@@ -425,5 +425,74 @@ object InterestPolicy {
             ).coerceAtLeast(0L)
         return InterestEngine.PaiseBalances(outstandingPrincipal, interestDue)
     }
-}
 
+
+    /**
+     * Align a posted Payment to the same paise preview Frontend shows.
+     * principal + interest come from allocatePaymentPaise; excess stays on
+     * [Payment.amount] as khatha penalty (amount - principal - interest).
+     * No schema change — penalty is derived, not a new column.
+     */
+    fun alignBorrowerPaymentToPaisePreview(
+        borrower: Borrower,
+        payment: Payment,
+        asOf: String = payment.date.ifBlank { LocalDate.now().format(ledgerFormatter) },
+    ): Payment {
+        if (!usesPaiseMethod(borrower.intType)) return payment
+        val paymentPaise = InterestEngine.rupeesToPaise(payment.amount)
+        val split = previewBorrowerPaymentPaise(borrower, paymentPaise, asOf)
+        val interest = InterestEngine.paiseToRupees(split.towardInterest)
+        val principal = InterestEngine.paiseToRupees(split.towardPrincipal)
+        val type = when {
+            split.towardInterest > 0L && split.towardPrincipal > 0L -> "Both"
+            split.towardInterest > 0L -> "Interest Only"
+            split.towardPrincipal > 0L -> "Principal Only"
+            else -> payment.type
+        }
+        val notes = if (split.penaltyPaise > 0L) {
+            val tag = "Penalty on this khatha ${InterestEngine.paiseToRupees(split.penaltyPaise)}"
+            if (payment.notes.isBlank()) tag else "${payment.notes}\n$tag"
+        } else payment.notes
+        return payment.copy(
+            type = type,
+            principal = principal,
+            interest = interest,
+            interestAllocationType = if (split.towardInterest > 0L) CURRENT_PERIOD_INTEREST else PRINCIPAL_REPAYMENT,
+            notes = notes,
+        )
+    }
+
+    fun alignDebtPaymentToPaisePreview(
+        debt: Debt,
+        payment: DebtPayment,
+        asOf: String = payment.date.ifBlank { LocalDate.now().format(ledgerFormatter) },
+    ): DebtPayment {
+        if (!usesPaiseMethod(debt.intType)) return payment
+        val paymentPaise = InterestEngine.rupeesToPaise(payment.amount)
+        val split = previewDebtPaymentPaise(debt, paymentPaise, asOf)
+        val interest = InterestEngine.paiseToRupees(split.towardInterest)
+        val principal = InterestEngine.paiseToRupees(split.towardPrincipal)
+        val type = when {
+            split.towardInterest > 0L && split.towardPrincipal > 0L -> "Both"
+            split.towardInterest > 0L -> "Interest Only"
+            split.towardPrincipal > 0L -> "Principal Only"
+            else -> payment.type
+        }
+        val notes = if (split.penaltyPaise > 0L) {
+            val tag = "Penalty on this khatha ${InterestEngine.paiseToRupees(split.penaltyPaise)}"
+            if (payment.notes.isBlank()) tag else "${payment.notes}\n$tag"
+        } else payment.notes
+        return payment.copy(
+            type = type,
+            principal = principal,
+            interest = interest,
+            interestAllocationType = if (split.towardInterest > 0L) CURRENT_PERIOD_INTEREST else PRINCIPAL_REPAYMENT,
+            notes = notes,
+        )
+    }
+
+    /** Khatha penalty rupees derived from a posted row (no extra column). */
+    fun khathaPenaltyRupees(amount: Double, principal: Double, interest: Double): Double =
+        (amount - principal - interest).coerceAtLeast(0.0)
+
+}

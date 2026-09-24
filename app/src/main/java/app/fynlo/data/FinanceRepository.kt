@@ -2685,12 +2685,18 @@ class FinanceRepository(
             if (dao.getPaymentById(payment.id) != null) return@withTransaction
             val now = System.currentTimeMillis()
             val borrowerBefore = dao.getBorrowerById(payment.loanId)
-            val p = payment.copy(projectId = projectId, updatedAt = now, createdAt = if (payment.createdAt == 0L) now else payment.createdAt)
+            // Lean v1: post split must match InterestPolicy.previewBorrowerPaymentPaise
+            val aligned = if (borrowerBefore != null &&
+                app.fynlo.logic.InterestPolicy.usesPaiseMethod(borrowerBefore.intType)
+            ) {
+                app.fynlo.logic.InterestPolicy.alignBorrowerPaymentToPaisePreview(borrowerBefore, payment)
+            } else payment
+            val p = aligned.copy(projectId = projectId, updatedAt = now, createdAt = if (aligned.createdAt == 0L) now else aligned.createdAt)
             dao.insertPayment(p)
             Analytics.paymentCollected()
 
             // Credit the destination account with full payment amount
-            dao.updateAccountBalance(destinationAccount, payment.amount)
+            dao.updateAccountBalance(destinationAccount, p.amount)
 
             // Derive paid / paidPrincipal / paidInterest from the payments
             // table (single source of truth per
@@ -2752,11 +2758,17 @@ class FinanceRepository(
             if (dao.getDebtPaymentById(payment.id) != null) return@withTransaction
             val now = System.currentTimeMillis()
             val debtBefore = dao.getDebtById(payment.debtId)
-            val p = payment.copy(projectId = projectId, updatedAt = now, createdAt = if (payment.createdAt == 0L) now else payment.createdAt)
+            // Lean v1: post split must match InterestPolicy.previewDebtPaymentPaise
+            val aligned = if (debtBefore != null &&
+                app.fynlo.logic.InterestPolicy.usesPaiseMethod(debtBefore.intType)
+            ) {
+                app.fynlo.logic.InterestPolicy.alignDebtPaymentToPaisePreview(debtBefore, payment)
+            } else payment
+            val p = aligned.copy(projectId = projectId, updatedAt = now, createdAt = if (aligned.createdAt == 0L) now else aligned.createdAt)
             dao.insertDebtPayment(p)
 
             // Debit source account with full payment amount
-            dao.updateAccountBalance(sourceAccount, -payment.amount)
+            dao.updateAccountBalance(sourceAccount, -p.amount)
 
             // Derive paid / paidPrincipal / paidInterest from debt_payments
             // (single source of truth per
@@ -2768,7 +2780,7 @@ class FinanceRepository(
             // interestPaid is still needed below for the auto-split
             // "Interest Expense" Transaction (an interest-only debt payment
             // shows up in P&L as a cost-of-borrowing line).
-            val interestPaid = payment.interest.coerceAtLeast(0.0)
+            val interestPaid = p.interest.coerceAtLeast(0.0)
 
             // Main repayment transaction (full amount paid)
             val t = Transaction(
