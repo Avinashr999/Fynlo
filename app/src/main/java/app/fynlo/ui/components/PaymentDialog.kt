@@ -198,8 +198,10 @@ fun CollectPaymentDialog(
                                     color = Emerald500)
                             }
                             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
-                                Text("Interest (${borrower.rate}% ${InterestEngine.label(borrower.intType)})",
-                                    style = MaterialTheme.typography.bodySmall)
+                                Text(
+                                    if (usePaise) "Interest Due" else "Interest (${borrower.rate}% ${InterestEngine.label(borrower.intType)})",
+                                    style = MaterialTheme.typography.bodySmall,
+                                )
                                 Text(CurrencyFormatter.interest(interestOutstanding, currencyCode, locale),
                                     style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
                                     color = SemanticAmber)
@@ -695,7 +697,10 @@ fun PayDebtDialog(
                                     color = MaterialTheme.colorScheme.error)
                             }
                             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
-                                Text("Interest (${debt.rate}%)", style = MaterialTheme.typography.bodySmall)
+                                Text(
+                                    if (usePaise) "Interest Due" else "Interest (${debt.rate}%)",
+                                    style = MaterialTheme.typography.bodySmall,
+                                )
                                 Text(CurrencyFormatter.interest(interestOutstanding, currencyCode, locale),
                                     style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
                                     color = MaterialTheme.colorScheme.error)
