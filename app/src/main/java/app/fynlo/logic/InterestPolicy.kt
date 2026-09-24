@@ -491,8 +491,17 @@ object InterestPolicy {
         )
     }
 
-    /** Khatha penalty rupees derived from a posted row (no extra column). */
-    fun khathaPenaltyRupees(amount: Double, principal: Double, interest: Double): Double =
-        (amount - principal - interest).coerceAtLeast(0.0)
+    /**
+     * Khatha penalty rupees derived from a posted row (no extra column).
+     * Round via integer paise so Double dust after paise→rupees never invents a penalty.
+     */
+    fun khathaPenaltyRupees(amount: Double, principal: Double, interest: Double): Double {
+        val penaltyPaise = (
+            InterestEngine.rupeesToPaise(amount) -
+                InterestEngine.rupeesToPaise(principal) -
+                InterestEngine.rupeesToPaise(interest)
+            ).coerceAtLeast(0L)
+        return InterestEngine.paiseToRupees(penaltyPaise)
+    }
 
 }
