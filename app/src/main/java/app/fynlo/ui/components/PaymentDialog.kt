@@ -95,6 +95,8 @@ fun CollectPaymentDialog(
 
     // Payment fields — lean uses a single Amount; legacy keeps Principal + Interest.
     var amountStr by remember { mutableStateOf("") }
+    // When set, Amount tracks settlement/interest-only totals as the payment date changes.
+    var leanAmountPreset by remember { mutableStateOf<String?>(null) } // "full" | "interest" | null
     var principalStr by remember { mutableStateOf("") }
     var interestStr  by remember { mutableStateOf("") }
     var notes by remember { mutableStateOf("") }
@@ -109,6 +111,18 @@ fun CollectPaymentDialog(
     val amountVal    = amountStr.toDoubleOrNull() ?: 0.0
     val totalAmount  = if (usePaise) amountVal else principalVal + interestVal
     val isValid      = totalAmount > 0.0
+    // Settlement date = payment date field: keep Full Settlement / Interest Only Amount in sync.
+    androidx.compose.runtime.LaunchedEffect(usePaise, leanAmountPreset, paymentAsOf, totalOutstanding, interestOutstanding) {
+        if (!usePaise || leanAmountPreset == null) return@LaunchedEffect
+        when (leanAmountPreset) {
+            "full" -> if (totalOutstanding > 0.0) {
+                amountStr = String.format(locale, "%.0f", totalOutstanding)
+            }
+            "interest" -> if (interestOutstanding > 0.0) {
+                amountStr = String.format(locale, "%.0f", interestOutstanding)
+            }
+        }
+    }
     val paisePreview = remember(usePaise, totalAmount, borrower, payments, paymentAsOf) {
         if (usePaise && totalAmount > 0.0) {
             InterestPolicy.previewBorrowerPaymentPaise(
@@ -231,6 +245,7 @@ fun CollectPaymentDialog(
                     Button(
                         onClick = {
                             if (usePaise) {
+                                leanAmountPreset = "interest"
                                 amountStr = String.format(locale, "%.0f", interestOutstanding)
                             } else {
                                 interestStr  = String.format(locale, "%.0f", interestOutstanding)
@@ -251,6 +266,7 @@ fun CollectPaymentDialog(
                     Button(
                         onClick = {
                             if (usePaise) {
+                                leanAmountPreset = "full"
                                 amountStr = String.format(locale, "%.0f", totalOutstanding)
                             } else {
                                 interestStr  = String.format(locale, "%.0f", interestOutstanding)
@@ -278,14 +294,17 @@ fun CollectPaymentDialog(
                 if (usePaise) {
                     OutlinedTextField(
                         value = amountStr,
-                        onValueChange = { amountStr = it },
+                        onValueChange = {
+                            leanAmountPreset = null
+                            amountStr = it
+                        },
                         label = { Text("Amount") },
                         placeholder = { Text("0") },
                         prefix = { Text(CurrencyUtils.symbolFor(currencyCode)) },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         modifier = Modifier.fillMaxWidth(),
                         supportingText = {
-                            Text("Split is automatic: interest first, then principal.")
+                            Text("Split is automatic: interest first, then principal. Settlement uses the payment date above.")
                         },
                     )
                 } else {
@@ -579,6 +598,7 @@ fun PayDebtDialog(
     val totalOutstanding     = interestOutstanding + principalOutstanding
 
     var amountStr by remember { mutableStateOf("") }
+    var leanAmountPreset by remember { mutableStateOf<String?>(null) } // "full" | "interest" | null
     var principalStr by remember { mutableStateOf("") }
     var interestStr  by remember { mutableStateOf("") }
     var notes    by remember { mutableStateOf("") }
@@ -594,6 +614,17 @@ fun PayDebtDialog(
     val amountVal    = amountStr.toDoubleOrNull() ?: 0.0
     val totalAmount  = if (usePaise) amountVal else principalVal + interestVal
     val isValid      = totalAmount > 0.0
+    androidx.compose.runtime.LaunchedEffect(usePaise, leanAmountPreset, paymentAsOf, totalOutstanding, interestOutstanding) {
+        if (!usePaise || leanAmountPreset == null) return@LaunchedEffect
+        when (leanAmountPreset) {
+            "full" -> if (totalOutstanding > 0.0) {
+                amountStr = String.format(locale, "%.0f", totalOutstanding)
+            }
+            "interest" -> if (interestOutstanding > 0.0) {
+                amountStr = String.format(locale, "%.0f", interestOutstanding)
+            }
+        }
+    }
     val paisePreview = remember(usePaise, totalAmount, debt, payments, paymentAsOf) {
         if (usePaise && totalAmount > 0.0) {
             InterestPolicy.previewDebtPaymentPaise(
@@ -707,6 +738,7 @@ fun PayDebtDialog(
                 if (debt.rate > 0 && interestOutstanding > 0) {
                     Button(onClick = {
                         if (usePaise) {
+                            leanAmountPreset = "interest"
                             amountStr = String.format(locale, "%.0f", interestOutstanding)
                         } else {
                             interestStr = String.format(locale, "%.0f", interestOutstanding); principalStr = ""
@@ -722,6 +754,7 @@ fun PayDebtDialog(
                 if (totalOutstanding > 0) {
                     Button(onClick = {
                         if (usePaise) {
+                            leanAmountPreset = "full"
                             amountStr = String.format(locale, "%.0f", totalOutstanding)
                         } else {
                             interestStr  = String.format(locale, "%.0f", interestOutstanding)
@@ -747,14 +780,17 @@ fun PayDebtDialog(
                 if (usePaise) {
                     OutlinedTextField(
                         value = amountStr,
-                        onValueChange = { amountStr = it },
+                        onValueChange = {
+                            leanAmountPreset = null
+                            amountStr = it
+                        },
                         label = { Text("Amount") },
                         placeholder = { Text("0") },
                         prefix = { Text(CurrencyUtils.symbolFor(currencyCode)) },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         modifier = Modifier.fillMaxWidth(),
                         supportingText = {
-                            Text("Split is automatic: interest first, then principal.")
+                            Text("Split is automatic: interest first, then principal. Settlement uses the payment date above.")
                         },
                     )
                 } else {
