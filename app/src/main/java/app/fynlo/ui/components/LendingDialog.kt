@@ -64,7 +64,7 @@ fun AddLendingDialog(
     }
     var accountExpanded by remember { mutableStateOf(false) }
 
-    val advancedInterestTypes = listOf("Reducing Balance", "Compound Interest", "Both")
+    val advancedInterestTypes = listOf("Reducing Balance", "Compound Interest") // lean v1: no new "Both"
     val isEdit = initialBorrower != null
     var submitting by remember(initialBorrower?.id) { mutableStateOf(false) }
 
@@ -251,9 +251,11 @@ fun AddLendingDialog(
                 // can only switch back to Simple Interest from there.
                 Text("Interest type", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Spacer(Modifier.height(8.dp))
-                val interestOptions = remember(isPro) {
-                    if (isPro) listOf("Simple Interest") + advancedInterestTypes
+                val interestOptions = remember(isPro, selectedType) {
+                    val base = if (isPro) listOf("Simple Interest") + advancedInterestTypes
                     else listOf("Simple Interest")
+                    // Legacy "Both" rows stay editable/visible; new loans cannot pick it.
+                    if (selectedType == "Both" && "Both" !in base) base + "Both" else base
                 }
                 var interestExpanded by remember { mutableStateOf(false) }
                 ExposedDropdownMenuBox(
@@ -281,6 +283,14 @@ fun AddLendingDialog(
                             )
                         }
                     }
+                }
+                if (selectedType == "Compound Interest") {
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        "Interest compounds monthly.",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
 
                 Spacer(Modifier.height(16.dp))

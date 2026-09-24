@@ -67,7 +67,11 @@ fun AddDebtDialog(
     var expandedDest     by remember { mutableStateOf(false) }
 
     var expandedIntType  by remember { mutableStateOf(false) }
-    val interestTypes    = listOf("Simple Interest", "Reducing Balance", "Compound Interest", "Both")
+    val leanInterestTypes = listOf("Simple Interest", "Reducing Balance", "Compound Interest")
+    val interestTypes = remember(initialDebt?.intType) {
+        val t = initialDebt?.intType
+        if (t == "Both") leanInterestTypes + "Both" else leanInterestTypes
+    }
     var selectedIntType  by remember { mutableStateOf(initialDebt?.intType ?: "Simple Interest") }
     var stopInterestAfterDue by remember { mutableStateOf(initialDebt?.stopInterestAfterDue ?: false) }
     var submitting       by remember(initialDebt?.id) { mutableStateOf(false) }
