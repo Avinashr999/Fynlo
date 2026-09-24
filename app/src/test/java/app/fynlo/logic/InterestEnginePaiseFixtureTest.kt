@@ -236,13 +236,15 @@ class InterestEnginePaiseFixtureTest {
     fun `golden mid-month prior pay compound engine then policy match`() {
         val jan15 = LocalDate.of(2026, 1, 15)
         var s = InterestEngine.accruePaiseTo(open(InterestEngine.PaiseMethod.COMPOUND), jan15)
-        assertEquals(0L, s.interestDuePaise) // mid-month stub: no partial month CI
+        // Stub days Jan 1→15: daily SI on outstanding (same as reducing for this stretch)
+        assertEquals(4_602L, s.interestDuePaise)
         val (afterPay, split) = InterestEngine.applyPaymentPaise(s, 50_000L)
-        assertEquals(0L, split.towardInterest)
-        assertEquals(50_000L, split.towardPrincipal)
+        assertEquals(4_602L, split.towardInterest)
+        assertEquals(45_398L, split.towardPrincipal)
         val engine = InterestEngine.accruePaiseTo(afterPay, feb1)
-        assertEquals(950_000L, engine.outstandingPrincipalPaise)
-        assertEquals(9_500L, engine.interestDuePaise)
+        assertEquals(954_602L, engine.outstandingPrincipalPaise)
+        // Feb 1 anniversary: monthly compound on reduced principal
+        assertEquals(9_546L, engine.interestDuePaise)
 
         val b = Borrower(
             id = "loan-ci",
