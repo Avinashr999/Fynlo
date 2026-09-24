@@ -430,7 +430,7 @@ object InterestPolicy {
     /**
      * Align a posted Payment to the same paise preview Frontend shows.
      * principal + interest come from allocatePaymentPaise; excess stays on
-     * [Payment.amount] as khatha penalty (amount - principal - interest).
+     * [Payment.amount] as account penalty (amount - principal - interest).
      * No schema change — penalty is derived, not a new column.
      */
     fun alignBorrowerPaymentToPaisePreview(
@@ -450,7 +450,7 @@ object InterestPolicy {
             else -> payment.type
         }
         val notes = if (split.penaltyPaise > 0L) {
-            val tag = "Penalty on this khatha ${InterestEngine.paiseToRupees(split.penaltyPaise)}"
+            val tag = "Penalty on this account ${InterestEngine.paiseToRupees(split.penaltyPaise)}"
             if (payment.notes.isBlank()) tag else "${payment.notes}\n$tag"
         } else payment.notes
         return payment.copy(
@@ -479,7 +479,7 @@ object InterestPolicy {
             else -> payment.type
         }
         val notes = if (split.penaltyPaise > 0L) {
-            val tag = "Penalty on this khatha ${InterestEngine.paiseToRupees(split.penaltyPaise)}"
+            val tag = "Penalty on this account ${InterestEngine.paiseToRupees(split.penaltyPaise)}"
             if (payment.notes.isBlank()) tag else "${payment.notes}\n$tag"
         } else payment.notes
         return payment.copy(
@@ -492,7 +492,7 @@ object InterestPolicy {
     }
 
     /**
-     * Khatha penalty rupees derived from a posted row (no extra column).
+     * Account penalty rupees derived from a posted row (no extra column).
      * Round via integer paise so Double dust after paise→rupees never invents a penalty.
      */
     fun khathaPenaltyRupees(amount: Double, principal: Double, interest: Double): Double {

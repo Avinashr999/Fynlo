@@ -78,6 +78,6 @@ class InterestPolicyPaisePostTest {
         )
         val penalty = InterestPolicy.khathaPenaltyRupees(posted.amount, posted.principal, posted.interest)
         assertEquals(InterestEngine.paiseToRupees(preview.penaltyPaise), penalty, 0.001)
-        assertTrue(posted.notes.contains("Penalty on this khatha"))
+        assertTrue(posted.notes.contains("Penalty on this account"))
     }
 }
