@@ -231,6 +231,13 @@ object InterestEngine {
         val compoundMonths: Int = 1,
         /** v3.3.0 — signed sum of payment rounding (+ small gain, − write-off). */
         val roundingPaise: Long = 0L,
+        /**
+         * Compound only: part of [interestDuePaise] accrued through the last
+         * compounding date and still unpaid. It is shown (and payable) as interest,
+         * already earns interest (accrual base = principal + this), and is folded
+         * into principal at the next compounding date. Payments settle it first.
+         */
+        val pendingCapitalPaise: Long = 0L,
     ) {
         val outstandingPaise: Long get() = outstandingPrincipalPaise + interestDuePaise
         val isCleared: Boolean
@@ -457,6 +464,8 @@ object InterestEngine {
             outstandingPrincipalPaise = state.outstandingPrincipalPaise - split.towardPrincipal,
             penaltyPaise = state.penaltyPaise + split.penaltyPaise,
             roundingPaise = state.roundingPaise + split.roundingPaise,
+            // Oldest interest (already past a compounding date) is settled first.
+            pendingCapitalPaise = (state.pendingCapitalPaise - split.towardInterest).coerceAtLeast(0L),
         )
         return next to split
     }
@@ -519,29 +528,52 @@ object InterestEngine {
         var k = nextCompoundIndexPaise(s.startDate, s.lastAccrualDate, n)
         var anniversary = compoundDatePaise(s.startDate, k, n)
         while (!anniversary.isAfter(asOf)) {
-            if (s.interestDuePaise > 0L) {
-                s = s.copy(
-                    outstandingPrincipalPaise = s.outstandingPrincipalPaise + s.interestDuePaise,
-                    interestDuePaise = 0L,
-                )
+            val base = s.outstandingPrincipalPaise + s.pendingCapitalPaise
+            val periodStart = compoundDatePaise(s.startDate, k - 1, n)
+            if (s.lastAccrualDate == periodStart) {
+                // Untouched full period: period rate on the compounding base.
+                if (base > 0L && s.annualRateBps > 0) {
+                    val num = base * s.annualRateBps.toLong() * n + s.compoundRemainder
+                    s = s.copy(
+                        interestDuePaise = s.interestDuePaise + num / PAISE_MONTH_DENOM,
+                        compoundRemainder = num % PAISE_MONTH_DENOM,
+                    )
+                }
+            } else {
+                // Period already partly accrued (payment / earlier asOf): only the
+                // remaining days — never a full-period recharge.
+                s = accruePaiseCompoundStub(s, anniversary)
             }
-            if (s.outstandingPrincipalPaise > 0L && s.annualRateBps > 0) {
-                val num = s.outstandingPrincipalPaise * s.annualRateBps.toLong() * n + s.compoundRemainder
-                s = s.copy(
-                    interestDuePaise = s.interestDuePaise + num / PAISE_MONTH_DENOM,
-                    compoundRemainder = num % PAISE_MONTH_DENOM,
-                )
-            }
-            s = s.copy(lastAccrualDate = anniversary)
+            // Capitalize unpaid interest from before the previous compounding date;
+            // interest accrued in this period (unpaid) becomes the new pending part.
+            s = s.copy(
+                outstandingPrincipalPaise = s.outstandingPrincipalPaise + s.pendingCapitalPaise,
+                interestDuePaise = s.interestDuePaise - s.pendingCapitalPaise,
+            )
+            s = s.copy(pendingCapitalPaise = s.interestDuePaise, lastAccrualDate = anniversary)
             k += 1
             anniversary = compoundDatePaise(s.startDate, k, n)
         }
-        // Mid-period stub: daily simple interest on outstanding principal until asOf
-        // (no capitalization until the next compounding date). Full-period paths unchanged.
+        // Mid-period stub: daily simple interest on the compounding base until asOf
+        // (no capitalization until the next compounding date).
         if (s.lastAccrualDate < asOf) {
-            s = accruePaiseReducing(s, asOf)
+            s = accruePaiseCompoundStub(s, asOf)
         }
         return s
+    }
+
+    /** Daily simple interest (365-day year) on principal + pending capital, lastAccrual → [to]. */
+    private fun accruePaiseCompoundStub(state: PaiseLoanState, to: LocalDate): PaiseLoanState {
+        val days = ChronoUnit.DAYS.between(state.lastAccrualDate, to)
+        if (days <= 0L) return state
+        val base = state.outstandingPrincipalPaise + state.pendingCapitalPaise
+        if (base <= 0L || state.annualRateBps == 0) return state.copy(lastAccrualDate = to)
+        val num = base * state.annualRateBps.toLong() * days + state.dayRemainder
+        return state.copy(
+            interestDuePaise = state.interestDuePaise + num / PAISE_DAY_DENOM,
+            dayRemainder = num % PAISE_DAY_DENOM,
+            lastAccrualDate = to,
+        )
     }
 
     /** First monthly anniversary of [start] strictly after [after]. */

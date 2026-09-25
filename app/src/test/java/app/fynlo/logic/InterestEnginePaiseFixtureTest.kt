@@ -246,8 +246,12 @@ class InterestEnginePaiseFixtureTest {
         assertEquals(45_398L, split.towardPrincipal)
         val engine = InterestEngine.accruePaiseTo(afterPay, feb1)
         assertEquals(954_602L, engine.outstandingPrincipalPaise)
-        // Feb 1 anniversary: monthly compound on reduced principal
-        assertEquals(9_546L, engine.interestDuePaise)
+        // Feb 1 compounding date: only the remaining stub days, no full-month recharge.
+        //   Jan 1→15 (14 d): 1,000,000×1200×14 = 16,800,000,000 / 3,650,000 = 4,602 rem 2,700,000
+        //   pay 50,000 → interest 4,602, principal 45,398 → principal 954,602
+        //   Jan 15→Feb 1 (17 d): 954,602×1200×17 + 2,700,000 = 19,476,580,800 / 3,650,000 = 5,336
+        // (Pre-3.3.0 pinned 9,546 = full month 954,602×1200/120,000, re-charging Jan 1→15.)
+        assertEquals(5_336L, engine.interestDuePaise)
 
         val b = Borrower(
             id = "loan-ci",

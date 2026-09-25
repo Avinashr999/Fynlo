@@ -215,7 +215,9 @@ class InterestEngineV330Test {
         assertEquals(30_000L, apr1.interestDuePaise)
         val may1 = InterestEngine.accruePaiseTo(compound(3), LocalDate.of(2026, 5, 1))
         assertEquals(1_000_000L, may1.outstandingPrincipalPaise)
-        assertEquals(30_000L + 9_863L, may1.interestDuePaise) // daily stub Apr 1→May 1
+        // Q1 interest (30,000, unpaid) already earns interest after Apr 1:
+        // stub Apr 1→May 1 = 1,030,000×1200×30 / 3,650,000 = 10,158
+        assertEquals(30_000L + 10_158L, may1.interestDuePaise)
         val jul1 = InterestEngine.accruePaiseTo(compound(3), LocalDate.of(2026, 7, 1))
         assertEquals(1_030_000L, jul1.outstandingPrincipalPaise)
         assertEquals(30_900L, jul1.interestDuePaise)
@@ -329,6 +331,91 @@ class InterestEngineV330Test {
         val dbal = InterestPolicy.paiseBalancesForDebt(d, "2026-07-01",
             listOf(DebtPayment(id = "p", debtId = "D", name = "D", date = "2026-04-01", type = "Both", amount = 500.0)))
         assertEquals(bal, dbal)
+    }
+
+    // ── Mid-period payment: no double charge (lend + debt) ──────────────────
+
+    @Test
+    fun `quarterly compound with mid-period payment has no double charge`() {
+        val feb15 = LocalDate.of(2026, 2, 15)
+        var st = InterestEngine.accruePaiseTo(compound(3), feb15)
+        // Jan 1→Feb 15 (45 d): 1,000,000×1200×45 = 54,000,000,000 / 3,650,000 = 14,794 rem 1,900,000
+        assertEquals(14_794L, st.interestDuePaise)
+        val (afterPay, split) = InterestEngine.applyPaymentPaise(st, 100_000L)
+        assertInvariant(100_000L, split)
+        assertEquals(14_794L, split.towardInterest)
+        assertEquals(85_206L, split.towardPrincipal)
+        st = InterestEngine.accruePaiseTo(afterPay, LocalDate.of(2026, 4, 1))
+        // Feb 15→Apr 1 (45 d): 914,794×1200×45 + 1,900,000 = 49,400,776,000 / 3,650,000 = 13,534
+        // (old code: full quarter 914,794×3600/120,000 = 27,443 — re-charged Jan 1→Feb 15)
+        assertEquals(914_794L, st.outstandingPrincipalPaise)
+        assertEquals(13_534L, st.interestDuePaise)
+        assertEquals(14_794L + 13_534L, split.towardInterest + st.interestDuePaise) // = daily SI on actual balances
+        st = InterestEngine.accruePaiseTo(st, LocalDate.of(2026, 7, 1))
+        // Q2 full quarter on principal + unpaid Q1 interest: 928,328×3600/120,000 = 27,849; Q1 capitalised
+        assertEquals(928_328L, st.outstandingPrincipalPaise)
+        assertEquals(27_849L, st.interestDuePaise)
+
+        val payments = listOf(Payment(id = "p", loanId = "L", name = "L", date = "2026-02-15", type = "Both", amount = 1_000.0))
+        val b = Borrower(id = "L", name = "L", amount = 10_000.0, rate = 12.0, date = "2026-01-01",
+            intType = "Compound Interest", compoundFrequency = "Quarterly")
+        val lb = InterestPolicy.paiseBalancesForBorrower(b, "2026-07-01", payments)
+        assertEquals(928_328L, lb.outstandingPrincipal)
+        assertEquals(27_849L, lb.interestDue)
+        val d = Debt(id = "D", name = "D", amount = 10_000.0, rate = 12.0, date = "2026-01-01",
+            intType = "Compound Interest", compoundFrequency = "Quarterly")
+        val db = InterestPolicy.paiseBalancesForDebt(d, "2026-07-01",
+            listOf(DebtPayment(id = "p", debtId = "D", name = "D", date = "2026-02-15", type = "Both", amount = 1_000.0)))
+        assertEquals(lb, db)
+        // Posted split obeys the invariant too.
+        val posted = InterestPolicy.alignBorrowerPaymentToPaisePreview(b, payments.single())
+        assertEquals(100_000L, InterestEngine.rupeesToPaise(posted.interest) + InterestEngine.rupeesToPaise(posted.principal) +
+            posted.penaltyPaise + posted.roundingPaise)
+    }
+
+    @Test
+    fun `monthly compound with mid-period payment has no double charge`() {
+        val jan15 = LocalDate.of(2026, 1, 15)
+        val (afterPay, split) = InterestEngine.applyPaymentPaise(
+            InterestEngine.accruePaiseTo(compound(1), jan15), 50_000L,
+        )
+        assertInvariant(50_000L, split)
+        assertEquals(4_602L, split.towardInterest) // Jan 1→15: 14 d on 1,000,000
+        val feb1 = InterestEngine.accruePaiseTo(afterPay, LocalDate.of(2026, 2, 1))
+        assertEquals(954_602L, feb1.outstandingPrincipalPaise)
+        assertEquals(5_336L, feb1.interestDuePaise) // Jan 15→Feb 1: 17 d on 954,602 (not 9,546)
+        // January total = 4,602 + 5,336 = 9,938 = daily SI on actual balances; nothing charged twice.
+        val mar1 = InterestEngine.accruePaiseTo(feb1, LocalDate.of(2026, 3, 1))
+        // Feb full month on 954,602 + 5,336 = 959,938 → 959,938×1200/120,000 = 9,599; Jan interest capitalised
+        assertEquals(959_938L, mar1.outstandingPrincipalPaise)
+        assertEquals(9_599L, mar1.interestDuePaise)
+        // Second mid-period payment (Feb 10) that clears the pending Jan interest first.
+        val feb10 = InterestEngine.accruePaiseTo(feb1, LocalDate.of(2026, 2, 10))
+        val (afterPay2, split2) = InterestEngine.applyPaymentPaise(feb10, 20_000L)
+        assertInvariant(20_000L, split2)
+        assertEquals(0L, afterPay2.pendingCapitalPaise)
+        val mar1b = InterestEngine.accruePaiseTo(afterPay2, LocalDate.of(2026, 3, 1))
+        // Replay from scratch must agree with stepwise, lend and debt.
+        val replay = InterestEngine.replayPaiseTo(compound(1),
+            listOf(jan15 to 50_000L, LocalDate.of(2026, 2, 10) to 20_000L), LocalDate.of(2026, 3, 1))
+        assertEquals(mar1b.outstandingPrincipalPaise, replay.outstandingPrincipalPaise)
+        assertEquals(mar1b.interestDuePaise, replay.interestDuePaise)
+        val b = Borrower(id = "L", name = "L", amount = 10_000.0, rate = 12.0, date = "2026-01-01", intType = "Compound Interest")
+        val rows = listOf(
+            Payment(id = "a", loanId = "L", name = "L", date = "2026-01-15", type = "Both", amount = 500.0),
+            Payment(id = "b", loanId = "L", name = "L", date = "2026-02-10", type = "Both", amount = 200.0),
+        )
+        val lb = InterestPolicy.paiseBalancesForBorrower(b, "2026-03-01", rows)
+        assertEquals(replay.outstandingPrincipalPaise, lb.outstandingPrincipal)
+        assertEquals(replay.interestDuePaise, lb.interestDue)
+        val d = Debt(id = "D", name = "D", amount = 10_000.0, rate = 12.0, date = "2026-01-01", intType = "Compound Interest")
+        assertEquals(lb, InterestPolicy.paiseBalancesForDebt(d, "2026-03-01", rows.map {
+            DebtPayment(id = it.id, debtId = "D", name = "D", date = it.date, type = "Both", amount = it.amount)
+        }))
+        InterestPolicy.resplitBorrowerPayments(b, rows).forEach { r ->
+            assertEquals(InterestEngine.rupeesToPaise(r.amount), InterestEngine.rupeesToPaise(r.interest) +
+                InterestEngine.rupeesToPaise(r.principal) + r.penaltyPaise + r.roundingPaise)
+        }
     }
 
     // ── Re-split after delete / undo ────────────────────────────────────────
