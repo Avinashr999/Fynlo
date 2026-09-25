@@ -788,7 +788,13 @@ class MoneyActionIdempotencyDataIntegrityTest {
     fun `full interest only loan payment keeps accrual start and records paid ahead separately`() = runBlocking {
         db.dao().insertAccount(Account(id = "acc-1", name = "Personal Cash", type = "Cash", balance = 1000.0))
         db.dao().insertBorrower(Borrower(id = "loan-1", name = "Ravi", amount = 100000.0, rate = 12.0, date = "2026-01-01"))
-        val interestDue = InterestEngine.calcIntAccrued(100000.0, 12.0, "2026-01-01", "Simple Interest", asOf = "2026-02-01")
+        // Paise engine is the posting source of truth (floor to paise): ₹1,019.17.
+        val interestDue = InterestEngine.paiseToRupees(
+            InterestPolicy.paiseBalancesForBorrower(
+                Borrower(id = "x", name = "x", amount = 100000.0, rate = 12.0, date = "2026-01-01"),
+                asOf = "2026-02-01",
+            ).interestDue
+        )
         val payment = Payment(
             id = "pay-interest",
             loanId = "loan-1",
@@ -820,8 +826,14 @@ class MoneyActionIdempotencyDataIntegrityTest {
     fun `partial interest only loan payment does not roll interest start`() = runBlocking {
         db.dao().insertAccount(Account(id = "acc-1", name = "Personal Cash", type = "Cash", balance = 1000.0))
         db.dao().insertBorrower(Borrower(id = "loan-1", name = "Ravi", amount = 100000.0, rate = 12.0, date = "2026-01-01"))
-        val interestDue = InterestEngine.calcIntAccrued(100000.0, 12.0, "2026-01-01", "Simple Interest", asOf = "2026-02-01")
-        val partial = interestDue / 2.0
+        // Paise engine is the posting source of truth (floor to paise): ₹1,019.17.
+        val interestDue = InterestEngine.paiseToRupees(
+            InterestPolicy.paiseBalancesForBorrower(
+                Borrower(id = "x", name = "x", amount = 100000.0, rate = 12.0, date = "2026-01-01"),
+                asOf = "2026-02-01",
+            ).interestDue
+        )
+        val partial = InterestEngine.paiseToRupees(InterestEngine.rupeesToPaise(interestDue) / 2)
         val payment = Payment(
             id = "pay-partial",
             loanId = "loan-1",
@@ -867,7 +879,13 @@ class MoneyActionIdempotencyDataIntegrityTest {
     fun `full interest only debt payment keeps accrual start and records paid ahead separately`() = runBlocking {
         db.dao().insertAccount(Account(id = "acc-1", name = "Personal Cash", type = "Cash", balance = 5000.0))
         db.dao().insertDebt(Debt(id = "debt-1", name = "Lender", amount = 100000.0, rate = 12.0, date = "2026-01-01"))
-        val interestDue = InterestEngine.calcIntAccrued(100000.0, 12.0, "2026-01-01", "Simple Interest", asOf = "2026-02-01")
+        // Paise engine is the posting source of truth (floor to paise): ₹1,019.17.
+        val interestDue = InterestEngine.paiseToRupees(
+            InterestPolicy.paiseBalancesForBorrower(
+                Borrower(id = "x", name = "x", amount = 100000.0, rate = 12.0, date = "2026-01-01"),
+                asOf = "2026-02-01",
+            ).interestDue
+        )
         val payment = DebtPayment(
             id = "debt-pay-interest",
             debtId = "debt-1",

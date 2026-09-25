@@ -114,11 +114,14 @@ class InterestEnginePaiseFixtureTest {
         val (s, a) = InterestEngine.applyPaymentPaise(afterPay, 1_000_000L)
         assertEquals(0L, a.towardInterest)
         assertEquals(960_191L, a.towardPrincipal)
-        assertEquals(39_809L, a.penaltyPaise)
+        // v3.3.0 locked rule: penalty = paid − rounded total (₹9,602), rounding = rounded − exact.
+        assertEquals(39_800L, a.penaltyPaise)
+        assertEquals(9L, a.roundingPaise)
+        assertEquals(1_000_000L, a.towardInterest + a.towardPrincipal + a.penaltyPaise + a.roundingPaise)
         assertEquals(0L, s.outstandingPrincipalPaise)
         assertEquals(0L, s.interestDuePaise)
         assertTrue(s.isCleared)
-        assertEquals(39_809L, s.penaltyPaise)
+        assertEquals(39_800L, s.penaltyPaise)
     }
 
     @Test

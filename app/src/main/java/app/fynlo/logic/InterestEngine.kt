@@ -33,6 +33,32 @@ object InterestEngine {
         else   -> storedType
     }
 
+    /** v3.3.0 — like [label] but names the stored compound frequency. */
+    fun label(storedType: String, compoundFrequency: String): String =
+        if (paiseMethodOrNull(storedType) == PaiseMethod.COMPOUND) {
+            "Compound Interest (${normalizeCompoundFrequency(compoundFrequency).lowercase()})"
+        } else label(storedType)
+
+    // ── v3.3.0 compound frequency ──────────────────────────────────────────
+    const val COMPOUND_MONTHLY = "Monthly"
+    const val COMPOUND_QUARTERLY = "Quarterly"
+    const val COMPOUND_YEARLY = "Yearly"
+    val COMPOUND_FREQUENCIES: List<String> = listOf(COMPOUND_MONTHLY, COMPOUND_QUARTERLY, COMPOUND_YEARLY)
+
+    /** Unknown / blank / legacy values read as "Monthly" (pre-3.3.0 behaviour). */
+    fun normalizeCompoundFrequency(value: String?): String = when (value?.trim()?.lowercase()) {
+        "quarterly" -> COMPOUND_QUARTERLY
+        "yearly", "annually", "annual" -> COMPOUND_YEARLY
+        else -> COMPOUND_MONTHLY
+    }
+
+    /** Months per compounding step: Monthly 1, Quarterly 3, Yearly 12. */
+    fun compoundMonthsFor(frequency: String?): Int = when (normalizeCompoundFrequency(frequency)) {
+        COMPOUND_QUARTERLY -> 3
+        COMPOUND_YEARLY -> 12
+        else -> 1
+    }
+
     fun daysBetween(start: String, end: String): Long {
         return try {
             val startDate = LocalDate.parse(start, formatter)
@@ -201,16 +227,29 @@ object InterestEngine {
         val compoundRemainder: Long = 0L,
         val lastAccrualDate: LocalDate,
         val penaltyPaise: Long = 0L,
+        /** v3.3.0 — compounding step in months (1 / 3 / 12). Compound method only. */
+        val compoundMonths: Int = 1,
+        /** v3.3.0 — signed sum of payment rounding (+ small gain, − write-off). */
+        val roundingPaise: Long = 0L,
     ) {
         val outstandingPaise: Long get() = outstandingPrincipalPaise + interestDuePaise
         val isCleared: Boolean
             get() = outstandingPrincipalPaise == 0L && interestDuePaise == 0L
     }
 
+    /**
+     * Ledger identity (v3.3.0, every payment, to the paisa):
+     *   towardInterest + towardPrincipal + penaltyPaise + roundingPaise == payment
+     * roundingPaise is signed: positive = small gain (overpay under ₹1),
+     * negative = write-off (shortfall under ₹1). One rounding value per payment.
+     */
     data class PaisePaymentSplit(
         val towardInterest: Long,
         val towardPrincipal: Long,
         val penaltyPaise: Long,
+        val roundingPaise: Long = 0L,
+        /** True when this payment settles the loan (interest + principal absorb exactly the due). */
+        val closesLoan: Boolean = false,
     )
 
     data class PaiseBalances(
@@ -222,6 +261,85 @@ object InterestEngine {
 
     private const val PAISE_DAY_DENOM = 10000L * 365L
     private const val PAISE_MONTH_DENOM = 12L * 10000L
+
+    /** v3.3.0 — whole-rupee threshold for rounding write-off / rounding overpay. */
+    const val ROUNDING_THRESHOLD_PAISE = 100L
+
+    /** Nearest whole rupee, in paise (half-up: 50 paise rounds up). */
+    fun roundToRupeePaise(paise: Long): Long {
+        require(paise >= 0L) { "paise must be >= 0" }
+        return ((paise + 50L) / 100L) * 100L
+    }
+
+    /** Nearest whole rupee (for display). */
+    fun wholeRupees(paise: Long): Long = roundToRupeePaise(paise) / 100L
+
+    /**
+     * Whole-rupee quotes the UI shows (engine keeps exact paise).
+     * - [totalDuePaise]: exact.
+     * - [fullSettlementPaise]: total due rounded to nearest ₹ (paying it always closes the
+     *   loan: the < ₹1 difference is the payment's signed roundingPaise).
+     * - [interestOnlyPaise]: interest due rounded to nearest ₹ (a round-down leaves the
+     *   paise owing and carrying forward; a round-up spills < ₹1 onto principal).
+     */
+    data class SettlementQuote(
+        val totalDuePaise: Long,
+        val interestDuePaise: Long,
+        val outstandingPrincipalPaise: Long,
+    ) {
+        val totalDueRupees: Long get() = wholeRupees(totalDuePaise)
+        val fullSettlementPaise: Long get() = roundToRupeePaise(totalDuePaise)
+        val interestOnlyPaise: Long get() = roundToRupeePaise(interestDuePaise)
+        val interestOnlyRupees: Long get() = wholeRupees(interestDuePaise)
+    }
+
+    fun settlementQuote(balances: PaiseBalances): SettlementQuote =
+        SettlementQuote(balances.outstanding, balances.interestDue, balances.outstandingPrincipal)
+
+    /** "₹1" for whole rupees, else "₹1.37" (used for penalty notes). */
+    fun formatPenaltyRupees(paise: Long): String =
+        if (paise % 100L == 0L) "₹${paise / 100L}" else formatPaiseRupees(paise)
+
+    /** "₹1.37" — exact paise, 2 decimals (used in ledger notes). */
+    fun formatPaiseRupees(paise: Long): String {
+        val sign = if (paise < 0L) "-" else ""
+        val abs = kotlin.math.abs(paise)
+        return "$sign₹${abs / 100L}.${(abs % 100L).toString().padStart(2, '0')}"
+    }
+
+    // ── v3.3.0 payment-date validation ─────────────────────────────────────
+    enum class PaymentDateCheck { OK, BEFORE_START, FUTURE, INVALID }
+
+    const val PAYMENT_BEFORE_START_MESSAGE =
+        "Payment date can't be before the loan start date."
+
+    /** BEFORE_START is a hard reject; FUTURE is allowed (UI asks to confirm). */
+    fun checkPaymentDate(
+        startDate: LocalDate,
+        paymentDate: LocalDate,
+        today: LocalDate = LocalDate.now(),
+    ): PaymentDateCheck = when {
+        paymentDate.isBefore(startDate) -> PaymentDateCheck.BEFORE_START
+        paymentDate.isAfter(today) -> PaymentDateCheck.FUTURE
+        else -> PaymentDateCheck.OK
+    }
+
+    fun checkPaymentDate(
+        startDate: String,
+        paymentDate: String,
+        today: LocalDate = LocalDate.now(),
+    ): PaymentDateCheck {
+        val s = runCatching { LocalDate.parse(startDate, formatter) }.getOrNull()
+        val p = runCatching { LocalDate.parse(paymentDate, formatter) }.getOrNull()
+            ?: return PaymentDateCheck.INVALID
+        if (s == null) return if (p.isAfter(today)) PaymentDateCheck.FUTURE else PaymentDateCheck.OK
+        return checkPaymentDate(s, p, today)
+    }
+
+    fun isFutureDate(date: LocalDate, today: LocalDate = LocalDate.now()): Boolean = date.isAfter(today)
+
+    fun isFutureDate(date: String, today: LocalDate = LocalDate.now()): Boolean =
+        runCatching { LocalDate.parse(date, formatter) }.getOrNull()?.isAfter(today) ?: false
 
     fun rupeesToPaise(rupees: Double): Long = Math.round(rupees * 100.0)
     fun paiseToRupees(paise: Long): Double = paise / 100.0
@@ -243,9 +361,11 @@ object InterestEngine {
         annualRateBps: Int,
         startDate: LocalDate,
         method: PaiseMethod,
+        compoundMonths: Int = 1,
     ): PaiseLoanState {
         require(principalPaise >= 0L) { "principalPaise must be >= 0" }
         require(annualRateBps >= 0) { "annualRateBps must be >= 0" }
+        require(compoundMonths in setOf(1, 3, 12)) { "compoundMonths must be 1, 3 or 12" }
         return PaiseLoanState(
             method = method,
             annualRateBps = annualRateBps,
@@ -257,6 +377,7 @@ object InterestEngine {
             compoundRemainder = 0L,
             lastAccrualDate = startDate,
             penaltyPaise = 0L,
+            compoundMonths = compoundMonths,
         )
     }
 
@@ -276,8 +397,17 @@ object InterestEngine {
         PaiseBalances(state.outstandingPrincipalPaise, state.interestDuePaise)
 
     /**
-     * Interest due first, then principal. Excess → penalty_paise on same khatha
-     * (outstanding never negative).
+     * Interest due first, then principal (outstanding never negative).
+     * v3.3.0 settle / rounding rule (exact = interestDue + principal, roundedTotal =
+     * exact rounded to nearest ₹):
+     *  - |paid − exact| < 100 → closes; interest + principal absorb exact;
+     *    rounding = paid − exact (signed); no penalty.
+     *  - paid − exact ≥ 100 → closes; interest + principal absorb exact;
+     *    penalty = paid − roundedTotal; rounding = roundedTotal − exact.
+     *    (This single branch covers both "paid ≥ roundedTotal + 100" and the gap
+     *    exact + 100 ≤ paid < roundedTotal + 100; in the gap the penalty is
+     *    always ≥ 51 paise because roundedTotal ≤ exact + 49.)
+     *  - paid ≤ exact − 100 → normal partial payment; no rounding.
      */
     fun allocatePaymentPaise(state: PaiseLoanState, paymentPaise: Long): PaisePaymentSplit =
         allocatePaymentPaise(
@@ -294,10 +424,27 @@ object InterestEngine {
         require(paymentPaise >= 0L) { "paymentPaise must be >= 0" }
         require(outstandingPrincipal >= 0L && interestDue >= 0L)
         val towardInterest = minOf(paymentPaise, interestDue)
-        var remaining = paymentPaise - towardInterest
+        val remaining = paymentPaise - towardInterest
         val towardPrincipal = minOf(remaining, outstandingPrincipal)
-        remaining -= towardPrincipal
-        return PaisePaymentSplit(towardInterest, towardPrincipal, remaining)
+        if (paymentPaise == 0L) return PaisePaymentSplit(0L, 0L, 0L)
+        val exact = interestDue + outstandingPrincipal
+        val diff = paymentPaise - exact
+        return when {
+            diff <= -ROUNDING_THRESHOLD_PAISE ->
+                PaisePaymentSplit(towardInterest, towardPrincipal, 0L)
+            diff < ROUNDING_THRESHOLD_PAISE ->
+                PaisePaymentSplit(interestDue, outstandingPrincipal, 0L, roundingPaise = diff, closesLoan = true)
+            else -> {
+                val roundedTotal = roundToRupeePaise(exact)
+                PaisePaymentSplit(
+                    towardInterest = interestDue,
+                    towardPrincipal = outstandingPrincipal,
+                    penaltyPaise = paymentPaise - roundedTotal,
+                    roundingPaise = roundedTotal - exact,
+                    closesLoan = true,
+                )
+            }
+        }
     }
 
     fun applyPaymentPaise(
@@ -309,6 +456,7 @@ object InterestEngine {
             interestDuePaise = state.interestDuePaise - split.towardInterest,
             outstandingPrincipalPaise = state.outstandingPrincipalPaise - split.towardPrincipal,
             penaltyPaise = state.penaltyPaise + split.penaltyPaise,
+            roundingPaise = state.roundingPaise + split.roundingPaise,
         )
         return next to split
     }
@@ -365,7 +513,11 @@ object InterestEngine {
 
     private fun accruePaiseCompound(state: PaiseLoanState, asOf: LocalDate): PaiseLoanState {
         var s = state
-        var anniversary = nextMonthAnniversaryPaise(s.startDate, s.lastAccrualDate)
+        val n = s.compoundMonths.coerceAtLeast(1)
+        // v3.3.0: every compounding date is start.plusMonths(k*n) — never chained —
+        // so month-end starts don't drift (31 Jan quarterly → 30 Apr, 31 Jul).
+        var k = nextCompoundIndexPaise(s.startDate, s.lastAccrualDate, n)
+        var anniversary = compoundDatePaise(s.startDate, k, n)
         while (!anniversary.isAfter(asOf)) {
             if (s.interestDuePaise > 0L) {
                 s = s.copy(
@@ -374,17 +526,18 @@ object InterestEngine {
                 )
             }
             if (s.outstandingPrincipalPaise > 0L && s.annualRateBps > 0) {
-                val num = s.outstandingPrincipalPaise * s.annualRateBps.toLong() + s.compoundRemainder
+                val num = s.outstandingPrincipalPaise * s.annualRateBps.toLong() * n + s.compoundRemainder
                 s = s.copy(
                     interestDuePaise = s.interestDuePaise + num / PAISE_MONTH_DENOM,
                     compoundRemainder = num % PAISE_MONTH_DENOM,
                 )
             }
             s = s.copy(lastAccrualDate = anniversary)
-            anniversary = anniversary.plusMonths(1)
+            k += 1
+            anniversary = compoundDatePaise(s.startDate, k, n)
         }
-        // Mid-month stub: daily simple interest on outstanding principal until asOf
-        // (no capitalization until the next anniversary). Full-month paths unchanged.
+        // Mid-period stub: daily simple interest on outstanding principal until asOf
+        // (no capitalization until the next compounding date). Full-period paths unchanged.
         if (s.lastAccrualDate < asOf) {
             s = accruePaiseReducing(s, asOf)
         }
@@ -392,12 +545,25 @@ object InterestEngine {
     }
 
     /** First monthly anniversary of [start] strictly after [after]. */
-    internal fun nextMonthAnniversaryPaise(start: LocalDate, after: LocalDate): LocalDate {
-        var ann = start.plusMonths(1)
-        while (!ann.isAfter(after)) {
-            ann = ann.plusMonths(1)
-        }
-        return ann
+    internal fun nextMonthAnniversaryPaise(start: LocalDate, after: LocalDate): LocalDate =
+        nextCompoundDatePaise(start, after, 1)
+
+    /** k-th compounding date = start.plusMonths(k * months) (computed from start, not chained). */
+    fun compoundDatePaise(start: LocalDate, k: Int, months: Int): LocalDate =
+        start.plusMonths(k.toLong() * months.toLong())
+
+    /** First compounding date of [start] strictly after [after]. */
+    fun nextCompoundDatePaise(start: LocalDate, after: LocalDate, months: Int): LocalDate =
+        compoundDatePaise(start, nextCompoundIndexPaise(start, after, months), months)
+
+    /** Smallest k >= 1 with start.plusMonths(k*months) strictly after [after]. */
+    private fun nextCompoundIndexPaise(start: LocalDate, after: LocalDate, months: Int): Int {
+        val m = months.coerceAtLeast(1)
+        // Jump close to the answer, then settle (plusMonths clamps month-end days).
+        val approx = (ChronoUnit.MONTHS.between(start, after) / m).toInt().coerceAtLeast(1)
+        var k = (approx - 1).coerceAtLeast(1)
+        while (!compoundDatePaise(start, k, m).isAfter(after)) k++
+        return k
     }
 }
 

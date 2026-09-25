@@ -78,8 +78,14 @@ class InterestPolicyPaisePostTest {
             ),
             asOf = asOf,
         )
-        val penalty = InterestPolicy.khathaPenaltyRupees(posted.amount, posted.principal, posted.interest)
-        assertEquals(InterestEngine.paiseToRupees(preview.penaltyPaise), penalty, 0.001)
+        // v3.3.0: penalty is a stored column; amount − principal − interest = penalty + rounding.
+        assertEquals(preview.penaltyPaise, posted.penaltyPaise)
+        assertEquals(preview.roundingPaise, posted.roundingPaise)
+        assertEquals(
+            InterestEngine.rupeesToPaise(posted.amount),
+            InterestEngine.rupeesToPaise(posted.principal) + InterestEngine.rupeesToPaise(posted.interest) +
+                posted.penaltyPaise + posted.roundingPaise,
+        )
         assertTrue(posted.notes.contains("Penalty on this account"))
     }
 

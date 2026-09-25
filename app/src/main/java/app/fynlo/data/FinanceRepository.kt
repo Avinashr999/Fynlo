@@ -226,6 +226,50 @@ class FinanceRepository(
         }
     }
 
+    /** v3.3.0 — thrown when a payment is dated before the loan/debt start date. */
+    class PaymentDateException(message: String) : IllegalArgumentException(message)
+
+    private fun requireValidPaymentDate(startDate: String, paymentDate: String) {
+        app.fynlo.logic.InterestPolicy.paymentDateError(startDate, paymentDate)?.let { throw PaymentDateException(it) }
+    }
+
+    /**
+     * v3.3.0 — re-split every payment of a paise-method (Simple / Reducing /
+     * Compound) loan in date order so later rows stay correct after an
+     * earlier payment is deleted, undone, edited or back-dated. Only the
+     * principal / interest / type / penalty / engine-note fields change;
+     * amounts, dates and cash movements are never touched.
+     */
+    private suspend fun resplitBorrowerPaymentsInDb(loanId: String) {
+        val borrower = dao.getBorrowerById(loanId) ?: return
+        if (!app.fynlo.logic.InterestPolicy.usesPaiseMethod(borrower.intType)) return
+        val rows = dao.getPaymentsForLoanOnce(loanId)
+        val byId = rows.associateBy { it.id }
+        val now = System.currentTimeMillis()
+        app.fynlo.logic.InterestPolicy.resplitBorrowerPayments(borrower, rows).forEach { re ->
+            if (byId[re.id] != re) {
+                val updated = re.copy(updatedAt = now)
+                dao.insertPayment(updated)
+                sync { setPayment(updated) }
+            }
+        }
+    }
+
+    private suspend fun resplitDebtPaymentsInDb(debtId: String) {
+        val debt = dao.getDebtById(debtId) ?: return
+        if (!app.fynlo.logic.InterestPolicy.usesPaiseMethod(debt.intType)) return
+        val rows = dao.getDebtPaymentsForDebtOnce(debtId)
+        val byId = rows.associateBy { it.id }
+        val now = System.currentTimeMillis()
+        app.fynlo.logic.InterestPolicy.resplitDebtPayments(debt, rows).forEach { re ->
+            if (byId[re.id] != re) {
+                val updated = re.copy(updatedAt = now)
+                dao.insertDebtPayment(updated)
+                sync { setDebtPayment(updated) }
+            }
+        }
+    }
+
     private suspend fun recordUndo(
         action: String,
         entityType: String,
@@ -449,10 +493,14 @@ class FinanceRepository(
             tombstoneRemoteDoc("payments", bundle.payment.id)
             dao.rebuildBorrowerPaidFromPayments()
             bundle.borrowerBefore?.let { dao.insertBorrower(it.copy(updatedAt = System.currentTimeMillis())) }
+            // v3.3.0 — later payments re-split without the undone one; paid totals
+            // re-derived from the payments table (borrowerBefore predates later rows).
+            resplitBorrowerPaymentsInDb(bundle.payment.loanId)
+            dao.rebuildBorrowerPaidFromPayments()
         }
         bundle.transactions.forEach { sync { deleteTransaction(it.id) } }
         sync { deletePayment(bundle.payment.id) }
-        bundle.borrowerBefore?.let { sync { setBorrower(it) } }
+        (dao.getBorrowerById(bundle.payment.loanId) ?: bundle.borrowerBefore)?.let { sync { setBorrower(it) } }
         syncTouchedAccounts(bundle.transactions)
     }
 
@@ -467,10 +515,12 @@ class FinanceRepository(
             tombstoneRemoteDoc("debt_payments", bundle.payment.id)
             dao.rebuildDebtPaidFromDebtPayments()
             bundle.debtBefore?.let { dao.insertDebt(it.copy(updatedAt = System.currentTimeMillis())) }
+            resplitDebtPaymentsInDb(bundle.payment.debtId)
+            dao.rebuildDebtPaidFromDebtPayments()
         }
         bundle.transactions.forEach { sync { deleteTransaction(it.id) } }
         sync { deleteDebtPayment(bundle.payment.id) }
-        bundle.debtBefore?.let { sync { setDebt(it) } }
+        (dao.getDebtById(bundle.payment.debtId) ?: bundle.debtBefore)?.let { sync { setDebt(it) } }
         syncTouchedAccounts(bundle.transactions)
     }
 
@@ -779,12 +829,14 @@ class FinanceRepository(
                 touchedDebts += new.ref
             }
             if (touchedBorrowers.isNotEmpty()) {
+                touchedBorrowers.forEach { resplitBorrowerPaymentsInDb(it) }
                 dao.rebuildBorrowerPaidFromPayments()
                 touchedBorrowers.forEach { id ->
                     dao.getBorrowerById(id)?.let { b -> sync { setBorrower(b) } }
                 }
             }
             if (touchedDebts.isNotEmpty()) {
+                touchedDebts.forEach { resplitDebtPaymentsInDb(it) }
                 dao.rebuildDebtPaidFromDebtPayments()
                 touchedDebts.forEach { id ->
                     dao.getDebtById(id)?.let { d -> sync { setDebt(d) } }
@@ -882,6 +934,7 @@ class FinanceRepository(
                     tombstoneRemoteDoc("payments", matchingPayment.id)
                     sync { deletePayment(matchingPayment.id) }
                 }
+                resplitBorrowerPaymentsInDb(current.ref)
                 dao.rebuildBorrowerPaidFromPayments()
                 val b = dao.getBorrowerById(current.ref)
                 sync { b?.let { setBorrower(it) } }
@@ -894,6 +947,7 @@ class FinanceRepository(
                     tombstoneRemoteDoc("debt_payments", matchingPayment.id)
                     sync { deleteDebtPayment(matchingPayment.id) }
                 }
+                resplitDebtPaymentsInDb(current.ref)
                 dao.rebuildDebtPaidFromDebtPayments()
                 val d = dao.getDebtById(current.ref)
                 sync { d?.let { setDebt(it) } }
@@ -2679,12 +2733,38 @@ class FinanceRepository(
         linkedTxns.map { it.fromAcct }.filter { it.isNotBlank() }.distinct().forEach { syncAccountByName(it) }
         linkedTxns.map { it.toAcct }.filter { it.isNotBlank() }.distinct().forEach { syncAccountByName(it) }
     }
+    /** v3.3.0 — explicit, auditable rounding entry (signed roundingPaise on the payment row). */
+    private suspend fun recordRoundingAudit(
+        entityType: String,
+        entityId: String,
+        name: String,
+        paymentId: String,
+        roundingPaise: Long,
+        penaltyPaise: Long,
+        projectId: String,
+    ) {
+        if (roundingPaise == 0L) return
+        val fmt = app.fynlo.logic.InterestEngine.formatPaiseRupees(kotlin.math.abs(roundingPaise))
+        recordAudit(
+            action = if (roundingPaise < 0L) "ROUNDING_WRITE_OFF" else "ROUNDING_ADJUSTMENT",
+            entityType = entityType,
+            entityId = entityId,
+            title = if (roundingPaise < 0L) "Rounding write-off $fmt: $name" else "Rounding gain $fmt: $name",
+            afterValue = "payment=$paymentId:roundingPaise=$roundingPaise:penaltyPaise=$penaltyPaise",
+            amountDelta = 0.0,
+            projectId = projectId,
+            reason = "Whole-rupee settlement rounding (under ₹1).",
+        )
+    }
+
     suspend fun insertPaymentWithDest(payment: Payment, destinationAccount: String, projectId: String = payment.projectId) {
         requireOpenDate(payment.date, projectId)
         db.withTransaction {
             if (dao.getPaymentById(payment.id) != null) return@withTransaction
             val now = System.currentTimeMillis()
             val borrowerBefore = dao.getBorrowerById(payment.loanId)
+            // v3.3.0 — reject payments dated before the loan start (future dates allowed).
+            borrowerBefore?.let { requireValidPaymentDate(it.date, payment.date) }
             // Lean v1: post split must match InterestPolicy.previewBorrowerPaymentPaise
             val aligned = if (borrowerBefore != null &&
                 app.fynlo.logic.InterestPolicy.usesPaiseMethod(borrowerBefore.intType)
@@ -2697,6 +2777,8 @@ class FinanceRepository(
             val p = aligned.copy(projectId = projectId, updatedAt = now, createdAt = if (aligned.createdAt == 0L) now else aligned.createdAt)
             dao.insertPayment(p)
             Analytics.paymentCollected()
+            // v3.3.0 — a back-dated payment changes every later row's split.
+            resplitBorrowerPaymentsInDb(payment.loanId)
 
             // Credit the destination account with full payment amount
             dao.updateAccountBalance(destinationAccount, p.amount)
@@ -2726,6 +2808,7 @@ class FinanceRepository(
 
             // Sync the updated borrower too
             val updatedBorrower = dao.getBorrowerById(payment.loanId)
+            recordRoundingAudit("loan", payment.loanId, p.name, p.id, p.roundingPaise, p.penaltyPaise, projectId)
             recordAudit(
                 action = "PAYMENT",
                 entityType = "loan",
@@ -2761,6 +2844,8 @@ class FinanceRepository(
             if (dao.getDebtPaymentById(payment.id) != null) return@withTransaction
             val now = System.currentTimeMillis()
             val debtBefore = dao.getDebtById(payment.debtId)
+            // v3.3.0 — reject payments dated before the debt start (future dates allowed).
+            debtBefore?.let { requireValidPaymentDate(it.date, payment.date) }
             // Lean v1: post split must match InterestPolicy.previewDebtPaymentPaise
             val aligned = if (debtBefore != null &&
                 app.fynlo.logic.InterestPolicy.usesPaiseMethod(debtBefore.intType)
@@ -2772,6 +2857,7 @@ class FinanceRepository(
             } else payment
             val p = aligned.copy(projectId = projectId, updatedAt = now, createdAt = if (aligned.createdAt == 0L) now else aligned.createdAt)
             dao.insertDebtPayment(p)
+            resplitDebtPaymentsInDb(payment.debtId)
 
             // Debit source account with full payment amount
             dao.updateAccountBalance(sourceAccount, -p.amount)
@@ -2834,6 +2920,7 @@ class FinanceRepository(
             }
 
             val updatedDebt = dao.getDebtById(payment.debtId)
+            recordRoundingAudit("debt", payment.debtId, p.name, p.id, p.roundingPaise, p.penaltyPaise, projectId)
             recordAudit(
                 action = "PAYMENT",
                 entityType = "debt",
