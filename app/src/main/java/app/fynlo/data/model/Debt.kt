@@ -28,6 +28,9 @@ data class Debt(
     val interestWaived: Double = 0.0,    // non-cash interest forgiven by creditor
     val status: String = "Active", // Active, Cleared, Overdue
     val stopInterestAfterDue: Boolean = false,
+    // v3.3.0 (DB v32) — Compound step: "Monthly" | "Quarterly" | "Yearly".
+    // Missing (old rows / sync docs / backups) reads as "Monthly".
+    val compoundFrequency: String = "Monthly",
     val collateral: String = "",
     val notes: String = "",
     val projectId: String = "personal",

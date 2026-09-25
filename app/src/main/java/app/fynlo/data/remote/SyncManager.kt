@@ -135,6 +135,7 @@ class SyncManager(
                             frozenInterest = doc.dbl("frozenInterest"),
                             sourceAccount  = doc.str("sourceAccount"),
                             stopInterestAfterDue = doc.bool("stopInterestAfterDue"),
+                            compoundFrequency = app.fynlo.logic.InterestEngine.normalizeCompoundFrequency(doc.getString("compoundFrequency")),
                             notes     = doc.str("notes"),
                             projectId = doc.str("projectId"),
                             updatedAt = doc.lng("updatedAt"),
@@ -396,6 +397,7 @@ class SyncManager(
                             interestWaived = doc.dbl("interestWaived"),
                             status    = doc.str("status"),
                             stopInterestAfterDue = doc.bool("stopInterestAfterDue"),
+                            compoundFrequency = app.fynlo.logic.InterestEngine.normalizeCompoundFrequency(doc.getString("compoundFrequency")),
                             collateral = doc.str("collateral"),
                             notes     = doc.str("notes"),
                             projectId = doc.str("projectId"),
@@ -512,6 +514,8 @@ class SyncManager(
                             interestAllocationType = doc.strOr("interestAllocationType", "UNKNOWN_REVIEW"),
                             mode      = doc.str("mode"),
                             notes     = doc.str("notes"),
+                            penaltyPaise = doc.lng("penaltyPaise"),
+                            roundingPaise = doc.lng("roundingPaise"),
                             projectId = doc.str("projectId"),
                             updatedAt = doc.lng("updatedAt"),
                             createdAt = doc.lng("createdAt")
@@ -550,6 +554,8 @@ class SyncManager(
                             interestAllocationType = doc.strOr("interestAllocationType", "UNKNOWN_REVIEW"),
                             mode      = doc.str("mode"),
                             notes     = doc.str("notes"),
+                            penaltyPaise = doc.lng("penaltyPaise"),
+                            roundingPaise = doc.lng("roundingPaise"),
                             projectId = doc.str("projectId"),
                             updatedAt = doc.lng("updatedAt"),
                             createdAt = doc.lng("createdAt")

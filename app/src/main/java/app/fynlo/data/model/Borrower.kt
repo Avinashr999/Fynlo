@@ -48,6 +48,9 @@ data class Borrower(
     val frozenInterest: Double = 0.0, // interest frozen at defaultDate — stops accruing
     val sourceAccount: String = "",  // account the loan was disbursed from
     val stopInterestAfterDue: Boolean = false,
+    // v3.3.0 (DB v32) — Compound step: "Monthly" | "Quarterly" | "Yearly".
+    // Missing (old rows / sync docs / backups) reads as "Monthly".
+    val compoundFrequency: String = "Monthly",
     val notes: String = "",
     val projectId: String = "personal",
     val updatedAt: Long = 0L,

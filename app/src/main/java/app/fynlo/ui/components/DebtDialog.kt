@@ -48,9 +48,12 @@ fun AddDebtDialog(
     var customLenderName by remember { mutableStateOf(initialDebt?.name ?: "") }
     var useCustomName   by remember { mutableStateOf(initialDebt != null) }
 
-    var amount   by remember { mutableStateOf(initialDebt?.amount?.toString() ?: "") }
-    var rate     by remember { mutableStateOf(initialDebt?.rate?.toString() ?: "") }
-    var tenure   by remember { mutableStateOf(initialDebt?.tenure?.let { if (it > 0) it.toString() else "" } ?: "") }
+    // v3.3.0: exact stored values on edit; whole rupees for new debts (matches the loan form).
+    var amount   by remember { mutableStateOf(CurrencyFormatter.plainInput(initialDebt?.amount ?: 0.0)) }
+    var rate     by remember { mutableStateOf(CurrencyFormatter.plainInput(initialDebt?.rate ?: 0.0)) }
+    val amountAllowsPaise = remember { amount.contains('.') }
+    // Tenure is hidden in lean v1; keep any stored value unchanged on save.
+    val tenure = initialDebt?.tenure ?: 0
     var date     by remember { mutableStateOf(initialDebt?.date?.let { DateUtils.formatToDisplay(it) } ?: java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy"))) }
     var due      by remember { mutableStateOf(initialDebt?.due?.let { DateUtils.formatToDisplay(it) } ?: "") }
     var notes    by remember { mutableStateOf(initialDebt?.notes ?: "") }
@@ -73,11 +76,14 @@ fun AddDebtDialog(
         if (t == "Both") leanInterestTypes + "Both" else leanInterestTypes
     }
     var selectedIntType  by remember { mutableStateOf(initialDebt?.intType ?: "Simple Interest") }
+    var compoundFrequency by remember {
+        mutableStateOf(app.fynlo.logic.InterestEngine.normalizeCompoundFrequency(initialDebt?.compoundFrequency))
+    }
     var stopInterestAfterDue by remember { mutableStateOf(initialDebt?.stopInterestAfterDue ?: false) }
     var submitting       by remember(initialDebt?.id) { mutableStateOf(false) }
 
     val lenderName = if (useCustomName) customLenderName else selectedPerson?.name ?: ""
-    val isValid    = lenderName.isNotBlank() && amount.isNotEmpty()
+    val isValid    = lenderName.isNotBlank() && (amount.toDoubleOrNull() ?: 0.0) > 0.0
 
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Box(
@@ -107,11 +113,15 @@ fun AddDebtDialog(
                     ) {}
                     Spacer(Modifier.height(10.dp))
                     Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
-                        Text(if (initialDebt == null) "Add Debt" else "Edit Debt",
+                        Text(if (initialDebt == null) "New Debt" else "Edit Debt",
                             style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold))
                         IconButton(onClick = onDismiss) { Icon(Icons.Default.Close, "Close") }
                     }
                     Spacer(Modifier.height(16.dp))
+
+                // -- Amount hero (same as the loan form) --------------------
+                AmountHero(amount, currencyCode, amountAllowsPaise) { amount = it }
+                Spacer(Modifier.height(24.dp))
 
                 // -- Lender selection -------------------------------------
                 if (!useCustomName) {
@@ -196,47 +206,37 @@ fun AddDebtDialog(
                     }
                 Spacer(Modifier.height(8.dp))
 
-                // -- Amount + dates ----------------------------------------
-                OutlinedTextField(value = amount, onValueChange = { amount = it },
-                    label = { Text("Amount (${CurrencyUtils.symbolFor(currencyCode)})") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    modifier = Modifier.fillMaxWidth())
-                DatePickerField(value = date, onValueChange = { date = it }, label = "Date Taken")
-
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(value = rate, onValueChange = { rate = it },
-                        label = { Text("Rate (%)") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.weight(1f))
-
-                    OutlinedTextField(value = tenure, onValueChange = { tenure = it },
-                        label = { Text("Tenure (mo)") },
-                        placeholder = { Text("Optional") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.weight(1f))
-                }
-
+                Spacer(Modifier.height(12.dp))
                 // -- Interest type -----------------------------------------
                 // C12 (3.2.25) - display labels routed through
                 // `InterestEngine.label(...)` so "Both" renders as "SI + CI"
                 // per audit fix #9. Stored value (`selectedIntType`) stays
                 // raw - DB schema and InterestEngine branch on the raw form.
                 ExposedDropdownMenuBox(expanded = expandedIntType, onExpandedChange = { expandedIntType = !expandedIntType }) {
-                    OutlinedTextField(value = app.fynlo.logic.InterestEngine.label(selectedIntType), onValueChange = {}, readOnly = true,
+                    OutlinedTextField(value = app.fynlo.logic.InterestEngine.label(selectedIntType, compoundFrequency), onValueChange = {}, readOnly = true,
                         label = { Text("Interest Type") },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedIntType) },
                         modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, true).fillMaxWidth())
                     ExposedDropdownMenu(expanded = expandedIntType, onDismissRequest = { expandedIntType = false }) {
                         interestTypes.forEach { t ->
                             DropdownMenuItem(
-                                text = { Text(app.fynlo.logic.InterestEngine.label(t)) },
+                                text = { Text(app.fynlo.logic.InterestEngine.label(t, compoundFrequency)) },
                                 onClick = { selectedIntType = t; expandedIntType = false },
                             )
                         }
                     }
                 }
 
-                DatePickerField(value = due, onValueChange = { due = it }, label = "Due Date", optional = true)
+                if (selectedIntType == "Compound Interest") {
+                    Spacer(Modifier.height(10.dp))
+                    CompoundFrequencyPicker(compoundFrequency) { compoundFrequency = it }
+                }
+                Spacer(Modifier.height(16.dp))
+                LendSoftField(rate, "Annual interest rate (%)", KeyboardType.Decimal) { rate = decimalOnly(it) }
+                Spacer(Modifier.height(12.dp))
+                DatePickerField(value = date, onValueChange = { date = it }, label = "Borrowed date")
+                Spacer(Modifier.height(12.dp))
+                DatePickerField(value = due, onValueChange = { due = it }, label = "Due date", optional = true)
                 Spacer(Modifier.height(12.dp))
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
@@ -264,10 +264,10 @@ fun AddDebtDialog(
 
                 Spacer(Modifier.height(24.dp))
 
-                FormActionRow(
-                    primaryText = if (initialDebt == null) "Save debt" else "Save changes",
-                    onPrimary = {
-                        if (submitting) return@FormActionRow
+                FormPrimaryButton(
+                    text = if (initialDebt == null) "Add debt" else "Save changes",
+                    onClick = {
+                        if (submitting) return@FormPrimaryButton
                         submitting = true
                         val now = System.currentTimeMillis()
                         val finalId = initialDebt?.id?.takeIf { it.isNotBlank() } ?: app.fynlo.logic.Ids.newId()
@@ -284,24 +284,25 @@ fun AddDebtDialog(
                             rate = rate.toDoubleOrNull() ?: 0.0,
                             date = DateUtils.parseInput(date),
                             due = if (due.isNotEmpty()) DateUtils.parseInput(due) else "",
-                            tenure = tenure.toIntOrNull() ?: 0,
+                            tenure = tenure,
                             notes = notes,
                             status = initialDebt?.status ?: "Active",
                             stopInterestAfterDue = stopInterestAfterDue,
                             type = initialDebt?.type ?: "Friend / Family",
                             intType = selectedIntType,
+                            compoundFrequency = if (selectedIntType == "Compound Interest") compoundFrequency
+                                else app.fynlo.logic.InterestEngine.normalizeCompoundFrequency(initialDebt?.compoundFrequency),
                             updatedAt = now,
                             createdAt = initialDebt?.createdAt ?: now,
                         )
                         onConfirm(debt, selectedAccount.name)
                     },
-                    primaryEnabled = isValid && !submitting,
-                    onCancel = onDismiss,
+                    enabled = isValid && !submitting,
                 )
                 // C17 (3.2.42) - disabled-button hint.
                 val debtDisabledReason: String?= when {
                     lenderName.isBlank() -> "Enter the lender's name to continue"
-                    amount.isEmpty()     -> "Enter the borrowed amount to continue"
+                    (amount.toDoubleOrNull() ?: 0.0) <= 0.0 -> "Enter the borrowed amount to continue"
                     else                 -> null
                 }
                 DisabledButtonHint(debtDisabledReason)

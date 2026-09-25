@@ -33,6 +33,7 @@ import app.fynlo.data.local.MIGRATION_27_28
 import app.fynlo.data.local.MIGRATION_28_29
 import app.fynlo.data.local.MIGRATION_29_30
 import app.fynlo.data.local.MIGRATION_30_31
+import app.fynlo.data.local.MIGRATION_31_32
 import app.fynlo.data.remote.FirestoreRepository
 import app.fynlo.data.remote.SyncManager
 import dagger.Module
@@ -58,7 +59,8 @@ object AppModule {
                 MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20,
                 MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24,
                 MIGRATION_24_25, MIGRATION_25_26, MIGRATION_26_27, MIGRATION_27_28,
-                MIGRATION_28_29, MIGRATION_29_30, MIGRATION_30_31
+                MIGRATION_28_29, MIGRATION_29_30, MIGRATION_30_31,
+                MIGRATION_31_32
             )
             .fallbackToDestructiveMigrationOnDowngrade(dropAllTables = true)
             .build()

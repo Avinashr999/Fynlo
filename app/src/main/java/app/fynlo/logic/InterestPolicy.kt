@@ -352,6 +352,7 @@ object InterestPolicy {
                 method = method,
                 asOf = asOf,
                 datedPaymentPaise = rows.map { it.date to InterestEngine.rupeesToPaise(it.amount) },
+                compoundMonths = InterestEngine.compoundMonthsFor(borrower.compoundFrequency),
             )
         } else {
             paiseBalancesFromTerms(
@@ -363,6 +364,7 @@ object InterestPolicy {
                 waivedInterestRupees = borrower.interestWaived,
                 method = method,
                 asOf = asOf,
+                compoundMonths = InterestEngine.compoundMonthsFor(borrower.compoundFrequency),
             )
         }
     }
@@ -384,6 +386,7 @@ object InterestPolicy {
                 method = method,
                 asOf = asOf,
                 datedPaymentPaise = rows.map { it.date to InterestEngine.rupeesToPaise(it.amount) },
+                compoundMonths = InterestEngine.compoundMonthsFor(debt.compoundFrequency),
             )
         } else {
             paiseBalancesFromTerms(
@@ -395,6 +398,7 @@ object InterestPolicy {
                 waivedInterestRupees = debt.interestWaived,
                 method = method,
                 asOf = asOf,
+                compoundMonths = InterestEngine.compoundMonthsFor(debt.compoundFrequency),
             )
         }
     }
@@ -436,6 +440,7 @@ object InterestPolicy {
         waivedInterestRupees: Double,
         method: InterestEngine.PaiseMethod,
         asOf: String,
+        compoundMonths: Int = 1,
     ): InterestEngine.PaiseBalances {
         val principalPaise = InterestEngine.rupeesToPaise(principalRupees)
         val start = LocalDate.parse(startDate, ledgerFormatter)
@@ -445,9 +450,12 @@ object InterestPolicy {
             annualRateBps = InterestEngine.ratePercentToBps(ratePercent),
             startDate = start,
             method = method,
+            compoundMonths = compoundMonths,
         )
         state = InterestEngine.accruePaiseTo(state, asOfDate)
-        val outstandingPrincipal = (principalPaise - InterestEngine.rupeesToPaise(paidPrincipalRupees))
+        // v3.3.0: start from the engine's principal so Compound keeps interest it
+        // capitalised on compounding dates (Simple / Reducing: equals principalPaise).
+        val outstandingPrincipal = (state.outstandingPrincipalPaise - InterestEngine.rupeesToPaise(paidPrincipalRupees))
             .coerceAtLeast(0L)
         val interestDue = (
             state.interestDuePaise -
@@ -465,6 +473,7 @@ object InterestPolicy {
         method: InterestEngine.PaiseMethod,
         asOf: String,
         datedPaymentPaise: List<Pair<String, Long>>,
+        compoundMonths: Int = 1,
     ): InterestEngine.PaiseBalances {
         val start = LocalDate.parse(startDate, ledgerFormatter)
         val asOfDate = LocalDate.parse(asOf, ledgerFormatter)
@@ -477,6 +486,7 @@ object InterestPolicy {
             annualRateBps = InterestEngine.ratePercentToBps(ratePercent),
             startDate = start,
             method = method,
+            compoundMonths = compoundMonths,
         )
         state = InterestEngine.replayPaiseTo(state, events, asOfDate)
         val interestDue = (
@@ -488,8 +498,10 @@ object InterestPolicy {
     /**
      * Align a posted Payment to the same paise preview Frontend shows.
      * principal + interest come from allocatePaymentPaise; excess stays on
-     * [Payment.amount] as account penalty (amount - principal - interest).
-     * No schema change — penalty is derived, not a new column.
+     * [Payment.amount]. v3.3.0: settling within ₹1 (either side) closes the
+     * loan with a signed [Payment.roundingPaise]; overpaying by ₹1+ closes it
+     * with [Payment.penaltyPaise] = paid − rounded total. Invariant per row:
+     * interest + principal + penaltyPaise + roundingPaise == amount (paise).
      * [priorPayments] must be existing rows only (exclude [payment] itself).
      */
     fun alignBorrowerPaymentToPaisePreview(
@@ -510,16 +522,14 @@ object InterestPolicy {
             split.towardPrincipal > 0L -> "Principal Only"
             else -> payment.type
         }
-        val notes = if (split.penaltyPaise > 0L) {
-            val tag = "Penalty on this account ${InterestEngine.paiseToRupees(split.penaltyPaise)}"
-            if (payment.notes.isBlank()) tag else "${payment.notes}\n$tag"
-        } else payment.notes
         return payment.copy(
             type = type,
             principal = principal,
             interest = interest,
             interestAllocationType = if (split.towardInterest > 0L) CURRENT_PERIOD_INTEREST else PRINCIPAL_REPAYMENT,
-            notes = notes,
+            notes = notesWithEngineTags(payment.notes, split),
+            penaltyPaise = split.penaltyPaise,
+            roundingPaise = split.roundingPaise,
         )
     }
 
@@ -541,22 +551,21 @@ object InterestPolicy {
             split.towardPrincipal > 0L -> "Principal Only"
             else -> payment.type
         }
-        val notes = if (split.penaltyPaise > 0L) {
-            val tag = "Penalty on this account ${InterestEngine.paiseToRupees(split.penaltyPaise)}"
-            if (payment.notes.isBlank()) tag else "${payment.notes}\n$tag"
-        } else payment.notes
         return payment.copy(
             type = type,
             principal = principal,
             interest = interest,
             interestAllocationType = if (split.towardInterest > 0L) CURRENT_PERIOD_INTEREST else PRINCIPAL_REPAYMENT,
-            notes = notes,
+            notes = notesWithEngineTags(payment.notes, split),
+            penaltyPaise = split.penaltyPaise,
+            roundingPaise = split.roundingPaise,
         )
     }
 
     /**
-     * Account penalty rupees derived from a posted row (no extra column).
+     * Account penalty rupees derived from a posted row.
      * Round via integer paise so Double dust after paise→rupees never invents a penalty.
+     * v3.3.0: an excess under ₹1 is rounding, not a penalty (returns 0).
      */
     fun khathaPenaltyRupees(amount: Double, principal: Double, interest: Double): Double {
         val penaltyPaise = (
@@ -564,7 +573,105 @@ object InterestPolicy {
                 InterestEngine.rupeesToPaise(principal) -
                 InterestEngine.rupeesToPaise(interest)
             ).coerceAtLeast(0L)
-        return InterestEngine.paiseToRupees(penaltyPaise)
+        return if (penaltyPaise < InterestEngine.ROUNDING_THRESHOLD_PAISE) 0.0
+        else InterestEngine.paiseToRupees(penaltyPaise)
+    }
+
+    /**
+     * v3.3.0 — penalty for display. Rows written by 3.3.0+ carry penaltyPaise /
+     * roundingPaise; legacy rows (both 0) fall back to the derived value.
+     */
+    fun penaltyPaiseOf(payment: Payment): Long =
+        if (payment.penaltyPaise != 0L || payment.roundingPaise != 0L) payment.penaltyPaise
+        else InterestEngine.rupeesToPaise(khathaPenaltyRupees(payment.amount, payment.principal, payment.interest))
+
+    fun penaltyPaiseOf(payment: DebtPayment): Long =
+        if (payment.penaltyPaise != 0L || payment.roundingPaise != 0L) payment.penaltyPaise
+        else InterestEngine.rupeesToPaise(khathaPenaltyRupees(payment.amount, payment.principal, payment.interest))
+
+    // ── v3.3.0 ledger note tags (engine-written; re-derived on every re-split) ──
+
+    const val PENALTY_NOTE_PREFIX = "Penalty on this account"
+    const val ROUNDING_WRITE_OFF_NOTE_PREFIX = "Rounding write-off"
+    const val ROUNDING_OVERPAY_NOTE_PREFIX = "Rounding adjustment"
+    private val engineNotePrefixes = listOf(PENALTY_NOTE_PREFIX, ROUNDING_WRITE_OFF_NOTE_PREFIX, ROUNDING_OVERPAY_NOTE_PREFIX)
+
+    /** User notes with previous engine tags removed, then current tags appended. */
+    fun notesWithEngineTags(notes: String, split: InterestEngine.PaisePaymentSplit): String {
+        val userLines = notes.lines().filterNot { line -> engineNotePrefixes.any { line.trimStart().startsWith(it) } }
+        val tags = buildList {
+            if (split.penaltyPaise > 0L) add("$PENALTY_NOTE_PREFIX ${InterestEngine.formatPenaltyRupees(split.penaltyPaise)}")
+            if (split.roundingPaise > 0L) {
+                add("$ROUNDING_OVERPAY_NOTE_PREFIX +${InterestEngine.formatPaiseRupees(split.roundingPaise)} (rounding, not a penalty)")
+            }
+            if (split.roundingPaise < 0L) {
+                add("$ROUNDING_WRITE_OFF_NOTE_PREFIX ${InterestEngine.formatPaiseRupees(-split.roundingPaise)} (settled within ₹1, loan closed)")
+            }
+        }
+        return (userLines + tags).joinToString("\n").trim('\n')
+    }
+
+    // ── v3.3.0 whole-rupee settlement quotes (UI helpers) ──
+
+    fun settlementQuoteForBorrower(
+        borrower: Borrower,
+        asOf: String = LocalDate.now().format(ledgerFormatter),
+        payments: List<Payment> = emptyList(),
+    ): InterestEngine.SettlementQuote =
+        InterestEngine.settlementQuote(paiseBalancesForBorrower(borrower, asOf, payments))
+
+    fun settlementQuoteForDebt(
+        debt: Debt,
+        asOf: String = LocalDate.now().format(ledgerFormatter),
+        payments: List<DebtPayment> = emptyList(),
+    ): InterestEngine.SettlementQuote =
+        InterestEngine.settlementQuote(paiseBalancesForDebt(debt, asOf, payments))
+
+    // ── v3.3.0 payment-date validation ──
+
+    /** Null when OK (future dates are allowed — UI confirms); otherwise a message the UI can show. */
+    fun paymentDateError(startDate: String, paymentDate: String): String? =
+        when (InterestEngine.checkPaymentDate(startDate, paymentDate)) {
+            InterestEngine.PaymentDateCheck.BEFORE_START -> InterestEngine.PAYMENT_BEFORE_START_MESSAGE
+            InterestEngine.PaymentDateCheck.INVALID -> "Payment date is not a valid date."
+            else -> null
+        }
+
+    fun isFuturePaymentDate(paymentDate: String): Boolean = InterestEngine.isFutureDate(paymentDate)
+
+    // ── v3.3.0 re-split after delete / undo / back-dated insert ──
+
+    private fun <T> replayOrder(rows: List<T>, date: (T) -> String, createdAt: (T) -> Long, id: (T) -> String): List<T> =
+        rows.sortedWith(compareBy<T>({ date(it) }, { createdAt(it) }, { id(it) }))
+
+    /**
+     * Re-aligns every payment of [borrower] in replay order (date, createdAt, id)
+     * so each row's principal / interest / penalty / rounding tags match the
+     * engine after earlier rows were deleted, undone or back-dated.
+     * Returns rows in replay order. Non-paise types are returned unchanged.
+     */
+    fun resplitBorrowerPayments(borrower: Borrower, payments: List<Payment>): List<Payment> {
+        val rows = replayOrder(payments.filter { it.loanId == borrower.id }, { it.date }, { it.createdAt }, { it.id })
+        if (!usesPaiseMethod(borrower.intType)) return rows
+        // Rows are the only truth here: never let stale paid* aggregates leak in
+        // through the no-prior-rows (terms) path for the first row.
+        val base = borrower.copy(paid = 0.0, paidPrincipal = 0.0, paidInterest = 0.0)
+        val done = mutableListOf<Payment>()
+        for (row in rows) {
+            done += alignBorrowerPaymentToPaisePreview(base, row, priorPayments = done.toList(), asOf = row.date)
+        }
+        return done
+    }
+
+    fun resplitDebtPayments(debt: Debt, payments: List<DebtPayment>): List<DebtPayment> {
+        val rows = replayOrder(payments.filter { it.debtId == debt.id }, { it.date }, { it.createdAt }, { it.id })
+        if (!usesPaiseMethod(debt.intType)) return rows
+        val base = debt.copy(paid = 0.0, paidPrincipal = 0.0, paidInterest = 0.0)
+        val done = mutableListOf<DebtPayment>()
+        for (row in rows) {
+            done += alignDebtPaymentToPaisePreview(base, row, priorPayments = done.toList(), asOf = row.date)
+        }
+        return done
     }
 
 }
