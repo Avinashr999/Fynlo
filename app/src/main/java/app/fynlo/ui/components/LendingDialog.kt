@@ -50,7 +50,6 @@ fun AddLendingDialog(
     var date by remember { mutableStateOf(initialBorrower?.date?.let { DateUtils.formatToDisplay(it) } ?: java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy"))) }
     var due by remember { mutableStateOf(initialBorrower?.due?.let { DateUtils.formatToDisplay(it) } ?: "") }
     var notes by remember { mutableStateOf(initialBorrower?.notes ?: "") }
-    val isPro by app.fynlo.billing.BillingManager.isPro.collectAsState()
     var selectedType by remember { mutableStateOf(initialBorrower?.intType ?: "Simple Interest") }
     var stopInterestAfterDue by remember { mutableStateOf(initialBorrower?.stopInterestAfterDue ?: false) }
 
@@ -234,7 +233,8 @@ fun AddLendingDialog(
                 // -- Interest type ---------------------------------------------
                 // 3.2.26 - unified with DebtDialog's widget (audit consistency
                 // surfaced during C12 Stage 1 smoke). Was a `FlowRow<FilterChip>`
-                // with Simple Interest always visible and a `Pro`-gated
+                // Lean personal: all three methods free on lend (unlocked from Pro gate).
+                // Was previously: Simple always visible and a Pro-gated
                 // "Advanced options" TextButton that revealed Reducing / Compound
                 // / SI+CI chips. Now: a single `ExposedDropdownMenuBox` matching
                 // DebtDialog. Free vs Pro gating is preserved by varying the
@@ -251,9 +251,9 @@ fun AddLendingDialog(
                 // can only switch back to Simple Interest from there.
                 Text("Interest type", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Spacer(Modifier.height(8.dp))
-                val interestOptions = remember(isPro, selectedType) {
-                    val base = if (isPro) listOf("Simple Interest") + advancedInterestTypes
-                    else listOf("Simple Interest")
+                // Lean personal: Simple / Compound / Reducing free on lend (same as debt).
+                val interestOptions = remember(selectedType) {
+                    val base = listOf("Simple Interest") + advancedInterestTypes
                     // Legacy "Both" rows stay editable/visible; new loans cannot pick it.
                     if (selectedType == "Both" && "Both" !in base) base + "Both" else base
                 }

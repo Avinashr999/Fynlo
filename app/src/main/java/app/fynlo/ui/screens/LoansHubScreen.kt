@@ -174,10 +174,10 @@ fun LoansHubScreen(
         LoansReadableSummary(
             countLabel = if (tab == 0) "Borrowers" else "Debtors",
             count = heroCount,
-            principalLabel = "Principal Outstanding",
+            principalLabel = "Principal remaining",
             principalValue = if (isPrivacy) "Hidden" else CurrencyFormatter.detail(principalAmount, currencyCode, locale),
             principalColor = if (tab == 0) Emerald500 else SemanticRed,
-            interestLabel = if (tab == 0) "Interest Due" else "Interest Payable",
+            interestLabel = "Interest Due",
             interestValue = if (isPrivacy) "Hidden" else CurrencyFormatter.detail(interestAmount, currencyCode, locale),
             interestColor = if (interestAmount > 0.0) SemanticRed else MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(top = 4.dp, bottom = 6.dp),
