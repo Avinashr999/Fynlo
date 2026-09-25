@@ -81,10 +81,91 @@ object InterestPolicy {
             if (a.isAfter(b)) second else first
         }.getOrDefault(first)
 
+    private fun parseLedgerDate(value: String): LocalDate? =
+        runCatching { LocalDate.parse(value, ledgerFormatter) }.getOrNull()
+
+    private fun laterDate(first: LocalDate, second: LocalDate): LocalDate =
+        if (first.isAfter(second)) first else second
+
+    private fun normalizedDueDateFor(startDate: String, dueDate: String): String {
+        val start = parseLedgerDate(startDate) ?: return dueDate
+        val due = parseLedgerDate(dueDate) ?: return dueDate
+        return if (due.isAfter(start)) dueDate else ""
+    }
+
+    private fun previousMonthEnd(paymentDate: String): LocalDate? =
+        parseLedgerDate(paymentDate)
+            ?.withDayOfMonth(1)
+            ?.minusDays(1)
+
+    private fun previousMonthStart(paymentDate: String): LocalDate? =
+        previousMonthEnd(paymentDate)?.withDayOfMonth(1)
+
+    private fun settledOldInterestEndDate(
+        allocationType: String,
+        interestAmount: Double,
+        paymentDate: String,
+        periodEndDate: String,
+    ): LocalDate? {
+        if (interestAmount <= 0.01 || allocationType != OLD_PERIOD_INTEREST) return null
+        return parseLedgerDate(periodEndDate) ?: previousMonthEnd(paymentDate)
+    }
+
+    fun borrowerCurrentInterestStartDate(
+        borrower: Borrower,
+        payments: List<Payment>,
+    ): String {
+        val loanStart = parseLedgerDate(borrower.date) ?: return borrower.date
+        val lastSettledEnd = payments
+            .asSequence()
+            .filter { it.loanId == borrower.id }
+            .mapNotNull {
+                settledOldInterestEndDate(
+                    allocationType = it.interestAllocationType,
+                    interestAmount = paymentInterestAmount(it),
+                    paymentDate = it.date,
+                    periodEndDate = it.interestPeriodEndDate,
+                )
+            }
+            .filter { !it.isBefore(loanStart) }
+            .maxOrNull()
+        return lastSettledEnd
+            ?.plusDays(1)
+            ?.let { laterDate(loanStart, it) }
+            ?.format(ledgerFormatter)
+            ?: borrower.date
+    }
+
+    fun debtCurrentInterestStartDate(
+        debt: Debt,
+        payments: List<DebtPayment>,
+    ): String {
+        val debtStart = parseLedgerDate(debt.date) ?: return debt.date
+        val lastSettledEnd = payments
+            .asSequence()
+            .filter { it.debtId == debt.id }
+            .mapNotNull {
+                settledOldInterestEndDate(
+                    allocationType = it.interestAllocationType,
+                    interestAmount = debtPaymentInterestAmount(it),
+                    paymentDate = it.date,
+                    periodEndDate = it.interestPeriodEndDate,
+                )
+            }
+            .filter { !it.isBefore(debtStart) }
+            .maxOrNull()
+        return lastSettledEnd
+            ?.plusDays(1)
+            ?.let { laterDate(debtStart, it) }
+            ?.format(ledgerFormatter)
+            ?: debt.date
+    }
+
     private fun paymentAwareAccrued(
         principal: Double,
         rate: Double,
         startDate: String,
+        accrualStartDate: String,
         interestType: String,
         dueDate: String,
         stopAfterDue: Boolean,
@@ -94,6 +175,12 @@ object InterestPolicy {
         if (principal <= 0.0 || rate == 0.0 || startDate.isBlank()) return 0.0
         val effectiveAsOf = effectiveAsOf(dueDate, stopAfterDue, asOf)
         val asOfDate = runCatching { LocalDate.parse(effectiveAsOf, ledgerFormatter) }.getOrNull() ?: return 0.0
+        val loanStart = parseLedgerDate(startDate) ?: return 0.0
+        val requestedStart = parseLedgerDate(accrualStartDate) ?: loanStart
+        val periodStart = laterDate(loanStart, requestedStart)
+        if (!periodStart.isBefore(asOfDate)) return 0.0
+        val periodStartString = periodStart.format(ledgerFormatter)
+        val dueDateForPeriod = normalizedDueDateFor(periodStartString, dueDate)
         var remainingPrincipal = principal
         var accrued = 0.0
 
@@ -107,15 +194,18 @@ object InterestPolicy {
             .forEach { (paidDate, _, rawAmount) ->
                 val principalPortion = rawAmount.coerceAtMost(remainingPrincipal).coerceAtLeast(0.0)
                 if (principalPortion > 0.0) {
-                    accrued += InterestEngine.calcIntAccrued(
-                        amount = principalPortion,
-                        rate = rate,
-                        loanDate = startDate,
-                        intType = interestType,
-                        dueDate = dueDate,
-                        totalPaid = 0.0,
-                        asOf = earlierDate(paidDate, effectiveAsOf),
-                    )
+                    val paidOn = parseLedgerDate(paidDate)
+                    if (paidOn != null && paidOn.isAfter(periodStart)) {
+                        accrued += InterestEngine.calcIntAccrued(
+                            amount = principalPortion,
+                            rate = rate,
+                            loanDate = periodStartString,
+                            intType = interestType,
+                            dueDate = dueDateForPeriod,
+                            totalPaid = 0.0,
+                            asOf = earlierDate(paidDate, effectiveAsOf),
+                        )
+                    }
                     remainingPrincipal = (remainingPrincipal - principalPortion).coerceAtLeast(0.0)
                 }
             }
@@ -124,9 +214,9 @@ object InterestPolicy {
             accrued += InterestEngine.calcIntAccrued(
                 amount = remainingPrincipal,
                 rate = rate,
-                loanDate = startDate,
+                loanDate = periodStartString,
                 intType = interestType,
-                dueDate = dueDate,
+                dueDate = dueDateForPeriod,
                 totalPaid = 0.0,
                 asOf = effectiveAsOf,
             )
@@ -168,6 +258,7 @@ object InterestPolicy {
         asOf: String = LocalDate.now().format(ledgerFormatter),
     ): InterestBreakdown {
         val rows = payments.filter { it.loanId == borrower.id }
+        val currentStartDate = borrowerCurrentInterestStartDate(borrower, payments)
         val accrued = if (borrower.status == "Defaulted" && borrower.frozenInterest > 0.0) {
             borrower.frozenInterest
         } else {
@@ -175,6 +266,7 @@ object InterestPolicy {
                 principal = borrower.amount,
                 rate = borrower.rate,
                 startDate = borrower.date,
+                accrualStartDate = currentStartDate,
                 interestType = borrower.intType,
                 dueDate = borrower.due,
                 stopAfterDue = borrower.stopInterestAfterDue,
@@ -183,7 +275,7 @@ object InterestPolicy {
             )
         }
         val currentPaid = rows
-            .filter { isCurrentPeriodInterestPayment(it.interestAllocationType, paymentInterestAmount(it), it.interestPeriodStartDate, borrower.date) }
+            .filter { isCurrentPeriodInterestPayment(it.interestAllocationType, paymentInterestAmount(it), it.interestPeriodStartDate, currentStartDate) }
             .sumOf { paymentInterestAmount(it) }
         val oldPaid = rows
             .filter { it.interestAllocationType == OLD_PERIOD_INTEREST }
@@ -195,7 +287,7 @@ object InterestPolicy {
             .filter {
                 val interest = paymentInterestAmount(it)
                 isUnclearInterestPayment(it.interestAllocationType, interest) ||
-                    isStaleCurrentPeriodInterest(it.interestAllocationType, interest, it.interestPeriodStartDate, borrower.date)
+                    isStaleCurrentPeriodInterest(it.interestAllocationType, interest, it.interestPeriodStartDate, currentStartDate)
             }
             .sumOf { paymentInterestAmount(it) }
         val totalPaid = rows.sumOf { paymentInterestAmount(it) }
@@ -234,10 +326,12 @@ object InterestPolicy {
         asOf: String = LocalDate.now().format(ledgerFormatter),
     ): InterestBreakdown {
         val rows = payments.filter { it.debtId == debt.id }
+        val currentStartDate = debtCurrentInterestStartDate(debt, payments)
         val accrued = paymentAwareAccrued(
             principal = debt.amount,
             rate = debt.rate,
             startDate = debt.date,
+            accrualStartDate = currentStartDate,
             interestType = debt.intType,
             dueDate = debt.due,
             stopAfterDue = debt.stopInterestAfterDue,
@@ -245,7 +339,7 @@ object InterestPolicy {
             asOf = asOf,
         )
         val currentPaid = rows
-            .filter { isCurrentPeriodInterestPayment(it.interestAllocationType, debtPaymentInterestAmount(it), it.interestPeriodStartDate, debt.date) }
+            .filter { isCurrentPeriodInterestPayment(it.interestAllocationType, debtPaymentInterestAmount(it), it.interestPeriodStartDate, currentStartDate) }
             .sumOf { debtPaymentInterestAmount(it) }
         val oldPaid = rows
             .filter { it.interestAllocationType == OLD_PERIOD_INTEREST }
@@ -257,7 +351,7 @@ object InterestPolicy {
             .filter {
                 val interest = debtPaymentInterestAmount(it)
                 isUnclearInterestPayment(it.interestAllocationType, interest) ||
-                    isStaleCurrentPeriodInterest(it.interestAllocationType, interest, it.interestPeriodStartDate, debt.date)
+                    isStaleCurrentPeriodInterest(it.interestAllocationType, interest, it.interestPeriodStartDate, currentStartDate)
             }
             .sumOf { debtPaymentInterestAmount(it) }
         val totalPaid = rows.sumOf { debtPaymentInterestAmount(it) }
@@ -297,6 +391,18 @@ object InterestPolicy {
         CURRENT_PERIOD_INTEREST -> paymentDate
         else -> ""
     }
+
+    fun periodRangeFor(allocationType: String, currentStartDate: String, paymentDate: String): Pair<String, String> =
+        when (allocationType) {
+            OLD_PERIOD_INTEREST -> {
+                val start = previousMonthStart(paymentDate)?.format(ledgerFormatter).orEmpty()
+                val end = previousMonthEnd(paymentDate)?.format(ledgerFormatter).orEmpty()
+                start to end
+            }
+            CURRENT_PERIOD_INTEREST -> currentStartDate to paymentDate
+            ADVANCE_INTEREST -> currentStartDate to ""
+            else -> "" to ""
+        }
 
     fun isUnclearInterestPayment(allocationType: String, interestAmount: Double): Boolean =
         interestAmount > 0.01 && (allocationType.isBlank() || allocationType == UNKNOWN_REVIEW)

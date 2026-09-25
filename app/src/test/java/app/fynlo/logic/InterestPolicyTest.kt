@@ -331,6 +331,61 @@ class InterestPolicyTest {
     }
 
     @Test
+    fun `older borrower interest settles previous month and current interest starts next month`() {
+        val borrower = Borrower(
+            id = "mahmud-loan",
+            name = "Mahmud",
+            amount = 1_600_000.0,
+            rate = 18.0,
+            date = "2026-07-01",
+            intType = "Simple Interest",
+            paid = 250_000.0,
+            paidPrincipal = 200_000.0,
+            paidInterest = 50_000.0,
+        )
+        val principalPayment = Payment(
+            id = "principal-2l",
+            loanId = borrower.id,
+            name = borrower.name,
+            date = "2026-08-20",
+            type = "Principal Only",
+            amount = 200_000.0,
+            principal = 200_000.0,
+            interestAllocationType = InterestPolicy.PRINCIPAL_REPAYMENT,
+        )
+        val augustInterest = Payment(
+            id = "august-interest",
+            loanId = borrower.id,
+            name = borrower.name,
+            date = "2026-09-03",
+            type = "Interest Only",
+            amount = 50_000.0,
+            interest = 50_000.0,
+            interestAllocationType = InterestPolicy.OLD_PERIOD_INTEREST,
+            interestPeriodStartDate = "",
+            interestPeriodEndDate = "",
+        )
+
+        val payments = listOf(principalPayment, augustInterest)
+        val breakdown = InterestPolicy.borrowerBreakdown(borrower, payments, asOf = "2026-09-25")
+        val expectedCurrentInterest = InterestEngine.calcIntAccrued(
+            amount = 1_400_000.0,
+            rate = 18.0,
+            loanDate = "2026-09-01",
+            intType = "Simple Interest",
+            asOf = "2026-09-25",
+        )
+
+        assertEquals("2026-09-01", InterestPolicy.borrowerCurrentInterestStartDate(borrower, payments))
+        assertEquals(1_400_000.0, borrower.amount - principalPayment.principal, 0.01)
+        assertEquals(expectedCurrentInterest, breakdown.accrued, 0.01)
+        assertEquals(expectedCurrentInterest, breakdown.due, 0.01)
+        assertEquals(0.0, breakdown.paid, 0.01)
+        assertEquals(0.0, breakdown.paidAhead, 0.01)
+        assertEquals(50_000.0, breakdown.oldPeriodInterest, 0.01)
+    }
+
+    @Test
     fun `current-period borrower interest reduces current due`() {
         val borrower = Borrower(
             id = "current-period",
@@ -454,6 +509,57 @@ class InterestPolicyTest {
         assertEquals(breakdown.accrued, breakdown.due, 0.01)
         assertEquals(0.0, breakdown.paidAhead, 0.01)
         assertEquals(39_492.0, breakdown.oldPeriodInterest, 0.01)
+    }
+
+    @Test
+    fun `older debt interest settles previous month and current interest starts next month`() {
+        val debt = Debt(
+            id = "monthly-debt",
+            name = "Monthly Debt",
+            amount = 1_600_000.0,
+            rate = 18.0,
+            date = "2026-07-01",
+            intType = "Simple Interest",
+            paid = 250_000.0,
+            paidPrincipal = 200_000.0,
+            paidInterest = 50_000.0,
+        )
+        val principalPayment = DebtPayment(
+            id = "debt-principal-2l",
+            debtId = debt.id,
+            name = debt.name,
+            date = "2026-08-20",
+            type = "Principal Only",
+            amount = 200_000.0,
+            principal = 200_000.0,
+            interestAllocationType = InterestPolicy.PRINCIPAL_REPAYMENT,
+        )
+        val augustInterest = DebtPayment(
+            id = "debt-august-interest",
+            debtId = debt.id,
+            name = debt.name,
+            date = "2026-09-03",
+            type = "Interest Only",
+            amount = 50_000.0,
+            interest = 50_000.0,
+            interestAllocationType = InterestPolicy.OLD_PERIOD_INTEREST,
+        )
+
+        val payments = listOf(principalPayment, augustInterest)
+        val breakdown = InterestPolicy.debtBreakdown(debt, payments, asOf = "2026-09-25")
+        val expectedCurrentInterest = InterestEngine.calcIntAccrued(
+            amount = 1_400_000.0,
+            rate = 18.0,
+            loanDate = "2026-09-01",
+            intType = "Simple Interest",
+            asOf = "2026-09-25",
+        )
+
+        assertEquals("2026-09-01", InterestPolicy.debtCurrentInterestStartDate(debt, payments))
+        assertEquals(expectedCurrentInterest, breakdown.accrued, 0.01)
+        assertEquals(expectedCurrentInterest, breakdown.due, 0.01)
+        assertEquals(0.0, breakdown.paidAhead, 0.01)
+        assertEquals(50_000.0, breakdown.oldPeriodInterest, 0.01)
     }
 
     @Test

@@ -2334,3 +2334,13 @@ The user approved the combined future roadmap below. Do not treat these as compl
 - Known UX/accountability note: Muhammed repayment Rs. 1,37,162 on 2026-06-30 was received into Business Investment and then transferred to HDFC, so HDFC history shows an account transfer rather than a direct loan repayment. This is not a balance corruption issue, but future money-trail UI should explain such indirect routes more clearly.
 - Scope: net-worth history repair only. No account balance mutation, no HDFC data change, no schema migration, and no release AAB in this pass.
 - Verification: `:app:clean :app:compileProdDebugKotlin`, `:app:testProdDebugUnitTest`, `:app:installProdDebug`, prod launch sanity, phone DB snapshot cleanup check, and phone DB account reconciliation passed.
+
+### 2026-09-25 - Monthly Interest Window Fix for Older Interest
+- Fixed the Mahmud-style borrower/debt interest issue where a payment made in September for August interest could still leave the current interest window starting from the original loan date.
+- `InterestPolicy` now derives the current interest start from the latest settled older-interest period. If an older-interest payment has no stored period end, the app safely infers the previous calendar month end from the payment date; e.g. payment on 2026-09-03 settles through 2026-08-31 and current interest starts 2026-09-01.
+- Principal remains separate and unchanged by this rule: a Rs. 16,00,000 borrower with Rs. 2,00,000 principal collected shows Rs. 14,00,000 principal outstanding, while current interest accrues from the settled-window start on the remaining principal.
+- Payment dialogs now save proper period ranges for `Older interest`, `This loan period`, and `Paid in advance`, using the derived current interest start instead of always using the original loan/debt date.
+- Added borrower and debt regression tests for the Rs. 16,00,000 / Rs. 2,00,000 principal / September 3 August-interest scenario.
+- Also repaired two partial-refactor compile issues in the local 3.3 workspace: closed-month exception reference and transaction account-id resolver call, plus a currency-picker compatibility wrapper for older imports.
+- Scope: interest-window calculation and payment-period metadata only. No database migration, no account balance mutation, no Firestore data repair, no install, no AAB, and no Play release in this pass.
+- Verification: `:app:testProdDebugUnitTest --tests app.fynlo.logic.InterestPolicyTest` passed; full `:app:testProdDebugUnitTest` passed.

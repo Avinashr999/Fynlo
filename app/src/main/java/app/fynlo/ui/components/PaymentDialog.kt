@@ -80,6 +80,9 @@ fun CollectPaymentDialog(
             app.fynlo.logic.InterestPolicy.borrowerBreakdown(borrower, payments)
         }
     }
+    val currentInterestStartDate = remember(borrower, payments) {
+        app.fynlo.logic.InterestPolicy.borrowerCurrentInterestStartDate(borrower, payments)
+    }
     val accruedInterest = interestBreakdown.accrued
     val interestOutstanding = if (usePaise) {
         InterestEngine.paiseToRupees(paiseBalances!!.interestDue)
@@ -418,7 +421,7 @@ fun CollectPaymentDialog(
                     InterestPeriodSelector(
                         selected = interestAllocationType,
                         onSelected = { interestAllocationType = it },
-                        currentStartDate = borrower.date,
+                        currentStartDate = currentInterestStartDate,
                         isDebt = false,
                     )
                     Spacer(Modifier.height(10.dp))
@@ -524,6 +527,15 @@ fun CollectPaymentDialog(
                             } else null
                             val finalPrincipal = split?.let { InterestEngine.paiseToRupees(it.towardPrincipal) } ?: principalVal
                             val finalInterest = split?.let { InterestEngine.paiseToRupees(it.towardInterest) } ?: interestVal
+                            val interestPeriod = if (usePaise) {
+                                borrower.date to asOf
+                            } else {
+                                InterestPolicy.periodRangeFor(
+                                    interestAllocationType,
+                                    currentInterestStartDate,
+                                    asOf,
+                                )
+                            }
                             val payment = Payment(
                                 id        = app.fynlo.logic.Ids.newId(),
                                 loanId    = borrower.id,
@@ -538,8 +550,8 @@ fun CollectPaymentDialog(
                                 amount    = totalAmount,
                                 principal = finalPrincipal,
                                 interest  = finalInterest,
-                                interestPeriodStartDate = if (usePaise) borrower.date else InterestPolicy.periodStartFor(interestAllocationType, borrower.date),
-                                interestPeriodEndDate = if (usePaise) asOf else InterestPolicy.periodEndFor(interestAllocationType, borrower.date, asOf),
+                                interestPeriodStartDate = interestPeriod.first,
+                                interestPeriodEndDate = interestPeriod.second,
                                 interestAllocationType = if (usePaise) {
                                     if (finalInterest > 0.0) InterestPolicy.CURRENT_PERIOD_INTEREST else InterestPolicy.PRINCIPAL_REPAYMENT
                                 } else {
@@ -608,6 +620,9 @@ fun PayDebtDialog(
         } else {
             app.fynlo.logic.InterestPolicy.debtBreakdown(debt, payments)
         }
+    }
+    val currentInterestStartDate = remember(debt, payments) {
+        app.fynlo.logic.InterestPolicy.debtCurrentInterestStartDate(debt, payments)
     }
     val accruedInterest = interestBreakdown.accrued
     val interestOutstanding = if (usePaise) {
@@ -908,7 +923,7 @@ fun PayDebtDialog(
                     InterestPeriodSelector(
                         selected = interestAllocationType,
                         onSelected = { interestAllocationType = it },
-                        currentStartDate = debt.date,
+                        currentStartDate = currentInterestStartDate,
                         isDebt = true,
                     )
                     Spacer(Modifier.height(10.dp))
@@ -1006,6 +1021,15 @@ fun PayDebtDialog(
                             } else null
                             val finalPrincipal = split?.let { InterestEngine.paiseToRupees(it.towardPrincipal) } ?: principalVal
                             val finalInterest = split?.let { InterestEngine.paiseToRupees(it.towardInterest) } ?: interestVal
+                            val interestPeriod = if (usePaise) {
+                                debt.date to asOf
+                            } else {
+                                InterestPolicy.periodRangeFor(
+                                    interestAllocationType,
+                                    currentInterestStartDate,
+                                    asOf,
+                                )
+                            }
                             val payment = DebtPayment(
                                 id        = app.fynlo.logic.Ids.newId(),
                                 debtId    = debt.id,
@@ -1020,8 +1044,8 @@ fun PayDebtDialog(
                                 amount    = totalAmount,
                                 principal = finalPrincipal,
                                 interest  = finalInterest,
-                                interestPeriodStartDate = if (usePaise) debt.date else InterestPolicy.periodStartFor(interestAllocationType, debt.date),
-                                interestPeriodEndDate = if (usePaise) asOf else InterestPolicy.periodEndFor(interestAllocationType, debt.date, asOf),
+                                interestPeriodStartDate = interestPeriod.first,
+                                interestPeriodEndDate = interestPeriod.second,
                                 interestAllocationType = if (usePaise) {
                                     if (finalInterest > 0.0) InterestPolicy.CURRENT_PERIOD_INTEREST else InterestPolicy.PRINCIPAL_REPAYMENT
                                 } else {

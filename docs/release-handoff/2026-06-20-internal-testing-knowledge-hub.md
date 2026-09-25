@@ -1555,3 +1555,12 @@ Phone smoke still recommended before a new AAB:
 - Known UX/accountability note: Muhammed repayment Rs. 1,37,162 on 2026-06-30 was received into Business Investment and then transferred to HDFC, so HDFC history shows a transfer instead of a direct loan repayment. Treat this as a future money-trail clarity improvement, not a data repair.
 - Scope: net-worth history repair only. No HDFC data mutation, no account balance mutation, no schema migration, and no release AAB in this pass.
 - Verification passed: prod debug compile, prod debug unit tests, prod install, launch sanity, phone DB snapshot cleanup check, and phone DB account reconciliation.
+
+### 2026-09-25 - Older-interest monthly window fix
+- Problem found from user testing: Mahmud had Rs. 16,00,000 lent, Rs. 2,00,000 principal collected, and a 2026-09-03 interest payment that actually belonged to August. Principal should stay Rs. 14,00,000 outstanding, and current interest should start from 2026-09-01 instead of treating the August payment as advance/current interest.
+- Fix: `InterestPolicy` now calculates the current interest window from settled older-interest payments. If the period end is missing on an old row, the payment date infers the previous month end, so a 3 September old-interest payment settles through 31 August.
+- Payment dialogs now persist real period ranges for new borrower and debt interest payments using the derived current interest start date.
+- Added regression coverage for both borrower and debt flows with the Rs. 16,00,000 / Rs. 2,00,000 / August-interest-paid-on-3-September pattern.
+- Local 3.3 checkout had partial-refactor compile breaks; patched the closed-period exception reference, transaction account resolver call, and old currency-picker helper import compatibility so tests can run cleanly.
+- No DB migration, phone install, release AAB, or Play Console action was performed in this pass.
+- Verification passed: targeted `InterestPolicyTest` and full `:app:testProdDebugUnitTest`.
