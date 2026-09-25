@@ -2353,3 +2353,12 @@ The user approved the combined future roadmap below. Do not treat these as compl
 - Added borrower and debt regression tests proving interest-only rows do not reduce visible principal.
 - Scope: principal display/entry calculation only. No account balance mutation, no Firestore data repair, no schema migration, no release AAB, and no Play Console action in this pass.
 - Verification: targeted `InterestPolicyTest`, `:app:compileProdDebugKotlin`, full `:app:testProdDebugUnitTest`, `:app:installProdDebug`, `:app:installDevDebug`, and launch sanity for both packages passed.
+
+### 2026-09-25 - Product Pivot to Personal Lifetime Ledger
+- User direction changed: optimize Fynlo Ledger for the owner's private lifetime ledger rather than public Play Store scale first.
+- Added `docs/personal-ledger-charter.md` as the standing product/engineering guide for future agents.
+- Core rule: data safety beats simplification. Do not silently mutate principal, interest, account balances, investments, payments, or transaction history.
+- Public/generalized surfaces can be reduced or hidden from normal UX, but personal workflows must remain strong: loans, debts, accounts, investments, expenses, transfers, money trail, Book Check, sync/backup, reports, PIN/security, and search.
+- Interest date policy is now explicitly called out: current engine uses standard exclusive-end day counting; any final-day-inclusive change must be implemented only with tests and a migration note because it can alter historical interest.
+- Version rule reaffirmed: every shared behavior-changing build must bump both `versionCode` and `versionName`.
+- Scope: documentation/product direction only. No app behavior, database schema, sync logic, account balance, or interest calculation changed in this pass.
