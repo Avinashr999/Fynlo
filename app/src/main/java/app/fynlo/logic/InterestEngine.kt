@@ -274,8 +274,18 @@ object InterestEngine {
     data class PaiseBalances(
         val outstandingPrincipal: Long,
         val interestDue: Long,
+        /** v3.3.1 — unused prepaid interest (from 'Interest Only' excess). */
+        val prepaidInterest: Long = 0L,
     ) {
-        val outstanding: Long get() = outstandingPrincipal + interestDue
+        /** Interest still owed after unused prepaid interest (never below 0). */
+        val netInterestDue: Long get() = (interestDue - prepaidInterest).coerceAtLeast(0L)
+
+        /**
+         * Total owed = principal + max(0, interest due) − leftover prepaid, never
+         * below 0. Prepaid above interest due reduces the settlement amount; it
+         * never creates negative interest.
+         */
+        val outstanding: Long get() = (outstandingPrincipal + interestDue - prepaidInterest).coerceAtLeast(0L)
     }
 
     private const val PAISE_DAY_DENOM = 10000L * 365L
@@ -304,6 +314,8 @@ object InterestEngine {
         val totalDuePaise: Long,
         val interestDuePaise: Long,
         val outstandingPrincipalPaise: Long,
+        /** v3.3.1 — unused prepaid interest already netted out of [totalDuePaise]. */
+        val prepaidInterestPaise: Long = 0L,
     ) {
         val totalDueRupees: Long get() = wholeRupees(totalDuePaise)
         val fullSettlementPaise: Long get() = roundToRupeePaise(totalDuePaise)
@@ -312,7 +324,12 @@ object InterestEngine {
     }
 
     fun settlementQuote(balances: PaiseBalances): SettlementQuote =
-        SettlementQuote(balances.outstanding, balances.interestDue, balances.outstandingPrincipal)
+        SettlementQuote(
+            totalDuePaise = balances.outstanding,
+            interestDuePaise = balances.netInterestDue,
+            outstandingPrincipalPaise = balances.outstandingPrincipal,
+            prepaidInterestPaise = balances.prepaidInterest,
+        )
 
     /** "₹1" for whole rupees, else "₹1.37" (used for penalty notes). */
     fun formatPenaltyRupees(paise: Long): String =
@@ -412,7 +429,7 @@ object InterestEngine {
     }
 
     fun paiseBalances(state: PaiseLoanState): PaiseBalances =
-        PaiseBalances(state.outstandingPrincipalPaise, state.interestDuePaise)
+        PaiseBalances(state.outstandingPrincipalPaise, state.interestDuePaise, state.prepaidInterestPaise)
 
     /**
      * Interest due first, then principal (outstanding never negative).
@@ -429,32 +446,46 @@ object InterestEngine {
             outstandingPrincipal = state.outstandingPrincipalPaise,
             interestDue = state.interestDuePaise,
             paymentPaise = paymentPaise,
+            prepaidInterest = state.prepaidInterestPaise,
         )
 
+    /**
+     * v3.3.1: [prepaidInterest] (unused 'Interest Only' excess) is netted out of the
+     * settle total: exact = max(0, interestDue + principal − prepaid), and the
+     * settle / penalty rule runs on that net total. On a closing payment the
+     * prepaid covers interest first, then principal, so towardInterest +
+     * towardPrincipal == net exact. A partial payment keeps the prepaid for
+     * later interest.
+     */
     fun allocatePaymentPaise(
         outstandingPrincipal: Long,
         interestDue: Long,
         paymentPaise: Long,
+        prepaidInterest: Long = 0L,
     ): PaisePaymentSplit {
         require(paymentPaise >= 0L) { "paymentPaise must be >= 0" }
-        require(outstandingPrincipal >= 0L && interestDue >= 0L)
+        require(outstandingPrincipal >= 0L && interestDue >= 0L && prepaidInterest >= 0L)
         val towardInterest = minOf(paymentPaise, interestDue)
         val remaining = paymentPaise - towardInterest
         val towardPrincipal = minOf(remaining, outstandingPrincipal)
         if (paymentPaise == 0L) return PaisePaymentSplit(0L, 0L, 0L)
-        val exact = interestDue + outstandingPrincipal
+        val prepaidToInterest = minOf(prepaidInterest, interestDue)
+        val prepaidToPrincipal = minOf(prepaidInterest - prepaidToInterest, outstandingPrincipal)
+        val closeInterest = interestDue - prepaidToInterest
+        val closePrincipal = outstandingPrincipal - prepaidToPrincipal
+        val exact = closeInterest + closePrincipal
         val roundedTotal = roundToRupeePaise(exact)
         return when {
             paymentPaise >= roundedTotal + ROUNDING_THRESHOLD_PAISE ->
                 PaisePaymentSplit(
-                    towardInterest = interestDue,
-                    towardPrincipal = outstandingPrincipal,
+                    towardInterest = closeInterest,
+                    towardPrincipal = closePrincipal,
                     penaltyPaise = paymentPaise - roundedTotal,
                     roundingPaise = roundedTotal - exact,
                     closesLoan = true,
                 )
             paymentPaise > exact - ROUNDING_THRESHOLD_PAISE ->
-                PaisePaymentSplit(interestDue, outstandingPrincipal, 0L, roundingPaise = paymentPaise - exact, closesLoan = true)
+                PaisePaymentSplit(closeInterest, closePrincipal, 0L, roundingPaise = paymentPaise - exact, closesLoan = true)
             else ->
                 PaisePaymentSplit(towardInterest, towardPrincipal, 0L)
         }
@@ -465,6 +496,19 @@ object InterestEngine {
         paymentPaise: Long,
     ): Pair<PaiseLoanState, PaisePaymentSplit> {
         val split = allocatePaymentPaise(state, paymentPaise)
+        if (split.closesLoan) {
+            // v3.3.1: the loan is settled; prepaid interest was used against the
+            // remaining interest, then principal (anything above that is dropped).
+            val covered = state.interestDuePaise + state.outstandingPrincipalPaise - split.towardInterest - split.towardPrincipal
+            return state.copy(
+                interestDuePaise = 0L,
+                outstandingPrincipalPaise = 0L,
+                penaltyPaise = state.penaltyPaise + split.penaltyPaise,
+                roundingPaise = state.roundingPaise + split.roundingPaise,
+                pendingCapitalPaise = 0L,
+                prepaidInterestPaise = (state.prepaidInterestPaise - covered).coerceAtLeast(0L),
+            ) to split
+        }
         val next = state.copy(
             interestDuePaise = state.interestDuePaise - split.towardInterest,
             outstandingPrincipalPaise = state.outstandingPrincipalPaise - split.towardPrincipal,

@@ -342,7 +342,8 @@ object InterestPolicy {
     ): InterestEngine.PaiseBalances {
         val method = InterestEngine.paiseMethodOrNull(borrower.intType)
             ?: error("intType '${borrower.intType}' is not paise-eligible")
-        val rows = payments.filter { it.loanId == borrower.id }
+        // v3.3.1: rows dated before the loan start are ignored by the replay.
+        val rows = payments.filter { it.loanId == borrower.id && !isBeforeStart(it.date, borrower.date) }
         return if (rows.isNotEmpty()) {
             paiseBalancesFromReplay(
                 principalRupees = borrower.amount,
@@ -378,7 +379,7 @@ object InterestPolicy {
     ): InterestEngine.PaiseBalances {
         val method = InterestEngine.paiseMethodOrNull(debt.intType)
             ?: error("intType '${debt.intType}' is not paise-eligible")
-        val rows = payments.filter { it.debtId == debt.id }
+        val rows = payments.filter { it.debtId == debt.id && !isBeforeStart(it.date, debt.date) }
         return if (rows.isNotEmpty()) {
             paiseBalancesFromReplay(
                 principalRupees = debt.amount,
@@ -420,6 +421,7 @@ object InterestPolicy {
             outstandingPrincipal = bal.outstandingPrincipal,
             interestDue = bal.interestDue,
             paymentPaise = paymentPaise,
+            prepaidInterest = bal.prepaidInterest,
         )
     }
 
@@ -436,6 +438,7 @@ object InterestPolicy {
             outstandingPrincipal = bal.outstandingPrincipal,
             interestDue = bal.interestDue,
             paymentPaise = paymentPaise,
+            prepaidInterest = bal.prepaidInterest,
         )
     }
 
@@ -518,7 +521,7 @@ object InterestPolicy {
         val interestDue = (
             state.interestDuePaise - InterestEngine.rupeesToPaise(waivedInterestRupees)
             ).coerceAtLeast(0L)
-        return InterestEngine.PaiseBalances(state.outstandingPrincipalPaise, interestDue)
+        return InterestEngine.PaiseBalances(state.outstandingPrincipalPaise, interestDue, state.prepaidInterestPaise)
     }
 
     /**
@@ -727,9 +730,32 @@ object InterestPolicy {
 
     // ── v3.3.1 one shared balance for every screen / report ──
 
-    /** Outstanding principal + interest due, in rupees. */
-    data class LoanBalance(val principal: Double, val interestDue: Double) {
-        val outstanding: Double get() = principal + interestDue
+    /**
+     * Outstanding principal + interest due, in rupees, plus unused prepaid
+     * interest (paise). [outstanding] = principal + max(0, interest due) −
+     * leftover prepaid, never below 0 (prepaid never makes interest negative).
+     */
+    data class LoanBalance(
+        val principal: Double,
+        val interestDue: Double,
+        val prepaidInterestPaise: Long = 0L,
+    ) {
+        private val outstandingPaise: Long
+            get() = (
+                InterestEngine.rupeesToPaise(principal) +
+                    InterestEngine.rupeesToPaise(interestDue.coerceAtLeast(0.0)) -
+                    prepaidInterestPaise
+                ).coerceAtLeast(0L)
+        val prepaidInterest: Double get() = InterestEngine.paiseToRupees(prepaidInterestPaise)
+        /** Interest still owed after leftover prepaid (the Interest Only suggestion). */
+        val netInterestDue: Double
+            get() = InterestEngine.paiseToRupees(
+                (InterestEngine.rupeesToPaise(interestDue.coerceAtLeast(0.0)) - prepaidInterestPaise).coerceAtLeast(0L),
+            )
+        /** Total owed (Full Settlement basis). */
+        val outstanding: Double get() = InterestEngine.paiseToRupees(outstandingPaise)
+        /** Principal part of [outstanding] once prepaid beyond interest has been netted in. */
+        val netPrincipal: Double get() = (outstanding - netInterestDue).coerceAtLeast(0.0)
     }
 
     /**
@@ -752,7 +778,7 @@ object InterestPolicy {
             if (paise != null) {
                 val interest = if (frozen) borrowerBreakdown(borrower, rows, asOf).due
                 else InterestEngine.paiseToRupees(paise.interestDue)
-                return LoanBalance(InterestEngine.paiseToRupees(paise.outstandingPrincipal), interest)
+                return LoanBalance(InterestEngine.paiseToRupees(paise.outstandingPrincipal), interest, paise.prepaidInterest)
             }
         }
         if (borrower.rate <= 0.0) {
@@ -777,6 +803,7 @@ object InterestPolicy {
                 return LoanBalance(
                     InterestEngine.paiseToRupees(paise.outstandingPrincipal),
                     InterestEngine.paiseToRupees(paise.interestDue),
+                    paise.prepaidInterest,
                 )
             }
         }

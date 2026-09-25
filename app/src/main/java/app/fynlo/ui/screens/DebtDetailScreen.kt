@@ -96,10 +96,11 @@ fun DebtDetailScreen(
     val interest = interestBreakdown.accrued
     // v3.3.1: one shared balance function for every screen.
     val sharedBalance = app.fynlo.logic.InterestPolicy.debtBalance(debt, debtPayments)
-    val interestOutstanding = sharedBalance.interestDue
+    val interestOutstanding = sharedBalance.netInterestDue
     val advanceInterest = if (usePaise) 0.0 else interestBreakdown.paidAhead
     val principalOutstanding = sharedBalance.principal
-    val totalOutstanding = principalOutstanding + interestOutstanding
+    // v3.3.1: principal + interest − unused prepaid interest (never below 0).
+    val totalOutstanding = sharedBalance.outstanding
     val accountIdToName = remember(accounts) { accounts.associate { it.id to it.name } }
     val receivedTxn = remember(transactions, debt.id) {
         transactions

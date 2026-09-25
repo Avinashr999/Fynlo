@@ -403,7 +403,7 @@ class FinanceViewModel @Inject constructor(
         val totalAssets       = totalCashVal + totalInvestVal + totalInterestLoans + totalHandLoans
         val debtLiabilities = dbts.map { debt ->
             val balance = InterestPolicy.debtBalance(debt, paymentsByDebt[debt.id].orEmpty())
-            app.fynlo.logic.DebtLiabilityCalculator.Liability(principal = balance.principal, interest = balance.interestDue)
+            app.fynlo.logic.DebtLiabilityCalculator.Liability(principal = balance.netPrincipal, interest = balance.netInterestDue)
         }
         val totalDebtPrincipal = debtLiabilities.sumOf { it.principal }
         val totalDebtInterest  = debtLiabilities.sumOf { it.interest }

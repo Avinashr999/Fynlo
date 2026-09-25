@@ -86,9 +86,12 @@ fun CollectPaymentDialog(
         if (usePaise) InterestPolicy.borrowerBalance(borrower, payments, paymentAsOf)
         else InterestPolicy.borrowerBalance(borrower, payments)
     }
-    val interestOutstanding = sharedBalance.interestDue
+    val interestOutstanding = sharedBalance.netInterestDue
+    // v3.3.1: paise loans show unused prepaid interest (Interest Only excess) as paid ahead.
+    val paidAheadShown = if (usePaise) sharedBalance.prepaidInterest else interestBreakdown.paidAhead
     val principalOutstanding = sharedBalance.principal
-    val totalOutstanding = interestOutstanding + principalOutstanding
+    // v3.3.1: net of unused prepaid interest (Full Settlement basis).
+    val totalOutstanding = sharedBalance.outstanding
 
     // Payment fields — lean uses a single Amount; legacy keeps Principal + Interest.
     var amountStr by remember { mutableStateOf("") }
@@ -120,13 +123,16 @@ fun CollectPaymentDialog(
             }
         }
     }
-    val paisePreview = remember(usePaise, totalAmount, borrower, payments, paymentAsOf) {
+    // v3.3.1: the Interest Only preset posts type 'Interest Only'; preview it the same way (preview == post).
+    val leanInterestOnly = usePaise && leanAmountPreset == "interest"
+    val paisePreview = remember(usePaise, totalAmount, borrower, payments, paymentAsOf, leanInterestOnly) {
         if (usePaise && totalAmount > 0.0) {
             InterestPolicy.previewBorrowerPaymentPaise(
                 borrower,
                 InterestEngine.rupeesToPaise(totalAmount),
                 paymentAsOf,
                 payments,
+                interestOnly = leanInterestOnly,
             )
         } else null
     }
@@ -215,11 +221,11 @@ fun CollectPaymentDialog(
                             }
                             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
                                 Text("Paid ahead", style = MaterialTheme.typography.bodySmall)
-                                Text(CurrencyFormatter.detail(interestBreakdown.paidAhead, currencyCode, locale),
+                                Text(CurrencyFormatter.detail(paidAheadShown, currencyCode, locale),
                                     style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
                                     color = Emerald500)
                             }
-                            if (interestBreakdown.paidAhead > 0.01) {
+                            if (paidAheadShown > 0.01) {
                                 Text(
                                     "Interest due is zero until accrued interest catches up. Accrual still continues from the original loan date.",
                                     style = MaterialTheme.typography.labelSmall,
@@ -388,6 +394,16 @@ fun CollectPaymentDialog(
                                     )
                                 }
                             }
+                            if (split.prepaidInterestPaise > 0L) {
+                                Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
+                                    Text("Interest paid in advance", style = MaterialTheme.typography.bodySmall)
+                                    Text(
+                                        CurrencyFormatter.detail(InterestEngine.paiseToRupees(split.prepaidInterestPaise), currencyCode, locale),
+                                        style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
+                                        color = Emerald500,
+                                    )
+                                }
+                            }
                             val remainingAfter = if (split.closesLoan) 0L else
                                 (paiseBalances!!.outstanding - split.towardInterest - split.towardPrincipal).coerceAtLeast(0L)
                             if (split.closesLoan) {
@@ -517,6 +533,7 @@ fun CollectPaymentDialog(
                                     InterestEngine.rupeesToPaise(totalAmount),
                                     asOf,
                                     payments,
+                                    interestOnly = leanInterestOnly,
                                 )
                             } else null
                             val finalPrincipal = split?.let { InterestEngine.paiseToRupees(it.towardPrincipal) } ?: principalVal
@@ -527,6 +544,7 @@ fun CollectPaymentDialog(
                                 name      = borrower.name,
                                 date      = asOf,
                                 type      = when {
+                                    leanInterestOnly -> "Interest Only"
                                     finalPrincipal > 0 && finalInterest > 0 -> "Both"
                                     finalPrincipal > 0 -> "Principal Only"
                                     finalInterest > 0 -> "Interest Only"
@@ -612,9 +630,12 @@ fun PayDebtDialog(
         if (usePaise) InterestPolicy.debtBalance(debt, payments, paymentAsOf)
         else InterestPolicy.debtBalance(debt, payments)
     }
-    val interestOutstanding = sharedBalance.interestDue
+    val interestOutstanding = sharedBalance.netInterestDue
+    // v3.3.1: paise loans show unused prepaid interest (Interest Only excess) as paid ahead.
+    val paidAheadShown = if (usePaise) sharedBalance.prepaidInterest else interestBreakdown.paidAhead
     val principalOutstanding = sharedBalance.principal
-    val totalOutstanding     = interestOutstanding + principalOutstanding
+    // v3.3.1: net of unused prepaid interest (Full Settlement basis).
+    val totalOutstanding = sharedBalance.outstanding
 
     var amountStr by remember { mutableStateOf("") }
     var leanAmountPreset by remember { mutableStateOf<String?>(null) } // "full" | "interest" | null
@@ -644,13 +665,16 @@ fun PayDebtDialog(
             }
         }
     }
-    val paisePreview = remember(usePaise, totalAmount, debt, payments, paymentAsOf) {
+    // v3.3.1: the Interest Only preset posts type 'Interest Only'; preview it the same way (preview == post).
+    val leanInterestOnly = usePaise && leanAmountPreset == "interest"
+    val paisePreview = remember(usePaise, totalAmount, debt, payments, paymentAsOf, leanInterestOnly) {
         if (usePaise && totalAmount > 0.0) {
             InterestPolicy.previewDebtPaymentPaise(
                 debt,
                 InterestEngine.rupeesToPaise(totalAmount),
                 paymentAsOf,
                 payments,
+                interestOnly = leanInterestOnly,
             )
         } else null
     }
@@ -734,11 +758,11 @@ fun PayDebtDialog(
                             }
                             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
                                 Text("Paid ahead", style = MaterialTheme.typography.bodySmall)
-                                Text(CurrencyFormatter.detail(interestBreakdown.paidAhead, currencyCode, locale),
+                                Text(CurrencyFormatter.detail(paidAheadShown, currencyCode, locale),
                                     style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
                                     color = Emerald500)
                             }
-                            if (interestBreakdown.paidAhead > 0.01) {
+                            if (paidAheadShown > 0.01) {
                                 Text(
                                     "Interest due is zero until accrued interest catches up. Accrual still continues from the original debt date.",
                                     style = MaterialTheme.typography.labelSmall,
@@ -877,6 +901,16 @@ fun PayDebtDialog(
                                     )
                                 }
                             }
+                            if (split.prepaidInterestPaise > 0L) {
+                                Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
+                                    Text("Interest paid in advance", style = MaterialTheme.typography.bodySmall)
+                                    Text(
+                                        CurrencyFormatter.detail(InterestEngine.paiseToRupees(split.prepaidInterestPaise), currencyCode, locale),
+                                        style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
+                                        color = Emerald500,
+                                    )
+                                }
+                            }
                             val remainingAfter = if (split.closesLoan) 0L else
                                 (paiseBalances!!.outstanding - split.towardInterest - split.towardPrincipal).coerceAtLeast(0L)
                             if (split.closesLoan) {
@@ -996,6 +1030,7 @@ fun PayDebtDialog(
                                     InterestEngine.rupeesToPaise(totalAmount),
                                     asOf,
                                     payments,
+                                    interestOnly = leanInterestOnly,
                                 )
                             } else null
                             val finalPrincipal = split?.let { InterestEngine.paiseToRupees(it.towardPrincipal) } ?: principalVal
@@ -1006,6 +1041,7 @@ fun PayDebtDialog(
                                 name      = debt.name,
                                 date      = asOf,
                                 type      = when {
+                                    leanInterestOnly -> "Interest Only"
                                     finalPrincipal > 0 && finalInterest > 0 -> "Both"
                                     finalPrincipal > 0 -> "Principal Only"
                                     finalInterest > 0 -> "Interest Only"

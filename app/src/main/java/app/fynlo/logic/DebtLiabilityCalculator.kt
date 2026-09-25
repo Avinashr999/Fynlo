@@ -28,9 +28,8 @@ object DebtLiabilityCalculator {
         payments: List<DebtPayment>,
         asOf: String = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")),
     ): Liability {
-        return Liability(
-            principal = (debt.amount - debt.paidPrincipal).coerceAtLeast(0.0),
-            interest = InterestPolicy.debtBreakdown(debt, payments, asOf).due,
-        )
+        // v3.3.1: shared balance (replay for paise methods, prepaid interest netted).
+        val balance = InterestPolicy.debtBalance(debt, payments, asOf)
+        return Liability(principal = balance.netPrincipal, interest = balance.netInterestDue)
     }
 }
