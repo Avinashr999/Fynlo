@@ -210,17 +210,19 @@ class InterestEngineV330Test {
 
     @Test
     fun `quarterly compound fixture engine lend and debt`() {
+        // Daily accrual. Jan 1→Apr 1 (90 d): 1,000,000×1200×90 = 108,000,000,000 / 3,650,000 = 29,589 rem 150,000
         val apr1 = InterestEngine.accruePaiseTo(compound(3), LocalDate.of(2026, 4, 1))
         assertEquals(1_000_000L, apr1.outstandingPrincipalPaise)
-        assertEquals(30_000L, apr1.interestDuePaise)
+        assertEquals(29_589L, apr1.interestDuePaise)
         val may1 = InterestEngine.accruePaiseTo(compound(3), LocalDate.of(2026, 5, 1))
         assertEquals(1_000_000L, may1.outstandingPrincipalPaise)
-        // Q1 interest (30,000, unpaid) already earns interest after Apr 1:
-        // stub Apr 1→May 1 = 1,030,000×1200×30 / 3,650,000 = 10,158
-        assertEquals(30_000L + 10_158L, may1.interestDuePaise)
+        // Q1 interest (unpaid) earns interest after Apr 1:
+        // Apr 1→May 1 (30 d): 1,029,589×1200×30 + 150,000 = 37,065,354,000 / 3,650,000 = 10,154
+        assertEquals(29_589L + 10_154L, may1.interestDuePaise)
+        // Apr 1→Jul 1 (91 d): 1,029,589×1200×91 + 150,000 = 112,431,268,800 / 3,650,000 = 30,803; Q1 capitalised
         val jul1 = InterestEngine.accruePaiseTo(compound(3), LocalDate.of(2026, 7, 1))
-        assertEquals(1_030_000L, jul1.outstandingPrincipalPaise)
-        assertEquals(30_900L, jul1.interestDuePaise)
+        assertEquals(1_029_589L, jul1.outstandingPrincipalPaise)
+        assertEquals(30_803L, jul1.interestDuePaise)
 
         val b = Borrower(id = "L", name = "L", amount = 10_000.0, rate = 12.0, date = "2026-01-01",
             intType = "Compound Interest", compoundFrequency = "Quarterly")
@@ -269,15 +271,17 @@ class InterestEngineV330Test {
         assertEquals(LocalDate.of(2026, 7, 31), InterestEngine.compoundDatePaise(jan31, 2, 3))
         assertEquals(LocalDate.of(2026, 4, 30), InterestEngine.nextCompoundDatePaise(jan31, jan31, 3))
         assertEquals(LocalDate.of(2026, 7, 31), InterestEngine.nextCompoundDatePaise(jan31, LocalDate.of(2026, 4, 30), 3))
-        // Engine: on 30 Apr the full quarter is booked (no stub); 29 Apr is still a stub.
+        // Engine: 30 Apr is the compounding date. Jan 31→Apr 30 (89 d):
+        //   1,000,000×1200×89 = 106,800,000,000 / 3,650,000 = 29,260 rem 1,000,000
         val apr30 = InterestEngine.accruePaiseTo(compound(3, jan31), LocalDate.of(2026, 4, 30))
-        assertEquals(30_000L, apr30.interestDuePaise)
+        assertEquals(29_260L, apr30.interestDuePaise)
         assertEquals(LocalDate.of(2026, 4, 30), apr30.lastAccrualDate)
         val apr29 = InterestEngine.accruePaiseTo(compound(3, jan31), LocalDate.of(2026, 4, 29))
         assertEquals(28_931L, apr29.interestDuePaise) // 88 stub days
+        // Apr 30→Jul 31 (92 d): 1,029,260×1200×92 + 1,000,000 = 113,631,304,000 / 3,650,000 = 31,131
         val jul31 = InterestEngine.accruePaiseTo(compound(3, jan31), LocalDate.of(2026, 7, 31))
-        assertEquals(1_030_000L, jul31.outstandingPrincipalPaise)
-        assertEquals(30_900L, jul31.interestDuePaise)
+        assertEquals(1_029_260L, jul31.outstandingPrincipalPaise)
+        assertEquals(31_131L, jul31.interestDuePaise)
         val jul30 = InterestEngine.accruePaiseTo(compound(3, jan31), LocalDate.of(2026, 7, 30))
         // Q1 interest is capitalised only on the next compounding date (31 Jul).
         assertEquals(1_000_000L, jul30.outstandingPrincipalPaise)
@@ -311,11 +315,12 @@ class InterestEngineV330Test {
         val s = InterestEngine.accruePaiseTo(compound(3), apr1)
         val (after, split) = InterestEngine.applyPaymentPaise(s, 50_000L)
         assertInvariant(50_000L, split)
-        assertEquals(30_000L, split.towardInterest)
-        assertEquals(20_000L, split.towardPrincipal)
+        assertEquals(29_589L, split.towardInterest) // Jan 1→Apr 1, 90 d daily (rem 150,000)
+        assertEquals(20_411L, split.towardPrincipal)
+        // Apr 1→Jul 1 (91 d): 979,589×1200×91 + 150,000 = 106,971,268,800 / 3,650,000 = 29,307
         val jul1 = InterestEngine.accruePaiseTo(after, LocalDate.of(2026, 7, 1))
-        assertEquals(980_000L, jul1.outstandingPrincipalPaise)
-        assertEquals(29_400L, jul1.interestDuePaise)
+        assertEquals(979_589L, jul1.outstandingPrincipalPaise)
+        assertEquals(29_307L, jul1.interestDuePaise)
         // Same through replay and through InterestPolicy (lend + debt).
         val replay = InterestEngine.replayPaiseTo(compound(3), listOf(apr1 to 50_000L), LocalDate.of(2026, 7, 1))
         assertEquals(jul1.outstandingPrincipalPaise, replay.outstandingPrincipalPaise)
@@ -324,8 +329,8 @@ class InterestEngineV330Test {
             intType = "Compound Interest", compoundFrequency = "Quarterly")
         val bal = InterestPolicy.paiseBalancesForBorrower(b, "2026-07-01",
             listOf(Payment(id = "p", loanId = "L", name = "L", date = "2026-04-01", type = "Both", amount = 500.0)))
-        assertEquals(980_000L, bal.outstandingPrincipal)
-        assertEquals(29_400L, bal.interestDue)
+        assertEquals(979_589L, bal.outstandingPrincipal)
+        assertEquals(29_307L, bal.interestDue)
         val d = Debt(id = "D", name = "D", amount = 10_000.0, rate = 12.0, date = "2026-01-01",
             intType = "Compound Interest", compoundFrequency = "Quarterly")
         val dbal = InterestPolicy.paiseBalancesForDebt(d, "2026-07-01",
@@ -352,16 +357,17 @@ class InterestEngineV330Test {
         assertEquals(13_534L, st.interestDuePaise)
         assertEquals(14_794L + 13_534L, split.towardInterest + st.interestDuePaise) // = daily SI on actual balances
         st = InterestEngine.accruePaiseTo(st, LocalDate.of(2026, 7, 1))
-        // Q2 full quarter on principal + unpaid Q1 interest: 928,328×3600/120,000 = 27,849; Q1 capitalised
+        // Apr 1→Jul 1 (91 d) on principal + unpaid Q1 interest (rem 1,676,000):
+        //   928,328×1200×91 + 1,676,000 = 101,375,093,600 / 3,650,000 = 27,773; Q1 capitalised
         assertEquals(928_328L, st.outstandingPrincipalPaise)
-        assertEquals(27_849L, st.interestDuePaise)
+        assertEquals(27_773L, st.interestDuePaise)
 
         val payments = listOf(Payment(id = "p", loanId = "L", name = "L", date = "2026-02-15", type = "Both", amount = 1_000.0))
         val b = Borrower(id = "L", name = "L", amount = 10_000.0, rate = 12.0, date = "2026-01-01",
             intType = "Compound Interest", compoundFrequency = "Quarterly")
         val lb = InterestPolicy.paiseBalancesForBorrower(b, "2026-07-01", payments)
         assertEquals(928_328L, lb.outstandingPrincipal)
-        assertEquals(27_849L, lb.interestDue)
+        assertEquals(27_773L, lb.interestDue)
         val d = Debt(id = "D", name = "D", amount = 10_000.0, rate = 12.0, date = "2026-01-01",
             intType = "Compound Interest", compoundFrequency = "Quarterly")
         val db = InterestPolicy.paiseBalancesForDebt(d, "2026-07-01",
@@ -386,9 +392,10 @@ class InterestEngineV330Test {
         assertEquals(5_336L, feb1.interestDuePaise) // Jan 15→Feb 1: 17 d on 954,602 (not 9,546)
         // January total = 4,602 + 5,336 = 9,938 = daily SI on actual balances; nothing charged twice.
         val mar1 = InterestEngine.accruePaiseTo(feb1, LocalDate.of(2026, 3, 1))
-        // Feb full month on 954,602 + 5,336 = 959,938 → 959,938×1200/120,000 = 9,599; Jan interest capitalised
+        // Feb 1→Mar 1 (28 d) on 954,602 + 5,336 = 959,938 (rem 180,800):
+        //   959,938×1200×28 + 180,800 = 32,254,097,600 / 3,650,000 = 8,836; Jan interest capitalised
         assertEquals(959_938L, mar1.outstandingPrincipalPaise)
-        assertEquals(9_599L, mar1.interestDuePaise)
+        assertEquals(8_836L, mar1.interestDuePaise)
         // Second mid-period payment (Feb 10) that clears the pending Jan interest first.
         val feb10 = InterestEngine.accruePaiseTo(feb1, LocalDate.of(2026, 2, 10))
         val (afterPay2, split2) = InterestEngine.applyPaymentPaise(feb10, 20_000L)

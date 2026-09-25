@@ -267,7 +267,6 @@ object InterestEngine {
     }
 
     private const val PAISE_DAY_DENOM = 10000L * 365L
-    private const val PAISE_MONTH_DENOM = 12L * 10000L
 
     /** v3.3.0 — whole-rupee threshold for rounding write-off / rounding overpay. */
     const val ROUNDING_THRESHOLD_PAISE = 100L
@@ -528,22 +527,10 @@ object InterestEngine {
         var k = nextCompoundIndexPaise(s.startDate, s.lastAccrualDate, n)
         var anniversary = compoundDatePaise(s.startDate, k, n)
         while (!anniversary.isAfter(asOf)) {
-            val base = s.outstandingPrincipalPaise + s.pendingCapitalPaise
-            val periodStart = compoundDatePaise(s.startDate, k - 1, n)
-            if (s.lastAccrualDate == periodStart) {
-                // Untouched full period: period rate on the compounding base.
-                if (base > 0L && s.annualRateBps > 0) {
-                    val num = base * s.annualRateBps.toLong() * n + s.compoundRemainder
-                    s = s.copy(
-                        interestDuePaise = s.interestDuePaise + num / PAISE_MONTH_DENOM,
-                        compoundRemainder = num % PAISE_MONTH_DENOM,
-                    )
-                }
-            } else {
-                // Period already partly accrued (payment / earlier asOf): only the
-                // remaining days — never a full-period recharge.
-                s = accruePaiseCompoundStub(s, anniversary)
-            }
+            // Daily simple interest (365-day year) from the last event to this
+            // compounding date — same method whether or not a payment fell in the
+            // period, and never a full-period recharge.
+            s = accruePaiseCompoundStub(s, anniversary)
             // Capitalize unpaid interest from before the previous compounding date;
             // interest accrued in this period (unpaid) becomes the new pending part.
             s = s.copy(
