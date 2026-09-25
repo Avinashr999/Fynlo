@@ -45,8 +45,11 @@ fun AddLendingDialog(
 
     var selectedPerson by remember { mutableStateOf<Person?>(null) }
     var borrowerExpanded by remember { mutableStateOf(false) }
-    var amount by remember { mutableStateOf(initialBorrower?.amount?.takeIf { it > 0 }?.let { String.format(locale, "%.0f", it) } ?: "") }
-    var rate by remember { mutableStateOf(initialBorrower?.rate?.takeIf { it > 0 }?.let { String.format(locale, "%.0f", it) } ?: "") }
+    // v3.3.0: edit shows the exact stored amount/rate (no silent rounding on Save).
+    var amount by remember { mutableStateOf(CurrencyFormatter.plainInput(initialBorrower?.amount ?: 0.0)) }
+    var rate by remember { mutableStateOf(CurrencyFormatter.plainInput(initialBorrower?.rate ?: 0.0)) }
+    // New amounts are whole rupees; an old loan saved with paise stays editable as-is.
+    val amountAllowsPaise = remember { amount.contains('.') }
     var date by remember { mutableStateOf(initialBorrower?.date?.let { DateUtils.formatToDisplay(it) } ?: java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy"))) }
     var due by remember { mutableStateOf(initialBorrower?.due?.let { DateUtils.formatToDisplay(it) } ?: "") }
     var notes by remember { mutableStateOf(initialBorrower?.notes ?: "") }
@@ -102,27 +105,7 @@ fun AddLendingDialog(
                 Spacer(Modifier.height(16.dp))
 
                 // -- Amount hero -----------------------------------------------
-                Box(Modifier.fillMaxWidth(), Alignment.Center) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(CurrencyUtils.symbolFor(currencyCode), fontSize = 32.sp, fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Spacer(Modifier.width(6.dp))
-                        androidx.compose.foundation.text.BasicTextField(
-                            value = amount,
-                            onValueChange = { amount = it.filter { c -> c.isDigit() || c == '.' } },
-                            textStyle = TextStyle(fontSize = 40.sp, fontWeight = FontWeight.ExtraBold,
-                                color = MaterialTheme.colorScheme.onSurface, textAlign = TextAlign.Start),
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                            cursorBrush = SolidColor(Emerald500),
-                            singleLine = true,
-                            decorationBox = { inner ->
-                                if (amount.isBlank()) Text("0", fontSize = 40.sp, fontWeight = FontWeight.ExtraBold,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f))
-                                inner()
-                            }
-                        )
-                    }
-                }
+                AmountHero(amount, currencyCode, amountAllowsPaise) { amount = it }
                 Spacer(Modifier.height(24.dp))
 
                 // -- Borrower --------------------------------------------------
@@ -231,24 +214,6 @@ fun AddLendingDialog(
                 Spacer(Modifier.height(20.dp))
 
                 // -- Interest type ---------------------------------------------
-                // 3.2.26 - unified with DebtDialog's widget (audit consistency
-                // surfaced during C12 Stage 1 smoke). Was a `FlowRow<FilterChip>`
-                // Lean personal: all three methods free on lend (unlocked from Pro gate).
-                // Was previously: Simple always visible and a Pro-gated
-                // "Advanced options" TextButton that revealed Reducing / Compound
-                // / SI+CI chips. Now: a single `ExposedDropdownMenuBox` matching
-                // DebtDialog. Free vs Pro gating is preserved by varying the
-                // dropdown's options - free users see only "Simple Interest";
-                // Pro users see all 4. Eliminates the extra-tap "Advanced
-                // options" affordance for Pro users (they already paid for
-                // these options, no point hiding them) while still gating
-                // free-tier users from the engine's advanced modes.
-                //
-                // Edge case: if a free user has a borrower previously saved
-                // with an advanced type (Pro downgrade or admin override),
-                // the field still displays it correctly via `InterestEngine.label`,
-                // and the dropdown won't offer the advanced types - they
-                // can only switch back to Simple Interest from there.
                 Text("Interest type", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Spacer(Modifier.height(8.dp))
                 // Lean personal: Simple / Compound / Reducing free on lend (same as debt).
@@ -294,7 +259,7 @@ fun AddLendingDialog(
                 }
 
                 Spacer(Modifier.height(16.dp))
-                LendSoftField(rate, "Annual interest rate (%)", KeyboardType.Number) { rate = it }
+                LendSoftField(rate, "Annual interest rate (%)", KeyboardType.Decimal) { rate = decimalOnly(it) }
                 Spacer(Modifier.height(12.dp))
                 DatePickerField(value = date, onValueChange = { date = it }, label = "Lending date")
                 Spacer(Modifier.height(12.dp))
@@ -378,7 +343,7 @@ fun AddLendingDialog(
 }
 
 @Composable
-private fun LendSoftField(value: String, label: String, keyboard: KeyboardType, onChange: (String) -> Unit) {
+internal fun LendSoftField(value: String, label: String, keyboard: KeyboardType, onChange: (String) -> Unit) {
     OutlinedTextField(
         value = value,
         onValueChange = onChange,
@@ -396,4 +361,37 @@ private fun LendSoftField(value: String, label: String, keyboard: KeyboardType, 
             cursorColor = Emerald500
         )
     )
+}
+
+/** Digits with at most one decimal point (rates like 13.5). */
+internal fun decimalOnly(raw: String): String {
+    val kept = raw.filter { it.isDigit() || it == '.' }
+    val dot = kept.indexOf('.')
+    return if (dot < 0) kept else kept.substring(0, dot + 1) + kept.substring(dot + 1).replace(".", "")
+}
+
+/** Big centred amount entry shared by the new-loan and new-debt forms. */
+@Composable
+internal fun AmountHero(amount: String, currencyCode: String, allowPaise: Boolean, onChange: (String) -> Unit) {
+    Box(Modifier.fillMaxWidth(), Alignment.Center) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(CurrencyUtils.symbolFor(currencyCode), fontSize = 32.sp, fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(Modifier.width(6.dp))
+            androidx.compose.foundation.text.BasicTextField(
+                value = amount,
+                onValueChange = { onChange(if (allowPaise) decimalOnly(it) else it.filter { c -> c.isDigit() }) },
+                textStyle = TextStyle(fontSize = 40.sp, fontWeight = FontWeight.ExtraBold,
+                    color = MaterialTheme.colorScheme.onSurface, textAlign = TextAlign.Start),
+                keyboardOptions = KeyboardOptions(keyboardType = if (allowPaise) KeyboardType.Decimal else KeyboardType.Number),
+                cursorBrush = SolidColor(Emerald500),
+                singleLine = true,
+                decorationBox = { inner ->
+                    if (amount.isBlank()) Text("0", fontSize = 40.sp, fontWeight = FontWeight.ExtraBold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f))
+                    inner()
+                }
+            )
+        }
+    }
 }

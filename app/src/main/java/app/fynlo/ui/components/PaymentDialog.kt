@@ -116,10 +116,10 @@ fun CollectPaymentDialog(
         if (!usePaise || leanAmountPreset == null) return@LaunchedEffect
         when (leanAmountPreset) {
             "full" -> if (totalOutstanding > 0.0) {
-                amountStr = String.format(locale, "%.0f", totalOutstanding)
+                amountStr = CurrencyFormatter.wholeRupeesInput(totalOutstanding)
             }
             "interest" -> if (interestOutstanding > 0.0) {
-                amountStr = String.format(locale, "%.0f", interestOutstanding)
+                amountStr = CurrencyFormatter.wholeRupeesInput(interestOutstanding)
             }
         }
     }
@@ -188,12 +188,12 @@ fun CollectPaymentDialog(
                         if (borrower.rate > 0) {
                             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
                                 Text("Accrued interest", style = MaterialTheme.typography.bodySmall)
-                                Text(CurrencyFormatter.interest(accruedInterest, currencyCode, locale),
+                                Text(CurrencyFormatter.detail(accruedInterest, currencyCode, locale),
                                     style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold))
                             }
                             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
                                 Text("Interest collected", style = MaterialTheme.typography.bodySmall)
-                                Text(CurrencyFormatter.interest(interestBreakdown.paid, currencyCode, locale),
+                                Text(CurrencyFormatter.detail(interestBreakdown.paid, currencyCode, locale),
                                     style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
                                     color = Emerald500)
                             }
@@ -202,7 +202,7 @@ fun CollectPaymentDialog(
                                     if (usePaise) "Interest Due" else "Interest (${borrower.rate}% ${InterestEngine.label(borrower.intType)})",
                                     style = MaterialTheme.typography.bodySmall,
                                 )
-                                Text(CurrencyFormatter.interest(interestOutstanding, currencyCode, locale),
+                                Text(CurrencyFormatter.detail(interestOutstanding, currencyCode, locale),
                                     style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
                                     color = SemanticAmber)
                             }
@@ -210,7 +210,7 @@ fun CollectPaymentDialog(
                                 Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
                                     Text("Reduced / waived", style = MaterialTheme.typography.bodySmall)
                                     Text(
-                                        "-${CurrencyFormatter.interest(borrower.interestWaived, currencyCode, locale)}",
+                                        "-${CurrencyFormatter.detail(borrower.interestWaived, currencyCode, locale)}",
                                         style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
                                         color = MaterialTheme.colorScheme.primary
                                     )
@@ -218,7 +218,7 @@ fun CollectPaymentDialog(
                             }
                             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
                                 Text("Paid ahead", style = MaterialTheme.typography.bodySmall)
-                                Text(CurrencyFormatter.interest(interestBreakdown.paidAhead, currencyCode, locale),
+                                Text(CurrencyFormatter.detail(interestBreakdown.paidAhead, currencyCode, locale),
                                     style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
                                     color = Emerald500)
                             }
@@ -248,9 +248,9 @@ fun CollectPaymentDialog(
                         onClick = {
                             if (usePaise) {
                                 leanAmountPreset = "interest"
-                                amountStr = String.format(locale, "%.0f", interestOutstanding)
+                                amountStr = CurrencyFormatter.wholeRupeesInput(interestOutstanding)
                             } else {
-                                interestStr  = String.format(locale, "%.0f", interestOutstanding)
+                                interestStr  = CurrencyFormatter.wholeRupeesInput(interestOutstanding)
                                 principalStr = ""
                             }
                         },
@@ -259,7 +259,7 @@ fun CollectPaymentDialog(
                     ) {
                         Icon(Icons.Default.AutoAwesome, null, Modifier.size(16.dp))
                         Spacer(Modifier.width(6.dp))
-                        Text("Interest Only - ${CurrencyFormatter.interest(interestOutstanding, currencyCode, locale)}")
+                        Text("Interest Only - ${CurrencyFormatter.detail(interestOutstanding, currencyCode, locale)}")
                     }
                     Spacer(Modifier.height(4.dp))
                 }
@@ -269,10 +269,10 @@ fun CollectPaymentDialog(
                         onClick = {
                             if (usePaise) {
                                 leanAmountPreset = "full"
-                                amountStr = String.format(locale, "%.0f", totalOutstanding)
+                                amountStr = CurrencyFormatter.wholeRupeesInput(totalOutstanding)
                             } else {
-                                interestStr  = String.format(locale, "%.0f", interestOutstanding)
-                                principalStr = String.format(locale, "%.0f", principalOutstanding)
+                                interestStr  = CurrencyFormatter.wholeRupeesInput(interestOutstanding)
+                                principalStr = CurrencyFormatter.wholeRupeesInput(principalOutstanding)
                             }
                         },
                         modifier = Modifier.fillMaxWidth(),
@@ -298,7 +298,7 @@ fun CollectPaymentDialog(
                         value = amountStr,
                         onValueChange = {
                             leanAmountPreset = null
-                            amountStr = it
+                            amountStr = it.filter { c -> c.isDigit() } // whole rupees only
                         },
                         label = { Text("Amount") },
                         placeholder = { Text("0") },
@@ -368,7 +368,7 @@ fun CollectPaymentDialog(
                             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
                                 Text("Toward interest", style = MaterialTheme.typography.bodySmall)
                                 Text(
-                                    CurrencyFormatter.interest(InterestEngine.paiseToRupees(split.towardInterest), currencyCode, locale),
+                                    CurrencyFormatter.detail(InterestEngine.paiseToRupees(split.towardInterest), currencyCode, locale),
                                     style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
                                     color = SemanticAmber,
                                 )
@@ -512,7 +512,7 @@ fun CollectPaymentDialog(
                             val finalPrincipal = split?.let { InterestEngine.paiseToRupees(it.towardPrincipal) } ?: principalVal
                             val finalInterest = split?.let { InterestEngine.paiseToRupees(it.towardInterest) } ?: interestVal
                             val penaltyNote = if (split != null && split.penaltyPaise > 0L) {
-                                "Penalty on this account ${InterestEngine.paiseToRupees(split.penaltyPaise)}"
+                                "Penalty on this account ${CurrencyFormatter.detail(InterestEngine.paiseToRupees(split.penaltyPaise), currencyCode, locale)}"
                             } else null
                             val finalNotes = when {
                                 penaltyNote == null -> notes
@@ -620,10 +620,10 @@ fun PayDebtDialog(
         if (!usePaise || leanAmountPreset == null) return@LaunchedEffect
         when (leanAmountPreset) {
             "full" -> if (totalOutstanding > 0.0) {
-                amountStr = String.format(locale, "%.0f", totalOutstanding)
+                amountStr = CurrencyFormatter.wholeRupeesInput(totalOutstanding)
             }
             "interest" -> if (interestOutstanding > 0.0) {
-                amountStr = String.format(locale, "%.0f", interestOutstanding)
+                amountStr = CurrencyFormatter.wholeRupeesInput(interestOutstanding)
             }
         }
     }
@@ -687,12 +687,12 @@ fun PayDebtDialog(
                         if (debt.rate > 0) {
                             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
                                 Text("Accrued interest", style = MaterialTheme.typography.bodySmall)
-                                Text(CurrencyFormatter.interest(accruedInterest, currencyCode, locale),
+                                Text(CurrencyFormatter.detail(accruedInterest, currencyCode, locale),
                                     style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold))
                             }
                             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
                                 Text("Interest paid", style = MaterialTheme.typography.bodySmall)
-                                Text(CurrencyFormatter.interest(interestBreakdown.paid, currencyCode, locale),
+                                Text(CurrencyFormatter.detail(interestBreakdown.paid, currencyCode, locale),
                                     style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
                                     color = MaterialTheme.colorScheme.error)
                             }
@@ -701,7 +701,7 @@ fun PayDebtDialog(
                                     if (usePaise) "Interest Due" else "Interest (${debt.rate}%)",
                                     style = MaterialTheme.typography.bodySmall,
                                 )
-                                Text(CurrencyFormatter.interest(interestOutstanding, currencyCode, locale),
+                                Text(CurrencyFormatter.detail(interestOutstanding, currencyCode, locale),
                                     style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
                                     color = MaterialTheme.colorScheme.error)
                             }
@@ -709,7 +709,7 @@ fun PayDebtDialog(
                                 Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
                                     Text("Reduced / waived", style = MaterialTheme.typography.bodySmall)
                                     Text(
-                                        "-${CurrencyFormatter.interest(debt.interestWaived, currencyCode, locale)}",
+                                        "-${CurrencyFormatter.detail(debt.interestWaived, currencyCode, locale)}",
                                         style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
                                         color = MaterialTheme.colorScheme.primary
                                     )
@@ -717,7 +717,7 @@ fun PayDebtDialog(
                             }
                             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
                                 Text("Paid ahead", style = MaterialTheme.typography.bodySmall)
-                                Text(CurrencyFormatter.interest(interestBreakdown.paidAhead, currencyCode, locale),
+                                Text(CurrencyFormatter.detail(interestBreakdown.paidAhead, currencyCode, locale),
                                     style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
                                     color = Emerald500)
                             }
@@ -744,14 +744,14 @@ fun PayDebtDialog(
                     Button(onClick = {
                         if (usePaise) {
                             leanAmountPreset = "interest"
-                            amountStr = String.format(locale, "%.0f", interestOutstanding)
+                            amountStr = CurrencyFormatter.wholeRupeesInput(interestOutstanding)
                         } else {
-                            interestStr = String.format(locale, "%.0f", interestOutstanding); principalStr = ""
+                            interestStr = CurrencyFormatter.wholeRupeesInput(interestOutstanding); principalStr = ""
                         }
                     }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(10.dp)) {
                         Icon(Icons.Default.AutoAwesome, null, Modifier.size(16.dp))
                         Spacer(Modifier.width(6.dp))
-                        Text("Interest Only - ${CurrencyFormatter.interest(interestOutstanding, currencyCode, locale)}")
+                        Text("Interest Only - ${CurrencyFormatter.detail(interestOutstanding, currencyCode, locale)}")
                     }
                     Spacer(Modifier.height(4.dp))
                 }
@@ -760,10 +760,10 @@ fun PayDebtDialog(
                     Button(onClick = {
                         if (usePaise) {
                             leanAmountPreset = "full"
-                            amountStr = String.format(locale, "%.0f", totalOutstanding)
+                            amountStr = CurrencyFormatter.wholeRupeesInput(totalOutstanding)
                         } else {
-                            interestStr  = String.format(locale, "%.0f", interestOutstanding)
-                            principalStr = String.format(locale, "%.0f", principalOutstanding)
+                            interestStr  = CurrencyFormatter.wholeRupeesInput(interestOutstanding)
+                            principalStr = CurrencyFormatter.wholeRupeesInput(principalOutstanding)
                         }
                     }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(10.dp),
                     colors = ButtonDefaults.filledTonalButtonColors(containerColor = Emerald500.copy(alpha = 0.15f))) {
@@ -787,7 +787,7 @@ fun PayDebtDialog(
                         value = amountStr,
                         onValueChange = {
                             leanAmountPreset = null
-                            amountStr = it
+                            amountStr = it.filter { c -> c.isDigit() } // whole rupees only
                         },
                         label = { Text("Amount") },
                         placeholder = { Text("0") },
@@ -839,7 +839,7 @@ fun PayDebtDialog(
                             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
                                 Text("Toward interest", style = MaterialTheme.typography.bodySmall)
                                 Text(
-                                    CurrencyFormatter.interest(InterestEngine.paiseToRupees(split.towardInterest), currencyCode, locale),
+                                    CurrencyFormatter.detail(InterestEngine.paiseToRupees(split.towardInterest), currencyCode, locale),
                                     style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
                                 )
                             }
@@ -971,7 +971,7 @@ fun PayDebtDialog(
                             val finalPrincipal = split?.let { InterestEngine.paiseToRupees(it.towardPrincipal) } ?: principalVal
                             val finalInterest = split?.let { InterestEngine.paiseToRupees(it.towardInterest) } ?: interestVal
                             val penaltyNote = if (split != null && split.penaltyPaise > 0L) {
-                                "Penalty on this account ${InterestEngine.paiseToRupees(split.penaltyPaise)}"
+                                "Penalty on this account ${CurrencyFormatter.detail(InterestEngine.paiseToRupees(split.penaltyPaise), currencyCode, locale)}"
                             } else null
                             val finalNotes = when {
                                 penaltyNote == null -> notes
@@ -1082,17 +1082,17 @@ private fun InterestImpactPreview(
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
                 Text("Interest built up", style = MaterialTheme.typography.labelSmall)
-                Text(CurrencyFormatter.interest(accrued, currencyCode, locale), style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold))
+                Text(CurrencyFormatter.detail(accrued, currencyCode, locale), style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold))
             }
             if (affectsCurrentPeriod) {
                 Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
                     Text("Interest due after save", style = MaterialTheme.typography.labelSmall)
-                    Text(CurrencyFormatter.interest(dueAfter, currencyCode, locale), style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold))
+                    Text(CurrencyFormatter.detail(dueAfter, currencyCode, locale), style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold))
                 }
                 if (paidAheadAfter > 0.01) {
                     Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
                         Text("Paid ahead after save", style = MaterialTheme.typography.labelSmall)
-                        Text(CurrencyFormatter.interest(paidAheadAfter, currencyCode, locale), style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold), color = Emerald500)
+                        Text(CurrencyFormatter.detail(paidAheadAfter, currencyCode, locale), style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold), color = Emerald500)
                     }
                 }
             } else {
@@ -1139,11 +1139,12 @@ fun WaiveInterestDialog(
     currencyCode: String = "INR",
 ) {
     val locale = LocalLocale.current.platformLocale
-    var amountText by remember(maxWaivable) { mutableStateOf(String.format(locale, "%.0f", maxWaivable)) }
+    var amountText by remember(maxWaivable) { mutableStateOf(CurrencyFormatter.wholeRupeesInput(maxWaivable)) }
     var reason by remember { mutableStateOf("Grace period waived") }
     var submitting by remember { mutableStateOf(false) }
     val amount = amountText.toDoubleOrNull() ?: 0.0
-    val isValid = amount > 0.0 && amount <= maxWaivable
+    // Whole-rupee entry: allow up to the rounded-up rupee; confirm clamps to the exact max.
+    val isValid = amount > 0.0 && amount <= kotlin.math.ceil(maxWaivable)
 
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Surface(
@@ -1165,7 +1166,7 @@ fun WaiveInterestDialog(
                     Column(Modifier.padding(14.dp)) {
                         Text("Available to waive", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Text(
-                            CurrencyFormatter.interest(maxWaivable, currencyCode, locale),
+                            CurrencyFormatter.detail(maxWaivable, currencyCode, locale),
                             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                             color = Emerald500,
                         )
@@ -1206,7 +1207,7 @@ fun WaiveInterestDialog(
                         onClick = {
                             if (submitting || !isValid) return@Button
                             submitting = true
-                            onConfirm(amount, reason)
+                            onConfirm(amount.coerceAtMost(maxWaivable), reason)
                         },
                         enabled = isValid && !submitting,
                         shape = RoundedCornerShape(14.dp),

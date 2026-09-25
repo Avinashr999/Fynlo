@@ -154,6 +154,26 @@ object CurrencyFormatter {
     fun input(amount: Double): String =
         if (amount.isFinite()) amount.toLong().toString() else "0"
 
+    /**
+     * v3.3.0 lending: whole-rupee Amount prefill (Full Settlement, Interest Only, waive).
+     * Rounds half-up to the nearest rupee, same rule as the on-screen [hero] display,
+     * and never uses locale digits so the field always parses back.
+     */
+    fun wholeRupeesInput(amount: Double): String =
+        if (amount.isFinite()) roundHalfUp(amount).toLong().toString() else "0"
+
+    /**
+     * Plain editable form of a stored value (loan amount / rate on edit): exact, no grouping,
+     * no trailing zeros. `13.5` stays `13.5`, `10000.0` becomes `10000`.
+     */
+    fun plainInput(value: Double): String {
+        if (!value.isFinite() || value == 0.0) return ""
+        return java.math.BigDecimal.valueOf(value).stripTrailingZeros().toPlainString()
+    }
+
+    private fun roundHalfUp(value: Double): Double =
+        java.math.BigDecimal.valueOf(value).setScale(0, java.math.RoundingMode.HALF_UP).toDouble()
+
     // ── Negative (explicit en-dash prefix on absolute value) ──────────────
 
     fun negative(
@@ -223,7 +243,9 @@ object CurrencyFormatter {
      *   - 1_00_00_00_000  → `1,00,00,00,000`
      */
     private fun formatLakhCrore(absAmount: Double, decimals: Int): String {
-        val rounded = kotlin.math.round(absAmount * pow10(decimals)) / pow10(decimals)
+        // Half-up (not banker's) so ₹98.50 shows ₹99, matching the whole-rupee Amount prefill.
+        val rounded = java.math.BigDecimal.valueOf(absAmount)
+            .setScale(decimals, java.math.RoundingMode.HALF_UP).toDouble()
         val integerPart = rounded.toLong()
         val intStr = integerPart.toString()
         val grouped = if (intStr.length <= 3) {

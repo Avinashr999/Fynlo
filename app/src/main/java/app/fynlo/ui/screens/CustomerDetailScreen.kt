@@ -76,7 +76,7 @@ val borrowers by viewModel.borrowers.collectAsState()
 
     if (borrower == null) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text("Customer not found")
+            Text("Contact not found")
         }
         return
     }
@@ -480,7 +480,7 @@ val borrowers by viewModel.borrowers.collectAsState()
                             if (usePaise) "Principal remaining" else "Principal Outstanding",
                             CurrencyFormatter.detail(principalOutstanding, currencyCode, locale),
                         )
-                        DetailItem("Interest Due", CurrencyFormatter.interest(interestOutstanding, currencyCode, locale))
+                        DetailItem("Interest Due", CurrencyFormatter.detail(interestOutstanding, currencyCode, locale))
                         DetailItem(
                             if (usePaise && totalOutstanding <= 0.0) "Paid in full" else "Total Receivable",
                             if (usePaise && totalOutstanding <= 0.0) ""
@@ -491,12 +491,12 @@ val borrowers by viewModel.borrowers.collectAsState()
                         Spacer(Modifier.height(8.dp))
                         Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                             Text(
-                                "Interest before reduction: ${CurrencyFormatter.interest(interest, currencyCode, locale)}",
+                                "Interest before reduction: ${CurrencyFormatter.detail(interest, currencyCode, locale)}",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                             Text(
-                                "Reduced / waived: -${CurrencyFormatter.interest(borrower.interestWaived, currencyCode, locale)}",
+                                "Reduced / waived: -${CurrencyFormatter.detail(borrower.interestWaived, currencyCode, locale)}",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.primary,
                             )
@@ -507,7 +507,7 @@ val borrowers by viewModel.borrowers.collectAsState()
                         InterestPaidAheadNotice(
                             title = "Interest paid ahead",
                             body = "Interest due is zero for now because extra interest was already collected. Interest will continue adding from the loan date.",
-                            advance = CurrencyFormatter.interest(advanceInterest, currencyCode, locale),
+                            advance = CurrencyFormatter.detail(advanceInterest, currencyCode, locale),
                         )
                     }
                     Spacer(Modifier.height(12.dp))
@@ -927,7 +927,7 @@ fun paymentHistoryDetails(
         parts += "${if (isDebt) "Principal paid" else "Principal collected"} ${CurrencyFormatter.detail(principal, currencyCode, locale)}"
     }
     if (interest > 0.01) {
-        parts += "${if (isDebt) "Interest paid" else "Interest collected"} ${CurrencyFormatter.interest(interest, currencyCode, locale)}"
+        parts += "${if (isDebt) "Interest paid" else "Interest collected"} ${CurrencyFormatter.detail(interest, currencyCode, locale)}"
     }
     if (parts.isNotEmpty()) add(parts.joinToString(" * "))
 

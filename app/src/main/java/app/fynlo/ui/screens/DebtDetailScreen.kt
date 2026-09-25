@@ -248,7 +248,7 @@ fun DebtDetailScreen(
                         )
                         DetailItem(
                             if (usePaise) "Interest Due" else "Interest Payable",
-                            CurrencyFormatter.interest(interestOutstanding, currencyCode, locale),
+                            CurrencyFormatter.detail(interestOutstanding, currencyCode, locale),
                         )
                         DetailItem(
                             if (usePaise && totalOutstanding <= 0.0) "Paid in full" else "Total Payable",
@@ -260,12 +260,12 @@ fun DebtDetailScreen(
                         Spacer(Modifier.height(8.dp))
                         Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                             Text(
-                                "Interest before reduction: ${CurrencyFormatter.interest(interest, currencyCode, locale)}",
+                                "Interest before reduction: ${CurrencyFormatter.detail(interest, currencyCode, locale)}",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                             Text(
-                                "Reduced / waived: -${CurrencyFormatter.interest(debt.interestWaived, currencyCode, locale)}",
+                                "Reduced / waived: -${CurrencyFormatter.detail(debt.interestWaived, currencyCode, locale)}",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.primary,
                             )
@@ -276,7 +276,7 @@ fun DebtDetailScreen(
                         InterestPaidAheadNotice(
                             title = "Interest paid ahead",
                             body = "Interest payable is zero for now because extra interest was already paid. Interest will continue adding from the debt date.",
-                            advance = CurrencyFormatter.interest(advanceInterest, currencyCode, locale),
+                            advance = CurrencyFormatter.detail(advanceInterest, currencyCode, locale),
                         )
                     }
                     if (receivedInto.isNotBlank() || debt.notes.isNotBlank()) {
@@ -703,7 +703,7 @@ private fun WhatIfSection(
         Column(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text("What if I pay extra-",
+                    Text("What if I pay extra?",
                         style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold))
                     Text("See months saved + interest saved at a higher monthly pace.",
                         style = MaterialTheme.typography.labelSmall,

@@ -115,6 +115,25 @@ class InterestEngineTest {
         assertEquals("₹0.49", CurrencyFormatter.interest(0.493, "INR", java.util.Locale.forLanguageTag("en-IN")))
     }
 
+    // v3.3.0 whole-rupee lending display and Amount prefill (half-up, consistent).
+    @Test fun `whole rupee prefill rounds half up`() {
+        assertEquals("99", CurrencyFormatter.wholeRupeesInput(98.63))
+        assertEquals("99", CurrencyFormatter.wholeRupeesInput(98.5))
+        assertEquals("98", CurrencyFormatter.wholeRupeesInput(98.49))
+        assertEquals("10099", CurrencyFormatter.wholeRupeesInput(10098.63))
+    }
+    @Test fun `whole rupee display matches prefill`() {
+        val inLocale = java.util.Locale.forLanguageTag("en-IN")
+        assertEquals("₹99", CurrencyFormatter.detail(98.5, "INR", inLocale))
+        assertEquals("₹10,099", CurrencyFormatter.detail(10098.63, "INR", inLocale))
+    }
+    @Test fun `edit prefill keeps exact stored values`() {
+        assertEquals("13.5", CurrencyFormatter.plainInput(13.5))
+        assertEquals("10000", CurrencyFormatter.plainInput(10000.0))
+        assertEquals("10000.5", CurrencyFormatter.plainInput(10000.5))
+        assertEquals("", CurrencyFormatter.plainInput(0.0))
+    }
+
     @Test fun `outstanding principal plus interest minus paid`() = assertEquals(6200.0, InterestEngine.calcOutstanding(10000.0, 1200.0, 5000.0), 0.0)
     @Test fun `outstanding never below 0`() = assertEquals(0.0, InterestEngine.calcOutstanding(10000.0, 500.0, 20000.0), 0.0)
     @Test fun `outstanding fully paid is 0`() = assertEquals(0.0, InterestEngine.calcOutstanding(10000.0, 1200.0, 11200.0), 0.0)
