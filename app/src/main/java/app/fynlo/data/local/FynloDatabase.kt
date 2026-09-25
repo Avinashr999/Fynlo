@@ -31,11 +31,28 @@ import app.fynlo.data.model.FlowTemplate
         ProofAttachment::class,
         SyncConflict::class
     ],
-    version = 31,
+    version = 32,
     exportSchema = true
 )
 abstract class FynloDatabase : RoomDatabase() {
     abstract fun dao(): FynloDao
+}
+/**
+ * v3.3.0 — additive only (ALTER TABLE ADD COLUMN, no rewrites, no deletes):
+ *  - borrowers.compoundFrequency / debts.compoundFrequency (default 'Monthly'
+ *    = the pre-3.3.0 compound behaviour, so existing loans are unchanged)
+ *  - payments.penaltyPaise / debt_payments.penaltyPaise (default 0)
+ *  - payments.roundingPaise / debt_payments.roundingPaise (signed, default 0)
+ */
+val MIGRATION_31_32 = object : Migration(31, 32) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE `borrowers` ADD COLUMN `compoundFrequency` TEXT NOT NULL DEFAULT 'Monthly'")
+        db.execSQL("ALTER TABLE `debts` ADD COLUMN `compoundFrequency` TEXT NOT NULL DEFAULT 'Monthly'")
+        db.execSQL("ALTER TABLE `payments` ADD COLUMN `penaltyPaise` INTEGER NOT NULL DEFAULT 0")
+        db.execSQL("ALTER TABLE `debt_payments` ADD COLUMN `penaltyPaise` INTEGER NOT NULL DEFAULT 0")
+        db.execSQL("ALTER TABLE `payments` ADD COLUMN `roundingPaise` INTEGER NOT NULL DEFAULT 0")
+        db.execSQL("ALTER TABLE `debt_payments` ADD COLUMN `roundingPaise` INTEGER NOT NULL DEFAULT 0")
+    }
 }
 val MIGRATION_30_31 = object : Migration(30, 31) {
     override fun migrate(db: SupportSQLiteDatabase) {

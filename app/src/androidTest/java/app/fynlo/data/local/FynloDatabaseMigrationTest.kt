@@ -1079,6 +1079,73 @@ class FynloDatabaseMigrationTest {
         }
     }
 
+    /**
+     * v3.3.0 — 31 → 32 is ADD COLUMN only. Every borrower / debt / payment /
+     * debt_payment row survives unchanged; new columns take their defaults
+     * (compoundFrequency 'Monthly', penaltyPaise 0, roundingPaise 0).
+     */
+    @Test
+    @Throws(IOException::class)
+    fun migrate31to32_keepsAllRowsAndAddsDefaults() {
+        helper.createDatabase(TEST_DB, 31).apply {
+            for (n in 1..3) {
+                execSQL("""
+                    INSERT INTO borrowers (id,name,phone,peopleId,address,guarantor,amount,rate,date,due,tenure,type,
+                        paid,paidPrincipal,paidInterest,interestWaived,status,defaultDate,frozenInterest,sourceAccount,
+                        stopInterestAfterDue,notes,projectId,updatedAt,createdAt)
+                    VALUES ('b$n','B$n','','','','',${n}000.0,12.0,'2026-01-01','',0,'Compound Interest',
+                        10.0,7.0,3.0,0.0,'Active','',0.0,'',0,'n$n','personal',$n,$n)
+                """.trimIndent())
+                execSQL("""
+                    INSERT INTO debts (id,name,phone,peopleId,type,amount,rate,date,due,tenure,intType,paid,
+                        paidPrincipal,paidInterest,interestWaived,status,stopInterestAfterDue,collateral,notes,
+                        projectId,updatedAt,createdAt)
+                    VALUES ('d$n','D$n','','','Bank',${n}000.0,10.0,'2026-01-01','',0,'Reducing Balance',
+                        0.0,0.0,0.0,0.0,'Active',0,'','','personal',$n,$n)
+                """.trimIndent())
+                execSQL("""
+                    INSERT INTO payments (id,loanId,name,date,type,amount,principal,interest,interestPeriodStartDate,
+                        interestPeriodEndDate,interestAllocationType,mode,notes,projectId,updatedAt,createdAt)
+                    VALUES ('p$n','b$n','B$n','2026-02-01','Both',10.0,7.0,3.0,'','','CURRENT_PERIOD_INTEREST',
+                        '','','personal',$n,$n)
+                """.trimIndent())
+                execSQL("""
+                    INSERT INTO debt_payments (id,debtId,name,date,type,amount,principal,interest,interestPeriodStartDate,
+                        interestPeriodEndDate,interestAllocationType,mode,notes,projectId,updatedAt,createdAt)
+                    VALUES ('q$n','d$n','D$n','2026-02-01','Both',5.0,5.0,0.0,'','','PRINCIPAL_REPAYMENT',
+                        '','','personal',$n,$n)
+                """.trimIndent())
+            }
+            close()
+        }
+
+        val db = helper.runMigrationsAndValidate(TEST_DB, 32, true, MIGRATION_31_32)
+
+        for ((table, col, expected) in listOf(
+            Triple("borrowers", "compoundFrequency", "Monthly"),
+            Triple("debts", "compoundFrequency", "Monthly"),
+        )) {
+            db.query("SELECT COUNT(*), SUM($col = '$expected') FROM $table").use { c ->
+                assertTrue(c.moveToFirst())
+                assertEquals(3, c.getInt(0))
+                assertEquals(3, c.getInt(1))
+            }
+        }
+        for (table in listOf("payments", "debt_payments")) {
+            db.query("SELECT COUNT(*), SUM(penaltyPaise = 0 AND roundingPaise = 0), SUM(amount) FROM $table").use { c ->
+                assertTrue(c.moveToFirst())
+                assertEquals(3, c.getInt(0))
+                assertEquals(3, c.getInt(1))
+                assertEquals(if (table == "payments") 30.0 else 15.0, c.getDouble(2), 0.0)
+            }
+        }
+        db.query("SELECT paidPrincipal, notes FROM borrowers WHERE id = 'b2'").use { c ->
+            assertTrue(c.moveToFirst())
+            assertEquals(7.0, c.getDouble(0), 0.0)
+            assertEquals("n2", c.getString(1))
+        }
+    }
+
     @After
     @Throws(IOException::class)
     fun tearDown() {
