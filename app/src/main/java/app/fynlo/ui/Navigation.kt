@@ -41,7 +41,6 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.dp
-import androidx.core.net.toUri
 import app.fynlo.billing.BillingManager
 import app.fynlo.data.AuthManager
 import app.fynlo.logic.toRecurringTemplate
@@ -230,10 +229,7 @@ fun MainNavigation(viewModel: FinanceViewModel) {
     }
 
     val syncStatus by viewModel.syncStatus.collectAsState()
-    val transactionsForReview by viewModel.transactions.collectAsState()
-    val hasRatedApp by UserPreferences.reviewPromptRated(context).collectAsState(initial = false)
-    val reviewLastShownAt by UserPreferences.reviewPromptLastShownAt(context).collectAsState(initial = 0L)
-    var showReviewPrompt by remember { mutableStateOf(false) }
+    val existingTransactionsForDialog by viewModel.transactions.collectAsState()
     var startupSyncStartedFeedbackShown by remember { mutableStateOf(false) }
     var startupSyncFinishedFeedbackShown by remember { mutableStateOf(false) }
 
@@ -266,36 +262,6 @@ fun MainNavigation(viewModel: FinanceViewModel) {
                 }
             }
         }
-    }
-
-    LaunchedEffect(transactionsForReview.size, hasRatedApp, reviewLastShownAt, isLoggedIn, isPinUnlocked) {
-        val now = System.currentTimeMillis()
-        val cooldownMs = 7L * 24L * 60L * 60L * 1000L
-        if (
-            isLoggedIn &&
-            isPinUnlocked &&
-            !hasRatedApp &&
-            transactionsForReview.size >= 8 &&
-            now - reviewLastShownAt > cooldownMs
-        ) {
-            showReviewPrompt = true
-        }
-    }
-
-    if (showReviewPrompt) {
-        FynloReviewDialog(
-            onDismiss = {
-                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                showReviewPrompt = false
-                scope.launch { UserPreferences.remindReviewPromptLater(context) }
-            },
-            onRateNow = {
-                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                showReviewPrompt = false
-                scope.launch { UserPreferences.markReviewPromptRated(context) }
-                openPlayStore(context)
-            },
-        )
     }
 
     if (!isLoggedIn) {
@@ -340,7 +306,7 @@ fun MainNavigation(viewModel: FinanceViewModel) {
             bankAccounts    = navAccounts.map { it.name },
             investmentNames = allInvestments.map { it.name },
             debtNames       = navDebts.map { it.name },
-            existingTransactions = transactionsForReview,
+            existingTransactions = existingTransactionsForDialog,
         )
     }
     
@@ -1325,37 +1291,4 @@ fun DrawerDivider() {
         thickness = 0.5.dp,
         color     = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f)
     )
-}
-
-@Composable
-private fun FynloReviewDialog(
-    onDismiss: () -> Unit,
-    onRateNow: () -> Unit,
-) {
-    FynloConfirmDialog(
-        title = "Enjoying Fynlo Ledger?",
-        message = "A quick Play Store review helps other people find Fynlo Ledger and tells us what to polish next.",
-        confirmText = "Rate now",
-        dismissText = "Remind me later",
-        onDismiss = onDismiss,
-        onConfirm = onRateNow,
-    )
-}
-
-private fun openPlayStore(context: android.content.Context) {
-    try {
-        context.startActivity(
-            android.content.Intent(
-                android.content.Intent.ACTION_VIEW,
-                "market://details?id=${context.packageName}".toUri(),
-            ).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
-        )
-    } catch (_: Exception) {
-        context.startActivity(
-            android.content.Intent(
-                android.content.Intent.ACTION_VIEW,
-                "https://play.google.com/store/apps/details?id=${context.packageName}".toUri(),
-            ).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
-        )
-    }
 }

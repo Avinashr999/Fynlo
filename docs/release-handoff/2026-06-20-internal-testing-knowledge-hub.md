@@ -1582,3 +1582,9 @@ Phone smoke still recommended before a new AAB:
 - Read-only stale dump audit was run because no phone was connected: aggregate borrower/debt payment rows matched stored principal/interest in the available dump; six old investment info rows lacked account trail fields and should be treated as historical money-trail clarity evidence until the live phone DB is re-audited.
 - No database migration, no account balance mutation, no Firestore repair, no phone install, no release AAB, and no Play Console action in this pass.
 - Verification passed: `:app:compileProdDebugKotlin` and full `:app:testProdDebugUnitTest` with 521 tests.
+
+### 2026-09-25 - 3.3.2 personal-mode cleanup
+- Removed public Play Store rating surfaces from normal use: the automatic review prompt and the Settings `Rate on Play Store` row are gone.
+- Added `scripts/read-only-ledger-audit.ps1` for the next phone-connected pass. It copies the phone DB and audits the copy only; it does not repair or mutate live app data.
+- Version bumped to `versionName 3.3.2`, `versionCode 242`.
+- No database migration, no account balance mutation, no Firestore repair, no phone install, no release AAB, and no Play Console action in this pass.

@@ -2373,3 +2373,9 @@ The user approved the combined future roadmap below. Do not treat these as compl
 - Updated interest regression tests to lock the new policy. Example: Rs. 1,00,000 at 18% from 28-06-2025 through 28-06-2026 now accrues Rs. 18,049.315... because the final date is counted.
 - Bumped app version to `3.3.1` / `versionCode 241` because interest behavior changed.
 - No database migration, no account balance mutation, no Firestore repair, no phone install, and no AAB in this pass.
+
+### 2026-09-25 - Personal Mode Public-Noise Cleanup
+- Removed the automatic Play Store review prompt and the Settings `Rate on Play Store` row. This aligns the app with the owner's private lifetime-ledger direction and removes public-growth nudges from normal use.
+- Added `scripts/read-only-ledger-audit.ps1`, a copy-only phone DB audit helper for the next device-connected pass. It checks borrower/debt aggregate mismatches, zero-value investments, linked-debt integrity, weak account trails, and open sync conflicts from a copied SQLite database.
+- Bumped app version to `3.3.2` / `versionCode 242` because visible app behavior changed.
+- Scope: personal-mode UI cleanup and audit tooling only. No database migration, no account balance mutation, no Firestore repair, no interest logic change, no phone install, and no release AAB in this pass.

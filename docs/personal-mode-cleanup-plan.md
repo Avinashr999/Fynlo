@@ -66,10 +66,15 @@ These protect lifetime data and are still useful for a personal ledger.
 
 ## Current Cleanup Candidates
 
-- Remove or hide Play Store review prompt copy from normal personal use.
+- Remove or hide Play Store review prompt copy from normal personal use. Done in 3.3.2: automatic review prompts and the Settings Play Store rating row were removed.
 - Keep onboarding short: local ledger, cloud backup, PIN.
 - Keep Dashboard focused on totals, cloud state, Book Check if action exists, and quick actions.
 - Move long Book Check explanations into item details.
 - Keep About screen personal, not promotional.
 - Ensure all warnings use plain language and one next action.
 
+## Audit Helper
+
+- Added `scripts/read-only-ledger-audit.ps1` for future phone-connected checks. It copies the app database to `.codex-db-dumps/` and audits the copy in read-only SQLite mode.
+- The script reports borrower/debt aggregate mismatches, zero-value investments, missing linked debts, weak account trail rows, and open sync conflicts.
+- It must not be treated as a repair script. It does not write to the phone database.

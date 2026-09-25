@@ -38,7 +38,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import androidx.core.net.toUri
 import app.fynlo.FinanceViewModel
 import app.fynlo.data.UserPreferences
 import app.fynlo.logic.CurrencyFormatter
@@ -1465,33 +1464,6 @@ fun SettingsScreen(
                 title    = "Report a Bug",
                 subtitle = "In-app form with device info and reference ID"
             ) { showBugDialog = true }
-            // C18 fix #5 (3.2.20) - Rate-on-Play-Store gated by positive
-            // engagement. The audit's complaint was the rate-prompt being
-            // shown immediately rather than after the user has actually
-            // used the app. Threshold: >=5 transactions logged. Fresh
-            // installs / first-day users don't see the row at all, so
-            // they can't be nudged toward a premature rating they
-            // wouldn't otherwise leave. After 5 transactions the user
-            // has demonstrably engaged with the core flow, and the row
-            // appears under App Info as a normal entry.
-            val transactionCount by viewModel.transactions.collectAsState()
-            if (transactionCount.size >= 5) {
-                SettingsDivider()
-                SettingsActionRow(
-                    icon  = Icons.Default.Star,
-                    color = Amber,
-                    title = "Rate on Play Store",
-                    subtitle = "Enjoying Fynlo Ledger? Leave us a review!"
-                ) {
-                    try {
-                        context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW,
-                            "market://details?id=${context.packageName}".toUri()))
-                    } catch (e: Exception) {
-                        context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW,
-                            "https://play.google.com/store/apps/details?id=${context.packageName}".toUri()))
-                    }
-                }
-            }
             SettingsDivider()
             Row(
                 Modifier.fillMaxWidth().clickable { onNavigateToAbout() }.padding(vertical = 6.dp),
@@ -1735,4 +1707,3 @@ fun SettingsScreen(
 }
 
 // -- Shared composables ------------------------------------------------------
-
