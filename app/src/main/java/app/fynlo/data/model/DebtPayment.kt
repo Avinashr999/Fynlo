@@ -23,8 +23,8 @@ data class DebtPayment(
     // v3.3.0 (DB v32) — exact penalty paise when a payment overpays the total due
     // by ₹1 or more. Old rows / docs / backups read as 0.
     val penaltyPaise: Long = 0L,
-    // v3.3.0 (DB v32) — signed whole-rupee settlement rounding: + small gain
-    // (overpay under ₹1), − write-off (shortfall under ₹1). Old rows read as 0.
+    // v3.3.0 (DB v32) — signed whole-rupee settlement rounding: + small gain,
+    // − write-off (see InterestEngine.allocatePaymentPaise). Old rows read as 0.
     // Per row: interest + principal + penaltyPaise + roundingPaise == amount.
     val roundingPaise: Long = 0L,
     val projectId: String = "personal",

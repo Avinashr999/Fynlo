@@ -247,8 +247,8 @@ object InterestEngine {
     /**
      * Ledger identity (v3.3.0, every payment, to the paisa):
      *   towardInterest + towardPrincipal + penaltyPaise + roundingPaise == payment
-     * roundingPaise is signed: positive = small gain (overpay under ₹1),
-     * negative = write-off (shortfall under ₹1). One rounding value per payment.
+     * roundingPaise is signed: positive = small gain, negative = write-off
+     * (always under ₹1.50 either way). One rounding value per payment.
      */
     data class PaisePaymentSplit(
         val towardInterest: Long,
@@ -406,14 +406,11 @@ object InterestEngine {
      * Interest due first, then principal (outstanding never negative).
      * v3.3.0 settle / rounding rule (exact = interestDue + principal, roundedTotal =
      * exact rounded to nearest ₹):
-     *  - |paid − exact| < 100 → closes; interest + principal absorb exact;
-     *    rounding = paid − exact (signed); no penalty.
-     *  - paid − exact ≥ 100 → closes; interest + principal absorb exact;
-     *    penalty = paid − roundedTotal; rounding = roundedTotal − exact.
-     *    (This single branch covers both "paid ≥ roundedTotal + 100" and the gap
-     *    exact + 100 ≤ paid < roundedTotal + 100; in the gap the penalty is
-     *    always ≥ 51 paise because roundedTotal ≤ exact + 49.)
-     *  - paid ≤ exact − 100 → normal partial payment; no rounding.
+     *  - paid ≥ roundedTotal + 100 → closes; interest + principal absorb exact;
+     *    penalty = paid − roundedTotal; rounding = roundedTotal − exact (may be < 0).
+     *  - else paid > exact − 100 → closes, no penalty; rounding = paid − exact
+     *    (signed; a positive value can reach +149 paise, e.g. rounded-up totals).
+     *  - else → normal partial payment (interest first, then principal); no rounding.
      */
     fun allocatePaymentPaise(state: PaiseLoanState, paymentPaise: Long): PaisePaymentSplit =
         allocatePaymentPaise(
@@ -434,14 +431,9 @@ object InterestEngine {
         val towardPrincipal = minOf(remaining, outstandingPrincipal)
         if (paymentPaise == 0L) return PaisePaymentSplit(0L, 0L, 0L)
         val exact = interestDue + outstandingPrincipal
-        val diff = paymentPaise - exact
+        val roundedTotal = roundToRupeePaise(exact)
         return when {
-            diff <= -ROUNDING_THRESHOLD_PAISE ->
-                PaisePaymentSplit(towardInterest, towardPrincipal, 0L)
-            diff < ROUNDING_THRESHOLD_PAISE ->
-                PaisePaymentSplit(interestDue, outstandingPrincipal, 0L, roundingPaise = diff, closesLoan = true)
-            else -> {
-                val roundedTotal = roundToRupeePaise(exact)
+            paymentPaise >= roundedTotal + ROUNDING_THRESHOLD_PAISE ->
                 PaisePaymentSplit(
                     towardInterest = interestDue,
                     towardPrincipal = outstandingPrincipal,
@@ -449,7 +441,10 @@ object InterestEngine {
                     roundingPaise = roundedTotal - exact,
                     closesLoan = true,
                 )
-            }
+            paymentPaise > exact - ROUNDING_THRESHOLD_PAISE ->
+                PaisePaymentSplit(interestDue, outstandingPrincipal, 0L, roundingPaise = paymentPaise - exact, closesLoan = true)
+            else ->
+                PaisePaymentSplit(towardInterest, towardPrincipal, 0L)
         }
     }
 

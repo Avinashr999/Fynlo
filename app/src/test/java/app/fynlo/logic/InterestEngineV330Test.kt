@@ -99,13 +99,56 @@ class InterestEngineV330Test {
     }
 
     @Test
-    fun `gap case over exact by 100 but under rounded plus 100 is penalty with rounding rest`() {
-        // exact 1,004,863; roundedTotal 1,004,900; paid 1,004,963 (exact + 100)
+    fun `over exact by 100 but under rounded total plus 100 closes with rounding and no penalty`() {
+        // exact 1,004,863; roundedTotal 1,004,900; paid 1,004,963 < 1,005,000 → no penalty, rounding +100
         val (s, split) = InterestEngine.applyPaymentPaise(lockedState(), 1_004_963L)
         assertInvariant(1_004_963L, split)
-        assertEquals(63L, split.penaltyPaise)
-        assertEquals(37L, split.roundingPaise)
+        assertEquals(0L, split.penaltyPaise)
+        assertEquals(100L, split.roundingPaise)
+        assertTrue(split.closesLoan)
         assertTrue(s.isCleared)
+    }
+
+    /** exact 1,004,840 (interest 4,840 + principal 1,000,000), shown ₹10,048 (roundedTotal 1,004,800). */
+    private fun exact1004840() = lockedState().copy(interestDuePaise = 4_840L)
+
+    @Test
+    fun `exact 1004840 pay 10049 gives penalty 100 and rounding minus 40`() {
+        val st = exact1004840()
+        assertEquals(1_004_840L, st.outstandingPaise)
+        assertEquals(10_048L, InterestEngine.wholeRupees(st.outstandingPaise))
+        val (s, split) = InterestEngine.applyPaymentPaise(st, 1_004_900L)
+        assertInvariant(1_004_900L, split)
+        assertEquals(4_840L, split.towardInterest)
+        assertEquals(1_000_000L, split.towardPrincipal)
+        assertEquals(100L, split.penaltyPaise)
+        assertEquals(-40L, split.roundingPaise)
+        assertTrue(s.isCleared)
+        // Same through the stateless overload.
+        assertEquals(split, InterestEngine.allocatePaymentPaise(1_000_000L, 4_840L, 1_004_900L))
+    }
+
+    @Test
+    fun `exact 1004840 pay 10048 closes with rounding minus 40 and no penalty`() {
+        val (s, split) = InterestEngine.applyPaymentPaise(exact1004840(), 1_004_800L)
+        assertInvariant(1_004_800L, split)
+        assertEquals(0L, split.penaltyPaise)
+        assertEquals(-40L, split.roundingPaise)
+        assertTrue(split.closesLoan)
+        assertTrue(s.isCleared)
+    }
+
+    @Test
+    fun `exact 1004840 pay 10047 is a partial payment`() {
+        val (s, split) = InterestEngine.applyPaymentPaise(exact1004840(), 1_004_700L)
+        assertInvariant(1_004_700L, split)
+        assertFalse(split.closesLoan)
+        assertEquals(0L, split.penaltyPaise)
+        assertEquals(0L, split.roundingPaise)
+        assertEquals(4_840L, split.towardInterest)
+        assertEquals(999_860L, split.towardPrincipal)
+        assertEquals(140L, s.outstandingPaise)
+        assertFalse(s.isCleared)
     }
 
     @Test

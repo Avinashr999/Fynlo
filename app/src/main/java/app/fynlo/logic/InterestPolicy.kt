@@ -602,7 +602,7 @@ object InterestPolicy {
         val tags = buildList {
             if (split.penaltyPaise > 0L) add("$PENALTY_NOTE_PREFIX ${InterestEngine.formatPenaltyRupees(split.penaltyPaise)}")
             if (split.roundingPaise > 0L) {
-                add("$ROUNDING_OVERPAY_NOTE_PREFIX +${InterestEngine.formatPaiseRupees(split.roundingPaise)} (under ₹1, not a penalty)")
+                add("$ROUNDING_OVERPAY_NOTE_PREFIX +${InterestEngine.formatPaiseRupees(split.roundingPaise)} (rounding, not a penalty)")
             }
             if (split.roundingPaise < 0L) {
                 add("$ROUNDING_WRITE_OFF_NOTE_PREFIX ${InterestEngine.formatPaiseRupees(-split.roundingPaise)} (settled within ₹1, loan closed)")
