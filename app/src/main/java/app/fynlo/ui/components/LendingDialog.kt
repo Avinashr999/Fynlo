@@ -41,6 +41,11 @@ fun AddLendingDialog(
 ) {
     val people by viewModel.people.collectAsState()
     val accounts by viewModel.accounts.collectAsState()
+    // v3.3.1: on edit, the start date can't move past this loan's first payment.
+    val allPayments by viewModel.payments.collectAsState()
+    val firstPaymentDate = remember(allPayments, initialBorrower?.id) {
+        initialBorrower?.let { e -> allPayments.filter { it.loanId == e.id }.minOfOrNull { it.date } }
+    }
     val locale = LocalLocale.current.platformLocale
 
     var selectedPerson by remember { mutableStateOf<Person?>(null) }
@@ -261,6 +266,20 @@ fun AddLendingDialog(
                 LendSoftField(rate, "Annual interest rate (%)", KeyboardType.Decimal) { rate = decimalOnly(it) }
                 Spacer(Modifier.height(12.dp))
                 DatePickerField(value = date, onValueChange = { date = it }, label = "Lending date")
+                val startDateError = firstPaymentDate?.let { first ->
+                    val start = runCatching { DateUtils.parseInput(date) }.getOrDefault("")
+                    if (start.isNotBlank() && start > first) {
+                        "Start date can't be after the first payment on ${DateUtils.formatToDisplay(first)}."
+                    } else null
+                }
+                if (startDateError != null) {
+                    Text(
+                        startDateError,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.padding(top = 4.dp),
+                    )
+                }
                 Spacer(Modifier.height(12.dp))
                 DatePickerField(value = due, onValueChange = { due = it }, label = "Due date", optional = true)
                 Spacer(Modifier.height(12.dp))
@@ -324,7 +343,7 @@ fun AddLendingDialog(
                         )
                         onConfirm(borrower, finalSource)
                     },
-                    enabled = (selectedPerson != null || isEdit) && (amount.toDoubleOrNull() ?: 0.0) > 0.0 && !submitting,
+                    enabled = (selectedPerson != null || isEdit) && (amount.toDoubleOrNull() ?: 0.0) > 0.0 && startDateError == null && !submitting,
                 )
                 // C17 (3.2.42) - surface which field is blocking the Add.
                 run {

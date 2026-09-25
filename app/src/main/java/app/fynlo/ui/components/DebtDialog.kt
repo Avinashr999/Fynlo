@@ -41,6 +41,11 @@ fun AddDebtDialog(
 ) {
     val people   by viewModel.people.collectAsState()
     val accounts by viewModel.accounts.collectAsState()
+    // v3.3.1: on edit, the start date can't move past this loan's first payment.
+    val allPayments by viewModel.debtPayments.collectAsState()
+    val firstPaymentDate = remember(allPayments, initialDebt?.id) {
+        initialDebt?.let { e -> allPayments.filter { it.debtId == e.id }.minOfOrNull { it.date } }
+    }
     val locale = LocalLocale.current.platformLocale
 
     var selectedPerson  by remember { mutableStateOf<Person?>(null) }
@@ -235,6 +240,20 @@ fun AddDebtDialog(
                 LendSoftField(rate, "Annual interest rate (%)", KeyboardType.Decimal) { rate = decimalOnly(it) }
                 Spacer(Modifier.height(12.dp))
                 DatePickerField(value = date, onValueChange = { date = it }, label = "Borrowed date")
+                val startDateError = firstPaymentDate?.let { first ->
+                    val start = runCatching { DateUtils.parseInput(date) }.getOrDefault("")
+                    if (start.isNotBlank() && start > first) {
+                        "Start date can't be after the first payment on ${DateUtils.formatToDisplay(first)}."
+                    } else null
+                }
+                if (startDateError != null) {
+                    Text(
+                        startDateError,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.padding(top = 4.dp),
+                    )
+                }
                 Spacer(Modifier.height(12.dp))
                 DatePickerField(value = due, onValueChange = { due = it }, label = "Due date", optional = true)
                 Spacer(Modifier.height(12.dp))
@@ -297,7 +316,7 @@ fun AddDebtDialog(
                         )
                         onConfirm(debt, selectedAccount.name)
                     },
-                    enabled = isValid && !submitting,
+                    enabled = isValid && startDateError == null && !submitting,
                 )
                 // C17 (3.2.42) - disabled-button hint.
                 val debtDisabledReason: String?= when {
