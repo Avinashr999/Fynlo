@@ -371,41 +371,39 @@ class FinanceViewModel @Inject constructor(
         // Exclude written-off borrowers from receivables (they're bad debt)
         val activeBrws = brws.filter { it.status != "WrittenOff" }
 
-        val totalReceivables = activeBrws.sumOf { b ->
-            if (b.rate <= 0) (b.amount - b.paid).coerceAtLeast(0.0)
-            else (b.amount - b.paidPrincipal).coerceAtLeast(0.0) +
-                InterestPolicy.borrowerBreakdown(b, paymentsByLoan[b.id].orEmpty()).due
+        // v3.3.1: every balance comes from InterestPolicy.borrowerBalance (replay for
+        // paise methods, amount − paidPrincipal + breakdown for legacy, amount − paid
+        // for legacy 0% hand loans) so the dashboard matches the loan screen.
+        val balanceByLoan = activeBrws.associate { b ->
+            b.id to InterestPolicy.borrowerBalance(b, paymentsByLoan[b.id].orEmpty())
         }
+        val totalReceivables = activeBrws.sumOf { b -> balanceByLoan.getValue(b.id).outstanding }
 
         val totalInterestLoans = activeBrws.filter { it.rate > 0 }.sumOf { b ->
-            (b.amount - b.paidPrincipal).coerceAtLeast(0.0) +
-                InterestPolicy.borrowerBreakdown(b, paymentsByLoan[b.id].orEmpty()).due
+            balanceByLoan.getValue(b.id).outstanding
         }
-        // Hand loans: use 'paid' (mirrors isActive check for hand loans)
         // Interest loans are not counted here (they have a separate totalInterestLoans)
         val totalHandLoans = activeBrws.filter { it.rate <= 0 }.sumOf { b ->
-            (b.amount - b.paid).coerceAtLeast(0.0)  // consistent with isActive: paid < amount
+            balanceByLoan.getValue(b.id).outstanding
         }
 
         val invTypeMap = invs.groupBy { it.type }
             .mapValues { it.value.sumOf { inv -> inv.currentVal } }
 
         val interestBrwMap = activeBrws.filter { it.rate > 0 }.associate { b ->
-            b.name to ((b.amount - b.paidPrincipal).coerceAtLeast(0.0) +
-                InterestPolicy.borrowerBreakdown(b, paymentsByLoan[b.id].orEmpty()).due)
+            b.name to balanceByLoan.getValue(b.id).outstanding
         }
 
         val handBrwMap = activeBrws.filter { it.rate <= 0 }.associate { b ->
-            b.name to (b.amount - b.paid).coerceAtLeast(0.0)
+            b.name to balanceByLoan.getValue(b.id).outstanding
         }
 
         // Use totalInterestLoans + totalHandLoans (both correctly use paid/paidPrincipal per type)
         // totalReceivables remains available for reports; dashboard assets use split interest/hand-loan totals below.
         val totalAssets       = totalCashVal + totalInvestVal + totalInterestLoans + totalHandLoans
         val debtLiabilities = dbts.map { debt ->
-            val principal = (debt.amount - debt.paidPrincipal).coerceAtLeast(0.0)
-            val interest = InterestPolicy.debtBreakdown(debt, paymentsByDebt[debt.id].orEmpty()).due
-            app.fynlo.logic.DebtLiabilityCalculator.Liability(principal = principal, interest = interest)
+            val balance = InterestPolicy.debtBalance(debt, paymentsByDebt[debt.id].orEmpty())
+            app.fynlo.logic.DebtLiabilityCalculator.Liability(principal = balance.principal, interest = balance.interestDue)
         }
         val totalDebtPrincipal = debtLiabilities.sumOf { it.principal }
         val totalDebtInterest  = debtLiabilities.sumOf { it.interest }
@@ -434,16 +432,16 @@ class FinanceViewModel @Inject constructor(
         val todayStr = todayDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
         val tomorrowStr = todayDate.plusDays(1).format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
         val borrowerDueToday = activeBrws.sumOf { b ->
-            if (b.rate <= 0.0) 0.0 else InterestPolicy.borrowerBreakdown(b, paymentsByLoan[b.id].orEmpty(), todayStr).due
+            if (b.rate <= 0.0) 0.0 else InterestPolicy.borrowerBalance(b, paymentsByLoan[b.id].orEmpty(), todayStr).interestDue
         }
         val borrowerDueTomorrow = activeBrws.sumOf { b ->
-            if (b.rate <= 0.0) 0.0 else InterestPolicy.borrowerBreakdown(b, paymentsByLoan[b.id].orEmpty(), tomorrowStr).due
+            if (b.rate <= 0.0) 0.0 else InterestPolicy.borrowerBalance(b, paymentsByLoan[b.id].orEmpty(), tomorrowStr).interestDue
         }
         val debtDueToday = dbts.sumOf { debt ->
-            if (debt.rate <= 0.0) 0.0 else InterestPolicy.debtBreakdown(debt, paymentsByDebt[debt.id].orEmpty(), todayStr).due
+            if (debt.rate <= 0.0) 0.0 else InterestPolicy.debtBalance(debt, paymentsByDebt[debt.id].orEmpty(), todayStr).interestDue
         }
         val debtDueTomorrow = dbts.sumOf { debt ->
-            if (debt.rate <= 0.0) 0.0 else InterestPolicy.debtBreakdown(debt, paymentsByDebt[debt.id].orEmpty(), tomorrowStr).due
+            if (debt.rate <= 0.0) 0.0 else InterestPolicy.debtBalance(debt, paymentsByDebt[debt.id].orEmpty(), tomorrowStr).interestDue
         }
         val dailyBorrowerInterest = (borrowerDueTomorrow - borrowerDueToday).coerceAtLeast(0.0)
         val dailyDebtInterest = (debtDueTomorrow - debtDueToday).coerceAtLeast(0.0)
@@ -489,8 +487,7 @@ class FinanceViewModel @Inject constructor(
         }
         // Terminal outstanding principal + accrued interest
         activeBrws.filter { it.rate > 0 }.forEach { b ->
-            val outstanding = (b.amount - b.paidPrincipal).coerceAtLeast(0.0) +
-                InterestPolicy.borrowerBreakdown(b, paymentsByLoan[b.id].orEmpty(), todayStr).due
+            val outstanding = InterestPolicy.borrowerBalance(b, paymentsByLoan[b.id].orEmpty(), todayStr).outstanding
             if (outstanding > 0) {
                 lendCashflows.add(XirrCalculator.Cashflow(outstanding, todayStr))
             }

@@ -52,6 +52,7 @@ import java.util.Locale
 fun ProfitLossScreen(viewModel: FinanceViewModel) {
     val transactions   by viewModel.transactions.collectAsState()
     val borrowers      by viewModel.borrowers.collectAsState()
+    val loanPayments   by viewModel.payments.collectAsState()
     val investments    by viewModel.investments.collectAsState()
     // C21 Stage 2 - debts for the Liabilities & Debts section in the
     // exported PDF (audit #3). Not used in-screen by P&L computations.
@@ -312,11 +313,12 @@ fun ProfitLossScreen(viewModel: FinanceViewModel) {
             //     principal (amount - paidPrincipal).
             val activeBorrowers       = borrowers.filter { it.status != "WrittenOff" }
             val totalLentLifetime     = borrowers.sumOf { it.amount }
-            val currentlyLentOut      = activeBorrowers.sumOf { (it.amount - it.paidPrincipal).coerceAtLeast(0.0) }
+            // v3.3.1: outstanding principal from the shared balance function.
+            val currentlyLentOut      = activeBorrowers.sumOf { app.fynlo.logic.InterestPolicy.borrowerBalance(it, loanPayments).principal }
             val totalRecovered        = activeBorrowers.sumOf { it.paidPrincipal }
             val interestCollected     = activeBorrowers.sumOf { it.paidInterest }
             val defaultedAmt          = borrowers.filter { it.status == "Defaulted" || it.status == "WrittenOff" }
-                .sumOf { it.amount - it.paidPrincipal }
+                .sumOf { app.fynlo.logic.InterestPolicy.borrowerBalance(it, loanPayments).principal }
 
             PLSection(
                 "Lending Business",

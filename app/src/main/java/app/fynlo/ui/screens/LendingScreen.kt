@@ -302,12 +302,9 @@ fun LendingCard(
     // builder; all of that lifted to the detail screen so the list stays
     // scannable. Matches DebtCard visually per audit #5.
     val locale = LocalLocale.current.platformLocale
-    val interestDue = if (payments.isEmpty()) {
-        app.fynlo.logic.InterestPolicy.borrowerInterestOutstanding(borrower)
-    } else {
-        app.fynlo.logic.InterestPolicy.borrowerBreakdown(borrower, payments).due
-    }
-    val outstanding = (borrower.amount - borrower.paidPrincipal).coerceAtLeast(0.0) + interestDue
+    val balance = app.fynlo.logic.InterestPolicy.borrowerBalance(borrower, payments)
+    val interestDue = balance.interestDue
+    val outstanding = balance.outstanding
 
     Surface(
         onClick = onClick,

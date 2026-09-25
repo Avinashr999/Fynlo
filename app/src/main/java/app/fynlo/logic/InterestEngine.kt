@@ -238,6 +238,12 @@ object InterestEngine {
          * into principal at the next compounding date. Payments settle it first.
          */
         val pendingCapitalPaise: Long = 0L,
+        /**
+         * v3.3.1 — interest paid in advance: the part of an explicit 'Interest Only'
+         * payment above the interest accrued at that date. It never touches
+         * principal; it is used up against interest as it accrues later.
+         */
+        val prepaidInterestPaise: Long = 0L,
     ) {
         val outstandingPaise: Long get() = outstandingPrincipalPaise + interestDuePaise
         val isCleared: Boolean
@@ -257,6 +263,12 @@ object InterestEngine {
         val roundingPaise: Long = 0L,
         /** True when this payment settles the loan (interest + principal absorb exactly the due). */
         val closesLoan: Boolean = false,
+        /**
+         * v3.3.1 — Interest Only payments: the part of [towardInterest] that went
+         * beyond accrued interest and is carried as prepaid interest (subset of
+         * towardInterest, so interest + principal + penalty + rounding == paid still holds).
+         */
+        val prepaidInterestPaise: Long = 0L,
     )
 
     data class PaiseBalances(
@@ -465,6 +477,39 @@ object InterestEngine {
     }
 
     /**
+     * v3.3.1 — explicit 'Interest Only' payment: settles accrued interest and carries
+     * any excess as prepaid interest. Principal is never reduced.
+     */
+    fun applyInterestOnlyPaymentPaise(
+        state: PaiseLoanState,
+        paymentPaise: Long,
+    ): Pair<PaiseLoanState, PaisePaymentSplit> {
+        require(paymentPaise >= 0L) { "paymentPaise must be >= 0" }
+        val toAccrued = minOf(paymentPaise, state.interestDuePaise)
+        val prepaid = paymentPaise - toAccrued
+        val next = state.copy(
+            interestDuePaise = state.interestDuePaise - toAccrued,
+            pendingCapitalPaise = (state.pendingCapitalPaise - toAccrued).coerceAtLeast(0L),
+            prepaidInterestPaise = state.prepaidInterestPaise + prepaid,
+        )
+        return next to PaisePaymentSplit(
+            towardInterest = paymentPaise,
+            towardPrincipal = 0L,
+            penaltyPaise = 0L,
+            roundingPaise = 0L,
+            closesLoan = false,
+            prepaidInterestPaise = prepaid,
+        )
+    }
+
+    /** One replay event. [interestOnly] = the row was saved with type 'Interest Only'. */
+    data class PaiseEvent(
+        val date: LocalDate,
+        val amountPaise: Long,
+        val interestOnly: Boolean = false,
+    )
+
+    /**
      * Replay dated payments (amount paise), then accrue to [asOf].
      * Day-count uses ChronoUnit between lastAccrual and each event — payment day
      * is not counted (same-day open + pay → ₹0 interest).
@@ -474,18 +519,40 @@ object InterestEngine {
         state: PaiseLoanState,
         payments: List<Pair<LocalDate, Long>>,
         asOf: LocalDate,
+    ): PaiseLoanState =
+        replayPaiseEventsTo(state, payments.map { (d, a) -> PaiseEvent(d, a) }, asOf)
+
+    /** Same as [replayPaiseTo] but honours per-row 'Interest Only' flags. */
+    fun replayPaiseEventsTo(
+        state: PaiseLoanState,
+        events: List<PaiseEvent>,
+        asOf: LocalDate,
     ): PaiseLoanState {
         var s = state
-        val ordered = payments.filter { (date, amount) ->
-            !date.isAfter(asOf) && amount >= 0L
-        }
-        for ((date, payPaise) in ordered) {
-            s = accruePaiseTo(s, date)
-            if (payPaise > 0L) {
-                s = applyPaymentPaise(s, payPaise).first
+        val ordered = events.filter { !it.date.isAfter(asOf) && it.amountPaise >= 0L }
+        for (e in ordered) {
+            s = accruePaiseTo(s, e.date)
+            if (e.amountPaise > 0L) {
+                s = if (e.interestOnly) {
+                    applyInterestOnlyPaymentPaise(s, e.amountPaise).first
+                } else {
+                    applyPaymentPaise(s, e.amountPaise).first
+                }
             }
         }
         return accruePaiseTo(s, asOf)
+    }
+
+    /** Use prepaid interest against interest that has accrued (never below zero). */
+    private fun consumePrepaidPaise(state: PaiseLoanState): PaiseLoanState {
+        if (state.prepaidInterestPaise <= 0L || state.interestDuePaise <= 0L) return state
+        val used = minOf(state.prepaidInterestPaise, state.interestDuePaise)
+        val due = state.interestDuePaise - used
+        return state.copy(
+            interestDuePaise = due,
+            prepaidInterestPaise = state.prepaidInterestPaise - used,
+            pendingCapitalPaise = minOf(state.pendingCapitalPaise, due),
+        )
     }
 
     private fun accruePaiseSimple(state: PaiseLoanState, asOf: LocalDate): PaiseLoanState {
@@ -494,11 +561,11 @@ object InterestEngine {
         val principal = state.originalPrincipalPaise
         if (principal <= 0L) return state.copy(lastAccrualDate = asOf)
         val num = principal * state.annualRateBps.toLong() * days + state.dayRemainder
-        return state.copy(
+        return consumePrepaidPaise(state.copy(
             interestDuePaise = state.interestDuePaise + num / PAISE_DAY_DENOM,
             dayRemainder = num % PAISE_DAY_DENOM,
             lastAccrualDate = asOf,
-        )
+        ))
     }
 
     private fun accruePaiseReducing(state: PaiseLoanState, asOf: LocalDate): PaiseLoanState {
@@ -507,11 +574,11 @@ object InterestEngine {
         val principal = state.outstandingPrincipalPaise
         if (principal <= 0L) return state.copy(lastAccrualDate = asOf)
         val num = principal * state.annualRateBps.toLong() * days + state.dayRemainder
-        return state.copy(
+        return consumePrepaidPaise(state.copy(
             interestDuePaise = state.interestDuePaise + num / PAISE_DAY_DENOM,
             dayRemainder = num % PAISE_DAY_DENOM,
             lastAccrualDate = asOf,
-        )
+        ))
     }
 
     private fun accruePaiseCompound(state: PaiseLoanState, asOf: LocalDate): PaiseLoanState {
@@ -551,11 +618,11 @@ object InterestEngine {
         val base = state.outstandingPrincipalPaise + state.pendingCapitalPaise
         if (base <= 0L || state.annualRateBps == 0) return state.copy(lastAccrualDate = to)
         val num = base * state.annualRateBps.toLong() * days + state.dayRemainder
-        return state.copy(
+        return consumePrepaidPaise(state.copy(
             interestDuePaise = state.interestDuePaise + num / PAISE_DAY_DENOM,
             dayRemainder = num % PAISE_DAY_DENOM,
             lastAccrualDate = to,
-        )
+        ))
     }
 
     /** First monthly anniversary of [start] strictly after [after]. */

@@ -101,18 +101,13 @@ fun LoansHubScreen(
     val activeOwedCount = remember(debts) {
         debts.count { it.paid < it.amount }
     }
-    val borrowerPrincipal = remember(activeBorrowers) {
-        activeBorrowers.sumOf { b ->
-            if (b.rate <= 0) (b.amount - b.paid).coerceAtLeast(0.0)
-            else (b.amount - b.paidPrincipal).coerceAtLeast(0.0)
-        }
-    }
     val paymentsByLoan = remember(payments) { payments.groupBy { it.loanId } }
-    val borrowerInterest = remember(activeBorrowers, paymentsByLoan) {
-        activeBorrowers.sumOf { b ->
-            if (b.rate <= 0) 0.0 else app.fynlo.logic.InterestPolicy.borrowerBreakdown(b, paymentsByLoan[b.id].orEmpty()).due
-        }
+    // v3.3.1: one shared balance (InterestPolicy.borrowerBalance) for every screen.
+    val activeBalances = remember(activeBorrowers, paymentsByLoan) {
+        activeBorrowers.map { b -> app.fynlo.logic.InterestPolicy.borrowerBalance(b, paymentsByLoan[b.id].orEmpty()) }
     }
+    val borrowerPrincipal = activeBalances.sumOf { it.principal }
+    val borrowerInterest = activeBalances.sumOf { it.interestDue }
     val owedPrincipal = summary.totalDebtPrincipal
     val owedInterest = summary.totalDebtInterest
 

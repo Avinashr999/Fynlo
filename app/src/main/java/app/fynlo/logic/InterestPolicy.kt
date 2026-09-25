@@ -351,7 +351,9 @@ object InterestPolicy {
                 waivedInterestRupees = borrower.interestWaived,
                 method = method,
                 asOf = asOf,
-                datedPaymentPaise = rows.map { it.date to InterestEngine.rupeesToPaise(it.amount) },
+                datedPaymentPaise = rows.map {
+                    ReplayRow(it.date, InterestEngine.rupeesToPaise(it.amount), isInterestOnlyType(it.type))
+                },
                 compoundMonths = InterestEngine.compoundMonthsFor(borrower.compoundFrequency),
             )
         } else {
@@ -385,7 +387,9 @@ object InterestPolicy {
                 waivedInterestRupees = debt.interestWaived,
                 method = method,
                 asOf = asOf,
-                datedPaymentPaise = rows.map { it.date to InterestEngine.rupeesToPaise(it.amount) },
+                datedPaymentPaise = rows.map {
+                    ReplayRow(it.date, InterestEngine.rupeesToPaise(it.amount), isInterestOnlyType(it.type))
+                },
                 compoundMonths = InterestEngine.compoundMonthsFor(debt.compoundFrequency),
             )
         } else {
@@ -408,8 +412,10 @@ object InterestPolicy {
         paymentPaise: Long,
         asOf: String = LocalDate.now().format(ledgerFormatter),
         payments: List<Payment> = emptyList(),
+        interestOnly: Boolean = false,
     ): InterestEngine.PaisePaymentSplit {
         val bal = paiseBalancesForBorrower(borrower, asOf, payments)
+        if (interestOnly) return interestOnlySplit(bal, paymentPaise)
         return InterestEngine.allocatePaymentPaise(
             outstandingPrincipal = bal.outstandingPrincipal,
             interestDue = bal.interestDue,
@@ -422,12 +428,27 @@ object InterestPolicy {
         paymentPaise: Long,
         asOf: String = LocalDate.now().format(ledgerFormatter),
         payments: List<DebtPayment> = emptyList(),
+        interestOnly: Boolean = false,
     ): InterestEngine.PaisePaymentSplit {
         val bal = paiseBalancesForDebt(debt, asOf, payments)
+        if (interestOnly) return interestOnlySplit(bal, paymentPaise)
         return InterestEngine.allocatePaymentPaise(
             outstandingPrincipal = bal.outstandingPrincipal,
             interestDue = bal.interestDue,
             paymentPaise = paymentPaise,
+        )
+    }
+
+    /** Split of an explicit 'Interest Only' payment: all interest, excess carried as prepaid. */
+    private fun interestOnlySplit(bal: InterestEngine.PaiseBalances, paymentPaise: Long): InterestEngine.PaisePaymentSplit {
+        require(paymentPaise >= 0L) { "paymentPaise must be >= 0" }
+        return InterestEngine.PaisePaymentSplit(
+            towardInterest = paymentPaise,
+            towardPrincipal = 0L,
+            penaltyPaise = 0L,
+            roundingPaise = 0L,
+            closesLoan = false,
+            prepaidInterestPaise = (paymentPaise - bal.interestDue).coerceAtLeast(0L),
         )
     }
 
@@ -465,6 +486,11 @@ object InterestPolicy {
         return InterestEngine.PaiseBalances(outstandingPrincipal, interestDue)
     }
 
+    private data class ReplayRow(val date: String, val amountPaise: Long, val interestOnly: Boolean)
+
+    /** v3.3.1 — the explicit per-row flag: a row saved as 'Interest Only' never reduces principal. */
+    fun isInterestOnlyType(type: String): Boolean = type.trim().equals("Interest Only", ignoreCase = true)
+
     private fun paiseBalancesFromReplay(
         principalRupees: Double,
         ratePercent: Double,
@@ -472,15 +498,15 @@ object InterestPolicy {
         waivedInterestRupees: Double,
         method: InterestEngine.PaiseMethod,
         asOf: String,
-        datedPaymentPaise: List<Pair<String, Long>>,
+        datedPaymentPaise: List<ReplayRow>,
         compoundMonths: Int = 1,
     ): InterestEngine.PaiseBalances {
         val start = LocalDate.parse(startDate, ledgerFormatter)
         val asOfDate = LocalDate.parse(asOf, ledgerFormatter)
-        val events = datedPaymentPaise.mapNotNull { (dateStr, amountPaise) ->
-            val d = runCatching { LocalDate.parse(dateStr, ledgerFormatter) }.getOrNull() ?: return@mapNotNull null
-            d to amountPaise
-        }.sortedWith(compareBy({ it.first }))
+        val events = datedPaymentPaise.mapNotNull { row ->
+            val d = runCatching { LocalDate.parse(row.date, ledgerFormatter) }.getOrNull() ?: return@mapNotNull null
+            InterestEngine.PaiseEvent(d, row.amountPaise, row.interestOnly)
+        }.sortedWith(compareBy({ it.date }))
         var state = InterestEngine.openPaiseLoan(
             principalPaise = InterestEngine.rupeesToPaise(principalRupees),
             annualRateBps = InterestEngine.ratePercentToBps(ratePercent),
@@ -488,7 +514,7 @@ object InterestPolicy {
             method = method,
             compoundMonths = compoundMonths,
         )
-        state = InterestEngine.replayPaiseTo(state, events, asOfDate)
+        state = InterestEngine.replayPaiseEventsTo(state, events, asOfDate)
         val interestDue = (
             state.interestDuePaise - InterestEngine.rupeesToPaise(waivedInterestRupees)
             ).coerceAtLeast(0L)
@@ -513,10 +539,14 @@ object InterestPolicy {
         if (!usesPaiseMethod(borrower.intType)) return payment
         val paymentPaise = InterestEngine.rupeesToPaise(payment.amount)
         val priors = priorPayments.filter { it.loanId == borrower.id && it.id != payment.id }
-        val split = previewBorrowerPaymentPaise(borrower, paymentPaise, asOf, priors)
+        // v3.3.1: a row saved as 'Interest Only' stays interest-only (principal 0);
+        // any excess over accrued interest is prepaid interest, never principal.
+        val interestOnly = isInterestOnlyType(payment.type)
+        val split = previewBorrowerPaymentPaise(borrower, paymentPaise, asOf, priors, interestOnly = interestOnly)
         val interest = InterestEngine.paiseToRupees(split.towardInterest)
         val principal = InterestEngine.paiseToRupees(split.towardPrincipal)
         val type = when {
+            interestOnly -> payment.type
             split.towardInterest > 0L && split.towardPrincipal > 0L -> "Both"
             split.towardInterest > 0L -> "Interest Only"
             split.towardPrincipal > 0L -> "Principal Only"
@@ -542,10 +572,14 @@ object InterestPolicy {
         if (!usesPaiseMethod(debt.intType)) return payment
         val paymentPaise = InterestEngine.rupeesToPaise(payment.amount)
         val priors = priorPayments.filter { it.debtId == debt.id && it.id != payment.id }
-        val split = previewDebtPaymentPaise(debt, paymentPaise, asOf, priors)
+        // v3.3.1: a row saved as 'Interest Only' stays interest-only (principal 0);
+        // any excess over accrued interest is prepaid interest, never principal.
+        val interestOnly = isInterestOnlyType(payment.type)
+        val split = previewDebtPaymentPaise(debt, paymentPaise, asOf, priors, interestOnly = interestOnly)
         val interest = InterestEngine.paiseToRupees(split.towardInterest)
         val principal = InterestEngine.paiseToRupees(split.towardPrincipal)
         val type = when {
+            interestOnly -> payment.type
             split.towardInterest > 0L && split.towardPrincipal > 0L -> "Both"
             split.towardInterest > 0L -> "Interest Only"
             split.towardPrincipal > 0L -> "Principal Only"
@@ -594,12 +628,21 @@ object InterestPolicy {
     const val PENALTY_NOTE_PREFIX = "Penalty on this account"
     const val ROUNDING_WRITE_OFF_NOTE_PREFIX = "Rounding write-off"
     const val ROUNDING_OVERPAY_NOTE_PREFIX = "Rounding adjustment"
-    private val engineNotePrefixes = listOf(PENALTY_NOTE_PREFIX, ROUNDING_WRITE_OFF_NOTE_PREFIX, ROUNDING_OVERPAY_NOTE_PREFIX)
+    const val PREPAID_INTEREST_NOTE_PREFIX = "Interest paid in advance"
+    private val engineNotePrefixes = listOf(
+        PENALTY_NOTE_PREFIX,
+        ROUNDING_WRITE_OFF_NOTE_PREFIX,
+        ROUNDING_OVERPAY_NOTE_PREFIX,
+        PREPAID_INTEREST_NOTE_PREFIX,
+    )
 
     /** User notes with previous engine tags removed, then current tags appended. */
     fun notesWithEngineTags(notes: String, split: InterestEngine.PaisePaymentSplit): String {
         val userLines = notes.lines().filterNot { line -> engineNotePrefixes.any { line.trimStart().startsWith(it) } }
         val tags = buildList {
+            if (split.prepaidInterestPaise > 0L) {
+                add("$PREPAID_INTEREST_NOTE_PREFIX ${InterestEngine.formatPaiseRupees(split.prepaidInterestPaise)} (Interest Only, offsets later interest)")
+            }
             if (split.penaltyPaise > 0L) add("$PENALTY_NOTE_PREFIX ${InterestEngine.formatPenaltyRupees(split.penaltyPaise)}")
             if (split.roundingPaise > 0L) {
                 add("$ROUNDING_OVERPAY_NOTE_PREFIX +${InterestEngine.formatPaiseRupees(split.roundingPaise)} (rounding, not a penalty)")
@@ -649,6 +692,8 @@ object InterestPolicy {
      * so each row's principal / interest / penalty / rounding tags match the
      * engine after earlier rows were deleted, undone or back-dated.
      * Returns rows in replay order. Non-paise types are returned unchanged.
+     * v3.3.1: rows saved as 'Interest Only' keep type and principal 0 (excess is
+     * prepaid interest); rows dated before the loan start are returned unchanged.
      */
     fun resplitBorrowerPayments(borrower: Borrower, payments: List<Payment>): List<Payment> {
         val rows = replayOrder(payments.filter { it.loanId == borrower.id }, { it.date }, { it.createdAt }, { it.id })
@@ -658,7 +703,9 @@ object InterestPolicy {
         val base = borrower.copy(paid = 0.0, paidPrincipal = 0.0, paidInterest = 0.0)
         val done = mutableListOf<Payment>()
         for (row in rows) {
-            done += alignBorrowerPaymentToPaisePreview(base, row, priorPayments = done.toList(), asOf = row.date)
+            // v3.3.1: rows dated before the loan start are left exactly as saved.
+            done += if (isBeforeStart(row.date, borrower.date)) row
+            else alignBorrowerPaymentToPaisePreview(base, row, priorPayments = done.toList(), asOf = row.date)
         }
         return done
     }
@@ -669,9 +716,76 @@ object InterestPolicy {
         val base = debt.copy(paid = 0.0, paidPrincipal = 0.0, paidInterest = 0.0)
         val done = mutableListOf<DebtPayment>()
         for (row in rows) {
-            done += alignDebtPaymentToPaisePreview(base, row, priorPayments = done.toList(), asOf = row.date)
+            done += if (isBeforeStart(row.date, debt.date)) row
+            else alignDebtPaymentToPaisePreview(base, row, priorPayments = done.toList(), asOf = row.date)
         }
         return done
     }
 
+    private fun isBeforeStart(paymentDate: String, startDate: String): Boolean =
+        InterestEngine.checkPaymentDate(startDate, paymentDate) == InterestEngine.PaymentDateCheck.BEFORE_START
+
+    // ── v3.3.1 one shared balance for every screen / report ──
+
+    /** Outstanding principal + interest due, in rupees. */
+    data class LoanBalance(val principal: Double, val interestDue: Double) {
+        val outstanding: Double get() = principal + interestDue
+    }
+
+    /**
+     * The single source for a borrower's outstanding balance at [asOf].
+     *  - Paise methods (Simple / Reducing / Compound): replay of the stored rows
+     *    (honours 'Interest Only'); with no rows, the aggregate terms path.
+     *  - Legacy methods: principal = amount − paidPrincipal (amount − paid for
+     *    0% hand loans), interest = [borrowerBreakdown] due.
+     *  - Defaulted with frozen interest: interest from [borrowerBreakdown].
+     */
+    fun borrowerBalance(
+        borrower: Borrower,
+        payments: List<Payment>,
+        asOf: String = LocalDate.now().format(ledgerFormatter),
+    ): LoanBalance {
+        val rows = payments.filter { it.loanId == borrower.id }
+        val frozen = borrower.status == "Defaulted" && borrower.frozenInterest > 0.0
+        if (usesPaiseMethod(borrower.intType)) {
+            val paise = runCatching { paiseBalancesForBorrower(borrower, asOf, rows) }.getOrNull()
+            if (paise != null) {
+                val interest = if (frozen) borrowerBreakdown(borrower, rows, asOf).due
+                else InterestEngine.paiseToRupees(paise.interestDue)
+                return LoanBalance(InterestEngine.paiseToRupees(paise.outstandingPrincipal), interest)
+            }
+        }
+        if (borrower.rate <= 0.0) {
+            return LoanBalance((borrower.amount - borrower.paid).coerceAtLeast(0.0), 0.0)
+        }
+        return LoanBalance(
+            principal = (borrower.amount - borrower.paidPrincipal).coerceAtLeast(0.0),
+            interestDue = borrowerBreakdown(borrower, rows, asOf).due,
+        )
+    }
+
+    /** Debt counterpart of [borrowerBalance] (same rules). */
+    fun debtBalance(
+        debt: Debt,
+        payments: List<DebtPayment>,
+        asOf: String = LocalDate.now().format(ledgerFormatter),
+    ): LoanBalance {
+        val rows = payments.filter { it.debtId == debt.id }
+        if (usesPaiseMethod(debt.intType)) {
+            val paise = runCatching { paiseBalancesForDebt(debt, asOf, rows) }.getOrNull()
+            if (paise != null) {
+                return LoanBalance(
+                    InterestEngine.paiseToRupees(paise.outstandingPrincipal),
+                    InterestEngine.paiseToRupees(paise.interestDue),
+                )
+            }
+        }
+        if (debt.rate <= 0.0) {
+            return LoanBalance((debt.amount - debt.paid).coerceAtLeast(0.0), 0.0)
+        }
+        return LoanBalance(
+            principal = (debt.amount - debt.paidPrincipal).coerceAtLeast(0.0),
+            interestDue = debtBreakdown(debt, rows, asOf).due,
+        )
+    }
 }

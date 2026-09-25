@@ -502,18 +502,24 @@ object LedgerAccountability {
     private fun isOldOpen(date: String, today: LocalDate): Boolean =
         runCatching { LocalDate.parse(date).plusDays(90).isBefore(today) }.getOrDefault(false)
 
+    // v3.3.1: mirrors FynloDao.rebuild*Paid* — principal 0 with interest > 0 (or a
+    // penalty-only row) is 0 principal.
     private fun borrowerPrincipalForPaidTotal(payment: Payment): Double = when {
-        payment.type.equals("Interest Only", ignoreCase = true) -> 0.0
+        InterestPolicy.isInterestOnlyType(payment.type) -> 0.0
         payment.principal > 0.0 -> payment.principal
+        payment.interest > 0.0 || payment.penaltyPaise > 0L -> 0.0
         else -> payment.amount
     }
 
     private fun borrowerInterestForPaidTotal(payment: Payment): Double =
         InterestPolicy.paymentInterestAmount(payment)
 
+    // v3.3.1: mirrors FynloDao.rebuild*Paid* — principal 0 with interest > 0 (or a
+    // penalty-only row) is 0 principal.
     private fun debtPrincipalForPaidTotal(payment: DebtPayment): Double = when {
-        payment.type.equals("Interest Only", ignoreCase = true) -> 0.0
+        InterestPolicy.isInterestOnlyType(payment.type) -> 0.0
         payment.principal > 0.0 -> payment.principal
+        payment.interest > 0.0 || payment.penaltyPaise > 0L -> 0.0
         else -> payment.amount
     }
 
@@ -558,7 +564,7 @@ object LedgerAccountability {
         if (borrower.due.isBlank() || borrower.rate <= 0.0) return
         val dueDate = runCatching { LocalDate.parse(borrower.due) }.getOrNull() ?: return
         if (dueDate.isAfter(today)) return
-        val principalOutstanding = (borrower.amount - borrower.paidPrincipal).coerceAtLeast(0.0)
+        val principalOutstanding = InterestPolicy.borrowerBalance(borrower, payments).principal
         if (principalOutstanding <= 0.01) return
 
         val accruedForPeriod = InterestEngine.calcIntAccrued(
@@ -609,7 +615,7 @@ object LedgerAccountability {
         if (debt.due.isBlank() || debt.rate <= 0.0) return
         val dueDate = runCatching { LocalDate.parse(debt.due) }.getOrNull() ?: return
         if (dueDate.isAfter(today)) return
-        val principalOutstanding = (debt.amount - debt.paidPrincipal).coerceAtLeast(0.0)
+        val principalOutstanding = InterestPolicy.debtBalance(debt, payments).principal
         if (principalOutstanding <= 0.01) return
 
         val accruedForPeriod = InterestEngine.calcIntAccrued(

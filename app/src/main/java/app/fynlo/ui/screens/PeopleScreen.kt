@@ -469,12 +469,10 @@ private fun PersonMoneyHistoryDialog(
     val totalBorrowed = personDebts.sumOf { it.amount }
     val receivableNow = personLoans.sumOf { loan ->
         if (loan.status == "WrittenOff") 0.0
-        else (loan.amount - loan.paidPrincipal).coerceAtLeast(0.0) +
-            app.fynlo.logic.InterestPolicy.borrowerBreakdown(loan, personPayments.filter { it.loanId == loan.id }).due
+        else app.fynlo.logic.InterestPolicy.borrowerBalance(loan, personPayments).outstanding
     }
     val payableNow = personDebts.sumOf { debt ->
-        (debt.amount - debt.paidPrincipal).coerceAtLeast(0.0) +
-            app.fynlo.logic.InterestPolicy.debtBreakdown(debt, personDebtPayments.filter { it.debtId == debt.id }).due
+        app.fynlo.logic.InterestPolicy.debtBalance(debt, personDebtPayments).outstanding
     }
     val entries = remember(personLoans, personDebts, personPayments, personDebtPayments) {
         buildList {

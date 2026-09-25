@@ -81,16 +81,13 @@ fun CollectPaymentDialog(
         }
     }
     val accruedInterest = interestBreakdown.accrued
-    val interestOutstanding = if (usePaise) {
-        InterestEngine.paiseToRupees(paiseBalances!!.interestDue)
-    } else {
-        interestBreakdown.due
+    // v3.3.1: one shared balance function (paise: at the payment date; legacy: today).
+    val sharedBalance = remember(borrower, payments, usePaise, paymentAsOf) {
+        if (usePaise) InterestPolicy.borrowerBalance(borrower, payments, paymentAsOf)
+        else InterestPolicy.borrowerBalance(borrower, payments)
     }
-    val principalOutstanding = if (usePaise) {
-        InterestEngine.paiseToRupees(paiseBalances!!.outstandingPrincipal)
-    } else {
-        (borrower.amount - borrower.paidPrincipal).coerceAtLeast(0.0)
-    }
+    val interestOutstanding = sharedBalance.interestDue
+    val principalOutstanding = sharedBalance.principal
     val totalOutstanding = interestOutstanding + principalOutstanding
 
     // Payment fields — lean uses a single Amount; legacy keeps Principal + Interest.
@@ -610,16 +607,13 @@ fun PayDebtDialog(
         }
     }
     val accruedInterest = interestBreakdown.accrued
-    val interestOutstanding = if (usePaise) {
-        InterestEngine.paiseToRupees(paiseBalances!!.interestDue)
-    } else {
-        interestBreakdown.due
+    // v3.3.1: one shared balance function (paise: at the payment date; legacy: today).
+    val sharedBalance = remember(debt, payments, usePaise, paymentAsOf) {
+        if (usePaise) InterestPolicy.debtBalance(debt, payments, paymentAsOf)
+        else InterestPolicy.debtBalance(debt, payments)
     }
-    val principalOutstanding = if (usePaise) {
-        InterestEngine.paiseToRupees(paiseBalances!!.outstandingPrincipal)
-    } else {
-        (debt.amount - debt.paidPrincipal).coerceAtLeast(0.0)
-    }
+    val interestOutstanding = sharedBalance.interestDue
+    val principalOutstanding = sharedBalance.principal
     val totalOutstanding     = interestOutstanding + principalOutstanding
 
     var amountStr by remember { mutableStateOf("") }

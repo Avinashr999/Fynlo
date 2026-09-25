@@ -92,22 +92,13 @@ fun DebtDetailScreen(
     val debtProofs = proofAttachments.filter { it.ownerType == "debt" && it.ownerId == debtId }
 
     val usePaise = app.fynlo.logic.InterestPolicy.usesPaiseMethod(debt.intType)
-    val paiseBalances = if (usePaise) {
-        app.fynlo.logic.InterestPolicy.paiseBalancesForDebt(debt, payments = debtPayments)
-    } else null
     val interestBreakdown = app.fynlo.logic.InterestPolicy.debtBreakdown(debt, debtPayments)
     val interest = interestBreakdown.accrued
-    val interestOutstanding = if (usePaise) {
-        InterestEngine.paiseToRupees(paiseBalances!!.interestDue)
-    } else {
-        interestBreakdown.due
-    }
+    // v3.3.1: one shared balance function for every screen.
+    val sharedBalance = app.fynlo.logic.InterestPolicy.debtBalance(debt, debtPayments)
+    val interestOutstanding = sharedBalance.interestDue
     val advanceInterest = if (usePaise) 0.0 else interestBreakdown.paidAhead
-    val principalOutstanding = if (usePaise) {
-        InterestEngine.paiseToRupees(paiseBalances!!.outstandingPrincipal)
-    } else {
-        (debt.amount - debt.paidPrincipal).coerceAtLeast(0.0)
-    }
+    val principalOutstanding = sharedBalance.principal
     val totalOutstanding = principalOutstanding + interestOutstanding
     val accountIdToName = remember(accounts) { accounts.associate { it.id to it.name } }
     val receivedTxn = remember(transactions, debt.id) {

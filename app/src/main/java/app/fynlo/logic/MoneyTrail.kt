@@ -66,7 +66,7 @@ object MoneyTrail {
             disbursedFrom = disbursedFrom,
             principalGiven = borrower.amount,
             principalCollected = principalCollected,
-            remainingPrincipal = (borrower.amount - principalCollected).coerceAtLeast(0.0),
+            remainingPrincipal = InterestPolicy.borrowerBalance(borrower, payments).principal,
             interestCollected = interestCollected,
             linkedTransactionCount = linked.size,
             paymentCount = payments.size,
@@ -89,7 +89,7 @@ object MoneyTrail {
             receivedInto = receivedInto,
             principalBorrowed = debt.amount,
             principalRepaid = principalRepaid,
-            remainingPrincipal = (debt.amount - principalRepaid).coerceAtLeast(0.0),
+            remainingPrincipal = InterestPolicy.debtBalance(debt, payments).principal,
             interestPaid = interestPaid,
             linkedTransactionCount = linked.size,
             paymentCount = payments.size,
@@ -101,6 +101,7 @@ object MoneyTrail {
         debts: List<Debt>,
         transactions: List<Transaction>,
         accountIdToName: Map<String, String>,
+        debtPayments: List<DebtPayment> = emptyList(),
     ): InvestmentMoneyTrail {
         val linked = transactions.filter { it.ref == investment.id }
         val linkedDebt = linkedDebtForInvestment(investment, debts)
@@ -116,8 +117,8 @@ object MoneyTrail {
         val sourceStatus = when {
             investment.sourceType !in setOf("existing_debt", "new_loan") -> "Account-funded"
             linkedDebt == null -> "Source debt not found"
-            (linkedDebt.amount - linkedDebt.paidPrincipal).coerceAtLeast(0.0) <= 0.01 -> "Source debt cleared"
-            else -> "Source debt still payable ${CurrencyFormatter.detail((linkedDebt.amount - linkedDebt.paidPrincipal).coerceAtLeast(0.0))}"
+            InterestPolicy.debtBalance(linkedDebt, debtPayments).principal <= 0.01 -> "Source debt cleared"
+            else -> "Source debt still payable ${CurrencyFormatter.detail(InterestPolicy.debtBalance(linkedDebt, debtPayments).principal)}"
         }
 
         return InvestmentMoneyTrail(
@@ -160,15 +161,21 @@ object MoneyTrail {
             debts.firstOrNull { it.name.equals(sourceName, ignoreCase = true) }
         }
 
+    // v3.3.1: principal 0 with interest > 0 (or a penalty-only row) is 0 principal;
+    // only a legacy row with no split at all counts its whole amount.
     private fun borrowerPrincipal(payment: Payment): Double = when {
-        payment.type.equals("Interest Only", ignoreCase = true) -> 0.0
+        InterestPolicy.isInterestOnlyType(payment.type) -> 0.0
         payment.principal > 0.0 -> payment.principal
+        payment.interest > 0.0 || payment.penaltyPaise > 0L -> 0.0
         else -> payment.amount
     }
 
+    // v3.3.1: principal 0 with interest > 0 (or a penalty-only row) is 0 principal;
+    // only a legacy row with no split at all counts its whole amount.
     private fun debtPrincipal(payment: DebtPayment): Double = when {
-        payment.type.equals("Interest Only", ignoreCase = true) -> 0.0
+        InterestPolicy.isInterestOnlyType(payment.type) -> 0.0
         payment.principal > 0.0 -> payment.principal
+        payment.interest > 0.0 || payment.penaltyPaise > 0L -> 0.0
         else -> payment.amount
     }
 

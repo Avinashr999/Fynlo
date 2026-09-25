@@ -72,18 +72,23 @@ interface FynloDao {
     // payments correctly get paid = 0. After the v15→v16 backfill migration,
     // every borrower with `paid > 0` has at least one payment row, so SUM is
     // never NULL for those.
+    // v3.3.1: a row counts as principal only for its stored principal. A row with
+    // principal 0 counts the WHOLE amount as principal only for legacy rows that
+    // carry no split at all (interest 0 and no penalty); principal 0 with
+    // interest > 0 (or a penalty-only row) counts 0 principal. 'Interest Only'
+    // (any case / spacing) always counts 0 principal.
     @Query("""UPDATE borrowers SET
-        paid          = COALESCE((SELECT SUM(CASE WHEN type='Interest Only' THEN 0 WHEN principal > 0 THEN principal ELSE amount END) FROM payments WHERE loanId = borrowers.id), 0)
-                      + COALESCE((SELECT SUM(CASE WHEN type='Interest Only' AND interest=0 THEN amount ELSE interest END) FROM payments WHERE loanId = borrowers.id), 0),
-        paidPrincipal = COALESCE((SELECT SUM(CASE WHEN type='Interest Only' THEN 0 WHEN principal > 0 THEN principal ELSE amount END) FROM payments WHERE loanId = borrowers.id), 0),
-        paidInterest  = COALESCE((SELECT SUM(CASE WHEN type='Interest Only' AND interest=0 THEN amount ELSE interest END) FROM payments WHERE loanId = borrowers.id), 0)""")
+        paid          = COALESCE((SELECT SUM(CASE WHEN LOWER(TRIM(type))='interest only' THEN 0 WHEN principal > 0 THEN principal WHEN interest > 0 OR penaltyPaise > 0 THEN 0 ELSE amount END) FROM payments WHERE loanId = borrowers.id), 0)
+                      + COALESCE((SELECT SUM(CASE WHEN LOWER(TRIM(type))='interest only' AND interest=0 THEN amount ELSE interest END) FROM payments WHERE loanId = borrowers.id), 0),
+        paidPrincipal = COALESCE((SELECT SUM(CASE WHEN LOWER(TRIM(type))='interest only' THEN 0 WHEN principal > 0 THEN principal WHEN interest > 0 OR penaltyPaise > 0 THEN 0 ELSE amount END) FROM payments WHERE loanId = borrowers.id), 0),
+        paidInterest  = COALESCE((SELECT SUM(CASE WHEN LOWER(TRIM(type))='interest only' AND interest=0 THEN amount ELSE interest END) FROM payments WHERE loanId = borrowers.id), 0)""")
     suspend fun rebuildBorrowerPaidFromPayments()
 
     @Query("""UPDATE debts SET
-        paid          = COALESCE((SELECT SUM(CASE WHEN type='Interest Only' THEN 0 WHEN principal > 0 THEN principal ELSE amount END) FROM debt_payments WHERE debtId = debts.id), 0)
-                      + COALESCE((SELECT SUM(CASE WHEN type='Interest Only' AND interest=0 THEN amount ELSE interest END) FROM debt_payments WHERE debtId = debts.id), 0),
-        paidPrincipal = COALESCE((SELECT SUM(CASE WHEN type='Interest Only' THEN 0 WHEN principal > 0 THEN principal ELSE amount END) FROM debt_payments WHERE debtId = debts.id), 0),
-        paidInterest  = COALESCE((SELECT SUM(CASE WHEN type='Interest Only' AND interest=0 THEN amount ELSE interest END) FROM debt_payments WHERE debtId = debts.id), 0)""")
+        paid          = COALESCE((SELECT SUM(CASE WHEN LOWER(TRIM(type))='interest only' THEN 0 WHEN principal > 0 THEN principal WHEN interest > 0 OR penaltyPaise > 0 THEN 0 ELSE amount END) FROM debt_payments WHERE debtId = debts.id), 0)
+                      + COALESCE((SELECT SUM(CASE WHEN LOWER(TRIM(type))='interest only' AND interest=0 THEN amount ELSE interest END) FROM debt_payments WHERE debtId = debts.id), 0),
+        paidPrincipal = COALESCE((SELECT SUM(CASE WHEN LOWER(TRIM(type))='interest only' THEN 0 WHEN principal > 0 THEN principal WHEN interest > 0 OR penaltyPaise > 0 THEN 0 ELSE amount END) FROM debt_payments WHERE debtId = debts.id), 0),
+        paidInterest  = COALESCE((SELECT SUM(CASE WHEN LOWER(TRIM(type))='interest only' AND interest=0 THEN amount ELSE interest END) FROM debt_payments WHERE debtId = debts.id), 0)""")
     suspend fun rebuildDebtPaidFromDebtPayments()
 
     // recalculateDebtPaid removed by C01 Sprint 1 Stage 2 (twin of
