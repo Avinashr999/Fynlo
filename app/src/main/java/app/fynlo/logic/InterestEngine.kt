@@ -383,8 +383,10 @@ object InterestEngine {
             s = s.copy(lastAccrualDate = anniversary)
             anniversary = anniversary.plusMonths(1)
         }
+        // Mid-month stub: daily simple interest on outstanding principal until asOf
+        // (no capitalization until the next anniversary). Full-month paths unchanged.
         if (s.lastAccrualDate < asOf) {
-            s = s.copy(lastAccrualDate = asOf)
+            s = accruePaiseReducing(s, asOf)
         }
         return s
     }
