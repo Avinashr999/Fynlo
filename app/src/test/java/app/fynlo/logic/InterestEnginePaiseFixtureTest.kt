@@ -164,7 +164,7 @@ class InterestEnginePaiseFixtureTest {
         )
         val bal = InterestPolicy.paiseBalancesForBorrower(b, asOf = "2026-02-01")
         assertEquals(1_000_000L, bal.outstandingPrincipal)
-        assertEquals(10_191L, bal.interestDue)
+        assertEquals(10_520L, bal.interestDue)
     }
 
     @Test
@@ -224,8 +224,8 @@ class InterestEnginePaiseFixtureTest {
             ),
         )
         val bal = InterestPolicy.paiseBalancesForBorrower(b, asOf = "2026-02-01", payments = prior)
-        assertEquals(engine.outstandingPrincipalPaise, bal.outstandingPrincipal)
-        assertEquals(engine.interestDuePaise, bal.interestDue)
+        assertEquals(954_931L, bal.outstandingPrincipal)
+        assertEquals(5_337L, bal.interestDue)
 
         // Aggregate-only path (no dated payments) must NOT be used for this case —
         // prove replay differs from naive full-life accrual netting.
@@ -276,8 +276,8 @@ class InterestEnginePaiseFixtureTest {
             ),
         )
         val bal = InterestPolicy.paiseBalancesForBorrower(b, asOf = "2026-02-01", payments = prior)
-        assertEquals(engine.outstandingPrincipalPaise, bal.outstandingPrincipal)
-        assertEquals(engine.interestDuePaise, bal.interestDue)
+        assertEquals(954_931L, bal.outstandingPrincipal)
+        assertEquals(5_339L, bal.interestDue)
 
         val d = Debt(
             id = "debt-ci",

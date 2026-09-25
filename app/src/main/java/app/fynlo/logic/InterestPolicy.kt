@@ -586,7 +586,7 @@ object InterestPolicy {
             method = method,
             compoundMonths = compoundMonths,
         )
-        state = InterestEngine.accruePaiseTo(state, asOfDate)
+        state = InterestEngine.accruePaiseTo(state, asOfDate.plusDays(1))
         // v3.3.0: start from the engine's principal so Compound keeps interest it
         // capitalised on compounding dates (Simple / Reducing: equals principalPaise).
         val outstandingPrincipal = (state.outstandingPrincipalPaise - InterestEngine.rupeesToPaise(paidPrincipalRupees))
@@ -597,6 +597,28 @@ object InterestPolicy {
                 InterestEngine.rupeesToPaise(waivedInterestRupees)
             ).coerceAtLeast(0L)
         return InterestEngine.PaiseBalances(outstandingPrincipal, interestDue)
+    }
+
+    /**
+     * Personal-ledger replay: interest counts the payment/as-of date, then a
+     * payment made on that date reduces principal/interest from the next day.
+     */
+    private fun replayPaiseToInclusive(
+        state: InterestEngine.PaiseLoanState,
+        payments: List<Pair<LocalDate, Long>>,
+        asOfDate: LocalDate,
+    ): InterestEngine.PaiseLoanState {
+        var s = state
+        val ordered = payments
+            .filter { (date, amount) -> !date.isAfter(asOfDate) && amount >= 0L }
+            .sortedWith(compareBy({ it.first }))
+        for ((date, payPaise) in ordered) {
+            s = InterestEngine.accruePaiseTo(s, date.plusDays(1))
+            if (payPaise > 0L) {
+                s = InterestEngine.applyPaymentPaise(s, payPaise).first
+            }
+        }
+        return InterestEngine.accruePaiseTo(s, asOfDate.plusDays(1))
     }
 
     private fun paiseBalancesFromReplay(
@@ -622,7 +644,7 @@ object InterestPolicy {
             method = method,
             compoundMonths = compoundMonths,
         )
-        state = InterestEngine.replayPaiseTo(state, events, asOfDate)
+        state = replayPaiseToInclusive(state, events, asOfDate)
         val interestDue = (
             state.interestDuePaise - InterestEngine.rupeesToPaise(waivedInterestRupees)
             ).coerceAtLeast(0L)

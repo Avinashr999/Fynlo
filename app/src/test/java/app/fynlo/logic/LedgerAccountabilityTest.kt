@@ -386,9 +386,9 @@ class LedgerAccountabilityTest {
             date = "2024-05-22",
             due = "2025-05-22",
             intType = "Simple Interest",
-            paid = 4_500.0,
+            paid = 4_512.33,
             paidPrincipal = 0.0,
-            paidInterest = 4_500.0,
+            paidInterest = 4_512.33,
         )
 
         val report = LedgerAccountability.inspect(
@@ -404,8 +404,8 @@ class LedgerAccountabilityTest {
                     name = borrower.name,
                     date = "2025-05-22",
                     type = "Interest Only",
-                    amount = 4_500.0,
-                    interest = 4_500.0,
+                    amount = 4_512.33,
+                    interest = 4_512.33,
                     interestAllocationType = InterestPolicy.CURRENT_PERIOD_INTEREST,
                     interestPeriodStartDate = borrower.date,
                     interestPeriodEndDate = borrower.due,
@@ -438,9 +438,9 @@ class LedgerAccountabilityTest {
             date = "2024-06-01",
             due = "2025-06-01",
             intType = "Simple Interest",
-            paid = 6_000.0,
+            paid = 6_016.44,
             paidPrincipal = 0.0,
-            paidInterest = 6_000.0,
+            paidInterest = 6_016.44,
         )
 
         val report = LedgerAccountability.inspect(
@@ -457,8 +457,8 @@ class LedgerAccountabilityTest {
                     name = debt.name,
                     date = "2025-06-01",
                     type = "Interest Only",
-                    amount = 6_000.0,
-                    interest = 6_000.0,
+                    amount = 6_016.44,
+                    interest = 6_016.44,
                     interestAllocationType = InterestPolicy.CURRENT_PERIOD_INTEREST,
                     interestPeriodStartDate = debt.date,
                     interestPeriodEndDate = debt.due,

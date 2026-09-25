@@ -2362,3 +2362,14 @@ The user approved the combined future roadmap below. Do not treat these as compl
 - Interest date policy is now explicitly called out: current engine uses standard exclusive-end day counting; any final-day-inclusive change must be implemented only with tests and a migration note because it can alter historical interest.
 - Version rule reaffirmed: every shared behavior-changing build must bump both `versionCode` and `versionName`.
 - Scope: documentation/product direction only. No app behavior, database schema, sync logic, account balance, or interest calculation changed in this pass.
+
+### 2026-09-25 - Personal Ledger Audit, Cleanup Plan, and Inclusive Interest Policy
+- Added `docs/personal-mode-cleanup-plan.md` to guide UI simplification for private/personal use without removing data-safety features.
+- Ran a read-only audit against the latest available stale DB dump `.codex-db-dumps/prod-hdfc-check-Fynlo_database` because no ADB device was connected. This is not a live phone audit.
+- Stale dump audit result: borrower principal aggregates matched payment rows, debt principal aggregates matched debt-payment rows, no invested-current-value-zero records, no sync conflicts, and no missing linked debts.
+- Stale dump audit found six old `Info/Investment` transaction rows without from/to accounts; treat this as money-trail clarity evidence only, not live corruption until the phone DB is re-audited.
+- Implemented the personal interest rule requested by the user: borrower/debt interest now counts both the money-given/start date and the final/as-of/payment date.
+- Added `InterestEngine.daysBetweenInclusive(...)` and updated `calcIntAccrued(...)` plus the v3.3 paise replay path used by borrower/debt balances and payment previews.
+- Updated interest regression tests to lock the new policy. Example: Rs. 1,00,000 at 18% from 28-06-2025 through 28-06-2026 now accrues Rs. 18,049.315... because the final date is counted.
+- Bumped app version to `3.3.1` / `versionCode 241` because interest behavior changed.
+- No database migration, no account balance mutation, no Firestore repair, no phone install, and no AAB in this pass.

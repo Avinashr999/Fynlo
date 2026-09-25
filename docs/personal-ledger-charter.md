@@ -67,7 +67,7 @@ When principal is fully or partially paid:
 
 Important date-policy note:
 
-The existing engine uses standard day-count behavior where `daysBetween(start, end)` excludes the end date; for example, 28-06-2025 to 28-06-2026 is 365 days. If the personal ledger should count the final payment day inclusively, that must be introduced as an explicit policy with regression tests and a clear migration note, because it can change historical interest values.
+From version `3.3.1` / `versionCode 241`, the personal ledger interest policy counts both the money-given date and the final/as-of/payment date for borrower and debt interest calculations. Example: 28-06-2025 to 28-06-2026 is treated as 366 personal-ledger interest days for interest accrual, while the raw utility `daysBetween(start, end)` still returns the standard exclusive difference for low-level date checks.
 
 ## Data Migration And Repair Rules
 
@@ -168,4 +168,3 @@ Before sharing an APK/AAB after any app behavior change:
 - Record the change in `PROJECT_STATE_FOR_AI.md`.
 - Run compile and unit tests.
 - Install prod/dev debug builds for phone smoke when a phone is available.
-

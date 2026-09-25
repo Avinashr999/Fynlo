@@ -56,7 +56,7 @@ class InterestPolicyTest {
     }
 
     @Test
-    fun `one lakh at eighteen percent for exact one year is eighteen thousand`() {
+    fun `one lakh at eighteen percent for exact one year counts final day`() {
         val borrower = Borrower(
             id = "exact-year",
             name = "Exact Year Borrower",
@@ -69,7 +69,8 @@ class InterestPolicyTest {
         )
 
         assertEquals(365, InterestEngine.daysBetween("2025-06-28", "2026-06-28"))
-        assertEquals(18_000.0, InterestPolicy.accruedForBorrower(borrower, asOf = "2026-07-01"), 0.01)
+        assertEquals(366, InterestEngine.daysBetweenInclusive("2025-06-28", "2026-06-28"))
+        assertEquals(18_049.315068493153, InterestPolicy.accruedForBorrower(borrower, asOf = "2026-07-01"), 0.01)
     }
 
     @Test
@@ -272,10 +273,10 @@ class InterestPolicyTest {
 
         val breakdown = InterestPolicy.borrowerBreakdown(borrower, payments, asOf = "2026-05-12")
 
-        assertEquals(20_000.0, breakdown.accrued, 0.01)
+        assertEquals(20_200.0, breakdown.accrued, 0.01)
         assertEquals(30_000.0, breakdown.paid, 0.01)
         assertEquals(0.0, breakdown.due, 0.01)
-        assertEquals(10_000.0, breakdown.paidAhead, 0.01)
+        assertEquals(9_800.0, breakdown.paidAhead, 0.01)
     }
 
     @Test

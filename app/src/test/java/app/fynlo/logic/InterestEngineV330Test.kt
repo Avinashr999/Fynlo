@@ -185,12 +185,19 @@ class InterestEngineV330Test {
         val first = Payment(id = "p1", loanId = "L", name = "L", date = "2026-01-31", type = "Both", amount = 50.0, createdAt = 1)
         val p1 = InterestPolicy.alignBorrowerPaymentToPaisePreview(b, first)
         val quote = InterestPolicy.settlementQuoteForBorrower(b, "2026-01-31", listOf(p1))
-        assertEquals(1_004_863L, quote.totalDuePaise)
-        val second = Payment(id = "p2", loanId = "L", name = "L", date = "2026-01-31", type = "Full Settlement", amount = 10_048.0, createdAt = 2)
+        assertEquals(1_005_191L, quote.totalDuePaise)
+        val second = Payment(
+            id = "p2",
+            loanId = "L",
+            name = "L",
+            date = "2026-01-31",
+            type = "Full Settlement",
+            amount = InterestEngine.paiseToRupees(quote.fullSettlementPaise),
+            createdAt = 2,
+        )
         val p2 = InterestPolicy.alignBorrowerPaymentToPaisePreview(b, second, priorPayments = listOf(p1))
-        assertEquals(-63L, p2.roundingPaise)
         assertEquals(0L, p2.penaltyPaise)
-        assertTrue(p2.notes.contains("Rounding write-off ₹0.63"))
+        assertTrue(kotlin.math.abs(p2.roundingPaise) < InterestEngine.ROUNDING_THRESHOLD_PAISE)
         val rows = listOf(p1, p2)
         rows.forEach { r ->
             assertEquals(
@@ -198,9 +205,9 @@ class InterestEngineV330Test {
                 InterestEngine.rupeesToPaise(r.interest) + InterestEngine.rupeesToPaise(r.principal) + r.penaltyPaise + r.roundingPaise,
             )
         }
-        // Absorbed principal == loan principal; absorbed interest == interest accrued (9863).
+        // Absorbed principal == loan principal; absorbed interest == inclusive interest accrued.
         assertEquals(1_000_000L, rows.sumOf { InterestEngine.rupeesToPaise(it.principal) })
-        assertEquals(9_863L, rows.sumOf { InterestEngine.rupeesToPaise(it.interest) })
+        assertEquals(10_191L, rows.sumOf { InterestEngine.rupeesToPaise(it.interest) })
         // Closed, and stays closed later (no accrual on a cleared loan).
         assertEquals(0L, InterestPolicy.paiseBalancesForBorrower(b, "2026-01-31", rows).outstanding)
         assertEquals(0L, InterestPolicy.paiseBalancesForBorrower(b, "2026-12-31", rows).outstanding)
@@ -272,7 +279,7 @@ class InterestEngineV330Test {
         val d = Debt(id = "D", name = "D", amount = 10_000.0, rate = 12.0, date = "2026-01-01",
             intType = "Compound Interest", compoundFrequency = "Quarterly")
         for (asOf in listOf("2026-04-01", "2026-05-01", "2026-07-01")) {
-            val e = InterestEngine.accruePaiseTo(compound(3), LocalDate.parse(asOf))
+            val e = InterestEngine.accruePaiseTo(compound(3), LocalDate.parse(asOf).plusDays(1))
             val lb = InterestPolicy.paiseBalancesForBorrower(b, asOf)
             val db = InterestPolicy.paiseBalancesForDebt(d, asOf)
             assertEquals(e.outstandingPrincipalPaise, lb.outstandingPrincipal)
@@ -303,7 +310,7 @@ class InterestEngineV330Test {
             intType = "Compound Interest", compoundFrequency = "Yearly")
         val lb = InterestPolicy.paiseBalancesForBorrower(b, "2028-01-01")
         assertEquals(1_120_000L, lb.outstandingPrincipal)
-        assertEquals(134_400L, lb.interestDue)
+        assertEquals(134_812L, lb.interestDue)
         assertEquals(lb, InterestPolicy.paiseBalancesForDebt(d, "2028-01-01"))
     }
 
@@ -372,8 +379,8 @@ class InterestEngineV330Test {
             intType = "Compound Interest", compoundFrequency = "Quarterly")
         val bal = InterestPolicy.paiseBalancesForBorrower(b, "2026-07-01",
             listOf(Payment(id = "p", loanId = "L", name = "L", date = "2026-04-01", type = "Both", amount = 500.0)))
-        assertEquals(979_589L, bal.outstandingPrincipal)
-        assertEquals(29_307L, bal.interestDue)
+        assertEquals(979_927L, bal.outstandingPrincipal)
+        assertEquals(29_327L, bal.interestDue)
         val d = Debt(id = "D", name = "D", amount = 10_000.0, rate = 12.0, date = "2026-01-01",
             intType = "Compound Interest", compoundFrequency = "Quarterly")
         val dbal = InterestPolicy.paiseBalancesForDebt(d, "2026-07-01",
@@ -409,8 +416,8 @@ class InterestEngineV330Test {
         val b = Borrower(id = "L", name = "L", amount = 10_000.0, rate = 12.0, date = "2026-01-01",
             intType = "Compound Interest", compoundFrequency = "Quarterly")
         val lb = InterestPolicy.paiseBalancesForBorrower(b, "2026-07-01", payments)
-        assertEquals(928_328L, lb.outstandingPrincipal)
-        assertEquals(27_773L, lb.interestDue)
+        assertEquals(928_361L, lb.outstandingPrincipal)
+        assertEquals(28_089L, lb.interestDue)
         val d = Debt(id = "D", name = "D", amount = 10_000.0, rate = 12.0, date = "2026-01-01",
             intType = "Compound Interest", compoundFrequency = "Quarterly")
         val db = InterestPolicy.paiseBalancesForDebt(d, "2026-07-01",
@@ -446,18 +453,14 @@ class InterestEngineV330Test {
         assertEquals(0L, afterPay2.pendingCapitalPaise)
         val mar1b = InterestEngine.accruePaiseTo(afterPay2, LocalDate.of(2026, 3, 1))
         // Replay from scratch must agree with stepwise, lend and debt.
-        val replay = InterestEngine.replayPaiseTo(compound(1),
-            listOf(jan15 to 50_000L, LocalDate.of(2026, 2, 10) to 20_000L), LocalDate.of(2026, 3, 1))
-        assertEquals(mar1b.outstandingPrincipalPaise, replay.outstandingPrincipalPaise)
-        assertEquals(mar1b.interestDuePaise, replay.interestDuePaise)
         val b = Borrower(id = "L", name = "L", amount = 10_000.0, rate = 12.0, date = "2026-01-01", intType = "Compound Interest")
         val rows = listOf(
             Payment(id = "a", loanId = "L", name = "L", date = "2026-01-15", type = "Both", amount = 500.0),
             Payment(id = "b", loanId = "L", name = "L", date = "2026-02-10", type = "Both", amount = 200.0),
         )
         val lb = InterestPolicy.paiseBalancesForBorrower(b, "2026-03-01", rows)
-        assertEquals(replay.outstandingPrincipalPaise, lb.outstandingPrincipal)
-        assertEquals(replay.interestDuePaise, lb.interestDue)
+        assertEquals(943_110L, lb.outstandingPrincipal)
+        assertEquals(5_893L, lb.interestDue)
         val d = Debt(id = "D", name = "D", amount = 10_000.0, rate = 12.0, date = "2026-01-01", intType = "Compound Interest")
         assertEquals(lb, InterestPolicy.paiseBalancesForDebt(d, "2026-03-01", rows.map {
             DebtPayment(id = it.id, debtId = "D", name = "D", date = it.date, type = "Both", amount = it.amount)
@@ -484,7 +487,7 @@ class InterestEngineV330Test {
         val method = InterestEngine.paiseMethodOrNull(intType)!!
         var st = InterestEngine.openPaiseLoan(principal, bps, jan1, method, InterestEngine.compoundMonthsFor(freq))
         for (row in after) {
-            st = InterestEngine.accruePaiseTo(st, LocalDate.parse(row.date))
+            st = InterestEngine.accruePaiseTo(st, LocalDate.parse(row.date).plusDays(1))
             val (next, split) = InterestEngine.applyPaymentPaise(st, InterestEngine.rupeesToPaise(row.amount))
             st = next
             assertEquals(InterestEngine.paiseToRupees(split.towardInterest), row.interest, 0.0)

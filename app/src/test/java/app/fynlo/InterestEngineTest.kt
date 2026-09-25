@@ -15,7 +15,7 @@ class InterestEngineTest {
     @Test fun `zero rate returns 0`() = assertEquals(0.0, InterestEngine.calcIntAccrued(10000.0, 0.0, "2023-01-01", "Simple Interest", asOf = "2024-01-01"), 0.0)
     @Test fun `zero amount returns 0`() = assertEquals(0.0, InterestEngine.calcIntAccrued(0.0, 12.0, "2023-01-01", "Simple Interest", asOf = "2024-01-01"), 0.0)
     @Test fun `empty loanDate returns 0`() = assertEquals(0.0, InterestEngine.calcIntAccrued(10000.0, 12.0, "", "Simple Interest", asOf = "2024-01-01"), 0.0)
-    @Test fun `asOf same as loanDate returns 0`() = assertEquals(0.0, InterestEngine.calcIntAccrued(10000.0, 12.0, "2024-01-01", "Simple Interest", asOf = "2024-01-01"), 0.0)
+    @Test fun `asOf same as loanDate counts one personal ledger interest day`() = assertEquals(10000.0 * 0.12 / 365.0, InterestEngine.calcIntAccrued(10000.0, 12.0, "2024-01-01", "Simple Interest", asOf = "2024-01-01"), 0.01)
     @Test fun `fully paid loan returns 0 interest`() {
         // For SI, totalPaid only reduces principal in Reducing Balance mode
         // Fully paid SI loan: interest calculated on original amount by design
@@ -28,8 +28,9 @@ class InterestEngineTest {
         assertEquals("Overpaid RB loan should have 0 interest", 0.0, r, 0.0)
     }
 
-    @Test fun `SI 1 year 12 percent on 10000 equals 1200`() {
-        assertEquals(1200.0, InterestEngine.calcIntAccrued(10000.0, 12.0, "2023-01-01", "Simple Interest", asOf = "2024-01-01"), 1.0)
+    @Test fun `SI exact year counts final date`() {
+        val expected = 10000.0 * 0.12 * (InterestEngine.daysBetweenInclusive("2023-01-01", "2024-01-01").toDouble() / 365.0)
+        assertEquals(expected, InterestEngine.calcIntAccrued(10000.0, 12.0, "2023-01-01", "Simple Interest", asOf = "2024-01-01"), 0.01)
     }
     @Test fun `SI 2 years 10 percent on 50000 equals 10000`() {
         val r = InterestEngine.calcIntAccrued(50000.0, 10.0, "2022-01-01", "Simple Interest", asOf = "2024-01-01")
@@ -47,8 +48,8 @@ class InterestEngineTest {
         assertTrue("6m SI ($half) should be ~half of annual ($annual)", half in (annual * 0.45)..(annual * 0.55))
     }
 
-    @Test fun `CI 1 year 12 percent on 10000 equals 1200`() {
-        assertEquals(1200.0, InterestEngine.calcIntAccrued(10000.0, 12.0, "2023-01-01", "Compound Interest", asOf = "2024-01-01"), 1.0)
+    @Test fun `CI exact year counts final date`() {
+        assertEquals(1203.68, InterestEngine.calcIntAccrued(10000.0, 12.0, "2023-01-01", "Compound Interest", asOf = "2024-01-01"), 0.01)
     }
     @Test fun `CI 2 years 12 percent on 10000 equals 2544`() {
         val r = InterestEngine.calcIntAccrued(10000.0, 12.0, "2022-01-01", "Compound Interest", asOf = "2024-01-01")
@@ -107,8 +108,8 @@ class InterestEngineTest {
             asOf = "2026-07-03",
         )
 
-        assertTrue("Expected fresh accrual for 2 days, got $accrued", accrued > 0.0)
-        assertEquals(0.49, accrued, 0.01)
+        assertTrue("Expected fresh accrual for 3 personal-ledger days, got $accrued", accrued > 0.0)
+        assertEquals(0.74, accrued, 0.01)
     }
 
     @Test fun `small non-zero interest is not displayed as zero`() {

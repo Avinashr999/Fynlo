@@ -70,6 +70,20 @@ object InterestEngine {
     }
 
     /**
+     * Personal-ledger day count: both the money-given date and the final/as-of
+     * date are counted. Example: same-day loan + settlement is 1 interest day.
+     */
+    fun daysBetweenInclusive(start: String, end: String): Long {
+        return try {
+            val startDate = LocalDate.parse(start, formatter)
+            val endDate = LocalDate.parse(end, formatter)
+            if (endDate.isBefore(startDate)) 0 else ChronoUnit.DAYS.between(startDate, endDate) + 1
+        } catch (e: Exception) {
+            0
+        }
+    }
+
+    /**
      * Precision Anniversary-Step Interest Engine (v1.3.3)
      * Now accounts for partial payments reducing the principal.
      */
@@ -83,7 +97,7 @@ object InterestEngine {
         asOf: String = LocalDate.now().format(formatter)
     ): Double {
         if (rate == 0.0 || amount == 0.0 || loanDate.isEmpty()) return 0.0
-        val totalDays = daysBetween(loanDate, asOf)
+        val totalDays = daysBetweenInclusive(loanDate, asOf)
         if (totalDays <= 0) return 0.0
 
         val rAnnual = rate / 100.0
@@ -128,8 +142,11 @@ object InterestEngine {
                     val tYears = totalDays.toDouble() / 365.0
                     principalForInterest * rAnnual * tYears
                 } else {
-                    val daysTodue   = daysBetween(loanDate, dueDate).coerceAtLeast(0)
-                    val daysOverdue = daysBetween(dueDate, asOf).coerceAtLeast(0)
+                    val daysTodue   = daysBetweenInclusive(loanDate, dueDate).coerceAtLeast(0)
+                    val overdueStart = runCatching {
+                        LocalDate.parse(dueDate, formatter).plusDays(1).format(formatter)
+                    }.getOrDefault(dueDate)
+                    val daysOverdue = daysBetweenInclusive(overdueStart, asOf).coerceAtLeast(0)
                     val siInterest  = principalForInterest * rAnnual * (daysTodue.toDouble() / 365.0)
                     if (daysOverdue <= 0) {
                         siInterest
@@ -580,4 +597,3 @@ object InterestEngine {
         return k
     }
 }
-

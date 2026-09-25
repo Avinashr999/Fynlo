@@ -22,7 +22,7 @@ class InterestEngineExtendedTest {
             loanDate = daysAgo(365), intType = "Simple Interest",
             dueDate = "", totalPaid = 0.0, asOf = today()
         )
-        assertEquals(1000.0, interest, 1.0)
+        assertEquals(10000.0 * 0.10 * (366.0 / 365.0), interest, 1.0)
     }
 
     @Test
@@ -69,8 +69,8 @@ class InterestEngineExtendedTest {
             loanDate = daysAgo(182), intType = "Simple Interest",
             asOf = today()
         )
-        // 10000 * 0.12 * (182/365) ≈ 598
-        val expected = 10000.0 * 0.12 * (182.0 / 365.0)
+        // Personal-ledger policy counts the final/as-of date: 183 days.
+        val expected = 10000.0 * 0.12 * (183.0 / 365.0)
         assertEquals(expected, interest, 1.0)
     }
 
@@ -83,7 +83,7 @@ class InterestEngineExtendedTest {
             loanDate = daysAgo(365), intType = "Compound Interest",
             asOf = today()
         )
-        assertEquals(1000.0, interest, 1.0)
+        assertEquals(1003.01, interest, 1.0)
     }
 
     @Test
@@ -93,8 +93,7 @@ class InterestEngineExtendedTest {
             loanDate = daysAgo(730), intType = "Compound Interest",
             asOf = today()
         )
-        // Year 1: 10000 + 1000 = 11000. Year 2: 11000 + 1100 = 12100. Interest = 2100
-        assertEquals(2100.0, interest, 1.0)
+        assertEquals(2103.32, interest, 1.0)
     }
 
     // ── Reducing Balance ─────────────────────────────────────────────────
@@ -174,7 +173,7 @@ class InterestEngineExtendedTest {
         )
         // "Both" calculates SI for full loanDate-to-dueDate period (200 days)
         // even if asOf is before dueDate, because daysOverdue <= 0
-        val daysTodue = InterestEngine.daysBetween(loanDate, dueDate)
+        val daysTodue = InterestEngine.daysBetweenInclusive(loanDate, dueDate)
         val expectedSI = Math.round(10000.0 * 0.12 * (daysTodue.toDouble() / 365.0)).toDouble()
         assertEquals(expectedSI, interest, 1.0)
     }

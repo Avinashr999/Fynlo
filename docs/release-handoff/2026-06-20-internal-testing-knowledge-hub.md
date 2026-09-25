@@ -1573,3 +1573,12 @@ Phone smoke still recommended before a new AAB:
 - Regression tests added for borrower and debt interest-only payments never reducing visible principal.
 - Installed on phone: `app.fynlo` and `app.fynlo.dev`; both launch sanity checks passed.
 - Verification passed: targeted `InterestPolicyTest`, `:app:compileProdDebugKotlin`, full `:app:testProdDebugUnitTest`, prod/dev installs, and launch sanity.
+
+### 2026-09-25 - 3.3.1 personal ledger interest policy
+- Product direction changed to private lifetime ledger first; added `docs/personal-ledger-charter.md` and `docs/personal-mode-cleanup-plan.md`.
+- Interest policy changed: borrower/debt interest now counts both the start date and final/as-of/payment date. A same-day loan/payment has one interest day; final settlement date is included.
+- Added `InterestEngine.daysBetweenInclusive(...)` and applied inclusive day count to normal rupee interest plus the v3.3 paise replay path used by balances, payment previews, and resplits.
+- Version bumped to `versionName 3.3.1`, `versionCode 241`.
+- Read-only stale dump audit was run because no phone was connected: aggregate borrower/debt payment rows matched stored principal/interest in the available dump; six old investment info rows lacked account trail fields and should be treated as historical money-trail clarity evidence until the live phone DB is re-audited.
+- No database migration, no account balance mutation, no Firestore repair, no phone install, no release AAB, and no Play Console action in this pass.
+- Verification passed: `:app:compileProdDebugKotlin` and full `:app:testProdDebugUnitTest` with 521 tests.

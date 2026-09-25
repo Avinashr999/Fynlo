@@ -109,9 +109,9 @@ class InterestPolicyPaisePostTest {
         val preview = InterestPolicy.previewBorrowerPaymentPaise(
             b, InterestEngine.rupeesToPaise(amount), asOf, prior,
         )
-        // After mid-month ₹500: principal 9546.02, interest due 53.36
-        assertEquals(5_336L, preview.towardInterest)
-        assertEquals(14_664L, preview.towardPrincipal)
+        // Personal-ledger inclusive dates: Jan 1..15 and Jan 16..Feb 1 are both counted.
+        assertEquals(5_337L, preview.towardInterest)
+        assertEquals(14_663L, preview.towardPrincipal)
         assertEquals(0L, preview.penaltyPaise)
 
         val posted = InterestPolicy.alignBorrowerPaymentToPaisePreview(

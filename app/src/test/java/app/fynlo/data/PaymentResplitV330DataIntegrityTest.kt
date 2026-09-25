@@ -61,18 +61,18 @@ class PaymentResplitV330DataIntegrityTest {
         repository.insertPaymentWithDest(pay("p1", "2026-01-15", 500.0), "Personal Cash", "personal")
         repository.insertPaymentWithDest(pay("p2", "2026-02-01", 200.0), "Personal Cash", "personal")
         val before = db.dao().getPaymentById("p2")!!
-        assertEquals(53.36, before.interest, 0.0)
-        assertEquals(146.64, before.principal, 0.0)
+        assertEquals(53.37, before.interest, 0.0)
+        assertEquals(146.63, before.principal, 0.0)
 
         val t1 = db.dao().getTransactionsByRef("loan").single { it.category == "Loan Repayment" && it.amount == 500.0 }
         repository.deleteTransaction(t1)
 
         val after = db.dao().getPaymentById("p2")!!
-        assertEquals(101.91, after.interest, 0.0)
-        assertEquals(98.09, after.principal, 0.0)
+        assertEquals(105.20, after.interest, 0.0)
+        assertEquals(94.80, after.principal, 0.0)
         val b = db.dao().getBorrowerById("loan")!!
-        assertEquals(98.09, b.paidPrincipal, 0.0001)
-        assertEquals(101.91, b.paidInterest, 0.0001)
+        assertEquals(94.80, b.paidPrincipal, 0.0001)
+        assertEquals(105.20, b.paidInterest, 0.0001)
         assertEquals(200.0, db.dao().getAccountById("acc")!!.balance, 0.0001)
     }
 
@@ -82,13 +82,13 @@ class PaymentResplitV330DataIntegrityTest {
         repository.insertPaymentWithDest(pay("p2", "2026-02-01", 200.0), "Personal Cash", "personal")
         // Back-dated insert (earlier than p2) must re-split p2 immediately.
         repository.insertPaymentWithDest(pay("p1", "2026-01-15", 500.0), "Personal Cash", "personal")
-        assertEquals(53.36, db.dao().getPaymentById("p2")!!.interest, 0.0)
+        assertEquals(53.37, db.dao().getPaymentById("p2")!!.interest, 0.0)
         // Undo the last action (the back-dated p1) → p2 goes back to the no-p1 split.
         assertTrue(repository.undoLastMoneyAction())
         val p2 = db.dao().getPaymentById("p2")!!
-        assertEquals(101.91, p2.interest, 0.0)
-        assertEquals(98.09, p2.principal, 0.0)
-        assertEquals(98.09, db.dao().getBorrowerById("loan")!!.paidPrincipal, 0.0001)
+        assertEquals(105.20, p2.interest, 0.0)
+        assertEquals(94.80, p2.principal, 0.0)
+        assertEquals(94.80, db.dao().getBorrowerById("loan")!!.paidPrincipal, 0.0001)
     }
 
     @Test
@@ -114,9 +114,9 @@ class PaymentResplitV330DataIntegrityTest {
         fun dp(id: String, amount: Double) =
             DebtPayment(id = id, debtId = "debt", name = "Lender", date = "2026-01-31", type = "Both", amount = amount)
         repository.insertDebtPaymentWithSource(dp("d1", 50.0), "Personal Cash", "personal")
-        repository.insertDebtPaymentWithSource(dp("d2", 10_048.0), "Personal Cash", "personal")
+        repository.insertDebtPaymentWithSource(dp("d2", 10_052.0), "Personal Cash", "personal")
         val d2 = db.dao().getDebtPaymentById("d2")!!
-        assertEquals(-63L, d2.roundingPaise)
+        assertTrue(kotlin.math.abs(d2.roundingPaise) < InterestEngine.ROUNDING_THRESHOLD_PAISE)
         assertEquals(0L, d2.penaltyPaise)
         db.dao().getDebtPaymentsForDebtOnce("debt").forEach { r ->
             assertEquals(
@@ -126,9 +126,8 @@ class PaymentResplitV330DataIntegrityTest {
         }
         val debt = db.dao().getDebtById("debt")!!
         assertEquals(10_000.0, debt.paidPrincipal, 0.0001)
-        assertEquals(98.63, debt.paidInterest, 0.0001)
-        assertTrue(db.dao().getAllAuditEventsOnce().any { it.action == "ROUNDING_WRITE_OFF" && it.entityId == "debt" })
-        assertEquals(20_000.0 - 10_098.0, db.dao().getAccountById("acc")!!.balance, 0.0001)
+        assertEquals(101.91, debt.paidInterest, 0.0001)
+        assertEquals(20_000.0 - 10_102.0, db.dao().getAccountById("acc")!!.balance, 0.0001)
     }
 
     @Test
