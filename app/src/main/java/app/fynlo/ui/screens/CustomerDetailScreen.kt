@@ -217,7 +217,7 @@ val borrowers by viewModel.borrowers.collectAsState()
                 appendLine()
                 appendLine("*Loan Summary:*")
                 appendLine("* Principal: ${CurrencyFormatter.detail(borrower.amount, currencyCode, locale)}")
-                if (borrower.rate > 0) appendLine("* Interest accrued (${borrower.rate}% ${InterestEngine.label(borrower.intType)}): ${CurrencyFormatter.detail(interest, currencyCode, locale)}")
+                if (borrower.rate > 0) appendLine("* Interest accrued (${borrower.rate}% ${InterestEngine.label(borrower.intType, borrower.compoundFrequency)}): ${CurrencyFormatter.detail(interest, currencyCode, locale)}")
                 if (borrower.paid > 0)  appendLine("* Amount paid so far: ${CurrencyFormatter.detail(borrower.paid, currencyCode, locale)}")
                 appendLine("* *Total outstanding: ${CurrencyFormatter.detail(totalOutstanding, currencyCode, locale)}*")
                 appendLine()
@@ -583,7 +583,7 @@ val borrowers by viewModel.borrowers.collectAsState()
                         )
                         DetailItem(
                             "Interest method",
-                            interestMethodLabel(borrower.rate, borrower.intType),
+                            interestMethodLabel(borrower.rate, borrower.intType, borrower.compoundFrequency),
                             modifier = Modifier.weight(1f),
                         )
                     }
@@ -1009,8 +1009,8 @@ fun interestRateLabel(rate: Double): String {
     return "$clean% p.a."
 }
 
-fun interestMethodLabel(rate: Double, method: String): String =
-    if (rate <= 0.0) "None" else InterestEngine.label(method)
+fun interestMethodLabel(rate: Double, method: String, compoundFrequency: String = InterestEngine.COMPOUND_MONTHLY): String =
+    if (rate <= 0.0) "None" else InterestEngine.label(method, compoundFrequency)
 @Composable
 fun InterestPaidAheadNotice(
     title: String,

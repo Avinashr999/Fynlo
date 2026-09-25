@@ -199,7 +199,7 @@ fun CollectPaymentDialog(
                             }
                             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
                                 Text(
-                                    if (usePaise) "Interest Due" else "Interest (${borrower.rate}% ${InterestEngine.label(borrower.intType)})",
+                                    if (usePaise) "Interest Due" else "Interest (${borrower.rate}% ${InterestEngine.label(borrower.intType, borrower.compoundFrequency)})",
                                     style = MaterialTheme.typography.bodySmall,
                                 )
                                 Text(CurrencyFormatter.detail(interestOutstanding, currencyCode, locale),
@@ -391,8 +391,15 @@ fun CollectPaymentDialog(
                                     )
                                 }
                             }
-                            val remainingAfter = (paiseBalances!!.outstanding - split.towardInterest - split.towardPrincipal)
-                                .coerceAtLeast(0L)
+                            val remainingAfter = if (split.closesLoan) 0L else
+                                (paiseBalances!!.outstanding - split.towardInterest - split.towardPrincipal).coerceAtLeast(0L)
+                            if (split.closesLoan) {
+                                Text(
+                                    "Paid in full",
+                                    style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
+                                    color = Emerald500,
+                                )
+                            }
                             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
                                 Text("Remaining outstanding after", style = MaterialTheme.typography.bodySmall)
                                 Text(
@@ -484,6 +491,16 @@ fun CollectPaymentDialog(
                     onValueChange = { date = it },
                     label = "Payment Date",
                 )
+                val dateError = remember(borrower.date, paymentAsOf) { InterestPolicy.paymentDateError(borrower.date, paymentAsOf) }
+                var confirmFutureDate by remember { mutableStateOf(false) }
+                if (dateError != null) {
+                    Text(
+                        dateError,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.padding(top = 4.dp),
+                    )
+                }
                 Spacer(Modifier.height(12.dp))
 
                 OutlinedTextField(
@@ -493,12 +510,8 @@ fun CollectPaymentDialog(
                 )
                 Spacer(Modifier.height(24.dp))
 
-                Row(Modifier.fillMaxWidth(), Arrangement.End) {
-                    TextButton(onClick = onDismiss) { Text("Cancel") }
-                    Spacer(Modifier.width(8.dp))
-                    Button(
-                        onClick = {
-                            if (submitting) return@Button
+                    val recordPayment: () -> Unit = recordPayment@{
+                            if (submitting) return@recordPayment
                             submitting = true
                             val asOf = DateUtils.parseInput(date).ifBlank { paymentAsOf }
                             val split = if (usePaise) {
@@ -511,14 +524,6 @@ fun CollectPaymentDialog(
                             } else null
                             val finalPrincipal = split?.let { InterestEngine.paiseToRupees(it.towardPrincipal) } ?: principalVal
                             val finalInterest = split?.let { InterestEngine.paiseToRupees(it.towardInterest) } ?: interestVal
-                            val penaltyNote = if (split != null && split.penaltyPaise > 0L) {
-                                "Penalty on this account ${CurrencyFormatter.detail(InterestEngine.paiseToRupees(split.penaltyPaise), currencyCode, locale)}"
-                            } else null
-                            val finalNotes = when {
-                                penaltyNote == null -> notes
-                                notes.isBlank() -> penaltyNote
-                                else -> "$notes\n$penaltyNote"
-                            }
                             val payment = Payment(
                                 id        = app.fynlo.logic.Ids.newId(),
                                 loanId    = borrower.id,
@@ -540,14 +545,32 @@ fun CollectPaymentDialog(
                                 } else {
                                     InterestPolicy.allocationFor(finalPrincipal, finalInterest, interestAllocationType)
                                 },
-                                notes     = finalNotes
+                                notes     = split?.let { InterestPolicy.notesWithEngineTags(notes, it) } ?: notes,
+                                penaltyPaise = split?.penaltyPaise ?: 0L,
+                                roundingPaise = split?.roundingPaise ?: 0L,
                             )
                             onConfirm(payment, selectedAccount.name)
+                    }
+                Row(Modifier.fillMaxWidth(), Arrangement.End) {
+                    TextButton(onClick = onDismiss) { Text("Cancel") }
+                    Spacer(Modifier.width(8.dp))
+                    Button(
+                        onClick = {
+                            if (InterestPolicy.isFuturePaymentDate(paymentAsOf)) confirmFutureDate = true else recordPayment()
                         },
-                        enabled = isValid && !submitting,
+                        enabled = isValid && !submitting && dateError == null,
                         shape = RoundedCornerShape(14.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = app.fynlo.ui.theme.Emerald500)
                     ) { Text("Record ${CurrencyFormatter.detail(totalAmount, currencyCode, locale)}") }
+                }
+                if (confirmFutureDate) {
+                    FynloConfirmDialog(
+                        title = "Future payment date?",
+                        message = "This payment is dated after today. Record it anyway?",
+                        confirmText = "Record",
+                        onConfirm = { confirmFutureDate = false; recordPayment() },
+                        onDismiss = { confirmFutureDate = false },
+                    )
                 }
                 // C17 (3.2.42) - both PaymentDialog action buttons gate on
                 // totalAmount > 0; surface that as an inline hint when zero.
@@ -860,8 +883,15 @@ fun PayDebtDialog(
                                     )
                                 }
                             }
-                            val remainingAfter = (paiseBalances!!.outstanding - split.towardInterest - split.towardPrincipal)
-                                .coerceAtLeast(0L)
+                            val remainingAfter = if (split.closesLoan) 0L else
+                                (paiseBalances!!.outstanding - split.towardInterest - split.towardPrincipal).coerceAtLeast(0L)
+                            if (split.closesLoan) {
+                                Text(
+                                    "Paid in full",
+                                    style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
+                                    color = Emerald500,
+                                )
+                            }
                             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
                                 Text("Remaining outstanding after", style = MaterialTheme.typography.bodySmall)
                                 Text(
@@ -946,18 +976,24 @@ fun PayDebtDialog(
                     onValueChange = { date = it },
                     label = "Payment Date",
                 )
+                val dateError = remember(debt.date, paymentAsOf) { InterestPolicy.paymentDateError(debt.date, paymentAsOf) }
+                var confirmFutureDate by remember { mutableStateOf(false) }
+                if (dateError != null) {
+                    Text(
+                        dateError,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.padding(top = 4.dp),
+                    )
+                }
                 Spacer(Modifier.height(12.dp))
 
                 OutlinedTextField(value = notes, onValueChange = { notes = it },
                     label = { Text("Notes") }, modifier = Modifier.fillMaxWidth())
                 Spacer(Modifier.height(24.dp))
 
-                Row(Modifier.fillMaxWidth(), Arrangement.End) {
-                    TextButton(onClick = onDismiss) { Text("Cancel") }
-                    Spacer(Modifier.width(8.dp))
-                    Button(
-                        onClick = {
-                            if (submitting) return@Button
+                    val recordPayment: () -> Unit = recordPayment@{
+                            if (submitting) return@recordPayment
                             submitting = true
                             val asOf = DateUtils.parseInput(date).ifBlank { paymentAsOf }
                             val split = if (usePaise) {
@@ -970,14 +1006,6 @@ fun PayDebtDialog(
                             } else null
                             val finalPrincipal = split?.let { InterestEngine.paiseToRupees(it.towardPrincipal) } ?: principalVal
                             val finalInterest = split?.let { InterestEngine.paiseToRupees(it.towardInterest) } ?: interestVal
-                            val penaltyNote = if (split != null && split.penaltyPaise > 0L) {
-                                "Penalty on this account ${CurrencyFormatter.detail(InterestEngine.paiseToRupees(split.penaltyPaise), currencyCode, locale)}"
-                            } else null
-                            val finalNotes = when {
-                                penaltyNote == null -> notes
-                                notes.isBlank() -> penaltyNote
-                                else -> "$notes\n$penaltyNote"
-                            }
                             val payment = DebtPayment(
                                 id        = app.fynlo.logic.Ids.newId(),
                                 debtId    = debt.id,
@@ -999,14 +1027,32 @@ fun PayDebtDialog(
                                 } else {
                                     InterestPolicy.allocationFor(finalPrincipal, finalInterest, interestAllocationType)
                                 },
-                                notes     = finalNotes
+                                notes     = split?.let { InterestPolicy.notesWithEngineTags(notes, it) } ?: notes,
+                                penaltyPaise = split?.penaltyPaise ?: 0L,
+                                roundingPaise = split?.roundingPaise ?: 0L,
                             )
                             onConfirm(payment, selectedAccount.name)
+                    }
+                Row(Modifier.fillMaxWidth(), Arrangement.End) {
+                    TextButton(onClick = onDismiss) { Text("Cancel") }
+                    Spacer(Modifier.width(8.dp))
+                    Button(
+                        onClick = {
+                            if (InterestPolicy.isFuturePaymentDate(paymentAsOf)) confirmFutureDate = true else recordPayment()
                         },
-                        enabled = isValid && !submitting,
+                        enabled = isValid && !submitting && dateError == null,
                         shape   = RoundedCornerShape(14.dp),
                         colors  = ButtonDefaults.buttonColors(containerColor = app.fynlo.ui.theme.Emerald500)
                     ) { Text("Pay ${CurrencyFormatter.detail(totalAmount, currencyCode, locale)}") }
+                }
+                if (confirmFutureDate) {
+                    FynloConfirmDialog(
+                        title = "Future payment date?",
+                        message = "This payment is dated after today. Record it anyway?",
+                        confirmText = "Record",
+                        onConfirm = { confirmFutureDate = false; recordPayment() },
+                        onDismiss = { confirmFutureDate = false },
+                    )
                 }
             }
         }

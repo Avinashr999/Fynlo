@@ -367,7 +367,7 @@ fun DebtDetailScreen(
                         )
                         DetailItem(
                             "Interest method",
-                            interestMethodLabel(debt.rate, debt.intType),
+                            interestMethodLabel(debt.rate, debt.intType, debt.compoundFrequency),
                             modifier = Modifier.weight(1f),
                         )
                     }

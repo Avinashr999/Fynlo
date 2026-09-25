@@ -76,6 +76,9 @@ fun AddDebtDialog(
         if (t == "Both") leanInterestTypes + "Both" else leanInterestTypes
     }
     var selectedIntType  by remember { mutableStateOf(initialDebt?.intType ?: "Simple Interest") }
+    var compoundFrequency by remember {
+        mutableStateOf(app.fynlo.logic.InterestEngine.normalizeCompoundFrequency(initialDebt?.compoundFrequency))
+    }
     var stopInterestAfterDue by remember { mutableStateOf(initialDebt?.stopInterestAfterDue ?: false) }
     var submitting       by remember(initialDebt?.id) { mutableStateOf(false) }
 
@@ -210,14 +213,14 @@ fun AddDebtDialog(
                 // per audit fix #9. Stored value (`selectedIntType`) stays
                 // raw - DB schema and InterestEngine branch on the raw form.
                 ExposedDropdownMenuBox(expanded = expandedIntType, onExpandedChange = { expandedIntType = !expandedIntType }) {
-                    OutlinedTextField(value = app.fynlo.logic.InterestEngine.label(selectedIntType), onValueChange = {}, readOnly = true,
+                    OutlinedTextField(value = app.fynlo.logic.InterestEngine.label(selectedIntType, compoundFrequency), onValueChange = {}, readOnly = true,
                         label = { Text("Interest Type") },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedIntType) },
                         modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, true).fillMaxWidth())
                     ExposedDropdownMenu(expanded = expandedIntType, onDismissRequest = { expandedIntType = false }) {
                         interestTypes.forEach { t ->
                             DropdownMenuItem(
-                                text = { Text(app.fynlo.logic.InterestEngine.label(t)) },
+                                text = { Text(app.fynlo.logic.InterestEngine.label(t, compoundFrequency)) },
                                 onClick = { selectedIntType = t; expandedIntType = false },
                             )
                         }
@@ -225,12 +228,8 @@ fun AddDebtDialog(
                 }
 
                 if (selectedIntType == "Compound Interest") {
-                    Spacer(Modifier.height(6.dp))
-                    Text(
-                        "Interest compounds monthly.",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                    Spacer(Modifier.height(10.dp))
+                    CompoundFrequencyPicker(compoundFrequency) { compoundFrequency = it }
                 }
                 Spacer(Modifier.height(16.dp))
                 LendSoftField(rate, "Annual interest rate (%)", KeyboardType.Decimal) { rate = decimalOnly(it) }
@@ -291,6 +290,8 @@ fun AddDebtDialog(
                             stopInterestAfterDue = stopInterestAfterDue,
                             type = initialDebt?.type ?: "Friend / Family",
                             intType = selectedIntType,
+                            compoundFrequency = if (selectedIntType == "Compound Interest") compoundFrequency
+                                else app.fynlo.logic.InterestEngine.normalizeCompoundFrequency(initialDebt?.compoundFrequency),
                             updatedAt = now,
                             createdAt = initialDebt?.createdAt ?: now,
                         )

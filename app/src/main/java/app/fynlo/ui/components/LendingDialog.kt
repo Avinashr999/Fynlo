@@ -54,6 +54,9 @@ fun AddLendingDialog(
     var due by remember { mutableStateOf(initialBorrower?.due?.let { DateUtils.formatToDisplay(it) } ?: "") }
     var notes by remember { mutableStateOf(initialBorrower?.notes ?: "") }
     var selectedType by remember { mutableStateOf(initialBorrower?.intType ?: "Simple Interest") }
+    var compoundFrequency by remember {
+        mutableStateOf(app.fynlo.logic.InterestEngine.normalizeCompoundFrequency(initialBorrower?.compoundFrequency))
+    }
     var stopInterestAfterDue by remember { mutableStateOf(initialBorrower?.stopInterestAfterDue ?: false) }
 
     val accountOptions = if (accounts.isNotEmpty()) accounts
@@ -228,7 +231,7 @@ fun AddLendingDialog(
                     onExpandedChange = { interestExpanded = !interestExpanded },
                 ) {
                     OutlinedTextField(
-                        value = app.fynlo.logic.InterestEngine.label(selectedType),
+                        value = app.fynlo.logic.InterestEngine.label(selectedType, compoundFrequency),
                         onValueChange = {}, readOnly = true,
                         label = { Text("Interest Type") },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = interestExpanded) },
@@ -240,7 +243,7 @@ fun AddLendingDialog(
                     ExposedDropdownMenu(expanded = interestExpanded, onDismissRequest = { interestExpanded = false }) {
                         interestOptions.forEach { type ->
                             DropdownMenuItem(
-                                text = { Text(app.fynlo.logic.InterestEngine.label(type)) },
+                                text = { Text(app.fynlo.logic.InterestEngine.label(type, compoundFrequency)) },
                                 onClick = {
                                     selectedType = type
                                     interestExpanded = false
@@ -250,12 +253,8 @@ fun AddLendingDialog(
                     }
                 }
                 if (selectedType == "Compound Interest") {
-                    Spacer(Modifier.height(6.dp))
-                    Text(
-                        "Interest compounds monthly.",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                    Spacer(Modifier.height(10.dp))
+                    CompoundFrequencyPicker(compoundFrequency) { compoundFrequency = it }
                 }
 
                 Spacer(Modifier.height(16.dp))
@@ -316,6 +315,8 @@ fun AddLendingDialog(
                             date = DateUtils.parseInput(date),
                             due = if (due.isNotEmpty()) DateUtils.parseInput(due) else "",
                             intType = selectedType,
+                            compoundFrequency = if (selectedType == "Compound Interest") compoundFrequency
+                                else app.fynlo.logic.InterestEngine.normalizeCompoundFrequency(initialBorrower?.compoundFrequency),
                             status = initialBorrower?.status ?: "Active",
                             notes = notes,
                             updatedAt = now,
@@ -391,6 +392,26 @@ internal fun AmountHero(amount: String, currencyCode: String, allowPaise: Boolea
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f))
                     inner()
                 }
+            )
+        }
+    }
+}
+
+/** v3.3.0 — how often compound interest is added to the principal. Default Monthly. */
+@Composable
+internal fun CompoundFrequencyPicker(selected: String, onSelected: (String) -> Unit) {
+    Text(
+        "Compounds",
+        style = MaterialTheme.typography.labelLarge,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    Spacer(Modifier.height(6.dp))
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        app.fynlo.logic.InterestEngine.COMPOUND_FREQUENCIES.forEach { freq ->
+            androidx.compose.material3.FilterChip(
+                selected = selected == freq,
+                onClick = { onSelected(freq) },
+                label = { Text(freq) },
             )
         }
     }
