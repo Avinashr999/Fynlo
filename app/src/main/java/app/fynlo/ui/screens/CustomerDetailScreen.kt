@@ -98,11 +98,7 @@ val borrowers by viewModel.borrowers.collectAsState()
         interestBreakdown.due
     }
     val advanceInterest = if (usePaise) 0.0 else interestBreakdown.paidAhead
-    val principalOutstanding = if (usePaise) {
-        InterestEngine.paiseToRupees(paiseBalances!!.outstandingPrincipal)
-    } else {
-        (borrower.amount - borrower.paidPrincipal).coerceAtLeast(0.0)
-    }
+    val principalOutstanding = app.fynlo.logic.InterestPolicy.borrowerPrincipalOutstanding(borrower, loanPayments)
     val totalOutstanding = principalOutstanding + interestOutstanding
     val accountIdToName = remember(accounts) { accounts.associate { it.id to it.name } }
     val moneyTrail = remember(borrower, loanPayments, transactions, accountIdToName) {

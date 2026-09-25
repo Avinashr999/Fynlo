@@ -378,6 +378,34 @@ object InterestPolicy {
         else -> payment.interest
     }
 
+    fun borrowerPrincipalAmount(payment: Payment): Double = when {
+        payment.type.equals("Interest Only", ignoreCase = true) -> 0.0
+        payment.principal > 0.0 -> payment.principal
+        else -> payment.amount
+    }
+
+    fun debtPrincipalAmount(payment: DebtPayment): Double = when {
+        payment.type.equals("Interest Only", ignoreCase = true) -> 0.0
+        payment.principal > 0.0 -> payment.principal
+        else -> payment.amount
+    }
+
+    fun borrowerPrincipalPaid(borrower: Borrower, payments: List<Payment>): Double =
+        payments
+            .filter { it.loanId == borrower.id }
+            .sumOf(::borrowerPrincipalAmount)
+
+    fun debtPrincipalPaid(debt: Debt, payments: List<DebtPayment>): Double =
+        payments
+            .filter { it.debtId == debt.id }
+            .sumOf(::debtPrincipalAmount)
+
+    fun borrowerPrincipalOutstanding(borrower: Borrower, payments: List<Payment>): Double =
+        (borrower.amount - borrowerPrincipalPaid(borrower, payments)).coerceAtLeast(0.0)
+
+    fun debtPrincipalOutstanding(debt: Debt, payments: List<DebtPayment>): Double =
+        (debt.amount - debtPrincipalPaid(debt, payments)).coerceAtLeast(0.0)
+
     fun allocationFor(principal: Double, interest: Double, selectedInterestAllocation: String): String =
         if (interest <= 0.0) PRINCIPAL_REPAYMENT else selectedInterestAllocation
 

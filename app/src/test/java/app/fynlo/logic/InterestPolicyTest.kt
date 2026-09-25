@@ -386,6 +386,45 @@ class InterestPolicyTest {
     }
 
     @Test
+    fun `interest-only borrower payments never reduce visible principal remaining`() {
+        val borrower = Borrower(
+            id = "muhammed-visible-principal",
+            name = "Muhammed",
+            amount = 1_400_000.0,
+            rate = 24.0,
+            date = "2026-09-01",
+            intType = "Simple Interest",
+            paid = 196_077.0,
+            paidInterest = 196_077.0,
+        )
+        val payments = listOf(
+            Payment(
+                id = "interest-1",
+                loanId = borrower.id,
+                name = borrower.name,
+                date = "2026-09-03",
+                type = "Interest Only",
+                amount = 100_000.0,
+                interest = 100_000.0,
+                interestAllocationType = InterestPolicy.OLD_PERIOD_INTEREST,
+            ),
+            Payment(
+                id = "interest-2",
+                loanId = borrower.id,
+                name = borrower.name,
+                date = "2026-09-10",
+                type = "Interest Only",
+                amount = 96_077.0,
+                interest = 96_077.0,
+                interestAllocationType = InterestPolicy.OLD_PERIOD_INTEREST,
+            ),
+        )
+
+        assertEquals(0.0, InterestPolicy.borrowerPrincipalPaid(borrower, payments), 0.01)
+        assertEquals(1_400_000.0, InterestPolicy.borrowerPrincipalOutstanding(borrower, payments), 0.01)
+    }
+
+    @Test
     fun `current-period borrower interest reduces current due`() {
         val borrower = Borrower(
             id = "current-period",
@@ -560,6 +599,35 @@ class InterestPolicyTest {
         assertEquals(expectedCurrentInterest, breakdown.due, 0.01)
         assertEquals(0.0, breakdown.paidAhead, 0.01)
         assertEquals(50_000.0, breakdown.oldPeriodInterest, 0.01)
+    }
+
+    @Test
+    fun `interest-only debt payments never reduce visible principal payable`() {
+        val debt = Debt(
+            id = "visible-debt-principal",
+            name = "Visible Debt Principal",
+            amount = 1_400_000.0,
+            rate = 24.0,
+            date = "2026-09-01",
+            intType = "Simple Interest",
+            paid = 196_077.0,
+            paidInterest = 196_077.0,
+        )
+        val payments = listOf(
+            DebtPayment(
+                id = "debt-interest-1",
+                debtId = debt.id,
+                name = debt.name,
+                date = "2026-09-03",
+                type = "Interest Only",
+                amount = 196_077.0,
+                interest = 196_077.0,
+                interestAllocationType = InterestPolicy.OLD_PERIOD_INTEREST,
+            ),
+        )
+
+        assertEquals(0.0, InterestPolicy.debtPrincipalPaid(debt, payments), 0.01)
+        assertEquals(1_400_000.0, InterestPolicy.debtPrincipalOutstanding(debt, payments), 0.01)
     }
 
     @Test

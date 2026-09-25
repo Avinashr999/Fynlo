@@ -89,11 +89,7 @@ fun CollectPaymentDialog(
     } else {
         interestBreakdown.due
     }
-    val principalOutstanding = if (usePaise) {
-        InterestEngine.paiseToRupees(paiseBalances!!.outstandingPrincipal)
-    } else {
-        (borrower.amount - borrower.paidPrincipal).coerceAtLeast(0.0)
-    }
+    val principalOutstanding = InterestPolicy.borrowerPrincipalOutstanding(borrower, payments)
     val totalOutstanding = interestOutstanding + principalOutstanding
 
     // Payment fields — lean uses a single Amount; legacy keeps Principal + Interest.
@@ -630,11 +626,7 @@ fun PayDebtDialog(
     } else {
         interestBreakdown.due
     }
-    val principalOutstanding = if (usePaise) {
-        InterestEngine.paiseToRupees(paiseBalances!!.outstandingPrincipal)
-    } else {
-        (debt.amount - debt.paidPrincipal).coerceAtLeast(0.0)
-    }
+    val principalOutstanding = InterestPolicy.debtPrincipalOutstanding(debt, payments)
     val totalOutstanding     = interestOutstanding + principalOutstanding
 
     var amountStr by remember { mutableStateOf("") }

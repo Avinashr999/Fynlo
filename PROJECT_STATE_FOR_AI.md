@@ -2344,3 +2344,12 @@ The user approved the combined future roadmap below. Do not treat these as compl
 - Also repaired two partial-refactor compile issues in the local 3.3 workspace: closed-month exception reference and transaction account-id resolver call, plus a currency-picker compatibility wrapper for older imports.
 - Scope: interest-window calculation and payment-period metadata only. No database migration, no account balance mutation, no Firestore data repair, no install, no AAB, and no Play release in this pass.
 - Verification: `:app:testProdDebugUnitTest --tests app.fynlo.logic.InterestPolicyTest` passed; full `:app:testProdDebugUnitTest` passed.
+
+### 2026-09-25 - Visible Principal Consistency Fix
+- Fixed the Muhammed borrower detail mismatch where the header principal remaining could show about Rs. 12,03,923 while Money trail correctly showed Rs. 14,00,000 remaining.
+- Root cause: paise interest replay was being used for visible outstanding principal, so old/interest-only payment amounts could be interpreted as reducing principal in the header and payment dialogs.
+- New rule: visible borrower/debt principal outstanding is derived only from explicit principal payment rows. Interest-only payments never reduce principal.
+- Shared the explicit-principal helpers between Money trail, borrower/debt detail headers, and collect/pay dialogs so the same number is shown consistently.
+- Added borrower and debt regression tests proving interest-only rows do not reduce visible principal.
+- Scope: principal display/entry calculation only. No account balance mutation, no Firestore data repair, no schema migration, no release AAB, and no Play Console action in this pass.
+- Verification: targeted `InterestPolicyTest`, `:app:compileProdDebugKotlin`, full `:app:testProdDebugUnitTest`, `:app:installProdDebug`, `:app:installDevDebug`, and launch sanity for both packages passed.

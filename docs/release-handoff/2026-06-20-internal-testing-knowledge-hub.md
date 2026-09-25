@@ -1564,3 +1564,12 @@ Phone smoke still recommended before a new AAB:
 - Local 3.3 checkout had partial-refactor compile breaks; patched the closed-period exception reference, transaction account resolver call, and old currency-picker helper import compatibility so tests can run cleanly.
 - No DB migration, phone install, release AAB, or Play Console action was performed in this pass.
 - Verification passed: targeted `InterestPolicyTest` and full `:app:testProdDebugUnitTest`.
+
+### 2026-09-25 - Visible principal consistency fix
+- Problem found on phone: Muhammed showed Rs. 14,00,000 remaining in Money trail but about Rs. 12,03,923 in the top loan header.
+- Root cause: header and payment dialogs used paise interest replay outstanding principal; old/interest-only rows could be allocated as principal there even though the user never collected principal.
+- Fix: borrower and debt visible principal now comes from explicit principal rows only. Interest-only rows remain interest history and do not reduce principal.
+- Shared the same explicit-principal helpers across Money trail, borrower detail, debt detail, collect payment, and debt payment dialogs.
+- Regression tests added for borrower and debt interest-only payments never reducing visible principal.
+- Installed on phone: `app.fynlo` and `app.fynlo.dev`; both launch sanity checks passed.
+- Verification passed: targeted `InterestPolicyTest`, `:app:compileProdDebugKotlin`, full `:app:testProdDebugUnitTest`, prod/dev installs, and launch sanity.

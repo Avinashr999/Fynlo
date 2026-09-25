@@ -103,11 +103,7 @@ fun DebtDetailScreen(
         interestBreakdown.due
     }
     val advanceInterest = if (usePaise) 0.0 else interestBreakdown.paidAhead
-    val principalOutstanding = if (usePaise) {
-        InterestEngine.paiseToRupees(paiseBalances!!.outstandingPrincipal)
-    } else {
-        (debt.amount - debt.paidPrincipal).coerceAtLeast(0.0)
-    }
+    val principalOutstanding = app.fynlo.logic.InterestPolicy.debtPrincipalOutstanding(debt, debtPayments)
     val totalOutstanding = principalOutstanding + interestOutstanding
     val accountIdToName = remember(accounts) { accounts.associate { it.id to it.name } }
     val receivedTxn = remember(transactions, debt.id) {

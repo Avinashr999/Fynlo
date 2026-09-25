@@ -56,7 +56,7 @@ object MoneyTrail {
             it.category.equals("Lending", ignoreCase = true) ||
                 it.type.equals("Expense", ignoreCase = true)
         }
-        val principalCollected = payments.sumOf(::borrowerPrincipal)
+        val principalCollected = payments.sumOf(InterestPolicy::borrowerPrincipalAmount)
         val interestCollected = payments.sumOf(InterestPolicy::paymentInterestAmount)
         val disbursedFrom = borrower.sourceAccount.ifBlank {
             fundingTxn?.displayFromAcct(accountIdToName).orEmpty()
@@ -81,7 +81,7 @@ object MoneyTrail {
     ): DebtMoneyTrail {
         val linked = transactions.filter { it.ref == debt.id }
         val receivedTxn = linked.firstOrNull { it.category.equals("Debt Received", ignoreCase = true) }
-        val principalRepaid = payments.sumOf(::debtPrincipal)
+        val principalRepaid = payments.sumOf(InterestPolicy::debtPrincipalAmount)
         val interestPaid = payments.sumOf(InterestPolicy::debtPaymentInterestAmount)
         val receivedInto = receivedTxn?.displayToAcct(accountIdToName).orEmpty().ifBlank { "Unknown account" }
 
@@ -159,18 +159,6 @@ object MoneyTrail {
         } ?: investment.fundingSource.takeIf { it.isNotBlank() }?.let { sourceName ->
             debts.firstOrNull { it.name.equals(sourceName, ignoreCase = true) }
         }
-
-    private fun borrowerPrincipal(payment: Payment): Double = when {
-        payment.type.equals("Interest Only", ignoreCase = true) -> 0.0
-        payment.principal > 0.0 -> payment.principal
-        else -> payment.amount
-    }
-
-    private fun debtPrincipal(payment: DebtPayment): Double = when {
-        payment.type.equals("Interest Only", ignoreCase = true) -> 0.0
-        payment.principal > 0.0 -> payment.principal
-        else -> payment.amount
-    }
 
     private fun Transaction.matchesFromAccount(account: Account): Boolean =
         fromAcctId == account.id || (fromAcctId.isBlank() && fromAcct.equals(account.name, ignoreCase = true))
