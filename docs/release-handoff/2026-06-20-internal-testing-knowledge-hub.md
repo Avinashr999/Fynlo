@@ -1588,3 +1588,11 @@ Phone smoke still recommended before a new AAB:
 - Added `scripts/read-only-ledger-audit.ps1` for the next phone-connected pass. It copies the phone DB and audits the copy only; it does not repair or mutate live app data.
 - Version bumped to `versionName 3.3.2`, `versionCode 242`.
 - No database migration, no account balance mutation, no Firestore repair, no phone install, no release AAB, and no Play Console action in this pass.
+
+### 2026-09-26 - 3.3.2 release artifact build
+- Built the current internal-testing candidate for `versionName 3.3.2`, `versionCode 242`.
+- AAB: `app/build/outputs/bundle/prodRelease/app-prod-release.aab`.
+- R8 mapping: `app/build/outputs/mapping/prodRelease/mapping.txt`.
+- Native symbols: `app/build/outputs/native-debug-symbols/prodRelease/fynlo-prod-release-native-symbols.zip`.
+- Verification passed: `:app:verifyProdReleasePlayReadiness`.
+- Phone install and live DB audit are still pending because no ADB device was connected.

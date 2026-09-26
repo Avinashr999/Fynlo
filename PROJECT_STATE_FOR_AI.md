@@ -2379,3 +2379,11 @@ The user approved the combined future roadmap below. Do not treat these as compl
 - Added `scripts/read-only-ledger-audit.ps1`, a copy-only phone DB audit helper for the next device-connected pass. It checks borrower/debt aggregate mismatches, zero-value investments, linked-debt integrity, weak account trails, and open sync conflicts from a copied SQLite database.
 - Bumped app version to `3.3.2` / `versionCode 242` because visible app behavior changed.
 - Scope: personal-mode UI cleanup and audit tooling only. No database migration, no account balance mutation, no Firestore repair, no interest logic change, no phone install, and no release AAB in this pass.
+
+### 2026-09-26 - 3.3.2 Release Artifact Build
+- Built the `3.3.2` / `versionCode 242` prod release artifacts after the personal-mode cleanup.
+- Play upload candidate: `app/build/outputs/bundle/prodRelease/app-prod-release.aab`.
+- R8 mapping file: `app/build/outputs/mapping/prodRelease/mapping.txt`.
+- Native symbols ZIP: `app/build/outputs/native-debug-symbols/prodRelease/fynlo-prod-release-native-symbols.zip`.
+- Verification passed: `:app:verifyProdReleasePlayReadiness`, including R8 minification, resource shrinking, AAB existence, mapping file existence, and native-symbol ZIP existence.
+- No phone was connected, so no install, launch smoke, or live phone DB audit was performed.
