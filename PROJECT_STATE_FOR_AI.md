@@ -2387,3 +2387,11 @@ The user approved the combined future roadmap below. Do not treat these as compl
 - Native symbols ZIP: `app/build/outputs/native-debug-symbols/prodRelease/fynlo-prod-release-native-symbols.zip`.
 - Verification passed: `:app:verifyProdReleasePlayReadiness`, including R8 minification, resource shrinking, AAB existence, mapping file existence, and native-symbol ZIP existence.
 - No phone was connected, so no install, launch smoke, or live phone DB audit was performed.
+
+### 2026-09-26 - 3.3.3 Personal Correction Preview
+- Improved the transaction edit/correction dialog so it now shows a plain-language `Correction impact` preview before saving.
+- The preview shows both sides of the correction: `Reverse current saved entry` and `Apply corrected entry`, with signed account impacts. This makes wrong-account, wrong-type, and wrong-amount corrections easier to trust before saving.
+- The edit save button now stays disabled until the amount is valid and the required account is chosen.
+- The edit dialog now receives the active project currency from History and Expenses so correction previews use the same money format as the rest of the app.
+- Bumped app version to `3.3.3` / `versionCode 243` because visible correction behavior changed.
+- Scope: UI safety/clarity only. No database migration, no account balance mutation, no Firestore repair, no interest logic change, no phone install, and no release AAB in this pass.

@@ -1596,3 +1596,10 @@ Phone smoke still recommended before a new AAB:
 - Native symbols: `app/build/outputs/native-debug-symbols/prodRelease/fynlo-prod-release-native-symbols.zip`.
 - Verification passed: `:app:verifyProdReleasePlayReadiness`.
 - Phone install and live DB audit are still pending because no ADB device was connected.
+
+### 2026-09-26 - 3.3.3 personal correction preview
+- Transaction edit/correction now shows `Reverse current saved entry` and `Apply corrected entry` before saving.
+- Save stays disabled until a valid amount and required account are present.
+- History and Expenses pass the active project currency into the edit dialog, so the correction preview uses the same currency formatting as the current ledger.
+- Version bumped to `versionName 3.3.3`, `versionCode 243`.
+- No calculation logic, account balance mutation, database migration, phone install, release AAB, or Play Console action in this pass.

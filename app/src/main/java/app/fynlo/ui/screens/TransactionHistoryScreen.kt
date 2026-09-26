@@ -593,6 +593,7 @@ fun TransactionItem(
         app.fynlo.ui.components.EditTransactionDialog(
             transaction  = txn,
             bankAccounts = bankAccounts,
+            currencyCode = currencyCode,
             onDismiss    = { showEditDialog = false },
             onConfirm    = { updated -> onEdit(updated); showEditDialog = false }
         )

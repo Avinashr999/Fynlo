@@ -39,6 +39,7 @@ fun EditTransactionDialog(
     onDismiss: () -> Unit,
     onConfirm: (Transaction) -> Unit,
     bankAccounts: List<String> = emptyList(),
+    currencyCode: String = "INR",
 ) {
     var amount   by remember { mutableStateOf(transaction.amount.toBigDecimal().stripTrailingZeros().toPlainString()) }
     var desc     by remember { mutableStateOf(transaction.desc) }
@@ -169,20 +170,50 @@ fun EditTransactionDialog(
                     shape = RoundedCornerShape(12.dp),
                 )
 
-                val parsedPreview = amount.toDoubleOrNull() ?: transaction.amount
-                val impactLines = when (type) {
-                    "Income" -> listOf("${account.ifBlank { transaction.toAcct.ifBlank { "Destination account" } }} +${CurrencyFormatter.detail(parsedPreview)}")
-                    "Expense" -> listOf("${account.ifBlank { transaction.fromAcct.ifBlank { "Source account" } }} -${CurrencyFormatter.detail(parsedPreview)}")
-                    "Transfer" -> listOf(
-                        "${account.ifBlank { transaction.fromAcct.ifBlank { "Source account" } }} -${CurrencyFormatter.detail(parsedPreview)}",
-                        "${transaction.toAcct.ifBlank { "Destination account" }} +${CurrencyFormatter.detail(parsedPreview)}",
-                    )
-                    else -> emptyList()
-                }
-                if (impactLines.isNotEmpty()) {
+                val parsedPreview = amount.toDoubleOrNull() ?: 0.0
+                val chosenAccount = account.trim()
+                val originalImpactLines = transactionImpactLines(
+                    transaction = transaction,
+                    amount = transaction.amount,
+                    currencyCode = currencyCode,
+                    reverse = true,
+                )
+                val newImpactLines = transactionImpactLines(
+                    transaction = transaction.copy(
+                        type = type,
+                        amount = parsedPreview.takeIf { it > 0.0 } ?: transaction.amount,
+                        fromAcct = when (type) {
+                            "Income" -> ""
+                            "Expense" -> chosenAccount
+                            "Transfer" -> chosenAccount.ifBlank { transaction.fromAcct }
+                            else -> transaction.fromAcct
+                        },
+                        toAcct = when (type) {
+                            "Income" -> chosenAccount
+                            "Expense" -> ""
+                            "Transfer" -> transaction.toAcct.ifBlank { chosenAccount }
+                            else -> transaction.toAcct
+                        },
+                    ),
+                    amount = parsedPreview.takeIf { it > 0.0 } ?: transaction.amount,
+                    currencyCode = currencyCode,
+                    reverse = false,
+                )
+                if (originalImpactLines.isNotEmpty() || newImpactLines.isNotEmpty()) {
                     Spacer(Modifier.height(12.dp))
-                    AccountImpactPreview(impactLines)
+                    AccountImpactPreview(
+                        title = "Correction impact",
+                        lines = listOf("Reverse current saved entry") +
+                            originalImpactLines +
+                            listOf("Apply corrected entry") +
+                            newImpactLines,
+                    )
                 }
+
+                val amountValid = parsedPreview > 0.0
+                val accountRequired = type in listOf("Income", "Expense", "Transfer")
+                val accountValid = !accountRequired || chosenAccount.isNotBlank()
+                val canSave = amountValid && accountValid
 
                 Spacer(Modifier.height(24.dp))
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
@@ -219,9 +250,45 @@ fun EditTransactionDialog(
                             category  = category,
                             updatedAt = System.currentTimeMillis()
                         ))
-                    }) { Text("Save Changes") }
+                    }, enabled = canSave) { Text("Save changes") }
+                }
+                val disabledReason = when {
+                    !amountValid -> "Enter an amount to continue"
+                    !accountValid -> "Choose the account to continue"
+                    else -> null
+                }
+                if (disabledReason != null) {
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        disabledReason,
+                        modifier = Modifier.fillMaxWidth(),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
             }
         }
+    }
+}
+
+private fun transactionImpactLines(
+    transaction: Transaction,
+    amount: Double,
+    currencyCode: String,
+    reverse: Boolean,
+): List<String> {
+    fun signed(account: String, delta: Double): String {
+        val sign = if (delta >= 0.0) "+" else "-"
+        return "${account.ifBlank { "Account" }} $sign${CurrencyFormatter.detail(kotlin.math.abs(delta), currencyCode)}"
+    }
+    val type = transaction.type.lowercase()
+    return when (type) {
+        "income" -> listOf(signed(transaction.toAcct, if (reverse) -amount else amount))
+        "expense" -> listOf(signed(transaction.fromAcct, if (reverse) amount else -amount))
+        "transfer" -> listOf(
+            signed(transaction.fromAcct, if (reverse) amount else -amount),
+            signed(transaction.toAcct, if (reverse) -amount else amount),
+        )
+        else -> emptyList()
     }
 }

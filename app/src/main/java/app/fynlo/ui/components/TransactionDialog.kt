@@ -474,7 +474,10 @@ private fun BasicAmountField(
 }
 
 @Composable
-fun AccountImpactPreview(lines: List<String>) {
+fun AccountImpactPreview(
+    lines: List<String>,
+    title: String = "Balance impact",
+) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
@@ -482,7 +485,7 @@ fun AccountImpactPreview(lines: List<String>) {
     ) {
         Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(
-                "Balance impact",
+                title,
                 style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.ExtraBold),
                 color = MaterialTheme.colorScheme.onSurface,
             )
