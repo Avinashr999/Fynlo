@@ -2394,4 +2394,6 @@ The user approved the combined future roadmap below. Do not treat these as compl
 - The edit save button now stays disabled until the amount is valid and the required account is chosen.
 - The edit dialog now receives the active project currency from History and Expenses so correction previews use the same money format as the rest of the app.
 - Bumped app version to `3.3.3` / `versionCode 243` because visible correction behavior changed.
-- Scope: UI safety/clarity only. No database migration, no account balance mutation, no Firestore repair, no interest logic change, no phone install, and no release AAB in this pass.
+- Built the matching prod release artifacts after verification. Play upload candidate: `app/build/outputs/bundle/prodRelease/app-prod-release.aab`; mapping: `app/build/outputs/mapping/prodRelease/mapping.txt`; native symbols: `app/build/outputs/native-debug-symbols/prodRelease/fynlo-prod-release-native-symbols.zip`.
+- Verification passed: `:app:compileProdDebugKotlin`, `:app:testProdDebugUnitTest`, and `:app:verifyProdReleasePlayReadiness`.
+- Scope: UI safety/clarity only. No database migration, no account balance mutation, no Firestore repair, no interest logic change, no phone install, and no live phone DB audit in this pass.

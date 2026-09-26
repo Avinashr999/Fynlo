@@ -1602,4 +1602,8 @@ Phone smoke still recommended before a new AAB:
 - Save stays disabled until a valid amount and required account are present.
 - History and Expenses pass the active project currency into the edit dialog, so the correction preview uses the same currency formatting as the current ledger.
 - Version bumped to `versionName 3.3.3`, `versionCode 243`.
-- No calculation logic, account balance mutation, database migration, phone install, release AAB, or Play Console action in this pass.
+- AAB: `app/build/outputs/bundle/prodRelease/app-prod-release.aab`.
+- R8 mapping: `app/build/outputs/mapping/prodRelease/mapping.txt`.
+- Native symbols: `app/build/outputs/native-debug-symbols/prodRelease/fynlo-prod-release-native-symbols.zip`.
+- Verification passed: `:app:compileProdDebugKotlin`, `:app:testProdDebugUnitTest`, and `:app:verifyProdReleasePlayReadiness`.
+- No calculation logic, account balance mutation, database migration, phone install, live phone DB audit, or Play Console action in this pass.
