@@ -149,8 +149,9 @@ object LedgerAccountability {
             if (fundingTxn == null) {
                 addIssue(LedgerIssueSeverity.INFO, "Loan disbursement trace missing", "${borrower.name} has no linked disbursement row. This is usually legacy/imported data.", "loan", borrower.id)
             }
-            val paymentTotal = borrowerPayments.sumOf { borrowerPrincipalForPaidTotal(it) } +
-                borrowerPayments.sumOf { borrowerInterestForPaidTotal(it) }
+            val currentBorrowerPayments = borrowerPayments.filter { it.date >= borrower.date }
+            val paymentTotal = currentBorrowerPayments.sumOf { borrowerPrincipalForPaidTotal(it) } +
+                currentBorrowerPayments.sumOf { borrowerInterestForPaidTotal(it) }
             if (abs(paymentTotal - borrower.paid) > 0.01) {
                 addIssue(LedgerIssueSeverity.CRITICAL, "Loan payment total mismatch", "${borrower.name} paid total does not match payment rows.", "loan", borrower.id)
             }
@@ -206,8 +207,9 @@ object LedgerAccountability {
         debts.forEach { debt ->
             val linked = txByRef[debt.id].orEmpty()
             val receivedTxn = linked.firstOrNull { it.category.equals("Debt Received", true) }
-            val currentDebtPayments = debtPaymentsByDebt[debt.id].orEmpty()
-            val interestBreakdown = app.fynlo.logic.InterestPolicy.debtBreakdown(debt, currentDebtPayments, today.toString())
+            val debtRows = debtPaymentsByDebt[debt.id].orEmpty()
+            val currentDebtPayments = debtRows.filter { it.date >= debt.date }
+            val interestBreakdown = app.fynlo.logic.InterestPolicy.debtBreakdown(debt, debtRows, today.toString())
             if (receivedTxn == null) {
                 addIssue(LedgerIssueSeverity.INFO, "Debt receipt trace missing", "${debt.name} has no linked Debt Received row. Future debts record the destination account automatically.", "debt", debt.id)
             } else if (receivedTxn.toAcct.isBlank()) {
@@ -220,7 +222,7 @@ object LedgerAccountability {
             if (abs(paymentTotal - debt.paid) > 0.01) {
                 addIssue(LedgerIssueSeverity.CRITICAL, "Debt payment total mismatch", "${debt.name} paid total does not match payment rows.", "debt", debt.id)
             }
-            currentDebtPayments
+            debtRows
                 .filter { it.amount > 0.01 }
                 .forEach { payment ->
                     val sourceTxn = linked.firstOrNull { txn ->
@@ -246,7 +248,7 @@ object LedgerAccountability {
                         )
                     }
                 }
-            val unclearDebtInterestPayments = currentDebtPayments.filter {
+            val unclearDebtInterestPayments = debtRows.filter {
                 val interest = debtInterestForPaidTotal(it)
                 InterestPolicy.isUnclearInterestPayment(it.interestAllocationType, interest) ||
                     InterestPolicy.isStaleCurrentPeriodInterest(it.interestAllocationType, interest, it.interestPeriodStartDate, debt.date)
@@ -262,7 +264,7 @@ object LedgerAccountability {
             }
             addCompletedDebtInterestPeriodIssue(
                 debt = debt,
-                payments = currentDebtPayments,
+                payments = debtRows,
                 today = today,
                 addIssue = ::addIssue,
             )

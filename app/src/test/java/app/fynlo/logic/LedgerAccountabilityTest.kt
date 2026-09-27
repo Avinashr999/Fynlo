@@ -79,9 +79,9 @@ class LedgerAccountabilityTest {
             rate = 18.0,
             date = "2026-06-29",
             intType = "Simple Interest",
-            paid = 18_000.0,
+            paid = 0.0,
             paidPrincipal = 0.0,
-            paidInterest = 18_000.0,
+            paidInterest = 0.0,
         )
         val oldInterestSettlement = Payment(
             id = "pay-old-interest",
@@ -121,9 +121,9 @@ class LedgerAccountabilityTest {
             rate = 12.0,
             date = "2026-07-01",
             intType = "Simple Interest",
-            paid = 64.0,
+            paid = 0.0,
             paidPrincipal = 0.0,
-            paidInterest = 64.0,
+            paidInterest = 0.0,
         )
         val staleAdvance = Payment(
             id = "old-advance",
@@ -164,9 +164,9 @@ class LedgerAccountabilityTest {
             rate = 18.0,
             date = "2026-06-29",
             intType = "Simple Interest",
-            paid = 18_000.0,
+            paid = 0.0,
             paidPrincipal = 0.0,
-            paidInterest = 18_000.0,
+            paidInterest = 0.0,
         )
         val oldInterestSettlement = DebtPayment(
             id = "debt-pay-old-interest",
@@ -206,9 +206,9 @@ class LedgerAccountabilityTest {
             rate = 12.0,
             date = "2026-07-01",
             intType = "Simple Interest",
-            paid = 64.0,
+            paid = 0.0,
             paidPrincipal = 0.0,
-            paidInterest = 64.0,
+            paidInterest = 0.0,
         )
         val staleAdvance = DebtPayment(
             id = "old-debt-advance",

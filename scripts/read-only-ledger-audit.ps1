@@ -60,7 +60,7 @@ print("\nBorrower aggregate mismatches")
 count = 0
 if table_exists("borrowers") and table_exists("payments"):
     for b in rows("select * from borrowers order by name"):
-        ps = rows("select * from payments where loanId=?", b["id"])
+        ps = rows("select * from payments where loanId=? and date >= ?", b["id"], b["date"])
         principal = sum(0 if (p["type"] or "").lower() == "interest only" else (p["principal"] if p["principal"] > 0 else p["amount"]) for p in ps)
         interest = sum((p["amount"] if (p["type"] or "").lower() == "interest only" and p["interest"] == 0 else p["interest"]) for p in ps)
         if abs(principal - b["paidPrincipal"]) > 0.01 or abs(interest - b["paidInterest"]) > 0.01:
@@ -72,7 +72,7 @@ print("\nDebt aggregate mismatches")
 count = 0
 if table_exists("debts") and table_exists("debt_payments"):
     for d in rows("select * from debts order by name"):
-        ps = rows("select * from debt_payments where debtId=?", d["id"])
+        ps = rows("select * from debt_payments where debtId=? and date >= ?", d["id"], d["date"])
         principal = sum(0 if (p["type"] or "").lower() == "interest only" else (p["principal"] if p["principal"] > 0 else p["amount"]) for p in ps)
         interest = sum((p["amount"] if (p["type"] or "").lower() == "interest only" and p["interest"] == 0 else p["interest"]) for p in ps)
         if abs(principal - d["paidPrincipal"]) > 0.01 or abs(interest - d["paidInterest"]) > 0.01:
