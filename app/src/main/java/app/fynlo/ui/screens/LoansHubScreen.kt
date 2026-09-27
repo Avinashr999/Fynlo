@@ -86,9 +86,8 @@ fun LoansHubScreen(
     val currencyCode = currentProject?.currency ?: "INR"
     val locale = LocalLocale.current.platformLocale
 
-    // Active-borrower count — mirrors `LendingScreen.isActive`: not settled,
-    // not written off, still has outstanding balance (hand loans use `paid`,
-    // interest loans use `paidPrincipal`).
+    // Active-borrower count mirrors `LendingScreen.isActive`: not settled,
+    // not written off, still has principal outstanding from guarded payment rows.
     val paymentsByLoan = remember(payments) { payments.groupBy { it.loanId } }
     val activeBorrowers = remember(borrowers, paymentsByLoan) {
         borrowers.filter { b ->
@@ -109,7 +108,7 @@ fun LoansHubScreen(
     }
     val borrowerInterest = remember(activeBorrowers, paymentsByLoan) {
         activeBorrowers.sumOf { b ->
-            if (b.rate <= 0) 0.0 else app.fynlo.logic.InterestPolicy.borrowerBreakdown(b, paymentsByLoan[b.id].orEmpty()).due
+            if (b.rate <= 0) 0.0 else app.fynlo.logic.InterestPolicy.borrowerSnapshot(b, paymentsByLoan[b.id].orEmpty()).interestDue
         }
     }
     val owedPrincipal = summary.totalDebtPrincipal

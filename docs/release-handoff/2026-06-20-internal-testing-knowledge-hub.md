@@ -1636,3 +1636,10 @@ Phone smoke still recommended before a new AAB:
 - Version bumped to `versionName 3.3.6`, `versionCode 246`.
 - Verification passed: focused `InterestPolicyTest`.
 - No database migration, account balance mutation, Firestore repair, Play Store action, or AAB build in this pass.
+
+### 2026-09-27 - 3.3.7 loan/debt calculation spine hardening
+- Added guarded borrower/debt snapshot APIs as the preferred source for visible principal, interest due, and total receivable/payable.
+- Moved key screens and sensitive actions to the snapshot/payment-row source of truth: borrower/debt detail, lending cards, Loans Hub interest totals, collection calendar, payment dialogs, financial summary, debt liabilities, P&L lending totals, write-off, NPA freeze, and interest waiver paths.
+- This prevents the earlier pattern where header, Money trail, hub cards, and dialogs could each calculate loan truth differently.
+- Version bumped to `versionName 3.3.7`, `versionCode 247`.
+- No database migration, account balance mutation, Firestore repair, Play Store action, or AAB build in this pass.

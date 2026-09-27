@@ -80,9 +80,9 @@ fun ProfitLossScreen(viewModel: FinanceViewModel) {
     val totalExpense   = cashTxns.filter { it.type.equals("expense", ignoreCase = true) }.sumOf { it.amount }
 
     // -- Interest tracking ---------------------------------------------------
-    // Use paidInterest from borrowers - actual interest collected, not the full
-    // Loan Repayment transaction (which includes principal recovery).
-    val interestIncome   = borrowers.sumOf { it.paidInterest }
+    // Use payment rows as the source of truth so stale borrower aggregates do
+    // not change P&L after date/allocation corrections.
+    val interestIncome   = payments.sumOf { app.fynlo.logic.InterestPolicy.paymentInterestAmount(it) }
     val interestExpense  = transactions.filter { it.category == "Interest Expense" }.sumOf { it.amount }
     val badDebtWriteOffs = transactions.filter { it.category == "Bad Debt" }.sumOf { it.amount }
 
@@ -320,7 +320,9 @@ fun ProfitLossScreen(viewModel: FinanceViewModel) {
             val totalRecovered        = activeBorrowers.sumOf { borrower ->
                 app.fynlo.logic.InterestPolicy.borrowerPrincipalPaid(borrower, paymentsByLoan[borrower.id].orEmpty())
             }
-            val interestCollected     = activeBorrowers.sumOf { it.paidInterest }
+            val interestCollected     = activeBorrowers.sumOf { borrower ->
+                paymentsByLoan[borrower.id].orEmpty().sumOf { app.fynlo.logic.InterestPolicy.paymentInterestAmount(it) }
+            }
             val defaultedAmt          = borrowers.filter { it.status == "Defaulted" || it.status == "WrittenOff" }
                 .sumOf { borrower ->
                     app.fynlo.logic.InterestPolicy.borrowerPrincipalOutstanding(borrower, paymentsByLoan[borrower.id].orEmpty())

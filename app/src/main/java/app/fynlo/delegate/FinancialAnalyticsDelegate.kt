@@ -61,6 +61,10 @@ class FinancialAnalyticsDelegate(
         val debtPaymentRows = args[7].requireTypedList<DebtPayment>()
         val paymentsByLoan = loanPayments.groupBy { it.loanId }
         val paymentsByDebt = debtPaymentRows.groupBy { it.debtId }
+        fun borrowerSnapshot(borrower: Borrower, asOf: String = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))) =
+            InterestPolicy.borrowerSnapshot(borrower, paymentsByLoan[borrower.id].orEmpty(), asOf)
+        fun debtSnapshot(debt: Debt, asOf: String = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))) =
+            InterestPolicy.debtSnapshot(debt, paymentsByDebt[debt.id].orEmpty(), asOf)
 
         val totalCashVal     = accts.sumOf { it.balance }
         val totalInvestVal   = invs.sumOf { it.currentVal }
@@ -68,35 +72,31 @@ class FinancialAnalyticsDelegate(
         val activeBrws = brws.filter { it.status != "WrittenOff" }
 
         val totalReceivables = activeBrws.sumOf { b ->
-            InterestPolicy.borrowerPrincipalOutstanding(b, paymentsByLoan[b.id].orEmpty()) +
-                InterestPolicy.borrowerBreakdown(b, paymentsByLoan[b.id].orEmpty()).due
+            borrowerSnapshot(b).totalReceivable
         }
 
         val totalInterestLoans = activeBrws.filter { it.rate > 0 }.sumOf { b ->
-            InterestPolicy.borrowerPrincipalOutstanding(b, paymentsByLoan[b.id].orEmpty()) +
-                InterestPolicy.borrowerBreakdown(b, paymentsByLoan[b.id].orEmpty()).due
+            borrowerSnapshot(b).totalReceivable
         }
         val totalHandLoans = activeBrws.filter { it.rate <= 0 }.sumOf { b ->
-            InterestPolicy.borrowerPrincipalOutstanding(b, paymentsByLoan[b.id].orEmpty())
+            borrowerSnapshot(b).principalOutstanding
         }
 
         val invTypeMap = invs.groupBy { it.type }
             .mapValues { it.value.sumOf { inv -> inv.currentVal } }
 
         val interestBrwMap = activeBrws.filter { it.rate > 0 }.associate { b ->
-            b.name to (InterestPolicy.borrowerPrincipalOutstanding(b, paymentsByLoan[b.id].orEmpty()) +
-                InterestPolicy.borrowerBreakdown(b, paymentsByLoan[b.id].orEmpty()).due)
+            b.name to borrowerSnapshot(b).totalReceivable
         }
 
         val handBrwMap = activeBrws.filter { it.rate <= 0 }.associate { b ->
-            b.name to InterestPolicy.borrowerPrincipalOutstanding(b, paymentsByLoan[b.id].orEmpty())
+            b.name to borrowerSnapshot(b).principalOutstanding
         }
 
         val totalAssets       = totalCashVal + totalInvestVal + totalInterestLoans + totalHandLoans
         val debtLiabilities = dbts.map { debt ->
-            val principal = InterestPolicy.debtPrincipalOutstanding(debt, paymentsByDebt[debt.id].orEmpty())
-            val interest = InterestPolicy.debtBreakdown(debt, paymentsByDebt[debt.id].orEmpty()).due
-            DebtLiabilityCalculator.Liability(principal = principal, interest = interest)
+            val snapshot = debtSnapshot(debt)
+            DebtLiabilityCalculator.Liability(principal = snapshot.principalOutstanding, interest = snapshot.interestDue)
         }
         val totalDebtPrincipal = debtLiabilities.sumOf { it.principal }
         val totalDebtInterest  = debtLiabilities.sumOf { it.interest }
@@ -118,16 +118,16 @@ class FinancialAnalyticsDelegate(
         val todayStr = todayDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
         val tomorrowStr = todayDate.plusDays(1).format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
         val borrowerDueToday = activeBrws.sumOf { b ->
-            if (b.rate <= 0.0) 0.0 else InterestPolicy.borrowerBreakdown(b, paymentsByLoan[b.id].orEmpty(), todayStr).due
+            if (b.rate <= 0.0) 0.0 else borrowerSnapshot(b, todayStr).interestDue
         }
         val borrowerDueTomorrow = activeBrws.sumOf { b ->
-            if (b.rate <= 0.0) 0.0 else InterestPolicy.borrowerBreakdown(b, paymentsByLoan[b.id].orEmpty(), tomorrowStr).due
+            if (b.rate <= 0.0) 0.0 else borrowerSnapshot(b, tomorrowStr).interestDue
         }
         val debtDueToday = dbts.sumOf { debt ->
-            if (debt.rate <= 0.0) 0.0 else InterestPolicy.debtBreakdown(debt, paymentsByDebt[debt.id].orEmpty(), todayStr).due
+            if (debt.rate <= 0.0) 0.0 else debtSnapshot(debt, todayStr).interestDue
         }
         val debtDueTomorrow = dbts.sumOf { debt ->
-            if (debt.rate <= 0.0) 0.0 else InterestPolicy.debtBreakdown(debt, paymentsByDebt[debt.id].orEmpty(), tomorrowStr).due
+            if (debt.rate <= 0.0) 0.0 else debtSnapshot(debt, tomorrowStr).interestDue
         }
         val dailyBorrowerInterest = (borrowerDueTomorrow - borrowerDueToday).coerceAtLeast(0.0)
         val dailyDebtInterest = (debtDueTomorrow - debtDueToday).coerceAtLeast(0.0)
@@ -164,8 +164,7 @@ class FinancialAnalyticsDelegate(
             lendCashflows.add(XirrCalculator.Cashflow(amt, t.date))
         }
         activeBrws.filter { it.rate > 0 }.forEach { b ->
-            val outstanding = InterestPolicy.borrowerPrincipalOutstanding(b, paymentsByLoan[b.id].orEmpty()) +
-                InterestPolicy.borrowerBreakdown(b, paymentsByLoan[b.id].orEmpty(), todayStr).due
+            val outstanding = borrowerSnapshot(b, todayStr).totalReceivable
             if (outstanding > 0) {
                 lendCashflows.add(XirrCalculator.Cashflow(outstanding, todayStr))
             }

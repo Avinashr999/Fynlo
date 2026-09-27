@@ -28,9 +28,10 @@ object DebtLiabilityCalculator {
         payments: List<DebtPayment>,
         asOf: String = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")),
     ): Liability {
+        val snapshot = InterestPolicy.debtSnapshot(debt, payments, asOf)
         return Liability(
-            principal = InterestPolicy.debtPrincipalOutstanding(debt, payments),
-            interest = InterestPolicy.debtBreakdown(debt, payments, asOf).due,
+            principal = snapshot.principalOutstanding,
+            interest = snapshot.interestDue,
         )
     }
 }

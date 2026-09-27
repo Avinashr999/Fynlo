@@ -35,7 +35,6 @@ import app.fynlo.data.model.DebtPayment
 import app.fynlo.logic.CurrencyFormatter
 import app.fynlo.logic.DateUtils
 import app.fynlo.logic.DebtPayoffPlanner
-import app.fynlo.logic.InterestEngine
 import app.fynlo.logic.MoneyTrail
 import app.fynlo.logic.displayFromAcct
 import app.fynlo.logic.displayToAcct
@@ -92,19 +91,13 @@ fun DebtDetailScreen(
     val debtProofs = proofAttachments.filter { it.ownerType == "debt" && it.ownerId == debtId }
 
     val usePaise = app.fynlo.logic.InterestPolicy.usesPaiseMethod(debt.intType)
-    val paiseBalances = if (usePaise) {
-        app.fynlo.logic.InterestPolicy.paiseBalancesForDebt(debt, payments = debtPayments)
-    } else null
-    val interestBreakdown = app.fynlo.logic.InterestPolicy.debtBreakdown(debt, debtPayments)
+    val debtSnapshot = app.fynlo.logic.InterestPolicy.debtSnapshot(debt, debtPayments)
+    val interestBreakdown = debtSnapshot.interestBreakdown
     val interest = interestBreakdown.accrued
-    val interestOutstanding = if (usePaise) {
-        InterestEngine.paiseToRupees(paiseBalances!!.interestDue)
-    } else {
-        interestBreakdown.due
-    }
+    val interestOutstanding = debtSnapshot.interestDue
     val advanceInterest = if (usePaise) 0.0 else interestBreakdown.paidAhead
-    val principalOutstanding = app.fynlo.logic.InterestPolicy.debtPrincipalOutstanding(debt, debtPayments)
-    val totalOutstanding = principalOutstanding + interestOutstanding
+    val principalOutstanding = debtSnapshot.principalOutstanding
+    val totalOutstanding = debtSnapshot.totalPayable
     val accountIdToName = remember(accounts) { accounts.associate { it.id to it.name } }
     val receivedTxn = remember(transactions, debt.id) {
         transactions

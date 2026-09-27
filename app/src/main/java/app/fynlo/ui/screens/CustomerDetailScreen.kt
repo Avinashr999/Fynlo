@@ -87,19 +87,13 @@ val borrowers by viewModel.borrowers.collectAsState()
     val loanProofs = proofAttachments.filter { it.ownerType == "loan" && it.ownerId == borrowerId }
 
     val usePaise = app.fynlo.logic.InterestPolicy.usesPaiseMethod(borrower.intType)
-    val paiseBalances = if (usePaise) {
-        app.fynlo.logic.InterestPolicy.paiseBalancesForBorrower(borrower, payments = loanPayments)
-    } else null
-    val interestBreakdown = app.fynlo.logic.InterestPolicy.borrowerBreakdown(borrower, loanPayments)
+    val loanSnapshot = app.fynlo.logic.InterestPolicy.borrowerSnapshot(borrower, loanPayments)
+    val interestBreakdown = loanSnapshot.interestBreakdown
     val interest = interestBreakdown.accrued
-    val interestOutstanding = if (usePaise) {
-        InterestEngine.paiseToRupees(paiseBalances!!.interestDue)
-    } else {
-        interestBreakdown.due
-    }
+    val interestOutstanding = loanSnapshot.interestDue
     val advanceInterest = if (usePaise) 0.0 else interestBreakdown.paidAhead
-    val principalOutstanding = app.fynlo.logic.InterestPolicy.borrowerPrincipalOutstanding(borrower, loanPayments)
-    val totalOutstanding = principalOutstanding + interestOutstanding
+    val principalOutstanding = loanSnapshot.principalOutstanding
+    val totalOutstanding = loanSnapshot.totalReceivable
     val accountIdToName = remember(accounts) { accounts.associate { it.id to it.name } }
     val moneyTrail = remember(borrower, loanPayments, transactions, accountIdToName) {
         MoneyTrail.borrower(borrower, loanPayments, transactions, accountIdToName)

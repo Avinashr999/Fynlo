@@ -2425,3 +2425,12 @@ The user approved the combined future roadmap below. Do not treat these as compl
 - Added borrower and debt regression tests so unknown interest history cannot collapse current interest due to one day.
 - Bumped app version to `3.3.6` / `versionCode 246` because visible interest totals changed.
 - Scope: interest due replay correction only. No database migration, no account balance mutation, no Firestore repair, no Play Store/AAB work.
+
+### 2026-09-27 - 3.3.7 Loan/Debt Calculation Spine Hardening
+- Follow-up hardening after the RB principal/interest issues: several screens still hand-built `principal + interest` using different helpers, which made it too easy for one card to be fixed while another stayed stale.
+- Added guarded snapshot APIs in `InterestPolicy`: `borrowerSnapshot(...)` and `debtSnapshot(...)`. These now define the visible truth for current principal, current interest due, and total receivable/payable.
+- Moved borrower/debt detail headers, lending cards, Loans Hub interest totals, collection calendar entries, payment dialogs, financial summary, debt liability rows, P&L interest/lending totals, write-off, NPA freeze, and interest waiver paths toward the guarded snapshot/payment-row source of truth.
+- Sensitive actions now load actual payment rows before freezing, waiving, or writing off interest, instead of trusting stale `paidPrincipal` / `paidInterest` aggregates.
+- Extended regression tests so the RB-style unknown/pre-start payment case is locked at the snapshot level, not just one UI card.
+- Bumped app version to `3.3.7` / `versionCode 247` because calculation paths were hardened across visible and sensitive flows.
+- Scope: code hardening only. No database migration, no account balance mutation, no Firestore repair, no Play Store/AAB work.

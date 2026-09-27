@@ -70,27 +70,17 @@ fun CollectPaymentDialog(
         runCatching { DateUtils.parseInput(date) }.getOrDefault("")
             .ifBlank { java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd")) }
     }
-    val paiseBalances = remember(borrower, payments, usePaise, paymentAsOf) {
-        if (usePaise) InterestPolicy.paiseBalancesForBorrower(borrower, paymentAsOf, payments) else null
+    val snapshot = remember(borrower, payments, paymentAsOf) {
+        InterestPolicy.borrowerSnapshot(borrower, payments, paymentAsOf)
     }
-    val interestBreakdown = remember(borrower, payments) {
-        if (payments.isEmpty()) {
-            app.fynlo.logic.InterestPolicy.borrowerBreakdown(borrower)
-        } else {
-            app.fynlo.logic.InterestPolicy.borrowerBreakdown(borrower, payments)
-        }
-    }
+    val interestBreakdown = snapshot.interestBreakdown
     val currentInterestStartDate = remember(borrower, payments) {
         app.fynlo.logic.InterestPolicy.borrowerCurrentInterestStartDate(borrower, payments)
     }
     val accruedInterest = interestBreakdown.accrued
-    val interestOutstanding = if (usePaise) {
-        InterestEngine.paiseToRupees(paiseBalances!!.interestDue)
-    } else {
-        interestBreakdown.due
-    }
-    val principalOutstanding = InterestPolicy.borrowerPrincipalOutstanding(borrower, payments)
-    val totalOutstanding = interestOutstanding + principalOutstanding
+    val interestOutstanding = snapshot.interestDue
+    val principalOutstanding = snapshot.principalOutstanding
+    val totalOutstanding = snapshot.totalReceivable
 
     // Payment fields — lean uses a single Amount; legacy keeps Principal + Interest.
     var amountStr by remember { mutableStateOf("") }
@@ -391,7 +381,11 @@ fun CollectPaymentDialog(
                                 }
                             }
                             val remainingAfter = if (split.closesLoan) 0L else
-                                (paiseBalances!!.outstanding - split.towardInterest - split.towardPrincipal).coerceAtLeast(0L)
+                                (
+                                    InterestEngine.rupeesToPaise(totalOutstanding) -
+                                        split.towardInterest -
+                                        split.towardPrincipal
+                                    ).coerceAtLeast(0L)
                             if (split.closesLoan) {
                                 Text(
                                     "Paid in full",
@@ -607,27 +601,17 @@ fun PayDebtDialog(
         runCatching { DateUtils.parseInput(date) }.getOrDefault("")
             .ifBlank { java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd")) }
     }
-    val paiseBalances = remember(debt, payments, usePaise, paymentAsOf) {
-        if (usePaise) InterestPolicy.paiseBalancesForDebt(debt, paymentAsOf, payments) else null
+    val snapshot = remember(debt, payments, paymentAsOf) {
+        InterestPolicy.debtSnapshot(debt, payments, paymentAsOf)
     }
-    val interestBreakdown = remember(debt, payments) {
-        if (payments.isEmpty()) {
-            app.fynlo.logic.InterestPolicy.debtBreakdown(debt)
-        } else {
-            app.fynlo.logic.InterestPolicy.debtBreakdown(debt, payments)
-        }
-    }
+    val interestBreakdown = snapshot.interestBreakdown
     val currentInterestStartDate = remember(debt, payments) {
         app.fynlo.logic.InterestPolicy.debtCurrentInterestStartDate(debt, payments)
     }
     val accruedInterest = interestBreakdown.accrued
-    val interestOutstanding = if (usePaise) {
-        InterestEngine.paiseToRupees(paiseBalances!!.interestDue)
-    } else {
-        interestBreakdown.due
-    }
-    val principalOutstanding = InterestPolicy.debtPrincipalOutstanding(debt, payments)
-    val totalOutstanding     = interestOutstanding + principalOutstanding
+    val interestOutstanding = snapshot.interestDue
+    val principalOutstanding = snapshot.principalOutstanding
+    val totalOutstanding     = snapshot.totalPayable
 
     var amountStr by remember { mutableStateOf("") }
     var leanAmountPreset by remember { mutableStateOf<String?>(null) } // "full" | "interest" | null
@@ -891,7 +875,11 @@ fun PayDebtDialog(
                                 }
                             }
                             val remainingAfter = if (split.closesLoan) 0L else
-                                (paiseBalances!!.outstanding - split.towardInterest - split.towardPrincipal).coerceAtLeast(0L)
+                                (
+                                    InterestEngine.rupeesToPaise(totalOutstanding) -
+                                        split.towardInterest -
+                                        split.towardPrincipal
+                                    ).coerceAtLeast(0L)
                             if (split.closesLoan) {
                                 Text(
                                     "Paid in full",

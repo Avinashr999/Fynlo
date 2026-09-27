@@ -289,7 +289,8 @@ internal class DebtManager(
         var updated: Debt?= null
         ctx.db.withTransaction {
             val current = ctx.dao.getDebtById(targetId) ?: return@withTransaction
-            val remainingInterest = app.fynlo.logic.InterestPolicy.debtInterestOutstanding(current)
+            val payments = ctx.dao.getDebtPaymentsForDebtOnce(current.id)
+            val remainingInterest = app.fynlo.logic.InterestPolicy.debtSnapshot(current, payments).interestDue
             val waiver = amount.coerceIn(0.0, remainingInterest)
             if (waiver <= 0.0) return@withTransaction
 

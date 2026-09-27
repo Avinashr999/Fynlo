@@ -30,6 +30,20 @@ object InterestPolicy {
         val effectivePaid: Double get() = paid + waived
     }
 
+    data class LoanSnapshot(
+        val principalOutstanding: Double,
+        val interestDue: Double,
+        val totalReceivable: Double,
+        val interestBreakdown: InterestBreakdown,
+    )
+
+    data class DebtSnapshot(
+        val principalOutstanding: Double,
+        val interestDue: Double,
+        val totalPayable: Double,
+        val interestBreakdown: InterestBreakdown,
+    )
+
     fun effectiveAsOf(
         dueDate: String,
         stopAfterDue: Boolean,
@@ -241,6 +255,48 @@ object InterestPolicy {
         asOf: String = LocalDate.now().format(ledgerFormatter),
     ): Double =
         debtBreakdown(debt, asOf).due
+
+    fun borrowerSnapshot(
+        borrower: Borrower,
+        payments: List<Payment>,
+        asOf: String = LocalDate.now().format(ledgerFormatter),
+    ): LoanSnapshot {
+        val rows = payments.filter { it.loanId == borrower.id }
+        val breakdown = borrowerBreakdown(borrower, rows, asOf)
+        val interestDue = if (usesPaiseMethod(borrower.intType)) {
+            InterestEngine.paiseToRupees(paiseBalancesForBorrower(borrower, asOf, rows).interestDue)
+        } else {
+            breakdown.due
+        }
+        val principal = borrowerPrincipalOutstanding(borrower, rows)
+        return LoanSnapshot(
+            principalOutstanding = principal,
+            interestDue = interestDue,
+            totalReceivable = principal + interestDue,
+            interestBreakdown = breakdown,
+        )
+    }
+
+    fun debtSnapshot(
+        debt: Debt,
+        payments: List<DebtPayment>,
+        asOf: String = LocalDate.now().format(ledgerFormatter),
+    ): DebtSnapshot {
+        val rows = payments.filter { it.debtId == debt.id }
+        val breakdown = debtBreakdown(debt, rows, asOf)
+        val interestDue = if (usesPaiseMethod(debt.intType)) {
+            InterestEngine.paiseToRupees(paiseBalancesForDebt(debt, asOf, rows).interestDue)
+        } else {
+            breakdown.due
+        }
+        val principal = debtPrincipalOutstanding(debt, rows)
+        return DebtSnapshot(
+            principalOutstanding = principal,
+            interestDue = interestDue,
+            totalPayable = principal + interestDue,
+            interestBreakdown = breakdown,
+        )
+    }
 
     fun borrowerBreakdown(
         borrower: Borrower,

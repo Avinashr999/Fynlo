@@ -3039,7 +3039,8 @@ class FinanceRepository(
     // Freezes accrued interest at the default date — stops accumulating phantom interest
     suspend fun markBorrowerDefaulted(borrower: Borrower) {
         val today = java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd"))
-        val frozenInterest = app.fynlo.logic.InterestPolicy.accruedForBorrower(borrower, today)
+        val payments = dao.getPaymentsForLoanOnce(borrower.id)
+        val frozenInterest = app.fynlo.logic.InterestPolicy.borrowerSnapshot(borrower, payments, today).interestBreakdown.accrued
         val updated = borrower.copy(
             status        = "Defaulted",
             defaultDate   = today,
@@ -3053,12 +3054,13 @@ class FinanceRepository(
     // ─── Write Off Bad Debt ─────────────────────────────────────────────────────
     // Creates a Bad Debt Expense transaction so it hits your P&L
     suspend fun writeOffBorrower(borrower: Borrower, fromAccount: String = "Personal Cash") {
+        val payments = dao.getPaymentsForLoanOnce(borrower.id)
+        val snapshot = app.fynlo.logic.InterestPolicy.borrowerSnapshot(borrower, payments)
         val outstanding = if (borrower.status == "Defaulted" && borrower.frozenInterest > 0) {
             // Use frozen interest for defaulted borrowers
-            (borrower.amount - borrower.paidPrincipal) + maxOf(0.0, borrower.frozenInterest - borrower.paidInterest - borrower.interestWaived)
+            snapshot.principalOutstanding + maxOf(0.0, borrower.frozenInterest - snapshot.interestBreakdown.paid - borrower.interestWaived)
         } else {
-            val interest = app.fynlo.logic.InterestPolicy.borrowerInterestOutstanding(borrower)
-            (borrower.amount - borrower.paidPrincipal) + interest
+            snapshot.totalReceivable
         }
 
         // Look up the project's currency for the persisted desc string.
@@ -3099,7 +3101,8 @@ class FinanceRepository(
         var updated: Borrower?= null
         db.withTransaction {
             val current = dao.getBorrowerById(targetId) ?: return@withTransaction
-            val remainingInterest = app.fynlo.logic.InterestPolicy.borrowerInterestOutstanding(current)
+            val payments = dao.getPaymentsForLoanOnce(current.id)
+            val remainingInterest = app.fynlo.logic.InterestPolicy.borrowerSnapshot(current, payments).interestDue
             val waiver = amount.coerceIn(0.0, remainingInterest)
             if (waiver <= 0.0) return@withTransaction
 
@@ -3133,7 +3136,8 @@ class FinanceRepository(
         var updated: Debt?= null
         db.withTransaction {
             val current = dao.getDebtById(targetId) ?: return@withTransaction
-            val remainingInterest = app.fynlo.logic.InterestPolicy.debtInterestOutstanding(current)
+            val payments = dao.getDebtPaymentsForDebtOnce(current.id)
+            val remainingInterest = app.fynlo.logic.InterestPolicy.debtSnapshot(current, payments).interestDue
             val waiver = amount.coerceIn(0.0, remainingInterest)
             if (waiver <= 0.0) return@withTransaction
 

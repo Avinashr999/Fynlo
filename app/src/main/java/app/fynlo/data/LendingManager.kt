@@ -275,7 +275,8 @@ internal class LendingManager(
         var updated: Borrower?= null
         ctx.db.withTransaction {
             val current = ctx.dao.getBorrowerById(targetId) ?: return@withTransaction
-            val remainingInterest = app.fynlo.logic.InterestPolicy.borrowerInterestOutstanding(current)
+            val payments = ctx.dao.getPaymentsForLoanOnce(current.id)
+            val remainingInterest = app.fynlo.logic.InterestPolicy.borrowerSnapshot(current, payments).interestDue
             val waiver = amount.coerceIn(0.0, remainingInterest)
             if (waiver <= 0.0) return@withTransaction
 
@@ -313,7 +314,8 @@ internal class LendingManager(
 
     suspend fun markBorrowerDefaulted(borrower: Borrower) {
         val today = java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd"))
-        val frozenInterest = app.fynlo.logic.InterestPolicy.accruedForBorrower(borrower, today)
+        val payments = ctx.dao.getPaymentsForLoanOnce(borrower.id)
+        val frozenInterest = app.fynlo.logic.InterestPolicy.borrowerSnapshot(borrower, payments, today).interestBreakdown.accrued
         val updated = borrower.copy(
             status        = "Defaulted",
             defaultDate   = today,
@@ -325,11 +327,12 @@ internal class LendingManager(
     }
 
     suspend fun writeOffBorrower(borrower: Borrower, fromAccount: String = "Personal Cash") {
+        val payments = ctx.dao.getPaymentsForLoanOnce(borrower.id)
+        val snapshot = app.fynlo.logic.InterestPolicy.borrowerSnapshot(borrower, payments)
         val outstanding = if (borrower.status == "Defaulted" && borrower.frozenInterest > 0) {
-            (borrower.amount - borrower.paidPrincipal) + maxOf(0.0, borrower.frozenInterest - borrower.paidInterest - borrower.interestWaived)
+            snapshot.principalOutstanding + maxOf(0.0, borrower.frozenInterest - snapshot.interestBreakdown.paid - borrower.interestWaived)
         } else {
-            val interest = app.fynlo.logic.InterestPolicy.borrowerInterestOutstanding(borrower)
-            (borrower.amount - borrower.paidPrincipal) + interest
+            snapshot.totalReceivable
         }
 
         val currencyCode = ctx.dao.getProjectById(borrower.projectId)?.currency ?: "INR"

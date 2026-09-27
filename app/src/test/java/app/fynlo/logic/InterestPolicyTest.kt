@@ -860,6 +860,15 @@ class InterestPolicyTest {
         assertEquals(1_000_000.0, InterestEngine.paiseToRupees(balances.outstandingPrincipal), 0.01)
         assertEquals(expectedInterest, InterestEngine.paiseToRupees(balances.interestDue), 0.01)
         assertTrue(InterestEngine.paiseToRupees(balances.interestDue) > 10_000.0)
+
+        val snapshot = InterestPolicy.borrowerSnapshot(
+            borrower,
+            listOf(oldPayment, unknownInterest),
+            asOf = "2026-09-27",
+        )
+        assertEquals(1_000_000.0, snapshot.principalOutstanding, 0.01)
+        assertEquals(expectedInterest, snapshot.interestDue, 0.01)
+        assertEquals(1_000_000.0 + expectedInterest, snapshot.totalReceivable, 0.01)
     }
 
     @Test
@@ -1016,6 +1025,15 @@ class InterestPolicyTest {
 
         assertEquals(1_000_000.0, InterestEngine.paiseToRupees(balances.outstandingPrincipal), 0.01)
         assertTrue(InterestEngine.paiseToRupees(balances.interestDue) > 10_000.0)
+
+        val snapshot = InterestPolicy.debtSnapshot(
+            debt,
+            listOf(unknownInterest),
+            asOf = "2026-09-27",
+        )
+        assertEquals(1_000_000.0, snapshot.principalOutstanding, 0.01)
+        assertEquals(InterestEngine.paiseToRupees(balances.interestDue), snapshot.interestDue, 0.01)
+        assertEquals(snapshot.principalOutstanding + snapshot.interestDue, snapshot.totalPayable, 0.01)
     }
 
     private fun borrower(stopInterestAfterDue: Boolean) = Borrower(

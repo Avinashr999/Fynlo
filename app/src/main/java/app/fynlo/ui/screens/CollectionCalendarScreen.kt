@@ -103,8 +103,7 @@ fun CollectionCalendarScreen(
             .mapNotNull { b ->
                 try {
                     val due = LocalDate.parse(b.due, dbFmt)
-                    val outstanding = app.fynlo.logic.InterestPolicy.borrowerPrincipalOutstanding(b, paymentsByLoan[b.id].orEmpty()) +
-                        app.fynlo.logic.InterestPolicy.borrowerBreakdown(b, paymentsByLoan[b.id].orEmpty()).due
+                    val outstanding = app.fynlo.logic.InterestPolicy.borrowerSnapshot(b, paymentsByLoan[b.id].orEmpty()).totalReceivable
                     DueEntry(
                         id = b.id,
                         title = b.name,
@@ -121,8 +120,7 @@ fun CollectionCalendarScreen(
             .mapNotNull { d: Debt ->
                 try {
                     val due = LocalDate.parse(d.due, dbFmt)
-                    val outstanding = app.fynlo.logic.InterestPolicy.debtPrincipalOutstanding(d, paymentsByDebt[d.id].orEmpty()) +
-                        app.fynlo.logic.InterestPolicy.debtBreakdown(d, paymentsByDebt[d.id].orEmpty()).due
+                    val outstanding = app.fynlo.logic.InterestPolicy.debtSnapshot(d, paymentsByDebt[d.id].orEmpty()).totalPayable
                     DueEntry(
                         id = d.id,
                         title = d.name,
