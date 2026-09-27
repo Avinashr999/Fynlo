@@ -565,7 +565,7 @@ class MoneyActionIdempotencyDataIntegrityTest {
             )
         )
         db.dao().rebuildBorrowerPaidFromPayments()
-        assertEquals(10_000.0, db.dao().getBorrowerById(wrongDateLoan.id)!!.paidInterest, 0.0001)
+        assertEquals(0.0, db.dao().getBorrowerById(wrongDateLoan.id)!!.paidInterest, 0.0001)
 
         repository.updateBorrowerWithSource(
             wrongDateLoan.copy(date = "2026-02-01", paid = 999_999.0, paidInterest = 999_999.0),

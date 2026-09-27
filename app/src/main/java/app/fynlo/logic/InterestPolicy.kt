@@ -699,14 +699,18 @@ object InterestPolicy {
         if (!isOnOrAfter(payment.date, borrower.date)) return 0L
         val principal = borrowerPrincipalAmount(payment)
         val interest = paymentInterestAmount(payment)
-        val currentInterest = if (
-            isCurrentPeriodInterestPayment(
+        val explicitCurrentInterest = isCurrentPeriodInterestPayment(
                 payment.interestAllocationType,
                 interest,
                 payment.interestPeriodStartDate,
                 currentStartDate,
             )
-        ) {
+        val legacyCurrentInterest = (
+            interest > 0.0 &&
+                payment.interestAllocationType in currentPeriodAllocations &&
+                payment.interestPeriodStartDate.isBlank()
+            )
+        val currentInterest = if (explicitCurrentInterest || legacyCurrentInterest) {
             interest
         } else {
             0.0
@@ -722,14 +726,18 @@ object InterestPolicy {
         if (!isOnOrAfter(payment.date, debt.date)) return 0L
         val principal = debtPrincipalAmount(payment)
         val interest = debtPaymentInterestAmount(payment)
-        val currentInterest = if (
-            isCurrentPeriodInterestPayment(
+        val explicitCurrentInterest = isCurrentPeriodInterestPayment(
                 payment.interestAllocationType,
                 interest,
                 payment.interestPeriodStartDate,
                 currentStartDate,
             )
-        ) {
+        val legacyCurrentInterest = (
+            interest > 0.0 &&
+                payment.interestAllocationType in currentPeriodAllocations &&
+                payment.interestPeriodStartDate.isBlank()
+            )
+        val currentInterest = if (explicitCurrentInterest || legacyCurrentInterest) {
             interest
         } else {
             0.0
@@ -788,6 +796,9 @@ object InterestPolicy {
         val split = previewBorrowerPaymentPaise(borrower, paymentPaise, asOf, priors)
         val interest = InterestEngine.paiseToRupees(split.towardInterest)
         val principal = InterestEngine.paiseToRupees(split.towardPrincipal)
+        val allocation = if (split.towardInterest > 0L) CURRENT_PERIOD_INTEREST else PRINCIPAL_REPAYMENT
+        val currentStartDate = borrowerCurrentInterestStartDate(borrower, priors)
+        val (periodStart, periodEnd) = periodRangeFor(allocation, currentStartDate, asOf)
         val type = when {
             split.towardInterest > 0L && split.towardPrincipal > 0L -> "Both"
             split.towardInterest > 0L -> "Interest Only"
@@ -798,7 +809,9 @@ object InterestPolicy {
             type = type,
             principal = principal,
             interest = interest,
-            interestAllocationType = if (split.towardInterest > 0L) CURRENT_PERIOD_INTEREST else PRINCIPAL_REPAYMENT,
+            interestAllocationType = allocation,
+            interestPeriodStartDate = periodStart,
+            interestPeriodEndDate = periodEnd,
             notes = notesWithEngineTags(payment.notes, split),
             penaltyPaise = split.penaltyPaise,
             roundingPaise = split.roundingPaise,
@@ -817,6 +830,9 @@ object InterestPolicy {
         val split = previewDebtPaymentPaise(debt, paymentPaise, asOf, priors)
         val interest = InterestEngine.paiseToRupees(split.towardInterest)
         val principal = InterestEngine.paiseToRupees(split.towardPrincipal)
+        val allocation = if (split.towardInterest > 0L) CURRENT_PERIOD_INTEREST else PRINCIPAL_REPAYMENT
+        val currentStartDate = debtCurrentInterestStartDate(debt, priors)
+        val (periodStart, periodEnd) = periodRangeFor(allocation, currentStartDate, asOf)
         val type = when {
             split.towardInterest > 0L && split.towardPrincipal > 0L -> "Both"
             split.towardInterest > 0L -> "Interest Only"
@@ -827,7 +843,9 @@ object InterestPolicy {
             type = type,
             principal = principal,
             interest = interest,
-            interestAllocationType = if (split.towardInterest > 0L) CURRENT_PERIOD_INTEREST else PRINCIPAL_REPAYMENT,
+            interestAllocationType = allocation,
+            interestPeriodStartDate = periodStart,
+            interestPeriodEndDate = periodEnd,
             notes = notesWithEngineTags(payment.notes, split),
             penaltyPaise = split.penaltyPaise,
             roundingPaise = split.roundingPaise,

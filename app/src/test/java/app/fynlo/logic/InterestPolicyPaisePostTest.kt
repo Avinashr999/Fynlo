@@ -102,6 +102,9 @@ class InterestPolicyPaisePostTest {
                 amount = 500.0,
                 principal = 453.98,
                 interest = 46.02,
+                interestAllocationType = InterestPolicy.CURRENT_PERIOD_INTEREST,
+                interestPeriodStartDate = "2026-01-01",
+                interestPeriodEndDate = "2026-01-15",
             ),
         )
         val asOf = "2026-02-01"
