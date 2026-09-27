@@ -29,7 +29,6 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.fynlo.FynloApplication
-import app.fynlo.billing.BillingManager
 import app.fynlo.data.Analytics
 import app.fynlo.data.GoogleSignInHelper
 import app.fynlo.data.GoogleSignInResult
@@ -46,13 +45,11 @@ import kotlinx.coroutines.launch
 fun ProfileScreen(
     onLogout: () -> Unit,
     onSignOut: () -> Unit = {},
-    onNavigateToUpgrade: () -> Unit = {},
     viewModel: app.fynlo.FinanceViewModel? = null
 ) {
     val context = LocalContext.current
     val haptic = LocalHapticFeedback.current
     val app     = context.applicationContext as FynloApplication
-    val isPro by BillingManager.isPro.collectAsState()
     val pinManager = remember { PinManager(context) }
     var pinSet           by remember { mutableStateOf(pinManager.isPinSet) }
     var biometricEnabled by remember { mutableStateOf(pinManager.isBiometricEnabled) }
@@ -176,7 +173,6 @@ fun ProfileScreen(
                                bioStatus == androidx.biometric.BiometricManager.BIOMETRIC_ERROR_NONE_ENROLLED
     val onToggleBiometric = {
         when {
-            !isPro -> { onNavigateToUpgrade() }
             !pinSet -> { showPinSetup = true }
             bioStatus == androidx.biometric.BiometricManager.BIOMETRIC_ERROR_NONE_ENROLLED -> {
                 val intent = android.content.Intent(android.provider.Settings.ACTION_BIOMETRIC_ENROLL).apply {

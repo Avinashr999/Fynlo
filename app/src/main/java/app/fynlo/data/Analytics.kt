@@ -1,104 +1,52 @@
 package app.fynlo.data
 
 import android.content.Context
-import android.os.Bundle
-import com.google.firebase.analytics.FirebaseAnalytics
 
 /**
- * Centralized analytics wrapper for Firebase Analytics.
- * Tracks screen views, feature usage, onboarding, and key user actions.
+ * Personal-mode analytics facade.
+ *
+ * The app is now maintained for private use, so user-event telemetry is kept
+ * as no-op methods. Existing call sites can stay simple without shipping
+ * Firebase Analytics or doing extra runtime work.
  */
 object Analytics {
-
-    private var firebaseAnalytics: FirebaseAnalytics?= null
-
-    fun init(context: Context) {
-        firebaseAnalytics = FirebaseAnalytics.getInstance(context)
-    }
+    fun init(context: Context) = Unit
 
     // ── Screen Views ─────────────────────────────────────────────────────────
 
-    fun screenView(screenName: String) {
-        firebaseAnalytics?.logEvent(FirebaseAnalytics.Event.SCREEN_VIEW, Bundle().apply {
-            putString(FirebaseAnalytics.Param.SCREEN_NAME, screenName)
-        })
-    }
+    fun screenView(screenName: String) = Unit
 
     // ── Onboarding & Setup ───────────────────────────────────────────────────
 
-    fun onboardingComplete() {
-        firebaseAnalytics?.logEvent("onboarding_complete", null)
-    }
+    fun onboardingComplete() = Unit
 
-    fun setupStepComplete(step: Int, stepName: String) {
-        firebaseAnalytics?.logEvent("setup_step_complete", Bundle().apply {
-            putInt("step_number", step)
-            putString("step_name", stepName)
-        })
-    }
+    fun setupStepComplete(step: Int, stepName: String) = Unit
 
-    fun setupComplete() {
-        firebaseAnalytics?.logEvent("setup_complete", null)
-    }
+    fun setupComplete() = Unit
 
-    fun setupSkipped(atStep: Int) {
-        firebaseAnalytics?.logEvent("setup_skipped", Bundle().apply {
-            putInt("skipped_at_step", atStep)
-        })
-    }
+    fun setupSkipped(atStep: Int) = Unit
 
     // ── Feature Usage ────────────────────────────────────────────────────────
 
-    fun transactionAdded(type: String, category: String) {
-        firebaseAnalytics?.logEvent("transaction_added", Bundle().apply {
-            putString("transaction_type", type)
-            putString("category", category)
-        })
-    }
+    fun transactionAdded(type: String, category: String) = Unit
 
-    fun loanCreated(hasInterest: Boolean) {
-        firebaseAnalytics?.logEvent("loan_created", Bundle().apply {
-            putBoolean("has_interest", hasInterest)
-        })
-    }
+    fun loanCreated(hasInterest: Boolean) = Unit
 
-    fun debtCreated() {
-        firebaseAnalytics?.logEvent("debt_created", null)
-    }
+    fun debtCreated() = Unit
 
-    fun investmentCreated(type: String) {
-        firebaseAnalytics?.logEvent("investment_created", Bundle().apply {
-            putString("investment_type", type)
-        })
-    }
+    fun investmentCreated(type: String) = Unit
 
-    fun paymentCollected() {
-        firebaseAnalytics?.logEvent("payment_collected", null)
-    }
+    fun paymentCollected() = Unit
 
-    fun dataExported(format: String) {
-        firebaseAnalytics?.logEvent("data_exported", Bundle().apply {
-            putString("format", format)
-        })
-    }
+    fun dataExported(format: String) = Unit
 
-    fun signIn(method: String) {
-        firebaseAnalytics?.logEvent(FirebaseAnalytics.Event.LOGIN, Bundle().apply {
-            putString(FirebaseAnalytics.Param.METHOD, method)
-        })
-    }
+    fun signIn(method: String) = Unit
 
     // ── User Properties ──────────────────────────────────────────────────────
 
-    fun setUserCurrency(currency: String) {
-        firebaseAnalytics?.setUserProperty("default_currency", currency)
-    }
+    fun setUserCurrency(currency: String) = Unit
 
-    fun setUserLanguage(language: String) {
-        firebaseAnalytics?.setUserProperty("app_language", language)
-    }
+    fun setUserLanguage(language: String) = Unit
 
-    fun setAccountCount(count: Int) {
-        firebaseAnalytics?.setUserProperty("account_count", count.toString())
-    }
+    fun setAccountCount(count: Int) = Unit
 }

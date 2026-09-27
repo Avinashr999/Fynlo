@@ -2445,3 +2445,11 @@ The user approved the combined future roadmap below. Do not treat these as compl
 - Bumped app version to `3.3.11` / `versionCode 251` because visible financial calculation behavior changed.
 - Verification passed: focused `InterestEngineV330Test`, full `:app:testProdDebugUnitTest`, prod/dev phone installs, production launch, and read-only phone DB audit with no borrower/debt aggregate mismatches, no zero-value investments, no weak account trails, and no open sync conflicts.
 - Scope: calculation engine and regression tests only. No database migration, no account balance mutation, no Firestore repair, no Play Store/AAB work.
+
+### 2026-09-27 - 3.3.12 Personal Mode Runtime Cleanup
+- User direction changed permanently: Fynlo Ledger is now a private lifetime ledger for the owner, not a public Play Store product.
+- Removed dormant Play Billing / Pro subscription code, upgrade route, and subscription screen. Reports, exports, projects, recurring routes, and biometric lock are direct private-app features.
+- Removed Firebase Analytics and Firebase Performance runtime dependencies. `Analytics` remains only as a no-op facade so existing call sites stay lightweight and do not send telemetry.
+- Kept Firebase Auth, Firestore sync, Crashlytics, encrypted backup/export, and baseline/profile optimization because they support private lifetime data safety, debugging, and smoother runtime behavior.
+- Bumped app version to `3.3.12` / `versionCode 252` because runtime behavior and packaged dependencies changed.
+- Scope: private-mode cleanup only. No database migration, no account balance mutation, no Firestore repair, no interest/accounting formula change.

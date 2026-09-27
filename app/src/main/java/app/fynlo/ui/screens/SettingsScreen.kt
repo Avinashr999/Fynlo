@@ -67,13 +67,11 @@ fun SettingsScreen(
     viewModel: FinanceViewModel,
     onNavigateToAbout: () -> Unit,
     onNavigateToProfile: () -> Unit = {},
-    onNavigateToUpgrade: () -> Unit = {},
     onNavigateToLedgerIssue: (app.fynlo.logic.LedgerIssue) -> Unit = {},
     openBookCheck: Boolean = false,
 ) {
     val scope   = rememberCoroutineScope()
     val context = LocalContext.current
-    val isPro by app.fynlo.billing.BillingManager.isPro.collectAsState()
     val showInternalTools = app.fynlo.BuildConfig.DEBUG && app.fynlo.BuildConfig.FLAVOR == "dev"
     // -- Setup-wizard editable prefs (DataStore-backed) ---------------------
     val displayNameFlow    by UserPreferences.userDisplayName(context).collectAsState(initial = "")
@@ -479,7 +477,6 @@ fun SettingsScreen(
             .verticalScroll(rememberScrollState()).imePadding()
             .padding(horizontal = 16.dp)
     ) {
-        // -- Upgrade to Pro (hidden until billing is enabled) ------------------
         SettingsSummaryPanel(
             currencyCode = defaultCurrency,
             dateFormat = dateFormat,
@@ -497,34 +494,6 @@ fun SettingsScreen(
             ) { showWhatsNew = true }
         }
         Spacer(Modifier.height(16.dp))
-
-        if (app.fynlo.billing.FeatureFlags.BILLING_ENABLED) {
-            Row(
-                Modifier.fillMaxWidth()
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(Emerald500.copy(alpha = 0.10f))
-                    .clickable { onNavigateToUpgrade() }
-                    .padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(14.dp)
-            ) {
-                Box(Modifier.size(40.dp).clip(CircleShape).background(Emerald500.copy(alpha = 0.18f)),
-                    Alignment.Center) {
-                    Icon(Icons.Default.Star, null, Modifier.size(22.dp), tint = Emerald500)
-                }
-                Column(Modifier.weight(1f)) {
-                    Text("Upgrade to Fynlo Ledger Pro",
-                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
-                        color = Emerald500)
-                    Text("Unlimited everything, cloud sync, reports & more",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                Icon(Icons.AutoMirrored.Filled.ArrowForwardIos, null, Modifier.size(16.dp),
-                    tint = Emerald500)
-            }
-            Spacer(Modifier.height(16.dp))
-        }
 
         // -- Appearance --------------------------------------------------------
         SettingsExpandableCard(
@@ -694,7 +663,7 @@ fun SettingsScreen(
                     color = Green,
                     title = "Export Full Backup (.xlsx)",
                     subtitle = "All data in 7 sheets \u2014 opens in Excel/Sheets"
-                ) { if (isPro) xlsxLauncher.launch("Fynlo_Ledger_Backup_${System.currentTimeMillis()}.xlsx") else onNavigateToUpgrade() }
+                ) { xlsxLauncher.launch("Fynlo_Ledger_Backup_${System.currentTimeMillis()}.xlsx") }
 
                 SettingsDivider()
                 }
@@ -745,9 +714,7 @@ fun SettingsScreen(
                     subtitle = if (encryptOnExport) "Encrypted with password"
                                else "All projects, accounts, entries, loans, debts, investments, and settings"
                 ) {
-                    if (!isPro) {
-                        onNavigateToUpgrade()
-                    } else if (encryptOnExport) {
+                    if (encryptOnExport) {
                         // Password dialog -> SAF picker -> encrypt + write.
                         showExportPwdDialog = true
                     } else {
@@ -763,7 +730,7 @@ fun SettingsScreen(
                     color = Red,
                     title = "Export PDF Report",
                     subtitle = "Financial summary report"
-                ) { if (isPro) pdfLauncher.launch("Fynlo_Ledger_Report_${System.currentTimeMillis()}.pdf") else onNavigateToUpgrade() }
+                ) { pdfLauncher.launch("Fynlo_Ledger_Report_${System.currentTimeMillis()}.pdf") }
 
                 SettingsDivider()
 
@@ -772,7 +739,7 @@ fun SettingsScreen(
                     color = Green,
                     title = "Export Data",
                     subtitle = "Choose whole data or one section as CSV/PDF"
-                ) { if (isPro) showDataExportDialog = true else onNavigateToUpgrade() }
+                ) { showDataExportDialog = true }
 
                 SettingsDivider()
 

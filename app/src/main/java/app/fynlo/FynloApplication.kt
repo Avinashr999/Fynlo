@@ -2,7 +2,6 @@ package app.fynlo
 
 import android.app.Application
 import android.util.Log
-import app.fynlo.data.Analytics
 import app.fynlo.data.AuthManager
 import app.fynlo.data.FinanceRepository
 import app.fynlo.data.RecalcCoordinator
@@ -13,7 +12,6 @@ import app.fynlo.data.remote.SyncManager
 import app.fynlo.notifications.ReminderScheduler
 import com.google.firebase.FirebaseApp
 import com.google.firebase.crashlytics.FirebaseCrashlytics
-import com.google.firebase.perf.FirebasePerformance
 import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
@@ -56,9 +54,6 @@ class FynloApplication : Application() {
         // recurring worker) so every mutation gets captured on launch zero.
         app.fynlo.logic.BalanceAuditLog.init(this)
 
-        val startupTrace = FirebasePerformance.getInstance().newTrace("app_startup")
-        startupTrace.start()
-
         FirebaseApp.initializeApp(this)
 
         com.google.firebase.crashlytics.FirebaseCrashlytics.getInstance().apply {
@@ -66,15 +61,8 @@ class FynloApplication : Application() {
             setCrashlyticsCollectionEnabled(true)
         }
 
-        Analytics.init(this)
-
-        // Pro / billing — dormant unless FeatureFlags.BILLING_ENABLED is true.
-        app.fynlo.billing.BillingManager.init(this)
-
         syncManager = SyncManager("", dao)
         repository.updateRemote(FirestoreRepository(""), syncManager)
-
-        startupTrace.stop()
 
         appScope.launch {
             try { repository.repairLegacyInterestReviewRows() } catch (e: Exception) {

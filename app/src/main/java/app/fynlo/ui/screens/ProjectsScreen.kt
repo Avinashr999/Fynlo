@@ -30,9 +30,8 @@ import androidx.core.graphics.toColorInt
 
 
 @Composable
-fun ProjectsScreen(viewModel: FinanceViewModel, onNavigateToUpgrade: () -> Unit = {}) {
+fun ProjectsScreen(viewModel: FinanceViewModel) {
     val haptic = LocalHapticFeedback.current
-    val isPro by app.fynlo.billing.BillingManager.isPro.collectAsState()
     val projects       by viewModel.projects.collectAsState()
     val currentPid     by viewModel.currentProjectId.collectAsState()
     var showAddDialog  by remember { mutableStateOf(false) }
@@ -108,7 +107,7 @@ fun ProjectsScreen(viewModel: FinanceViewModel, onNavigateToUpgrade: () -> Unit 
             Button(
                 onClick = {
                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                    if (isPro || projects.isEmpty()) showAddDialog = true else onNavigateToUpgrade()
+                    showAddDialog = true
                 },
                 colors = ButtonDefaults.filledTonalButtonColors(
                     containerColor = Emerald500.copy(alpha = 0.12f),
