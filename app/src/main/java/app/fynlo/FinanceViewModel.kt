@@ -164,6 +164,7 @@ class FinanceViewModel @Inject constructor(
     init {
         viewModelScope.launch(Dispatchers.IO) {
             repository.fixPaidDoubleCount()
+            repository.repairLegacyInterestReviewRows()
             repository.repairDeletedAuditResidue()
             repository.repairDebtFundedInvestmentTransferTraces()
             repository.repairDebtFundedInvestmentJournalTraceRefs()

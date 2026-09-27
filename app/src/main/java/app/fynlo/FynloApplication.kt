@@ -77,6 +77,11 @@ class FynloApplication : Application() {
         startupTrace.stop()
 
         appScope.launch {
+            try { repository.repairLegacyInterestReviewRows() } catch (e: Exception) {
+                Log.e("FynloApp", "Legacy interest review repair failed: ${e.message}", e)
+                FirebaseCrashlytics.getInstance().recordException(e)
+            }
+
             // C02 (UX_AUDIT §C02): auto-recalc on launch, debounced to once
             // per calendar day. After C01's structural fix, recalc is safe
             // and idempotent — this just keeps the derived `paid` columns

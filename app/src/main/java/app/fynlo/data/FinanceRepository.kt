@@ -1311,6 +1311,138 @@ class FinanceRepository(
         dao.rebuildDebtPaidFromDebtPayments()
     }
 
+    /**
+     * Legacy interest rows created before period-aware payments used
+     * UNKNOWN_REVIEW as a safe default. This repair only labels rows when the
+     * date evidence is deterministic; it never changes amount, principal,
+     * interest, account balances, or transaction rows.
+     */
+    suspend fun repairLegacyInterestReviewRows(): Int {
+        val loanRows = dao.getAllPayments().first()
+        val debtRows = dao.getAllDebtPayments().first()
+        val borrowers = dao.getAllBorrowers().first().associateBy { it.id }
+        val debts = dao.getAllDebts().first().associateBy { it.id }
+        val repairedPayments = mutableListOf<Payment>()
+        val repairedDebtPayments = mutableListOf<DebtPayment>()
+        val now = System.currentTimeMillis()
+
+        fun isReview(allocation: String): Boolean =
+            allocation.isBlank() || allocation == app.fynlo.logic.InterestPolicy.UNKNOWN_REVIEW
+
+        fun parseDate(value: String): LocalDate? =
+            runCatching { LocalDate.parse(value, DateTimeFormatter.ofPattern("yyyy-MM-dd")) }.getOrNull()
+
+        fun oldPeriodRange(
+            loanStart: String,
+            paymentDate: String,
+            periodStart: String,
+            periodEnd: String,
+        ): Pair<String, String> {
+            val startDate = parseDate(loanStart)
+            val payment = parseDate(paymentDate)
+            val existingEnd = parseDate(periodEnd)
+            val safeEnd = when {
+                startDate != null && existingEnd != null && !existingEnd.isBefore(startDate) -> startDate.minusDays(1)
+                startDate != null && payment != null && !payment.isBefore(startDate) -> startDate.minusDays(1)
+                existingEnd != null -> existingEnd
+                payment != null -> payment
+                else -> null
+            }
+            return periodStart to (safeEnd?.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")) ?: periodEnd)
+        }
+
+        fun classifyInterest(
+            startDate: String,
+            paymentDate: String,
+            periodStartDate: String,
+            periodEndDate: String,
+            interest: Double,
+            accruedAtPayment: Double,
+        ): Triple<String, String, String>? {
+            if (interest <= 0.01) return null
+            val start = parseDate(startDate)
+            val payment = parseDate(paymentDate)
+            val periodStart = parseDate(periodStartDate)
+            val periodEnd = parseDate(periodEndDate)
+            val beforeStart = start != null && payment != null && payment.isBefore(start)
+            val periodStartsBeforeCurrent = start != null && periodStart != null && periodStart.isBefore(start)
+            val periodEndsBeforeCurrent = start != null && periodEnd != null && periodEnd.isBefore(start)
+            return when {
+                beforeStart || periodStartsBeforeCurrent || periodEndsBeforeCurrent -> {
+                    val (safeStart, safeEnd) = oldPeriodRange(startDate, paymentDate, periodStartDate, periodEndDate)
+                    Triple(app.fynlo.logic.InterestPolicy.OLD_PERIOD_INTEREST, safeStart, safeEnd)
+                }
+                periodStartDate.isNotBlank() -> {
+                    Triple(app.fynlo.logic.InterestPolicy.CURRENT_PERIOD_INTEREST, periodStartDate, periodEndDate.ifBlank { paymentDate })
+                }
+                interest <= accruedAtPayment + 1.0 -> {
+                    Triple(app.fynlo.logic.InterestPolicy.CURRENT_PERIOD_INTEREST, startDate, paymentDate)
+                }
+                else -> {
+                    Triple(app.fynlo.logic.InterestPolicy.EXTRA_INTEREST, "", "")
+                }
+            }
+        }
+
+        db.withTransaction {
+            loanRows.forEach { payment ->
+                val borrower = borrowers[payment.loanId] ?: return@forEach
+                val interest = app.fynlo.logic.InterestPolicy.paymentInterestAmount(payment)
+                if (!isReview(payment.interestAllocationType) || interest <= 0.01) return@forEach
+                val accruedAtPayment = app.fynlo.logic.InterestPolicy.accruedForBorrower(borrower, payment.date)
+                val classified = classifyInterest(
+                    startDate = borrower.date,
+                    paymentDate = payment.date,
+                    periodStartDate = payment.interestPeriodStartDate,
+                    periodEndDate = payment.interestPeriodEndDate,
+                    interest = interest,
+                    accruedAtPayment = accruedAtPayment,
+                ) ?: return@forEach
+                val repaired = payment.copy(
+                    interestAllocationType = classified.first,
+                    interestPeriodStartDate = classified.second,
+                    interestPeriodEndDate = classified.third,
+                    updatedAt = now,
+                )
+                if (repaired != payment) {
+                    dao.insertPayment(repaired)
+                    repairedPayments += repaired
+                }
+            }
+
+            debtRows.forEach { payment ->
+                val debt = debts[payment.debtId] ?: return@forEach
+                val interest = app.fynlo.logic.InterestPolicy.debtPaymentInterestAmount(payment)
+                if (!isReview(payment.interestAllocationType) || interest <= 0.01) return@forEach
+                val accruedAtPayment = app.fynlo.logic.InterestPolicy.accruedForDebt(debt, payment.date)
+                val classified = classifyInterest(
+                    startDate = debt.date,
+                    paymentDate = payment.date,
+                    periodStartDate = payment.interestPeriodStartDate,
+                    periodEndDate = payment.interestPeriodEndDate,
+                    interest = interest,
+                    accruedAtPayment = accruedAtPayment,
+                ) ?: return@forEach
+                val repaired = payment.copy(
+                    interestAllocationType = classified.first,
+                    interestPeriodStartDate = classified.second,
+                    interestPeriodEndDate = classified.third,
+                    updatedAt = now,
+                )
+                if (repaired != payment) {
+                    dao.insertDebtPayment(repaired)
+                    repairedDebtPayments += repaired
+                }
+            }
+            dao.rebuildBorrowerPaidFromPayments()
+            dao.rebuildDebtPaidFromDebtPayments()
+        }
+
+        repairedPayments.forEach { payment -> sync { setPayment(payment) } }
+        repairedDebtPayments.forEach { payment -> sync { setDebtPayment(payment) } }
+        return repairedPayments.size + repairedDebtPayments.size
+    }
+
     suspend fun repairDeletedAuditResidue(): Int {
         val latestDeleteByEntity = dao.getAllAuditEventsOnce()
             .filter { it.action == "DELETE" && it.entityId.isNotBlank() }

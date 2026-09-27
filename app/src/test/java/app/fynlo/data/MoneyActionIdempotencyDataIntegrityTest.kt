@@ -678,6 +678,86 @@ class MoneyActionIdempotencyDataIntegrityTest {
     }
 
     @Test
+    fun `legacy interest review repair labels pre-start interest without changing money`() = runBlocking {
+        db.dao().insertAccount(Account(id = "acc-family", name = "Family Cash", type = "Cash", balance = 1_000_000.0))
+        val borrower = Borrower(
+            id = "loan-rb",
+            name = "RB",
+            amount = 1_000_000.0,
+            rate = 18.0,
+            date = "2026-09-05",
+            intType = "Simple Interest",
+        )
+        db.dao().insertBorrower(borrower)
+        db.dao().insertPayment(
+            Payment(
+                id = "rb-august-interest",
+                loanId = borrower.id,
+                name = borrower.name,
+                date = "2026-09-26",
+                type = "Interest Only",
+                amount = 15_000.0,
+                principal = 0.0,
+                interest = 15_000.0,
+                interestPeriodStartDate = "2026-08-05",
+                interestPeriodEndDate = "2026-09-26",
+                interestAllocationType = InterestPolicy.UNKNOWN_REVIEW,
+            )
+        )
+
+        assertEquals(1, repository.repairLegacyInterestReviewRows())
+
+        val repaired = db.dao().getPaymentById("rb-august-interest")!!
+        assertEquals(InterestPolicy.OLD_PERIOD_INTEREST, repaired.interestAllocationType)
+        assertEquals("2026-08-05", repaired.interestPeriodStartDate)
+        assertEquals("2026-09-04", repaired.interestPeriodEndDate)
+        assertEquals(15_000.0, repaired.amount, 0.0001)
+        assertEquals(0.0, repaired.principal, 0.0001)
+        assertEquals(15_000.0, repaired.interest, 0.0001)
+        assertEquals(1_000_000.0, db.dao().getAccountById("acc-family")!!.balance, 0.0001)
+    }
+
+    @Test
+    fun `legacy interest review repair marks oversized blank-period interest as extra note`() = runBlocking {
+        val borrower = Borrower(
+            id = "loan-samanvi-large",
+            name = "Samanvi Travels",
+            amount = 600_000.0,
+            rate = 24.0,
+            date = "2026-02-01",
+            intType = "Simple Interest",
+        )
+        db.dao().insertBorrower(borrower)
+        db.dao().insertPayment(
+            Payment(
+                id = "large-unknown-interest",
+                loanId = borrower.id,
+                name = borrower.name,
+                date = "2026-06-30",
+                type = "Interest Only",
+                amount = 216_892.0,
+                principal = 0.0,
+                interest = 216_892.0,
+                interestAllocationType = InterestPolicy.UNKNOWN_REVIEW,
+            )
+        )
+
+        assertEquals(1, repository.repairLegacyInterestReviewRows())
+
+        val repaired = db.dao().getPaymentById("large-unknown-interest")!!
+        assertEquals(InterestPolicy.EXTRA_INTEREST, repaired.interestAllocationType)
+        assertEquals("", repaired.interestPeriodStartDate)
+        assertEquals("", repaired.interestPeriodEndDate)
+        val breakdown = InterestPolicy.borrowerBreakdown(
+            db.dao().getBorrowerById(borrower.id)!!,
+            db.dao().getPaymentsForLoanOnce(borrower.id),
+            asOf = "2026-07-01",
+        )
+        assertEquals(216_892.0, breakdown.extraInterest, 0.0001)
+        assertEquals(0.0, breakdown.unclearInterest, 0.0001)
+    }
+
+    @Test
     fun `editing debt destination reverses old account and credits corrected account`() = runBlocking {
         db.dao().insertAccount(Account(id = "acc-family", name = "Family Cash", type = "Cash", balance = 1000.0))
         db.dao().insertAccount(Account(id = "acc-business", name = "Business Investment", type = "Bank", balance = 2000.0))

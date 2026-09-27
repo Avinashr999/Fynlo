@@ -123,6 +123,9 @@ if table_exists("transactions"):
         need_to = ty in ("income", "transfer") or cat == "debt received"
         has_from = bool(t["fromAcct"] or t["fromAcctId"])
         has_to = bool(t["toAcct"] or t["toAcctId"])
+        is_journal_only = any(tag.strip().lower() == "journal_only" for tag in (t["tags"] or "").split(","))
+        if is_journal_only:
+            continue
         if (need_from and not has_from) or (need_to and not has_to):
             print(f"- {t['date']} {t['type']}/{t['category']} {money(t['amount'])}: from='{t['fromAcct']}' to='{t['toAcct']}' ref={t['ref']}")
             count += 1
