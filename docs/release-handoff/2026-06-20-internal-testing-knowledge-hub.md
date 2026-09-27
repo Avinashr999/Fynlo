@@ -1613,5 +1613,9 @@ Phone smoke still recommended before a new AAB:
 - Borrower/debt principal remaining now comes from payment rows in Lending cards, Loans Hub, Debt cards/filters, contact-book totals, collection calendar, global search status, financial summary, P&L, interest-income principal chart, debt payoff liabilities, and relevant Book Check period warnings.
 - Regression tests cover stale stored borrower/debt `paidPrincipal` values with no real principal payment rows.
 - Version bumped to `versionName 3.3.4`, `versionCode 244`.
-- Verification passed: focused `InterestPolicyTest`, `:app:compileProdDebugKotlin`, and full `:app:testProdDebugUnitTest`.
-- No database migration, account balance mutation, phone install, live phone DB audit, release AAB, or Play Console action in this pass.
+- Installed on connected phone: `app.fynlo` prod debug and `app.fynlo.dev` dev debug; both launch sanity checks passed with no crash-buffer output.
+- AAB: `app/build/outputs/bundle/prodRelease/app-prod-release.aab`.
+- R8 mapping: `app/build/outputs/mapping/prodRelease/mapping.txt`.
+- Native symbols: `app/build/outputs/native-debug-symbols/prodRelease/fynlo-prod-release-native-symbols.zip`.
+- Verification passed: focused `InterestPolicyTest`, `:app:compileProdDebugKotlin`, full `:app:testProdDebugUnitTest`, prod/dev installs, launch sanity, and `:app:verifyProdReleasePlayReadiness`.
+- No database migration, account balance mutation, live phone DB audit, or Play Console action in this pass.

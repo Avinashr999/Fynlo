@@ -2404,5 +2404,7 @@ The user approved the combined future roadmap below. Do not treat these as compl
 - Updated Lending list cards, Loans Hub principal/counts, Debt list filters/cards, contact-book receivable/payable totals, collection calendar, global search status labels, financial summary, P&L lending totals, interest-income principal chart, debt payoff liability calculation, and relevant Book Check period warnings.
 - Added regression tests for stale stored `paidPrincipal` on borrower and debt rows with no actual principal payment rows.
 - Bumped app version to `3.3.4` / `versionCode 244` because visible financial totals changed.
-- Scope: display/summary calculation source-of-truth fix only. No database migration, no account balance mutation, no Firestore repair, no phone install, and no release AAB in this pass.
-- Verification passed: focused `InterestPolicyTest`, `:app:compileProdDebugKotlin`, and full `:app:testProdDebugUnitTest`.
+- Scope: display/summary calculation source-of-truth fix only. No database migration, no account balance mutation, and no Firestore repair in this pass.
+- Installed on connected phone: `app.fynlo` prod debug and `app.fynlo.dev` dev debug; both launch sanity checks passed with no crash-buffer output.
+- Built the matching prod release artifacts after verification. Play upload candidate: `app/build/outputs/bundle/prodRelease/app-prod-release.aab`; mapping: `app/build/outputs/mapping/prodRelease/mapping.txt`; native symbols: `app/build/outputs/native-debug-symbols/prodRelease/fynlo-prod-release-native-symbols.zip`.
+- Verification passed: focused `InterestPolicyTest`, `:app:compileProdDebugKotlin`, full `:app:testProdDebugUnitTest`, prod/dev installs, launch sanity, and `:app:verifyProdReleasePlayReadiness`.
