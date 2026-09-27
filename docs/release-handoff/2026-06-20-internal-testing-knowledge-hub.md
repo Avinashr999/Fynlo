@@ -1619,3 +1619,12 @@ Phone smoke still recommended before a new AAB:
 - Native symbols: `app/build/outputs/native-debug-symbols/prodRelease/fynlo-prod-release-native-symbols.zip`.
 - Verification passed: focused `InterestPolicyTest`, `:app:compileProdDebugKotlin`, full `:app:testProdDebugUnitTest`, prod/dev installs, launch sanity, and `:app:verifyProdReleasePlayReadiness`.
 - No database migration, account balance mutation, live phone DB audit, or Play Console action in this pass.
+
+### 2026-09-27 - 3.3.5 pre-start payment principal guard
+- RB still showed Rs. 9,91,904 principal remaining against a Rs. 10,00,000 current loan.
+- Read-only phone DB check showed an older payment dated before the current loan start date had been split as principal. That row belongs before the current loan period and must not reduce current principal.
+- Borrower and debt principal calculations now ignore payment rows before the borrower/debt start date for current principal reduction.
+- Payment-aware interest accrual also ignores pre-start principal rows so current interest is calculated from the real current principal.
+- Version bumped to `versionName 3.3.5`, `versionCode 245`.
+- Verification passed: focused `InterestPolicyTest`.
+- No database migration, account balance mutation, Firestore repair, Play Store action, or AAB build in this pass.

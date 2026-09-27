@@ -2408,3 +2408,12 @@ The user approved the combined future roadmap below. Do not treat these as compl
 - Installed on connected phone: `app.fynlo` prod debug and `app.fynlo.dev` dev debug; both launch sanity checks passed with no crash-buffer output.
 - Built the matching prod release artifacts after verification. Play upload candidate: `app/build/outputs/bundle/prodRelease/app-prod-release.aab`; mapping: `app/build/outputs/mapping/prodRelease/mapping.txt`; native symbols: `app/build/outputs/native-debug-symbols/prodRelease/fynlo-prod-release-native-symbols.zip`.
 - Verification passed: focused `InterestPolicyTest`, `:app:compileProdDebugKotlin`, full `:app:testProdDebugUnitTest`, prod/dev installs, launch sanity, and `:app:verifyProdReleasePlayReadiness`.
+
+### 2026-09-27 - 3.3.5 Pre-Start Payment Principal Guard
+- User reported RB still showing principal remaining below the Rs. 10,00,000 given amount: header showed Rs. 9,91,904 principal and Money trail showed Rs. 8,096 principal collected.
+- Read-only phone DB copy confirmed the cause: RB's current loan date is `2026-09-05`, but an older payment row dated `2026-08-19` had been split as Rs. 8,095.90 principal + Rs. 6,904.10 interest. Because the payment is before the current loan start date, it must not reduce this current loan principal or current interest base.
+- Fixed borrower and debt principal helpers so payments before the borrower/debt start date are ignored for current principal reduction. The payment/income row remains in history; it just does not reduce the current loan/debt principal.
+- Fixed payment-aware interest accrual so pre-start principal rows cannot reduce remaining principal before calculating current interest.
+- Added borrower and debt regression tests for the RB-style case.
+- Bumped app version to `3.3.5` / `versionCode 245` because visible financial totals changed.
+- Scope: calculation guard only. No database migration, no account balance mutation, no Firestore repair, no Play Store/AAB work.

@@ -87,6 +87,12 @@ object InterestPolicy {
     private fun laterDate(first: LocalDate, second: LocalDate): LocalDate =
         if (first.isAfter(second)) first else second
 
+    private fun isOnOrAfter(date: String, startDate: String): Boolean {
+        val value = parseLedgerDate(date) ?: return false
+        val start = parseLedgerDate(startDate) ?: return true
+        return !value.isBefore(start)
+    }
+
     private fun normalizedDueDateFor(startDate: String, dueDate: String): String {
         val start = parseLedgerDate(startDate) ?: return dueDate
         val due = parseLedgerDate(dueDate) ?: return dueDate
@@ -188,7 +194,7 @@ object InterestPolicy {
             .filter { (_, amount) -> amount > 0.0 }
             .mapNotNull { (date, amount) ->
                 val paidOn = runCatching { LocalDate.parse(date, ledgerFormatter) }.getOrNull() ?: return@mapNotNull null
-                if (paidOn.isAfter(asOfDate)) null else Triple(date, paidOn, amount)
+                if (paidOn.isBefore(loanStart) || paidOn.isAfter(asOfDate)) null else Triple(date, paidOn, amount)
             }
             .sortedBy { it.second }
             .forEach { (paidDate, _, rawAmount) ->
@@ -393,11 +399,13 @@ object InterestPolicy {
     fun borrowerPrincipalPaid(borrower: Borrower, payments: List<Payment>): Double =
         payments
             .filter { it.loanId == borrower.id }
+            .filter { isOnOrAfter(it.date, borrower.date) }
             .sumOf(::borrowerPrincipalAmount)
 
     fun debtPrincipalPaid(debt: Debt, payments: List<DebtPayment>): Double =
         payments
             .filter { it.debtId == debt.id }
+            .filter { isOnOrAfter(it.date, debt.date) }
             .sumOf(::debtPrincipalAmount)
 
     fun borrowerPrincipalOutstanding(borrower: Borrower, payments: List<Payment>): Double =

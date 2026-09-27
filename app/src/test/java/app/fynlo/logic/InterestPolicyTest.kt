@@ -758,6 +758,59 @@ class InterestPolicyTest {
     }
 
     @Test
+    fun `borrower payment before loan start does not reduce current principal`() {
+        val borrower = Borrower(
+            id = "rb-current-loan",
+            name = "RB",
+            amount = 1_000_000.0,
+            rate = 18.0,
+            date = "2026-09-05",
+            intType = "Simple Interest",
+        )
+        val oldPayment = Payment(
+            id = "old-period-payment",
+            loanId = borrower.id,
+            name = borrower.name,
+            date = "2026-08-19",
+            type = "Both",
+            amount = 15_000.0,
+            principal = 8_095.90,
+            interest = 6_904.10,
+            interestAllocationType = InterestPolicy.UNKNOWN_REVIEW,
+        )
+        val currentInterest = Payment(
+            id = "current-interest",
+            loanId = borrower.id,
+            name = borrower.name,
+            date = "2026-09-26",
+            type = "Interest Only",
+            amount = 15_000.0,
+            principal = 0.0,
+            interest = 15_000.0,
+            interestAllocationType = InterestPolicy.UNKNOWN_REVIEW,
+        )
+
+        assertEquals(
+            1_000_000.0,
+            InterestPolicy.borrowerPrincipalOutstanding(borrower, listOf(oldPayment, currentInterest)),
+            0.01,
+        )
+        val breakdown = InterestPolicy.borrowerBreakdown(
+            borrower,
+            listOf(oldPayment, currentInterest),
+            asOf = "2026-09-27",
+        )
+        val expectedAccrued = InterestEngine.calcIntAccrued(
+            amount = 1_000_000.0,
+            rate = 18.0,
+            loanDate = "2026-09-05",
+            intType = "Simple Interest",
+            asOf = "2026-09-27",
+        )
+        assertEquals(expectedAccrued, breakdown.accrued, 0.01)
+    }
+
+    @Test
     fun `debt interest stops accruing after principal is fully paid`() {
         val debt = Debt(
             id = "principal-cleared-debt",
@@ -848,6 +901,37 @@ class InterestPolicyTest {
         val liability = DebtLiabilityCalculator.outstanding(debt, emptyList(), asOf = "2026-09-27")
         assertEquals(1_000_000.0, liability.principal, 0.01)
         assertTrue(liability.interest > 0.0)
+    }
+
+    @Test
+    fun `debt payment before debt start does not reduce current principal`() {
+        val debt = Debt(
+            id = "current-debt",
+            name = "Current Debt",
+            amount = 1_000_000.0,
+            rate = 18.0,
+            date = "2026-09-05",
+            intType = "Simple Interest",
+        )
+        val oldPayment = DebtPayment(
+            id = "old-debt-payment",
+            debtId = debt.id,
+            name = debt.name,
+            date = "2026-08-19",
+            type = "Both",
+            amount = 15_000.0,
+            principal = 8_095.90,
+            interest = 6_904.10,
+            interestAllocationType = InterestPolicy.UNKNOWN_REVIEW,
+        )
+
+        assertEquals(
+            1_000_000.0,
+            InterestPolicy.debtPrincipalOutstanding(debt, listOf(oldPayment)),
+            0.01,
+        )
+        val liability = DebtLiabilityCalculator.outstanding(debt, listOf(oldPayment), asOf = "2026-09-27")
+        assertEquals(1_000_000.0, liability.principal, 0.01)
     }
 
     private fun borrower(stopInterestAfterDue: Boolean) = Borrower(
