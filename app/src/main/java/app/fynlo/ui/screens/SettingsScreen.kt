@@ -470,27 +470,19 @@ fun SettingsScreen(
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        PremiumScreenHeader("Settings", subtitle = "Your Fynlo Ledger control room")
+        PremiumScreenHeader("Settings", subtitle = "Private ledger preferences")
         Column(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState()).imePadding()
             .padding(horizontal = 16.dp)
     ) {
-        SettingsSummaryPanel(
-            currencyCode = defaultCurrency,
-            dateFormat = dateFormat,
-            notificationsEnabled = loanRemindersEnabled || budgetAlertsEnabled,
-            encryptedBackups = encryptOnExport,
-        )
-        Spacer(Modifier.height(18.dp))
-
         SettingsCard {
             SettingsActionRow(
                 icon = Icons.Default.Lightbulb,
                 color = Green,
-                title = "What's new & how to use",
-                subtitle = "A quick guide to safe money entries, Book Check, backups, and history"
+                title = "Ledger guide",
+                subtitle = "Safe entries, backups, Book check, and history"
             ) { showWhatsNew = true }
         }
         Spacer(Modifier.height(16.dp))
@@ -814,7 +806,7 @@ fun SettingsScreen(
 
         SettingsExpandableCard(
             title = "Review & safety",
-            subtitle = "Book check, proof records, month close, undo, and backup confidence",
+            subtitle = "Book check, month close, undo, proofs, and backup",
             icon = Icons.Default.Verified,
             color = Green,
             expanded = showTrustSafety,
@@ -1024,52 +1016,6 @@ fun SettingsScreen(
                 }
 
                 SettingsDivider()
-
-                var showLaunchReadiness by remember { mutableStateOf(false) }
-                val previousMonthKey = remember { java.time.YearMonth.now().minusMonths(1).toString() }
-                val previousMonthClosed = monthlyCloses.any { it.month == previousMonthKey && it.status == "Closed" }
-                val launchBlockers = remember(
-                    ledgerReport,
-                    proofGaps,
-                    settingsSyncStatus,
-                    previousMonthClosed,
-                ) {
-                    buildLaunchReadinessItems(
-                        ledgerReport = ledgerReport,
-                        proofGapCount = proofGaps.size,
-                        syncStatus = settingsSyncStatus,
-                        previousMonthClosed = previousMonthClosed,
-                    ).count { !it.ready }
-                }
-                SettingsActionRow(
-                    icon = Icons.Default.Verified,
-                    color = if (launchBlockers == 0) Green else Amber,
-                    title = "Launch readiness",
-                    subtitle = if (launchBlockers == 0) {
-                        "Ledger, backup, reports, imports, alerts, and close checks look ready."
-                    } else {
-                        "$launchBlockers checks need attention before a confident release."
-                    },
-                ) { showLaunchReadiness = true }
-
-                if (showLaunchReadiness) {
-                    LaunchReadinessDialog(
-                        ledgerReport = ledgerReport,
-                        proofGapCount = proofGaps.size,
-                        syncStatus = settingsSyncStatus,
-                        previousMonth = previousMonthKey,
-                        previousMonthClosed = previousMonthClosed,
-                        onClosePreviousMonth = {
-                            if (!previousMonthClosed && ledgerReport.criticalCount == 0) {
-                                viewModel.closeMonth(previousMonthKey, "Closed by monthly close assistant")
-                                viewModel.showFeedback("$previousMonthKey closed")
-                            } else {
-                                viewModel.showFeedback("Review Book check before closing")
-                            }
-                        },
-                        onDismiss = { showLaunchReadiness = false },
-                    )
-                }
 
                 if (showInternalTools) {
                 SettingsDivider()
@@ -1477,8 +1423,6 @@ fun SettingsScreen(
                 var showCleanupConfirm by remember { mutableStateOf(false) }
                 var showRestoreConfirm by remember { mutableStateOf(false) }
                 var showWipeConfirm    by remember { mutableStateOf(false) }
-                var showReleaseChecklist by remember { mutableStateOf(false) }
-
                 if (showSeedConfirm) FynloConfirmDialog(
                     title = "Load Test Data-",
                     message = "This will delete all existing data and replace it with QA test data.",
@@ -1510,16 +1454,7 @@ fun SettingsScreen(
                     onDismiss = { showWipeConfirm = false },
                     onConfirm = { viewModel.wipeAllData(); showWipeConfirm = false },
                 )
-                if (showReleaseChecklist) {
-                    ReleaseChecklistDialog(onDismiss = { showReleaseChecklist = false })
-                }
-
                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    SettingsActionRow(Icons.Default.Checklist, Green, "Release Checklist",
-                        "Build, install, smoke, Play assets, and AAB handoff") {
-                        showReleaseChecklist = true
-                    }
-                    SettingsDivider()
                     SettingsActionRow(Icons.Default.BugReport, Red, "Test Crash (Crashlytics)",
                         "Triggers a fatal crash for Firebase verification") {
                         (context.applicationContext as app.fynlo.FynloApplication).triggerTestCrash()

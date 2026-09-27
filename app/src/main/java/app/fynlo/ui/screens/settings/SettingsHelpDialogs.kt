@@ -64,7 +64,7 @@ private val Amber = SemanticAmber
 @Composable
 internal fun WhatsNewDialog(onDismiss: () -> Unit) {
     app.fynlo.ui.components.FormDialog(
-        title = "What's new",
+        title = "Ledger guide",
         onDismiss = onDismiss,
     ) {
         SettingsHelpBlock(
@@ -75,7 +75,7 @@ internal fun WhatsNewDialog(onDismiss: () -> Unit) {
         SettingsHelpBlock(
             icon = Icons.Default.Verified,
             title = "Book check keeps totals trustworthy",
-            body = "Open Book check when you want to review missing money paths, old entries, or balance warnings before exporting reports.",
+            body = "Open Book check when you want to review missing money paths, old entries, or balance warnings.",
         )
         SettingsHelpBlock(
             icon = Icons.Default.SwapHoriz,
@@ -141,58 +141,3 @@ internal fun SettingsHelpBlock(
         }
     }
 }
-
-@Composable
-internal fun ReleaseChecklistDialog(onDismiss: () -> Unit) {
-    app.fynlo.ui.components.FormDialog(
-        title = "Release Checklist",
-        onDismiss = onDismiss,
-    ) {
-        ReleaseChecklistItem("Run prod debug compile", ":app:compileProdDebugKotlin")
-        ReleaseChecklistItem("Run prod debug unit tests", ":app:testProdDebugUnitTest")
-        ReleaseChecklistItem("Install prod and dev builds on phone", "Confirm app names, icon, login, offline mode, and Settings")
-        ReleaseChecklistItem("Smoke money actions", "Income, expense, transfer, lend, collect, debt, debt payment, invest, withdraw, delete/restore")
-        ReleaseChecklistItem("Check Book Check", "No serious issues before building the Play bundle")
-        ReleaseChecklistItem("Export reports", "Open PDF/CSV once and check layout/readability")
-        ReleaseChecklistItem("Build AAB", "Use a new versionCode and versionName before Play upload")
-        ReleaseChecklistItem("Play Console", "Release notes with language tags, screenshots, feature graphic, privacy/data safety")
-        Spacer(Modifier.height(18.dp))
-        Button(
-            onClick = onDismiss,
-            modifier = Modifier.fillMaxWidth().height(48.dp),
-            shape = RoundedCornerShape(14.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Emerald500),
-        ) {
-            Text("Done", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold))
-        }
-    }
-}
-
-@Composable
-internal fun ReleaseChecklistItem(title: String, detail: String) {
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 7.dp),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-        verticalAlignment = Alignment.Top,
-    ) {
-        Icon(
-            Icons.Default.CheckCircle,
-            contentDescription = null,
-            modifier = Modifier.size(18.dp).padding(top = 2.dp),
-            tint = Emerald500,
-        )
-        Column(Modifier.weight(1f)) {
-            Text(
-                title,
-                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.ExtraBold),
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-            Text(
-                detail,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-    }
-}
-

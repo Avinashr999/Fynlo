@@ -25,7 +25,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -38,7 +37,7 @@ val TemplateCardRadius = 16.dp
 val TemplatePanelRadius = 24.dp
 val TemplateHeroRadius = 26.dp
 val TemplateMotionDurationMs = 220
-val TemplateBorder = Color(0xFFDCE8E0)
+val TemplateBorder = Color(0xFFE2EAE4)
 val TemplateMutedText = Carbon600
 val TemplateCanvas = LightBackground
 val TemplateAction = Emerald500
@@ -440,7 +439,7 @@ fun PremiumCard(
         shape = RoundedCornerShape(TemplateCardRadius),
         color = MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = 0.94f),
         tonalElevation = 0.dp,
-        shadowElevation = 1.dp,
+        shadowElevation = 0.dp,
         border = BorderStroke(0.7.dp, borderColor.copy(alpha = 0.82f)),
     ) {
         Column(
@@ -511,10 +510,10 @@ fun LedgerPanel(
         shape = RoundedCornerShape(TemplateCardRadius),
         color = MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = 0.94f),
         tonalElevation = 0.dp,
-        shadowElevation = 1.dp,
+        shadowElevation = 0.dp,
         border = BorderStroke(
             0.7.dp,
-            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.46f),
+            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.38f),
         ),
     ) {
         Column(
@@ -584,10 +583,10 @@ fun LedgerMetricCard(
         shape = RoundedCornerShape(TemplateCardRadius),
         color = MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = 0.94f),
         tonalElevation = 0.dp,
-        shadowElevation = 1.dp,
+        shadowElevation = 0.dp,
         border = BorderStroke(
             0.7.dp,
-            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.46f),
+            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.38f),
         ),
     ) {
         Column(
@@ -622,23 +621,14 @@ fun LedgerHeroPanel(
     Surface(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(TemplateHeroRadius),
-        color = Color.Transparent,
+        color = containerColor,
         tonalElevation = 0.dp,
-        shadowElevation = 5.dp,
+        shadowElevation = 1.dp,
     ) {
         Column(
             Modifier
                 .fillMaxWidth()
-                .background(
-                    Brush.linearGradient(
-                        colors = listOf(
-                            containerColor,
-                            containerColor.copy(alpha = 0.92f),
-                            Emerald500.copy(alpha = 0.86f),
-                        ),
-                    ),
-                )
-                .padding(18.dp)
+                .padding(17.dp)
         ) {
             Text(
                 label,
@@ -701,10 +691,10 @@ fun LedgerRow(
         shape = RoundedCornerShape(TemplateCardRadius),
         color = MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = 0.94f),
         tonalElevation = 0.dp,
-        shadowElevation = 1.dp,
+        shadowElevation = 0.dp,
         border = BorderStroke(
             0.7.dp,
-            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.46f),
+            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.38f),
         ),
         onClick = onClick,
     ) {

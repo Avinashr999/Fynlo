@@ -1004,7 +1004,7 @@ private fun LedgerAppTopBar(
             ) {
                 FynloBrandMark(size = 28.dp)
                 Text(
-                    "Fynlo",
+                    "Ledger",
                     style = MaterialTheme.typography.titleMedium.copy(
                         fontWeight = FontWeight.Bold,
                         color = Emerald700,
@@ -1080,12 +1080,12 @@ private fun LedgerBottomNav(
     onSelect: (Screen) -> Unit,
 ) {
     val wrapperHeight by animateDpAsState(
-        targetValue = if (compact) 50.dp else 62.dp,
+        targetValue = if (compact) 48.dp else 58.dp,
         animationSpec = tween(220, easing = FastOutSlowInEasing),
         label = "bottom-nav-wrapper-height",
     )
     val barHeight by animateDpAsState(
-        targetValue = if (compact) 48.dp else 58.dp,
+        targetValue = if (compact) 46.dp else 54.dp,
         animationSpec = tween(220, easing = FastOutSlowInEasing),
         label = "bottom-nav-bar-height",
     )
@@ -1114,9 +1114,9 @@ private fun LedgerBottomNav(
         Surface(
             modifier = Modifier.fillMaxWidth().height(barHeight),
             shape = RoundedCornerShape(if (compact) 999.dp else 28.dp),
-            color = MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = if (compact) 0.94f else 0.92f),
+            color = MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = 0.96f),
             tonalElevation = 0.dp,
-            shadowElevation = if (compact) 5.dp else 10.dp,
+            shadowElevation = if (compact) 2.dp else 4.dp,
             border = androidx.compose.foundation.BorderStroke(
                 0.5.dp,
                 MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.38f),

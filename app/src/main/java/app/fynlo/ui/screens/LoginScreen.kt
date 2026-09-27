@@ -309,5 +309,5 @@ private fun loginGoogleSetupMissingMessage(): String =
     if (BuildConfig.FLAVOR == "dev") {
         "Developer Google sign-in is not configured yet. Continue without signing in for now."
     } else {
-        "Google sign-in setup is missing for this Play build. Continue without signing in for now."
+        "Google sign-in is not ready in this build. Continue without signing in for now."
     }

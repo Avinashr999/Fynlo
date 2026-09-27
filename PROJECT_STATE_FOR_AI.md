@@ -2453,3 +2453,11 @@ The user approved the combined future roadmap below. Do not treat these as compl
 - Kept Firebase Auth, Firestore sync, Crashlytics, encrypted backup/export, and baseline/profile optimization because they support private lifetime data safety, debugging, and smoother runtime behavior.
 - Bumped app version to `3.3.12` / `versionCode 252` because runtime behavior and packaged dependencies changed.
 - Scope: private-mode cleanup only. No database migration, no account balance mutation, no Firestore repair, no interest/accounting formula change.
+
+### 2026-09-27 - 3.3.13 Private Ledger Calm UI Pass
+- Shifted the app further away from public-launch/product wording and toward a private lifetime-ledger experience.
+- Removed the Settings `Launch readiness` flow and Play Store/release checklist wording. Settings now opens as private ledger preferences with a quieter `Ledger guide`.
+- Calmed shared surfaces: reduced dashboard/card shadow, softened borders, changed the hero panel from a promotional gradient to a flatter ledger panel, and made the bottom navigation less visually heavy.
+- Changed the shell title from `Fynlo` to `Ledger` to reduce brand noise inside the private app while keeping the app identity elsewhere.
+- Bumped app version to `3.3.13` / `versionCode 253` because visible UI behavior changed.
+- Scope: UI/content simplification only. No database migration, no account balance mutation, no Firestore repair, no interest/accounting formula change.
