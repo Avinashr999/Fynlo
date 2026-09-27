@@ -88,7 +88,8 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
     var statusFilter by remember { mutableStateOf("Active") }
     val today = java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd"))
 
-    val processed = remember(borrowers, searchQuery) {
+    val paymentsByLoan = remember(payments) { payments.groupBy { it.loanId } }
+    val processed = remember(borrowers, searchQuery, paymentsByLoan) {
         val filtered = if (searchQuery.isBlank()) borrowers
                        else borrowers.filter {
                            it.name.contains(searchQuery, ignoreCase = true) ||
@@ -97,27 +98,26 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
         // Default sort: overdue first (most actionable), then amount desc.
         filtered.sortedWith(
             compareByDescending<Borrower> {
-                it.due.isNotBlank() && it.due < today && it.paid < it.amount
+                it.due.isNotBlank() && it.due < today &&
+                    app.fynlo.logic.InterestPolicy.borrowerPrincipalOutstanding(it, paymentsByLoan[it.id].orEmpty()) > 0.01
             }.thenByDescending { it.amount }
         )
     }
-    // Active = not settled, not written off, still has outstanding balance.
-    // Hand loans (rate=0) use `paid` (old payments only updated paid, not paidPrincipal).
-    // Interest loans (rate>0) use `paidPrincipal` so interest-only payments don't close the loan.
+    // Active = not settled, not written off, still has actual principal outstanding.
+    // Use payment rows as the source of truth so stale paidPrincipal/paid aggregates
+    // cannot hide money that is still receivable.
     val isActive: (app.fynlo.data.model.Borrower) -> Boolean = { b ->
-        b.status !in listOf("Settled", "WrittenOff") && (
-            if (b.rate <= 0) b.paid < b.amount
-            else b.paidPrincipal < b.amount
-        )
+        b.status !in listOf("Settled", "WrittenOff") &&
+            app.fynlo.logic.InterestPolicy.borrowerPrincipalOutstanding(b, paymentsByLoan[b.id].orEmpty()) > 0.01
     }
-    val openLoans = remember(processed) { processed.filter { isActive(it) } }
+    val openLoans = remember(processed, paymentsByLoan) { processed.filter { isActive(it) } }
     val overdueLoans = remember(openLoans) {
         openLoans.filter { it.due.isNotBlank() && it.due < today }
     }
     val activeLoans = remember(openLoans, overdueLoans) {
         openLoans.filterNot { loan -> overdueLoans.any { it.id == loan.id } }
     }
-    val closedLoans  = remember(processed) { processed.filterNot { isActive(it) } }
+    val closedLoans  = remember(processed, paymentsByLoan) { processed.filterNot { isActive(it) } }
     val displayed = when (statusFilter) {
         "Overdue" -> overdueLoans
         "Closed"  -> closedLoans
@@ -274,7 +274,8 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
                         borrower     = borrower,
                         payments     = payments.filter { it.loanId == borrower.id },
                         currencyCode = currencyCode,
-                        isOverdue    = borrower.due.isNotBlank() && borrower.due < today && borrower.paid < borrower.amount,
+                        isOverdue    = borrower.due.isNotBlank() && borrower.due < today &&
+                            app.fynlo.logic.InterestPolicy.borrowerPrincipalOutstanding(borrower, paymentsByLoan[borrower.id].orEmpty()) > 0.01,
                         isPrivacy    = isPrivacy,
                         onClick      = { onNavigateToDetail(borrower.id) }
                     )
@@ -307,7 +308,8 @@ fun LendingCard(
     } else {
         app.fynlo.logic.InterestPolicy.borrowerBreakdown(borrower, payments).due
     }
-    val outstanding = (borrower.amount - borrower.paidPrincipal).coerceAtLeast(0.0) + interestDue
+    val principalOutstanding = app.fynlo.logic.InterestPolicy.borrowerPrincipalOutstanding(borrower, payments)
+    val outstanding = principalOutstanding + interestDue
 
     Surface(
         onClick = onClick,

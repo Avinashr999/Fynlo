@@ -89,25 +89,24 @@ fun LoansHubScreen(
     // Active-borrower count — mirrors `LendingScreen.isActive`: not settled,
     // not written off, still has outstanding balance (hand loans use `paid`,
     // interest loans use `paidPrincipal`).
-    val activeBorrowers = remember(borrowers) {
+    val paymentsByLoan = remember(payments) { payments.groupBy { it.loanId } }
+    val activeBorrowers = remember(borrowers, paymentsByLoan) {
         borrowers.filter { b ->
-            b.status !in listOf("Settled", "WrittenOff") && (
-                if (b.rate <= 0) b.paid < b.amount
-                else b.paidPrincipal < b.amount
-            )
+            b.status !in listOf("Settled", "WrittenOff") &&
+                app.fynlo.logic.InterestPolicy.borrowerPrincipalOutstanding(b, paymentsByLoan[b.id].orEmpty()) > 0.01
         }
     }
     val activeLentCount = activeBorrowers.size
-    val activeOwedCount = remember(debts) {
-        debts.count { it.paid < it.amount }
+    val debtPayments by viewModel.debtPayments.collectAsState()
+    val paymentsByDebt = remember(debtPayments) { debtPayments.groupBy { it.debtId } }
+    val activeOwedCount = remember(debts, paymentsByDebt) {
+        debts.count { app.fynlo.logic.InterestPolicy.debtPrincipalOutstanding(it, paymentsByDebt[it.id].orEmpty()) > 0.01 }
     }
-    val borrowerPrincipal = remember(activeBorrowers) {
+    val borrowerPrincipal = remember(activeBorrowers, paymentsByLoan) {
         activeBorrowers.sumOf { b ->
-            if (b.rate <= 0) (b.amount - b.paid).coerceAtLeast(0.0)
-            else (b.amount - b.paidPrincipal).coerceAtLeast(0.0)
+            app.fynlo.logic.InterestPolicy.borrowerPrincipalOutstanding(b, paymentsByLoan[b.id].orEmpty())
         }
     }
-    val paymentsByLoan = remember(payments) { payments.groupBy { it.loanId } }
     val borrowerInterest = remember(activeBorrowers, paymentsByLoan) {
         activeBorrowers.sumOf { b ->
             if (b.rate <= 0) 0.0 else app.fynlo.logic.InterestPolicy.borrowerBreakdown(b, paymentsByLoan[b.id].orEmpty()).due

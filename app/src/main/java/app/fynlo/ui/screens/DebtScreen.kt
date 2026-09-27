@@ -69,8 +69,8 @@ val debts by viewModel.debts.collectAsState()
     val locale = LocalLocale.current.platformLocale
     var searchQuery by remember { mutableStateOf("") }
     // C12 Stage 2 (3.2.27) — Active/Overdue/Closed segmented filter for parity
-    // with LendingScreen. Active = paid < amount; Overdue = active AND due
-    // date past today; Closed = paid >= amount (fully repaid).
+    // with LendingScreen. Active = actual principal still payable; Overdue =
+    // active AND due date past today; Closed = no principal remains.
     var statusFilter by remember { mutableStateOf("Active") }
     val todayKey = remember { java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd")) }
     val accountIdToName = remember(accounts) { accounts.associate { it.id to it.name } }
@@ -93,14 +93,18 @@ val debts by viewModel.debts.collectAsState()
             it.notes.contains(searchQuery, ignoreCase = true)
         }
     }
-    val openDebts = remember(searched) { searched.filter { it.paid < it.amount } }
+    val openDebts = remember(searched, paymentsByDebt) {
+        searched.filter { app.fynlo.logic.InterestPolicy.debtPrincipalOutstanding(it, paymentsByDebt[it.id].orEmpty()) > 0.01 }
+    }
     val overdueDebts = remember(openDebts, todayKey) {
         openDebts.filter { it.due.isNotBlank() && it.due < todayKey }
     }
     val activeDebts = remember(openDebts, overdueDebts) {
         openDebts.filterNot { debt -> overdueDebts.any { it.id == debt.id } }
     }
-    val closedDebts  = remember(searched) { searched.filter { it.paid >= it.amount } }
+    val closedDebts  = remember(searched, paymentsByDebt) {
+        searched.filter { app.fynlo.logic.InterestPolicy.debtPrincipalOutstanding(it, paymentsByDebt[it.id].orEmpty()) <= 0.01 }
+    }
     val filteredDebts = when (statusFilter) {
         "Overdue" -> overdueDebts
         "Closed"  -> closedDebts
@@ -162,7 +166,7 @@ val debts by viewModel.debts.collectAsState()
         // least one debt — no point pointing at a planner for an empty
         // debt list. Tappable Surface; full-width so the tap target
         // matches its visual prominence.
-        if (debts.any { it.paid < it.amount }) {
+        if (debts.any { app.fynlo.logic.InterestPolicy.debtPrincipalOutstanding(it, paymentsByDebt[it.id].orEmpty()) > 0.01 }) {
             Surface(
                 onClick = onNavigateToPayoffPlan,
                 modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
@@ -320,7 +324,8 @@ fun DebtCard(
 ) {
     val locale = LocalLocale.current.platformLocale
     val today  = remember { java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd")) }
-    val isOverdue = debt.due.isNotBlank() && debt.due < today && debt.paid < debt.amount
+    val isOverdue = debt.due.isNotBlank() && debt.due < today &&
+        app.fynlo.logic.InterestPolicy.debtPrincipalOutstanding(debt, payments) > 0.01
 
     val liability = app.fynlo.logic.DebtLiabilityCalculator.outstanding(debt, payments)
     val outstanding = liability.total

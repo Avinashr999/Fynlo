@@ -99,11 +99,11 @@ fun CollectionCalendarScreen(
         val paymentsByLoan = payments.groupBy { it.loanId }
         val paymentsByDebt = debtPayments.groupBy { it.debtId }
         val lendingEntries = borrowers
-            .filter { it.due.isNotBlank() && it.paid < it.amount }
+            .filter { it.due.isNotBlank() && app.fynlo.logic.InterestPolicy.borrowerPrincipalOutstanding(it, paymentsByLoan[it.id].orEmpty()) > 0.01 }
             .mapNotNull { b ->
                 try {
                     val due = LocalDate.parse(b.due, dbFmt)
-                    val outstanding = (b.amount - b.paidPrincipal).coerceAtLeast(0.0) +
+                    val outstanding = app.fynlo.logic.InterestPolicy.borrowerPrincipalOutstanding(b, paymentsByLoan[b.id].orEmpty()) +
                         app.fynlo.logic.InterestPolicy.borrowerBreakdown(b, paymentsByLoan[b.id].orEmpty()).due
                     DueEntry(
                         id = b.id,
@@ -121,7 +121,7 @@ fun CollectionCalendarScreen(
             .mapNotNull { d: Debt ->
                 try {
                     val due = LocalDate.parse(d.due, dbFmt)
-                    val outstanding = (d.amount - d.paidPrincipal).coerceAtLeast(0.0) +
+                    val outstanding = app.fynlo.logic.InterestPolicy.debtPrincipalOutstanding(d, paymentsByDebt[d.id].orEmpty()) +
                         app.fynlo.logic.InterestPolicy.debtBreakdown(d, paymentsByDebt[d.id].orEmpty()).due
                     DueEntry(
                         id = d.id,

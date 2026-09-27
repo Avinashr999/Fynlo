@@ -61,6 +61,8 @@ fun GlobalSearchScreen(
     val scope        = rememberCoroutineScope()
     val borrowers    by viewModel.borrowers.collectAsState()
     val debts        by viewModel.debts.collectAsState()
+    val payments     by viewModel.payments.collectAsState()
+    val debtPayments by viewModel.debtPayments.collectAsState()
     val transactions by viewModel.transactions.collectAsState()
     val investments  by viewModel.investments.collectAsState()
     val currentProject by viewModel.currentProject.collectAsState()
@@ -88,7 +90,9 @@ fun GlobalSearchScreen(
         }
     }
 
-    val results = remember(query, typeFilter, borrowers, debts, transactions, investments) {
+    val paymentsByLoan = remember(payments) { payments.groupBy { it.loanId } }
+    val paymentsByDebt = remember(debtPayments) { debtPayments.groupBy { it.debtId } }
+    val results = remember(query, typeFilter, borrowers, debts, paymentsByLoan, paymentsByDebt, transactions, investments) {
         if (query.length < 2) return@remember emptyList()
         buildList {
             if (typeFilter == "All" || typeFilter == "Loans") {
@@ -96,7 +100,7 @@ fun GlobalSearchScreen(
                     val s = FuzzyMatch.scoreAny(listOf(b.name, b.notes, b.phone), query)
                     if (s >= 0) add(SearchResult(
                         id = b.id, title = b.name,
-                        subtitle = "Loan - ${b.date} - ${if (b.paid >= b.amount) "Settled" else "Active"}",
+                        subtitle = "Loan - ${b.date} - ${if (app.fynlo.logic.InterestPolicy.borrowerPrincipalOutstanding(b, paymentsByLoan[b.id].orEmpty()) <= 0.01) "Settled" else "Active"}",
                         amount = b.amount, type = "Loan",
                         icon = Icons.Default.Person, color = SemanticBlue, score = s,
                     ))
@@ -107,7 +111,7 @@ fun GlobalSearchScreen(
                     val s = FuzzyMatch.scoreAny(listOf(d.name, d.notes), query)
                     if (s >= 0) add(SearchResult(
                         id = d.id, title = d.name,
-                        subtitle = "Debt - ${d.date} - ${if (d.paid >= d.amount) "Settled" else "Active"}",
+                        subtitle = "Debt - ${d.date} - ${if (app.fynlo.logic.InterestPolicy.debtPrincipalOutstanding(d, paymentsByDebt[d.id].orEmpty()) <= 0.01) "Settled" else "Active"}",
                         amount = d.amount, type = "Debt",
                         icon = Icons.Default.CreditCard, color = SemanticRed, score = s,
                     ))

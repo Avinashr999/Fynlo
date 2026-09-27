@@ -29,7 +29,7 @@ object DebtLiabilityCalculator {
         asOf: String = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")),
     ): Liability {
         return Liability(
-            principal = (debt.amount - debt.paidPrincipal).coerceAtLeast(0.0),
+            principal = InterestPolicy.debtPrincipalOutstanding(debt, payments),
             interest = InterestPolicy.debtBreakdown(debt, payments, asOf).due,
         )
     }

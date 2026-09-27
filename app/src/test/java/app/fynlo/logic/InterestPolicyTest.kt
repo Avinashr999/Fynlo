@@ -735,6 +735,29 @@ class InterestPolicyTest {
     }
 
     @Test
+    fun `borrower principal outstanding ignores stale stored paid principal without payment rows`() {
+        val borrower = Borrower(
+            id = "rb-stale-paid-principal",
+            name = "RB",
+            amount = 1_000_000.0,
+            rate = 24.0,
+            date = "2026-09-01",
+            intType = "Simple Interest",
+            paidPrincipal = 27_855.0,
+            paid = 27_855.0,
+        )
+
+        assertEquals(
+            1_000_000.0,
+            InterestPolicy.borrowerPrincipalOutstanding(borrower, emptyList()),
+            0.01,
+        )
+        val breakdown = InterestPolicy.borrowerBreakdown(borrower, emptyList(), asOf = "2026-09-27")
+        assertTrue(breakdown.due > 0.0)
+        assertEquals(1_000_000.0 + breakdown.due, InterestPolicy.borrowerPrincipalOutstanding(borrower, emptyList()) + breakdown.due, 0.01)
+    }
+
+    @Test
     fun `debt interest stops accruing after principal is fully paid`() {
         val debt = Debt(
             id = "principal-cleared-debt",
@@ -802,6 +825,29 @@ class InterestPolicyTest {
         assertEquals(paidPortionInterest + remainingPortionInterest, breakdown.accrued, 0.01)
         assertEquals(60_000.0, debt.amount - principalOnly.principal, 0.01)
         assertTrue(InterestPolicy.accruedForDebt(debt, asOf = "2026-03-01") > breakdown.accrued)
+    }
+
+    @Test
+    fun `debt principal outstanding ignores stale stored paid principal without payment rows`() {
+        val debt = Debt(
+            id = "stale-paid-principal-debt",
+            name = "Stale Debt",
+            amount = 1_000_000.0,
+            rate = 24.0,
+            date = "2026-09-01",
+            intType = "Simple Interest",
+            paidPrincipal = 27_855.0,
+            paid = 27_855.0,
+        )
+
+        assertEquals(
+            1_000_000.0,
+            InterestPolicy.debtPrincipalOutstanding(debt, emptyList()),
+            0.01,
+        )
+        val liability = DebtLiabilityCalculator.outstanding(debt, emptyList(), asOf = "2026-09-27")
+        assertEquals(1_000_000.0, liability.principal, 0.01)
+        assertTrue(liability.interest > 0.0)
     }
 
     private fun borrower(stopInterestAfterDue: Boolean) = Borrower(

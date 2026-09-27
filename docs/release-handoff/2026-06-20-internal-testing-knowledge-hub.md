@@ -1607,3 +1607,11 @@ Phone smoke still recommended before a new AAB:
 - Native symbols: `app/build/outputs/native-debug-symbols/prodRelease/fynlo-prod-release-native-symbols.zip`.
 - Verification passed: `:app:compileProdDebugKotlin`, `:app:testProdDebugUnitTest`, and `:app:verifyProdReleasePlayReadiness`.
 - No calculation logic, account balance mutation, database migration, phone install, live phone DB audit, or Play Console action in this pass.
+
+### 2026-09-27 - 3.3.4 receivable principal source-of-truth fix
+- Fixed a Loans Hub / lending-card class of bugs where overview totals could use stale stored `paidPrincipal` / `paid` aggregates instead of actual payment rows.
+- Borrower/debt principal remaining now comes from payment rows in Lending cards, Loans Hub, Debt cards/filters, contact-book totals, collection calendar, global search status, financial summary, P&L, interest-income principal chart, debt payoff liabilities, and relevant Book Check period warnings.
+- Regression tests cover stale stored borrower/debt `paidPrincipal` values with no real principal payment rows.
+- Version bumped to `versionName 3.3.4`, `versionCode 244`.
+- Verification passed: focused `InterestPolicyTest`, `:app:compileProdDebugKotlin`, and full `:app:testProdDebugUnitTest`.
+- No database migration, account balance mutation, phone install, live phone DB audit, release AAB, or Play Console action in this pass.

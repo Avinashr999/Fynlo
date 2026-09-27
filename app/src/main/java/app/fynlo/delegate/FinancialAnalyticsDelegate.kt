@@ -68,34 +68,33 @@ class FinancialAnalyticsDelegate(
         val activeBrws = brws.filter { it.status != "WrittenOff" }
 
         val totalReceivables = activeBrws.sumOf { b ->
-            if (b.rate <= 0) (b.amount - b.paid).coerceAtLeast(0.0)
-            else (b.amount - b.paidPrincipal).coerceAtLeast(0.0) +
+            InterestPolicy.borrowerPrincipalOutstanding(b, paymentsByLoan[b.id].orEmpty()) +
                 InterestPolicy.borrowerBreakdown(b, paymentsByLoan[b.id].orEmpty()).due
         }
 
         val totalInterestLoans = activeBrws.filter { it.rate > 0 }.sumOf { b ->
-            (b.amount - b.paidPrincipal).coerceAtLeast(0.0) +
+            InterestPolicy.borrowerPrincipalOutstanding(b, paymentsByLoan[b.id].orEmpty()) +
                 InterestPolicy.borrowerBreakdown(b, paymentsByLoan[b.id].orEmpty()).due
         }
         val totalHandLoans = activeBrws.filter { it.rate <= 0 }.sumOf { b ->
-            (b.amount - b.paid).coerceAtLeast(0.0)
+            InterestPolicy.borrowerPrincipalOutstanding(b, paymentsByLoan[b.id].orEmpty())
         }
 
         val invTypeMap = invs.groupBy { it.type }
             .mapValues { it.value.sumOf { inv -> inv.currentVal } }
 
         val interestBrwMap = activeBrws.filter { it.rate > 0 }.associate { b ->
-            b.name to ((b.amount - b.paidPrincipal).coerceAtLeast(0.0) +
+            b.name to (InterestPolicy.borrowerPrincipalOutstanding(b, paymentsByLoan[b.id].orEmpty()) +
                 InterestPolicy.borrowerBreakdown(b, paymentsByLoan[b.id].orEmpty()).due)
         }
 
         val handBrwMap = activeBrws.filter { it.rate <= 0 }.associate { b ->
-            b.name to (b.amount - b.paid).coerceAtLeast(0.0)
+            b.name to InterestPolicy.borrowerPrincipalOutstanding(b, paymentsByLoan[b.id].orEmpty())
         }
 
         val totalAssets       = totalCashVal + totalInvestVal + totalInterestLoans + totalHandLoans
         val debtLiabilities = dbts.map { debt ->
-            val principal = (debt.amount - debt.paidPrincipal).coerceAtLeast(0.0)
+            val principal = InterestPolicy.debtPrincipalOutstanding(debt, paymentsByDebt[debt.id].orEmpty())
             val interest = InterestPolicy.debtBreakdown(debt, paymentsByDebt[debt.id].orEmpty()).due
             DebtLiabilityCalculator.Liability(principal = principal, interest = interest)
         }
@@ -165,7 +164,7 @@ class FinancialAnalyticsDelegate(
             lendCashflows.add(XirrCalculator.Cashflow(amt, t.date))
         }
         activeBrws.filter { it.rate > 0 }.forEach { b ->
-            val outstanding = (b.amount - b.paidPrincipal).coerceAtLeast(0.0) +
+            val outstanding = InterestPolicy.borrowerPrincipalOutstanding(b, paymentsByLoan[b.id].orEmpty()) +
                 InterestPolicy.borrowerBreakdown(b, paymentsByLoan[b.id].orEmpty(), todayStr).due
             if (outstanding > 0) {
                 lendCashflows.add(XirrCalculator.Cashflow(outstanding, todayStr))

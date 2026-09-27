@@ -2397,3 +2397,12 @@ The user approved the combined future roadmap below. Do not treat these as compl
 - Built the matching prod release artifacts after verification. Play upload candidate: `app/build/outputs/bundle/prodRelease/app-prod-release.aab`; mapping: `app/build/outputs/mapping/prodRelease/mapping.txt`; native symbols: `app/build/outputs/native-debug-symbols/prodRelease/fynlo-prod-release-native-symbols.zip`.
 - Verification passed: `:app:compileProdDebugKotlin`, `:app:testProdDebugUnitTest`, and `:app:verifyProdReleasePlayReadiness`.
 - Scope: UI safety/clarity only. No database migration, no account balance mutation, no Firestore repair, no interest logic change, no phone install, and no live phone DB audit in this pass.
+
+### 2026-09-27 - 3.3.4 Receivable Principal Source-of-Truth Fix
+- Root cause for RB-style wrong receivable totals: several overview/list/report paths still used stored `paidPrincipal` / `paid` aggregates, while borrower/debt detail screens used actual payment rows. If a stored aggregate was stale or had old interest counted as principal, overviews could show principal below the real amount; e.g. a Rs. 10,00,000 borrower could appear near Rs. 9,92,397 before adding interest.
+- Fixed borrower/debt overview paths to derive outstanding principal from payment rows via `InterestPolicy.borrowerPrincipalOutstanding(...)` and `debtPrincipalOutstanding(...)`.
+- Updated Lending list cards, Loans Hub principal/counts, Debt list filters/cards, contact-book receivable/payable totals, collection calendar, global search status labels, financial summary, P&L lending totals, interest-income principal chart, debt payoff liability calculation, and relevant Book Check period warnings.
+- Added regression tests for stale stored `paidPrincipal` on borrower and debt rows with no actual principal payment rows.
+- Bumped app version to `3.3.4` / `versionCode 244` because visible financial totals changed.
+- Scope: display/summary calculation source-of-truth fix only. No database migration, no account balance mutation, no Firestore repair, no phone install, and no release AAB in this pass.
+- Verification passed: focused `InterestPolicyTest`, `:app:compileProdDebugKotlin`, and full `:app:testProdDebugUnitTest`.

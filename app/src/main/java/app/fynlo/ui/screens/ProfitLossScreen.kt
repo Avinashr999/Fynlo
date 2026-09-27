@@ -52,6 +52,7 @@ import java.util.Locale
 fun ProfitLossScreen(viewModel: FinanceViewModel) {
     val transactions   by viewModel.transactions.collectAsState()
     val borrowers      by viewModel.borrowers.collectAsState()
+    val payments       by viewModel.payments.collectAsState()
     val investments    by viewModel.investments.collectAsState()
     // C21 Stage 2 - debts for the Liabilities & Debts section in the
     // exported PDF (audit #3). Not used in-screen by P&L computations.
@@ -309,14 +310,21 @@ fun ProfitLossScreen(viewModel: FinanceViewModel) {
             //   ? Total Lent Out (lifetime) = every borrower's original amount,
             //     INCLUDING written-off loans (they're part of lifetime activity).
             //   ? Currently Lent Out      = active borrowers' outstanding
-            //     principal (amount - paidPrincipal).
+            //     principal rebuilt from actual payment rows.
             val activeBorrowers       = borrowers.filter { it.status != "WrittenOff" }
+            val paymentsByLoan        = payments.groupBy { it.loanId }
             val totalLentLifetime     = borrowers.sumOf { it.amount }
-            val currentlyLentOut      = activeBorrowers.sumOf { (it.amount - it.paidPrincipal).coerceAtLeast(0.0) }
-            val totalRecovered        = activeBorrowers.sumOf { it.paidPrincipal }
+            val currentlyLentOut      = activeBorrowers.sumOf { borrower ->
+                app.fynlo.logic.InterestPolicy.borrowerPrincipalOutstanding(borrower, paymentsByLoan[borrower.id].orEmpty())
+            }
+            val totalRecovered        = activeBorrowers.sumOf { borrower ->
+                app.fynlo.logic.InterestPolicy.borrowerPrincipalPaid(borrower, paymentsByLoan[borrower.id].orEmpty())
+            }
             val interestCollected     = activeBorrowers.sumOf { it.paidInterest }
             val defaultedAmt          = borrowers.filter { it.status == "Defaulted" || it.status == "WrittenOff" }
-                .sumOf { it.amount - it.paidPrincipal }
+                .sumOf { borrower ->
+                    app.fynlo.logic.InterestPolicy.borrowerPrincipalOutstanding(borrower, paymentsByLoan[borrower.id].orEmpty())
+                }
 
             PLSection(
                 "Lending Business",

@@ -48,6 +48,7 @@ private data class MonthData(
 
 private fun buildMonthData(
     borrowers: List<app.fynlo.data.model.Borrower>,
+    payments: List<app.fynlo.data.model.Payment>,
     months: Int = 12
 ): List<MonthData> {
     val today = LocalDate.now()
@@ -79,8 +80,9 @@ private fun buildMonthData(
             val monthlyInterest = (intAtEnd - intAtStart).coerceAtLeast(0.0)
             interestForMonth += monthlyInterest
 
-            // Outstanding principal at month end
-            val outstanding = (b.amount - b.paid).coerceAtLeast(0.0)
+            val paidThroughMonth = payments
+                .filter { it.loanId == b.id && it.date <= endOf }
+            val outstanding = app.fynlo.logic.InterestPolicy.borrowerPrincipalOutstanding(b, paidThroughMonth)
             principalAtEnd += outstanding
         }
 
@@ -97,6 +99,7 @@ fun InterestIncomeScreen(
     onNavigateBack: () -> Unit = {}
 ) {
     val borrowers by viewModel.borrowers.collectAsState()
+    val payments by viewModel.payments.collectAsState()
     val currentProject by viewModel.currentProject.collectAsState()
     val currencyCode = currentProject?.currency ?: "INR"
     val currencySymbol = app.fynlo.logic.CurrencyUtils.symbolFor(currencyCode)
@@ -104,8 +107,8 @@ fun InterestIncomeScreen(
 
     var rangeMonths by remember { mutableIntStateOf(12) }
 
-    val monthData = remember(borrowers, rangeMonths) {
-        buildMonthData(borrowers, rangeMonths)
+    val monthData = remember(borrowers, payments, rangeMonths) {
+        buildMonthData(borrowers, payments, rangeMonths)
     }
 
     val totalInterest  = monthData.sumOf { it.interestEarned }

@@ -558,7 +558,7 @@ object LedgerAccountability {
         if (borrower.due.isBlank() || borrower.rate <= 0.0) return
         val dueDate = runCatching { LocalDate.parse(borrower.due) }.getOrNull() ?: return
         if (dueDate.isAfter(today)) return
-        val principalOutstanding = (borrower.amount - borrower.paidPrincipal).coerceAtLeast(0.0)
+        val principalOutstanding = InterestPolicy.borrowerPrincipalOutstanding(borrower, payments)
         if (principalOutstanding <= 0.01) return
 
         val accruedForPeriod = InterestEngine.calcIntAccrued(
@@ -609,7 +609,7 @@ object LedgerAccountability {
         if (debt.due.isBlank() || debt.rate <= 0.0) return
         val dueDate = runCatching { LocalDate.parse(debt.due) }.getOrNull() ?: return
         if (dueDate.isAfter(today)) return
-        val principalOutstanding = (debt.amount - debt.paidPrincipal).coerceAtLeast(0.0)
+        val principalOutstanding = InterestPolicy.debtPrincipalOutstanding(debt, payments)
         if (principalOutstanding <= 0.01) return
 
         val accruedForPeriod = InterestEngine.calcIntAccrued(
