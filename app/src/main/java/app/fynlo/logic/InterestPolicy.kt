@@ -485,6 +485,7 @@ object InterestPolicy {
         val method = InterestEngine.paiseMethodOrNull(borrower.intType)
             ?: error("intType '${borrower.intType}' is not paise-eligible")
         val rows = payments.filter { it.loanId == borrower.id }
+        val currentStartDate = borrowerCurrentInterestStartDate(borrower, rows)
         return if (rows.isNotEmpty()) {
             paiseBalancesFromReplay(
                 principalRupees = borrower.amount,
@@ -493,7 +494,9 @@ object InterestPolicy {
                 waivedInterestRupees = borrower.interestWaived,
                 method = method,
                 asOf = asOf,
-                datedPaymentPaise = rows.map { it.date to InterestEngine.rupeesToPaise(it.amount) },
+                datedPaymentPaise = rows.map { payment ->
+                    payment.date to borrowerReplayPaymentRupees(borrower, payment, currentStartDate)
+                },
                 compoundMonths = InterestEngine.compoundMonthsFor(borrower.compoundFrequency),
             )
         } else {
@@ -519,6 +522,7 @@ object InterestPolicy {
         val method = InterestEngine.paiseMethodOrNull(debt.intType)
             ?: error("intType '${debt.intType}' is not paise-eligible")
         val rows = payments.filter { it.debtId == debt.id }
+        val currentStartDate = debtCurrentInterestStartDate(debt, rows)
         return if (rows.isNotEmpty()) {
             paiseBalancesFromReplay(
                 principalRupees = debt.amount,
@@ -527,7 +531,9 @@ object InterestPolicy {
                 waivedInterestRupees = debt.interestWaived,
                 method = method,
                 asOf = asOf,
-                datedPaymentPaise = rows.map { it.date to InterestEngine.rupeesToPaise(it.amount) },
+                datedPaymentPaise = rows.map { payment ->
+                    payment.date to debtReplayPaymentRupees(debt, payment, currentStartDate)
+                },
                 compoundMonths = InterestEngine.compoundMonthsFor(debt.compoundFrequency),
             )
         } else {
@@ -627,6 +633,52 @@ object InterestPolicy {
             }
         }
         return InterestEngine.accruePaiseTo(s, asOfDate.plusDays(1))
+    }
+
+    private fun borrowerReplayPaymentRupees(
+        borrower: Borrower,
+        payment: Payment,
+        currentStartDate: String,
+    ): Long {
+        if (!isOnOrAfter(payment.date, borrower.date)) return 0L
+        val principal = borrowerPrincipalAmount(payment)
+        val interest = paymentInterestAmount(payment)
+        val currentInterest = if (
+            isCurrentPeriodInterestPayment(
+                payment.interestAllocationType,
+                interest,
+                payment.interestPeriodStartDate,
+                currentStartDate,
+            )
+        ) {
+            interest
+        } else {
+            0.0
+        }
+        return InterestEngine.rupeesToPaise(principal + currentInterest)
+    }
+
+    private fun debtReplayPaymentRupees(
+        debt: Debt,
+        payment: DebtPayment,
+        currentStartDate: String,
+    ): Long {
+        if (!isOnOrAfter(payment.date, debt.date)) return 0L
+        val principal = debtPrincipalAmount(payment)
+        val interest = debtPaymentInterestAmount(payment)
+        val currentInterest = if (
+            isCurrentPeriodInterestPayment(
+                payment.interestAllocationType,
+                interest,
+                payment.interestPeriodStartDate,
+                currentStartDate,
+            )
+        ) {
+            interest
+        } else {
+            0.0
+        }
+        return InterestEngine.rupeesToPaise(principal + currentInterest)
     }
 
     private fun paiseBalancesFromReplay(

@@ -811,6 +811,58 @@ class InterestPolicyTest {
     }
 
     @Test
+    fun `borrower paise replay ignores unknown interest history for current due`() {
+        val borrower = Borrower(
+            id = "rb-paise-current-loan",
+            name = "RB",
+            amount = 1_000_000.0,
+            rate = 18.0,
+            date = "2026-09-05",
+            intType = "Simple Interest",
+        )
+        val oldPayment = Payment(
+            id = "old-period-payment",
+            loanId = borrower.id,
+            name = borrower.name,
+            date = "2026-08-19",
+            type = "Both",
+            amount = 15_000.0,
+            principal = 8_095.90,
+            interest = 6_904.10,
+            interestAllocationType = InterestPolicy.UNKNOWN_REVIEW,
+        )
+        val unknownInterest = Payment(
+            id = "unknown-interest",
+            loanId = borrower.id,
+            name = borrower.name,
+            date = "2026-09-26",
+            type = "Interest Only",
+            amount = 15_000.0,
+            principal = 0.0,
+            interest = 15_000.0,
+            interestAllocationType = InterestPolicy.UNKNOWN_REVIEW,
+            notes = "august interest",
+        )
+
+        val balances = InterestPolicy.paiseBalancesForBorrower(
+            borrower,
+            asOf = "2026-09-27",
+            payments = listOf(oldPayment, unknownInterest),
+        )
+        val expectedInterest = InterestEngine.calcIntAccrued(
+            amount = 1_000_000.0,
+            rate = 18.0,
+            loanDate = "2026-09-05",
+            intType = "Simple Interest",
+            asOf = "2026-09-27",
+        )
+
+        assertEquals(1_000_000.0, InterestEngine.paiseToRupees(balances.outstandingPrincipal), 0.01)
+        assertEquals(expectedInterest, InterestEngine.paiseToRupees(balances.interestDue), 0.01)
+        assertTrue(InterestEngine.paiseToRupees(balances.interestDue) > 10_000.0)
+    }
+
+    @Test
     fun `debt interest stops accruing after principal is fully paid`() {
         val debt = Debt(
             id = "principal-cleared-debt",
@@ -932,6 +984,38 @@ class InterestPolicyTest {
         )
         val liability = DebtLiabilityCalculator.outstanding(debt, listOf(oldPayment), asOf = "2026-09-27")
         assertEquals(1_000_000.0, liability.principal, 0.01)
+    }
+
+    @Test
+    fun `debt paise replay ignores unknown interest history for current due`() {
+        val debt = Debt(
+            id = "paise-current-debt",
+            name = "Current Debt",
+            amount = 1_000_000.0,
+            rate = 18.0,
+            date = "2026-09-05",
+            intType = "Simple Interest",
+        )
+        val unknownInterest = DebtPayment(
+            id = "unknown-interest",
+            debtId = debt.id,
+            name = debt.name,
+            date = "2026-09-26",
+            type = "Interest Only",
+            amount = 15_000.0,
+            principal = 0.0,
+            interest = 15_000.0,
+            interestAllocationType = InterestPolicy.UNKNOWN_REVIEW,
+        )
+
+        val balances = InterestPolicy.paiseBalancesForDebt(
+            debt,
+            asOf = "2026-09-27",
+            payments = listOf(unknownInterest),
+        )
+
+        assertEquals(1_000_000.0, InterestEngine.paiseToRupees(balances.outstandingPrincipal), 0.01)
+        assertTrue(InterestEngine.paiseToRupees(balances.interestDue) > 10_000.0)
     }
 
     private fun borrower(stopInterestAfterDue: Boolean) = Borrower(

@@ -1628,3 +1628,11 @@ Phone smoke still recommended before a new AAB:
 - Version bumped to `versionName 3.3.5`, `versionCode 245`.
 - Verification passed: focused `InterestPolicyTest`.
 - No database migration, account balance mutation, Firestore repair, Play Store action, or AAB build in this pass.
+
+### 2026-09-27 - 3.3.6 paise replay allocation guard
+- RB principal became correct, but interest due still showed only Rs. 493.
+- Cause: Simple Interest detail screens use paise replay for interest due, and replay was applying all payment amounts as current reductions. Unknown/review interest rows were reducing current interest due silently.
+- Borrower/debt paise replay now applies only valid current principal repayments and current-period interest rows. Unknown/review/old interest remains history/review.
+- Version bumped to `versionName 3.3.6`, `versionCode 246`.
+- Verification passed: focused `InterestPolicyTest`.
+- No database migration, account balance mutation, Firestore repair, Play Store action, or AAB build in this pass.

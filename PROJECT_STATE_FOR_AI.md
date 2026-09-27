@@ -2417,3 +2417,11 @@ The user approved the combined future roadmap below. Do not treat these as compl
 - Added borrower and debt regression tests for the RB-style case.
 - Bumped app version to `3.3.5` / `versionCode 245` because visible financial totals changed.
 - Scope: calculation guard only. No database migration, no account balance mutation, no Firestore repair, no Play Store/AAB work.
+
+### 2026-09-27 - 3.3.6 Paise Replay Allocation Guard
+- User reported RB principal was now correct but interest due still showed only Rs. 493.
+- Root cause: the Simple Interest detail screen uses the paise replay path for interest due. That replay path applied every payment amount as if it reduced current interest/principal, including pre-start rows and `UNKNOWN_REVIEW` interest rows. For RB, the 26-09-2026 Rs. 15,000 row was treated as clearing interest through 26-09-2026, leaving only one day of interest.
+- Fixed borrower/debt paise balance replay to apply only valid current principal repayment and current-period interest rows. Unknown/review/old interest remains history/review and does not silently reduce current due.
+- Added borrower and debt regression tests so unknown interest history cannot collapse current interest due to one day.
+- Bumped app version to `3.3.6` / `versionCode 246` because visible interest totals changed.
+- Scope: interest due replay correction only. No database migration, no account balance mutation, no Firestore repair, no Play Store/AAB work.
