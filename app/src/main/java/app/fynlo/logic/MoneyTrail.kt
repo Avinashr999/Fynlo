@@ -56,7 +56,7 @@ object MoneyTrail {
             it.category.equals("Lending", ignoreCase = true) ||
                 it.type.equals("Expense", ignoreCase = true)
         }
-        val principalCollected = payments.sumOf(InterestPolicy::borrowerPrincipalAmount)
+        val principalCollected = InterestPolicy.borrowerPrincipalPaid(borrower, payments)
         val interestCollected = payments.sumOf(InterestPolicy::paymentInterestAmount)
         val disbursedFrom = borrower.sourceAccount.ifBlank {
             fundingTxn?.displayFromAcct(accountIdToName).orEmpty()
@@ -81,7 +81,7 @@ object MoneyTrail {
     ): DebtMoneyTrail {
         val linked = transactions.filter { it.ref == debt.id }
         val receivedTxn = linked.firstOrNull { it.category.equals("Debt Received", ignoreCase = true) }
-        val principalRepaid = payments.sumOf(InterestPolicy::debtPrincipalAmount)
+        val principalRepaid = InterestPolicy.debtPrincipalPaid(debt, payments)
         val interestPaid = payments.sumOf(InterestPolicy::debtPaymentInterestAmount)
         val receivedInto = receivedTxn?.displayToAcct(accountIdToName).orEmpty().ifBlank { "Unknown account" }
 
