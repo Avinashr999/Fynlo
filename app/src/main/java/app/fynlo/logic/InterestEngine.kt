@@ -249,10 +249,9 @@ object InterestEngine {
         /** v3.3.0 — signed sum of payment rounding (+ small gain, − write-off). */
         val roundingPaise: Long = 0L,
         /**
-         * Compound only: part of [interestDuePaise] accrued through the last
-         * compounding date and still unpaid. It is shown (and payable) as interest,
-         * already earns interest (accrual base = principal + this), and is folded
-         * into principal at the next compounding date. Payments settle it first.
+         * Compound only: unpaid interest through the last compounding date.
+         * It remains payable as interest, but it also earns interest after the
+         * compounding date. This keeps user-facing principal and interest clear.
          */
         val pendingCapitalPaise: Long = 0L,
     ) {
@@ -543,12 +542,8 @@ object InterestEngine {
             // compounding date — same method whether or not a payment fell in the
             // period, and never a full-period recharge.
             s = accruePaiseCompoundStub(s, anniversary)
-            // Capitalize unpaid interest from before the previous compounding date;
-            // interest accrued in this period (unpaid) becomes the new pending part.
-            s = s.copy(
-                outstandingPrincipalPaise = s.outstandingPrincipalPaise + s.pendingCapitalPaise,
-                interestDuePaise = s.interestDuePaise - s.pendingCapitalPaise,
-            )
+            // Interest due through this compounding date remains interest, but
+            // from now on it is part of the interest-bearing base.
             s = s.copy(pendingCapitalPaise = s.interestDuePaise, lastAccrualDate = anniversary)
             k += 1
             anniversary = compoundDatePaise(s.startDate, k, n)

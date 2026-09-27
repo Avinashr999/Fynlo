@@ -2434,3 +2434,14 @@ The user approved the combined future roadmap below. Do not treat these as compl
 - Extended regression tests so the RB-style unknown/pre-start payment case is locked at the snapshot level, not just one UI card.
 - Bumped app version to `3.3.7` / `versionCode 247` because calculation paths were hardened across visible and sensitive flows.
 - Scope: code hardening only. No database migration, no account balance mutation, no Firestore repair, no Play Store/AAB work.
+
+### 2026-09-27 - 3.3.11 Compound Interest Visibility Fix
+- User reported `Mani VKT` showing only about Rs. 3,302 interest due on a Rs. 1,00,000 yearly-compound loan dated `2024-10-11` with due date `2026-10-11`; expected interest should be above Rs. 38,000 as of `2026-09-27`.
+- Read-only phone DB confirmed the row was clean: Rs. 1,00,000 principal, 18% p.a., `Compound Interest`, `Yearly`, no payments, no waived interest, no stop-after-due issue.
+- Root cause: the v3.3 paise compound engine moved unpaid interest from the interest bucket into the internal principal bucket at compounding dates. User-facing screens then showed original principal plus only the current stub interest, hiding previously compounded interest.
+- Fixed compound accrual so unpaid compounded interest remains visible/payable as interest, while still earning interest after the compounding date.
+- Locked regression tests for borrower and debt yearly-compound behavior using the Mani VKT dates. Principal stays Rs. 1,00,000, interest remains visible above Rs. 38,000, and total receivable/payable is principal plus full visible interest.
+- Updated quarterly/yearly/monthly compound fixtures to the corrected rule: principal remains principal; compounded interest remains interest; payments still settle interest first.
+- Bumped app version to `3.3.11` / `versionCode 251` because visible financial calculation behavior changed.
+- Verification passed: focused `InterestEngineV330Test`, full `:app:testProdDebugUnitTest`, prod/dev phone installs, production launch, and read-only phone DB audit with no borrower/debt aggregate mismatches, no zero-value investments, no weak account trails, and no open sync conflicts.
+- Scope: calculation engine and regression tests only. No database migration, no account balance mutation, no Firestore repair, no Play Store/AAB work.
