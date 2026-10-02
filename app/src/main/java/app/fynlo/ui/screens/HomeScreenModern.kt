@@ -36,6 +36,7 @@ import app.fynlo.data.SyncStatus
 import app.fynlo.data.model.Account
 import app.fynlo.logic.CurrencyFormatter
 import app.fynlo.logic.isGeneratedJournalEntry
+import app.fynlo.logic.isSpendingExpense
 import app.fynlo.logic.LedgerAccountabilityReport
 import app.fynlo.ui.components.AddTransactionDialog
 import app.fynlo.ui.components.PortfolioBreakdownSheet
@@ -668,7 +669,7 @@ private fun buildAutomationSummary(
     val recurringDue = recurring.count { it.isActive && !today.isBefore(nextRecurringDueDate(it, today)) }
     val currentMonth = java.time.YearMonth.from(today)
     val monthlyExpenseByCategory = transactions
-        .filter { it.type.equals("Expense", ignoreCase = true) && !it.isGeneratedJournalEntry() }
+        .filter { it.isSpendingExpense() }
         .filter { txn -> runCatching { java.time.YearMonth.from(java.time.LocalDate.parse(txn.date)) }.getOrNull() == currentMonth }
         .groupBy { it.category.trim().lowercase() }
         .mapValues { (_, rows) -> rows.sumOf { it.amount } }

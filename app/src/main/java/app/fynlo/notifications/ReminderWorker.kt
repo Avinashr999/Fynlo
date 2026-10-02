@@ -1,5 +1,7 @@
 package app.fynlo.notifications
 
+import app.fynlo.logic.isSpendingExpense
+
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
@@ -70,7 +72,7 @@ class ReminderWorker(
         val transactions = dao.getAllTransactions().first()
         val thisMonth   = today.format(DateTimeFormatter.ofPattern("yyyy-MM"))
         val monthlySpend = transactions
-            .filter { it.type.equals("expense", ignoreCase = true) && it.date.startsWith(thisMonth) }
+            .filter { it.isSpendingExpense() && it.date.startsWith(thisMonth) }
             .groupBy { it.category }
             .mapValues { e -> e.value.sumOf { it.amount } }
         budgets.forEach { budget ->

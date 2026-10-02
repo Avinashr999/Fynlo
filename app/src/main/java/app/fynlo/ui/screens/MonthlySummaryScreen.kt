@@ -27,7 +27,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import app.fynlo.FinanceViewModel
 import app.fynlo.logic.CurrencyFormatter
-import app.fynlo.logic.isGeneratedJournalEntry
+import app.fynlo.logic.isOperatingCashEntry
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -63,10 +63,6 @@ fun MonthlySummaryScreen(viewModel: FinanceViewModel) {
 
     // -- Last 12 months - same financing-category exclusion as P&L Statement
     // so financing flows don't inflate income/expense.
-    val financingCats = setOf(
-        "Debt Received", "Debt Repayment", "Lending",
-        "Loan Recovery", "Loan Repayment", "Investment", "Investment Returns"
-    )
     val months = remember(transactions) {
         val today = LocalDate.now()
         (11 downTo 0).map { offset ->
@@ -74,7 +70,7 @@ fun MonthlySummaryScreen(viewModel: FinanceViewModel) {
             val label = date.format(DateTimeFormatter.ofPattern("MMM"))
             val key   = date.format(DateTimeFormatter.ofPattern("yyyy-MM"))
             val list  = transactions.filter {
-                it.date.startsWith(key) && !it.isGeneratedJournalEntry() && it.category !in financingCats
+                it.date.startsWith(key) && it.isOperatingCashEntry()
             }
             val inc = list.filter { it.type.equals("income",  true) }.sumOf { it.amount }
             val exp = list.filter { it.type.equals("expense", true) }.sumOf { it.amount }

@@ -11,6 +11,8 @@ import app.fynlo.data.model.Payment
 import app.fynlo.data.model.Transaction
 import app.fynlo.data.model.NetWorthSnapshot
 import app.fynlo.logic.isGeneratedJournalEntry
+import app.fynlo.logic.isSpendingExpense
+import app.fynlo.logic.isOperatingCashEntry
 import app.fynlo.logic.NetWorthSnapshotSafety
 import app.fynlo.logic.InterestPolicy
 import app.fynlo.logic.CagrCalculator
@@ -43,7 +45,7 @@ class FinancialAnalyticsDelegate(
     private val debtPaymentsFlow: StateFlow<List<DebtPayment>>,
 ) {
     val expenseAnalytics: StateFlow<Map<String, Double>> = transactionsFlow.map { trans ->
-        trans.filter { it.type.lowercase() == "expense" && !it.isGeneratedJournalEntry() }
+        trans.filter { it.isSpendingExpense() }
             .groupBy { it.category }
             .mapValues { entry -> entry.value.sumOf { it.amount } }
     }.stateIn(ctx.scope, SharingStarted.Eagerly, emptyMap())
@@ -100,7 +102,7 @@ class FinancialAnalyticsDelegate(
         }
         val totalDebtPrincipal = debtLiabilities.sumOf { it.principal }
         val totalDebtInterest  = debtLiabilities.sumOf { it.interest }
-        val cashTrans     = trans.filterNot { it.isGeneratedJournalEntry() }
+        val cashTrans     = trans.filter { it.isOperatingCashEntry() }
         val totalExpenses = cashTrans.filter { it.type.lowercase() == "expense" }.sumOf { it.amount }
         val totalIncome   = cashTrans.filter { it.type.lowercase() == "income"  }.sumOf { it.amount }
         val totalBadDebtWriteOffs = trans.filter { it.category == "Bad Debt" }.sumOf { it.amount }

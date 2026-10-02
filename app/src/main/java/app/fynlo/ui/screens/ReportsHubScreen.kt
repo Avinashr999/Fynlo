@@ -27,6 +27,7 @@ import androidx.compose.ui.platform.LocalLocale
 import app.fynlo.FinanceViewModel
 import app.fynlo.logic.CurrencyFormatter
 import app.fynlo.logic.isGeneratedJournalEntry
+import app.fynlo.logic.isOperatingCashEntry
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -99,11 +100,6 @@ fun ReportsHubScreen(
     val fromStr = fromDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
     val toStr   = toDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
 
-    // Same financing-activity exclusion as before - debt received/repaid, lending,
-    // investments are balance-sheet movements, not P&L.
-    val financingCats = setOf("Debt Received", "Debt Repayment", "Lending",
-        "Loan Recovery", "Loan Repayment", "Investment", "Investment Returns")
-
     // Pre-computed previews - each tile reads one of these. Memoised on
     // [transactions, fromStr, toStr] so range changes recompute in one pass.
     data class RangeAggregate(
@@ -116,7 +112,7 @@ fun ReportsHubScreen(
         val inRange = transactions.filter {
             it.date in fromStr..toStr && !it.isGeneratedJournalEntry()
         }
-        val plList = inRange.filter { it.category !in financingCats }
+        val plList = inRange.filter { it.isOperatingCashEntry() }
         val income  = plList.filter { it.type.equals("income", true)  }.sumOf { it.amount }
         val expense = plList.filter { it.type.equals("expense", true) }.sumOf { it.amount }
         val flow    = inRange.sumOf { it.amount }  // gross movement, finance included
@@ -129,7 +125,7 @@ fun ReportsHubScreen(
         val mFrom = today.withDayOfMonth(1).format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
         val mTo   = today.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
         val mPl = transactions.filter {
-            it.date in mFrom..mTo && !it.isGeneratedJournalEntry() && it.category !in financingCats
+            it.date in mFrom..mTo && it.isOperatingCashEntry()
         }
         val mIncome  = mPl.filter { it.type.equals("income",  true) }.sumOf { it.amount }
         val mExpense = mPl.filter { it.type.equals("expense", true) }.sumOf { it.amount }

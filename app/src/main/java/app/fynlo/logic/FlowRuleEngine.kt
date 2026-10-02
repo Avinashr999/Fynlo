@@ -39,7 +39,7 @@ object FlowRuleEngine {
         val cutoff = LocalDate.now().minusDays(60)
         return transactions
             .filter { t ->
-                t.type.equals("expense", ignoreCase = true) &&
+                t.isSpendingExpense() &&
                 runCatching { LocalDate.parse(t.date, fmt).isAfter(cutoff) }.getOrDefault(false)
             }
             .groupBy { it.category }

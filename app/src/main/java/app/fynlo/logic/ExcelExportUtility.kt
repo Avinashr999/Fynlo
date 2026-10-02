@@ -130,15 +130,11 @@ object ExcelExportUtility {
 
         // ── C21 Stage 4 — KPI inputs for the Summary sheet. Same cash-basis
         // exclusion + calendar-month window as the P&L Statement.
-        val financingCats = setOf(
-            "Debt Received", "Debt Repayment", "Lending",
-            "Loan Recovery", "Loan Repayment", "Investment", "Investment Returns"
-        )
         val today = java.time.LocalDate.now()
         val monthStart = today.withDayOfMonth(1).toString()
         val monthEnd   = today.toString()
         val monthlyTxn = transactions.filter {
-            it.date in monthStart..monthEnd && !it.isGeneratedJournalEntry() && it.category !in financingCats
+            it.date in monthStart..monthEnd && it.isOperatingCashEntry()
         }
         val monthlyIncome  = monthlyTxn.filter { it.type.equals("income",  true) }.sumOf { it.amount }
         val monthlyExpense = monthlyTxn.filter { it.type.equals("expense", true) }.sumOf { it.amount }

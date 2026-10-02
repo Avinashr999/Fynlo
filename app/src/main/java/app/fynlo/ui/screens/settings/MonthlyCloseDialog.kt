@@ -41,7 +41,8 @@ import app.fynlo.FinanceViewModel
 import app.fynlo.data.UserPreferences
 import app.fynlo.logic.CurrencyFormatter
 import app.fynlo.logic.CurrencyUtils
-import app.fynlo.logic.isGeneratedJournalEntry
+import app.fynlo.logic.isOperatingCashEntry
+import app.fynlo.logic.isSpendingExpense
 import app.fynlo.ui.components.FynloConfirmDialog
 import app.fynlo.ui.components.FormDialog
 import app.fynlo.ui.theme.ThemeController
@@ -72,11 +73,11 @@ internal fun MonthlyCloseDialog(
     onDismiss: () -> Unit,
 ) {
     val income = remember(transactions) {
-        transactions.filter { it.type.equals("Income", ignoreCase = true) && !it.isGeneratedJournalEntry() }
+        transactions.filter { it.type.equals("Income", ignoreCase = true) && it.isOperatingCashEntry() }
             .sumOf { it.amount }
     }
     val expense = remember(transactions) {
-        transactions.filter { it.type.equals("Expense", ignoreCase = true) && !it.isGeneratedJournalEntry() }
+        transactions.filter { it.isSpendingExpense() }
             .sumOf { it.amount }
     }
     val transfers = remember(transactions) { transactions.count { it.type.equals("Transfer", ignoreCase = true) } }
@@ -116,4 +117,3 @@ internal fun CloseMetricRow(label: String, value: String) {
         Text(value, style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold))
     }
 }
-

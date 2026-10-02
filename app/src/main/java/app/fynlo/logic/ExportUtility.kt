@@ -427,19 +427,18 @@ object ExportUtility {
      * Monthly income vs expense bar chart — last 12 months, dual bars per
      * month. Income green, expense red. Y-axis labels along the left at
      * 0/50/100% of max. Same cash-basis exclusion as the P&L Statement
-     * (financingCats excluded so debt receipts don't inflate income).
+     * (financing movements excluded so debt receipts don't inflate income).
      */
     private fun PdfBuilder.drawMonthlyBarChart(
         transactions: List<Transaction>,
         currencyCode: String,
-        financingCats: Set<String>,
     ) {
         val today = LocalDate.now()
         val months = (11 downTo 0).map { off ->
             val date = today.minusMonths(off.toLong())
             val key  = date.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM"))
             val list = transactions.filter {
-                it.date.startsWith(key) && !it.isGeneratedJournalEntry() && it.category !in financingCats
+                it.date.startsWith(key) && it.isOperatingCashEntry()
             }
             val label = date.format(java.time.format.DateTimeFormatter.ofPattern("MMM"))
             Triple(
@@ -674,15 +673,11 @@ object ExportUtility {
         // for the P&L Statement screen). Monthly Income / Monthly Expense
         // are calendar-month, financing-categories-excluded (same exclusion
         // as the P&L Statement so a debt receipt doesn't inflate income).
-        val financingCats = setOf(
-            "Debt Received", "Debt Repayment", "Lending",
-            "Loan Recovery", "Loan Repayment", "Investment", "Investment Returns"
-        )
         val nowDate    = LocalDate.now()
         val monthStart = nowDate.withDayOfMonth(1).toString()
         val monthEnd   = nowDate.toString()
         val monthlyTxn = transactions.filter {
-            it.date in monthStart..monthEnd && !it.isGeneratedJournalEntry() && it.category !in financingCats
+            it.date in monthStart..monthEnd && it.isOperatingCashEntry()
         }
         val monthlyIncome  = monthlyTxn.filter { it.type.equals("income",  true) }.sumOf { it.amount }
         val monthlyExpense = monthlyTxn.filter { it.type.equals("expense", true) }.sumOf { it.amount }
@@ -732,7 +727,7 @@ object ExportUtility {
         // Each panel has its own checkBreak() so the chart starts on a fresh
         // page if it doesn't fit in the remaining cover space.
         b.drawAssetAllocationDonut(summary, currencyCode)
-        b.drawMonthlyBarChart(transactions, currencyCode, financingCats)
+        b.drawMonthlyBarChart(transactions, currencyCode)
         b.drawNetWorthTrendLine(snapshots, currencyCode)
 
         // 1. Accounts

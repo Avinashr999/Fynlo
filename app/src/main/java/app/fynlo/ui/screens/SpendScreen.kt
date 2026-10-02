@@ -28,6 +28,7 @@ import app.fynlo.FinanceViewModel
 import app.fynlo.data.model.Transaction
 import app.fynlo.logic.CurrencyFormatter
 import app.fynlo.logic.isGeneratedJournalEntry
+import app.fynlo.logic.isSpendingExpense
 import app.fynlo.logic.toRecurringTemplate
 import app.fynlo.ui.components.AddTransactionDialog
 import app.fynlo.ui.components.FynloConfirmDialog
@@ -64,7 +65,7 @@ val transactions by viewModel.transactions.collectAsState()
     val isCurrentMonth = selectedMonth == YearMonth.now()
 
     val allExpenses = remember(transactions) {
-        transactions.filter { it.type.equals("expense", ignoreCase = true) }
+        transactions.filter { it.isSpendingExpense() }
     }
     val isInitialLoading = syncStatus is app.fynlo.data.SyncStatus.Initialising &&
         allExpenses.isEmpty()

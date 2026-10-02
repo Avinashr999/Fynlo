@@ -24,7 +24,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalLocale
 import app.fynlo.FinanceViewModel
 import app.fynlo.logic.CurrencyFormatter
-import app.fynlo.logic.isGeneratedJournalEntry
+import app.fynlo.logic.isOperatingCashEntry
 import app.fynlo.ui.theme.*
 import java.time.LocalDate
 import java.time.YearMonth
@@ -71,11 +71,7 @@ fun ProfitLossScreen(viewModel: FinanceViewModel) {
     // -- Cash-basis figures - exclude financing activities (debt/lending/investment).
     // Debt received = liability (not income); debt repayment principal = balance sheet
     // (not expense); lending principal = balance sheet too.
-    val financingCategories = listOf(
-        "Debt Received", "Debt Repayment", "Lending",
-        "Loan Recovery", "Loan Repayment", "Investment", "Investment Returns"
-    )
-    val cashTxns       = transactions.filter { !it.isGeneratedJournalEntry() && it.category !in financingCategories }
+    val cashTxns       = transactions.filter { it.isOperatingCashEntry() }
     val totalIncome    = cashTxns.filter { it.type.equals("income",  ignoreCase = true) }.sumOf { it.amount }
     val totalExpense   = cashTxns.filter { it.type.equals("expense", ignoreCase = true) }.sumOf { it.amount }
 
