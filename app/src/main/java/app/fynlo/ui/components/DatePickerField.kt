@@ -117,7 +117,7 @@ fun DatePickerField(
                     Icon(
                         Icons.Default.CalendarMonth,
                         contentDescription = "Pick date",
-                        tint = app.fynlo.ui.theme.Emerald500,
+                        tint = MaterialTheme.colorScheme.primary,
                     )
                 }
             }
@@ -132,11 +132,11 @@ fun DatePickerField(
         colors        = OutlinedTextFieldDefaults.colors(
             focusedContainerColor   = MaterialTheme.colorScheme.surface,
             unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-            focusedBorderColor      = app.fynlo.ui.theme.Emerald500,
+            focusedBorderColor      = MaterialTheme.colorScheme.primary,
             unfocusedBorderColor    = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.65f),
-            focusedLabelColor       = app.fynlo.ui.theme.Emerald500,
+            focusedLabelColor       = MaterialTheme.colorScheme.primary,
             unfocusedLabelColor     = MaterialTheme.colorScheme.onSurfaceVariant,
-            cursorColor             = app.fynlo.ui.theme.Emerald500
+            cursorColor             = MaterialTheme.colorScheme.primary
         ),
         placeholder   = { Text("DD-MM-YYYY") }
     )

@@ -27,7 +27,6 @@ import androidx.compose.ui.window.DialogProperties
 import app.fynlo.ui.theme.SemanticRed
 import app.fynlo.ui.theme.TemplateAction
 import app.fynlo.ui.theme.TemplateBorder
-import app.fynlo.ui.theme.Emerald700
 
 /**
  * C22 dialog universalization (3.2.53) - canonical form-dialog shape.
@@ -128,7 +127,7 @@ fun FormDialog(
                                     Icons.Default.Close,
                                     contentDescription = "Close",
                                     modifier = Modifier.size(18.dp),
-                                    tint = Emerald700,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                             }
                         }

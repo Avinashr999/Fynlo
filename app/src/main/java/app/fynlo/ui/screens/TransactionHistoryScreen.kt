@@ -19,6 +19,7 @@ import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -35,6 +36,10 @@ import app.fynlo.logic.CurrencyFormatter
 import app.fynlo.logic.DateUtils
 import app.fynlo.logic.TransactionOrdering
 import app.fynlo.logic.isGeneratedJournalEntry
+import app.fynlo.logic.HistoryFilter
+import app.fynlo.logic.historyCashTotals
+import app.fynlo.logic.matchesHistoryQuery
+import app.fynlo.ui.components.FormDialog
 import app.fynlo.ui.components.FynloConfirmDialog
 import app.fynlo.ui.theme.*
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -46,7 +51,6 @@ import kotlin.math.abs
 @Composable
 fun TransactionHistoryScreen(viewModel: FinanceViewModel) {
     val haptic = LocalHapticFeedback.current
-    val transactions by viewModel.filteredTransactions.collectAsState()
     val allProjectTransactions by viewModel.transactions.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
     val currentProject by viewModel.currentProject.collectAsState()
@@ -57,18 +61,19 @@ fun TransactionHistoryScreen(viewModel: FinanceViewModel) {
     val currencyCode = currentProject?.currency ?: "INR"
     val locale = LocalLocale.current.platformLocale
 
-    var selectedType   by remember { mutableStateOf("All") }
+    var selectedType   by rememberSaveable { mutableStateOf(HistoryFilter.ALL) }
     var showDateFilter by remember { mutableStateOf(false) }
-    var fromDate       by remember { mutableStateOf("") }
-    var toDate         by remember { mutableStateOf("") }
+    var fromDate       by rememberSaveable { mutableStateOf("") }
+    var toDate         by rememberSaveable { mutableStateOf("") }
     var selectionMode  by remember { mutableStateOf(false) }
     var selectedIds    by remember { mutableStateOf(setOf<String>()) }
     var showBulkDeleteConfirm by remember { mutableStateOf(false) }
-    val types = listOf("All", "Income", "Expense")
+    val accountNames = remember(allAccounts) { allAccounts.associate { it.id to it.name } }
 
-    val filteredHistory = remember(transactions, selectedType, fromDate, toDate) {
-        var list = if (selectedType == "All") transactions
-                   else transactions.filter { it.type.equals(selectedType, ignoreCase = true) }
+    val filteredHistory = remember(allProjectTransactions, searchQuery, accountNames, selectedType, fromDate, toDate) {
+        var list = allProjectTransactions.filter {
+            selectedType.matches(it) && it.matchesHistoryQuery(searchQuery, accountNames)
+        }
         if (fromDate.isNotBlank()) {
             val from = runCatching {
                 val d = java.time.LocalDate.parse(fromDate, java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy"))
@@ -89,11 +94,9 @@ fun TransactionHistoryScreen(viewModel: FinanceViewModel) {
         buildBalanceImpactsByTransaction(allProjectTransactions, allAccounts)
     }
 
-    val totalIncome  = filteredHistory.filter { it.type.equals("income", true) }.sumOf { it.amount }
-    val totalExpense = filteredHistory.filter { it.type.equals("expense", true) }.sumOf { it.amount }
-    val net = totalIncome - totalExpense
+    val totals = remember(filteredHistory) { historyCashTotals(filteredHistory) }
     val hasActiveFilters = searchQuery.isNotBlank() ||
-        selectedType != "All" ||
+        selectedType != HistoryFilter.ALL ||
         fromDate.isNotBlank() ||
         toDate.isNotBlank()
     val isInitialLoading = syncStatus is app.fynlo.data.SyncStatus.Initialising &&
@@ -112,7 +115,7 @@ fun TransactionHistoryScreen(viewModel: FinanceViewModel) {
             onConfirm = {
                 if (bulkDeleteInProgress) return@FynloConfirmDialog
                 bulkDeleteInProgress = true
-                val toDelete = filteredHistory.filter { it.id in selectedIds }
+                val toDelete = filteredHistory.filter { it.id in selectedIds && !it.isGeneratedJournalEntry() }
                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                 viewModel.deleteTransactions(toDelete)
                 selectedIds = emptySet()
@@ -130,7 +133,7 @@ fun TransactionHistoryScreen(viewModel: FinanceViewModel) {
     ) {
         Spacer(Modifier.height(8.dp))
 
-        // -- Hero: net total + entry count (flat, on background) ----------------
+        // Cash movement totals are separate from spending classifications.
         if (selectionMode) {
             Text(
                 text = "${selectedIds.size} selected",
@@ -138,41 +141,17 @@ fun TransactionHistoryScreen(viewModel: FinanceViewModel) {
                 modifier = Modifier.padding(top = 8.dp)
             )
         } else {
-            Text(
-                text = "History",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 8.dp)
-            )
-            Text(
-                text = if (isPrivacy) "****"
-                       else if (net < 0) CurrencyFormatter.negative(net, currencyCode, locale)
-                       else "+${CurrencyFormatter.detail(net, currencyCode, locale)}",
-                style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
-                color = MaterialTheme.colorScheme.onSurface
-            )
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(14.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-                modifier = Modifier.padding(top = 2.dp, bottom = 4.dp)
-            ) {
-                Text(app.fynlo.logic.pluralize(filteredHistory.size, "entry", "entries"),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant)
-
-                val incText = if (isPrivacy) "Hidden" else CurrencyFormatter.detail(totalIncome, currencyCode, locale)
-                Text(
-                    "In $incText",
-                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-
-                val expText = if (isPrivacy) "Hidden" else CurrencyFormatter.detail(totalExpense, currencyCode, locale)
-                Text(
-                    "Out $expText",
-                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+            Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text("History", Modifier.weight(1f), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
+                Text(app.fynlo.logic.pluralize(filteredHistory.size, "entry", "entries"), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            if (selectedType == HistoryFilter.TRANSFERS) {
+                HistorySummaryMetric("Transferred", if (isPrivacy) "Hidden" else CurrencyFormatter.exact(totals.transfers, currencyCode, locale), Modifier.fillMaxWidth())
+            } else {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    HistorySummaryMetric("Money in", if (isPrivacy) "Hidden" else CurrencyFormatter.exact(totals.moneyIn, currencyCode, locale), Modifier.weight(1f))
+                    HistorySummaryMetric("Money out", if (isPrivacy) "Hidden" else CurrencyFormatter.exact(totals.moneyOut, currencyCode, locale), Modifier.weight(1f))
+                }
             }
         }
 
@@ -186,7 +165,7 @@ fun TransactionHistoryScreen(viewModel: FinanceViewModel) {
             ) {
                 TextButton(onClick = { selectionMode = false; selectedIds = emptySet() }) { Text("Cancel") }
                 Spacer(Modifier.weight(1f))
-                TextButton(onClick = { selectedIds = filteredHistory.map { it.id }.toSet() }) {
+                TextButton(onClick = { selectedIds = filteredHistory.filterNot { it.isGeneratedJournalEntry() }.map { it.id }.toSet() }) {
                     Text("Select all", color = Emerald500)
                 }
                 Button(
@@ -205,52 +184,51 @@ fun TransactionHistoryScreen(viewModel: FinanceViewModel) {
             // -- Soft search ----------------------------------------------------
             HistorySoftField(
                 value = searchQuery,
-                placeholder = "Search transactions",
+                placeholder = "Search history",
                 leading = Icons.Default.Search,
                 onChange = { viewModel.updateSearchQuery(it) }
             )
 
             Spacer(Modifier.height(12.dp))
 
-            // 3.2.11 chip-sweep: type filter chips -> SegmentedButtonRow.
-            // The Dates affordance is semantically a TOGGLE (show / hide the
-            // date filter panel), not a "pick one of N" - so it becomes a
-            // FilledTonalButton with the DateRange leading icon, which is the
-            // M3 affordance for "tap to open a panel" actions. The button's
-            // tonal weight communicates the active state when the panel is
-            // open OR a date is currently selected, replacing the chip's
-            // selected-colour treatment.
             Row(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                TemplateSegmentedSelector(
-                    options = types,
-                    selectedIndex = types.indexOf(selectedType).coerceAtLeast(0),
-                    onSelected = { idx -> selectedType = types[idx] },
-                    modifier = Modifier.weight(1f),
-                )
-                val datesActive = showDateFilter || fromDate.isNotBlank()
+                var typeMenu by remember { mutableStateOf(false) }
+                Box(Modifier.weight(1f)) {
+                    OutlinedButton(onClick = { typeMenu = true }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp), shape = RoundedCornerShape(8.dp)) {
+                        Icon(Icons.Default.FilterList, null, Modifier.size(18.dp))
+                        Text(selectedType.label, Modifier.weight(1f).padding(horizontal = 8.dp))
+                        Icon(Icons.Default.ExpandMore, null, Modifier.size(18.dp))
+                    }
+                    DropdownMenu(expanded = typeMenu, onDismissRequest = { typeMenu = false }) {
+                        HistoryFilter.entries.forEach { filter ->
+                            DropdownMenuItem(text = { Text(filter.label) }, onClick = { selectedType = filter; typeMenu = false })
+                        }
+                    }
+                }
+                val datesActive = showDateFilter || fromDate.isNotBlank() || toDate.isNotBlank()
                 Surface(
                     onClick = { showDateFilter = !showDateFilter },
-                    modifier = Modifier.height(36.dp),
-                    shape = RoundedCornerShape(12.dp),
-                    color = if (datesActive) Emerald100.copy(alpha = 0.85f) else MaterialTheme.colorScheme.surface,
+                    modifier = Modifier.heightIn(min = 48.dp),
+                    shape = RoundedCornerShape(8.dp),
+                    color = if (datesActive) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surface,
                     border = androidx.compose.foundation.BorderStroke(0.8.dp, TemplateBorder),
                 ) {
                     Row(
                         modifier = Modifier.padding(horizontal = 12.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Icon(Icons.Default.DateRange, null, Modifier.size(16.dp), tint = Emerald700)
+                        Icon(Icons.Default.DateRange, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurface)
                         Spacer(Modifier.width(4.dp))
-                        Text("Dates", style = MaterialTheme.typography.labelMedium, color = Emerald700)
+                        Text(if (datesActive) "Dates set" else "Dates", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurface)
                     }
                 }
             }
 
-            // -- Flat date filter (no card) -------------------------------------
             if (showDateFilter) {
+                FormDialog(title = "Filter dates", onDismiss = { showDateFilter = false }) {
                 val today = java.time.LocalDate.now()
                 val displayFmt = java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy")
                 Spacer(Modifier.height(12.dp))
@@ -306,21 +284,22 @@ fun TransactionHistoryScreen(viewModel: FinanceViewModel) {
                     }
                 }
                 Spacer(Modifier.height(12.dp))
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     app.fynlo.ui.components.DatePickerField(
                         value = fromDate, onValueChange = { fromDate = it },
-                        label = "From", optional = true, modifier = Modifier.weight(1f)
+                        label = "From", optional = true, modifier = Modifier.fillMaxWidth()
                     )
                     app.fynlo.ui.components.DatePickerField(
                         value = toDate, onValueChange = { toDate = it },
-                        label = "To", optional = true, modifier = Modifier.weight(1f)
+                        label = "To", optional = true, modifier = Modifier.fillMaxWidth()
                     )
                 }
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
                     if (fromDate.isNotBlank() || toDate.isNotBlank()) {
                         TextButton(onClick = { fromDate = ""; toDate = "" }) { Text("Clear") }
                     }
-                    TextButton(onClick = { showDateFilter = false }) { Text("Done", color = Emerald500) }
+                    TextButton(onClick = { showDateFilter = false }) { Text("Done") }
+                }
                 }
             }
         }
@@ -340,7 +319,7 @@ fun TransactionHistoryScreen(viewModel: FinanceViewModel) {
                 hasActiveFilters = hasActiveFilters,
                 onClearFilters = {
                     viewModel.updateSearchQuery("")
-                    selectedType = "All"
+                    selectedType = HistoryFilter.ALL
                     fromDate = ""
                     toDate = ""
                     showDateFilter = false
@@ -351,11 +330,10 @@ fun TransactionHistoryScreen(viewModel: FinanceViewModel) {
             LazyColumn(
                 contentPadding = PaddingValues(bottom = FabBottomPadding)
             ) {
-                val byMonth = filteredHistory.groupBy { it.date.substring(0, 7) }
+                val byMonth = filteredHistory.groupBy { it.date.take(7) }
                 byMonth.keys.sortedByDescending { it }.forEach { month ->
                     val monthTransactions = byMonth[month] ?: emptyList()
-                    val monthIncome  = monthTransactions.filter { it.type.equals("income", true) }.sumOf { it.amount }
-                    val monthExpense = monthTransactions.filter { it.type.equals("expense", true) }.sumOf { it.amount }
+                    val monthTotals = historyCashTotals(monthTransactions)
                     val monthLabel   = runCatching {
                         val ym = java.time.YearMonth.parse(month)
                         ym.format(java.time.format.DateTimeFormatter.ofPattern("MMMM yyyy"))
@@ -363,24 +341,31 @@ fun TransactionHistoryScreen(viewModel: FinanceViewModel) {
 
                     // -- Flat month header --------------------------------------
                     item {
-                        Row(
+                        Column(
                             Modifier.fillMaxWidth().padding(top = 18.dp, bottom = 6.dp),
-                            Arrangement.SpaceBetween, Alignment.CenterVertically
                         ) {
-                            Text(monthLabel.uppercase(locale),
+                            Text(monthLabel,
                                 style = MaterialTheme.typography.labelMedium.copy(
-                                    fontWeight = FontWeight.Bold, letterSpacing = 0.8.sp),
+                                    fontWeight = FontWeight.Bold),
                                 color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                                val mIncText = if (isPrivacy) "****" else CurrencyFormatter.detail(monthIncome, currencyCode, locale)
-                                Text("+$mIncText",
+                            FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                if (selectedType == HistoryFilter.TRANSFERS) {
+                                    Text(
+                                        if (isPrivacy) "Transferred: hidden" else "Transferred ${CurrencyFormatter.exact(monthTotals.transfers, currencyCode, locale)}",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                } else {
+                                val mIncText = if (isPrivacy) "Hidden" else CurrencyFormatter.exact(monthTotals.moneyIn, currencyCode, locale)
+                                Text("In $mIncText",
                                     style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                                    color = Emerald500)
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant)
 
-                                val mExpText = if (isPrivacy) "****" else CurrencyFormatter.negative(monthExpense, currencyCode, locale)
-                                Text(mExpText,
+                                val mExpText = if (isPrivacy) "Hidden" else CurrencyFormatter.exact(monthTotals.moneyOut, currencyCode, locale)
+                                Text("Out $mExpText",
                                     style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                                    color = SemanticRed)
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
                             }
                         }
                         HorizontalDivider(thickness = 0.5.dp, color = hairline)
@@ -423,7 +408,7 @@ fun TransactionHistoryScreen(viewModel: FinanceViewModel) {
                                 bankAccounts = allAccounts.map { it.name },
                                 // C03b Stage #1b-2 (3.2.88) - id -> current name
                                 // for rename-reflective sub-label.
-                                accountIdToName = allAccounts.associate { it.id to it.name },
+                                accountIdToName = accountNames,
                                 balanceImpacts = balanceImpactsByTransaction[transaction.id].orEmpty(),
                             )
                             Spacer(Modifier.height(if (idx < dayTxns.lastIndex) 8.dp else 2.dp))
@@ -486,6 +471,7 @@ fun buildBalanceImpactsByTransaction(
     val newestFirst = TransactionOrdering.newestFirst(transactions)
 
     newestFirst.forEach { txn ->
+        if (txn.isGeneratedJournalEntry()) return@forEach
         val deltas = mutableMapOf<String, Double>()
         when (txn.type.lowercase()) {
             "expense" -> deltas.addDelta(keyFor(txn.fromAcctId, txn.fromAcct), -txn.amount)
@@ -574,10 +560,74 @@ fun TransactionItem(
     }
     val locale = LocalLocale.current.platformLocale
     var showEditDialog by remember { mutableStateOf(false) }
+    var showDetails by remember { mutableStateOf(false) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var showManagedEntry by remember { mutableStateOf(false) }
     var deleteInProgress by remember(txn.id) { mutableStateOf(false) }
     val isManagedEntry = txn.isGeneratedJournalEntry()
+
+    if (showDetails) {
+        FormDialog(title = "Transaction details", onDismiss = { showDetails = false }) {
+            Text(
+                if (isPrivacy) "Hidden" else CurrencyFormatter.exact(txn.amount, currencyCode, locale),
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Text(
+                when {
+                    isManagedEntry -> "Record only - no account movement"
+                    isIncome -> "Money received"
+                    isExpense -> "Money paid out"
+                    txn.type.equals("Transfer", true) -> "Transfer between accounts"
+                    else -> "Record only"
+                },
+                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.height(16.dp))
+            HistoryDetailField("Date", DateUtils.formatToDisplay(txn.date))
+            if (txn.createdAt > 0L) {
+                val recorded = java.time.Instant.ofEpochMilli(txn.createdAt).atZone(java.time.ZoneId.systemDefault())
+                    .format(java.time.format.DateTimeFormatter.ofPattern("dd MMM yyyy, h:mm a", locale))
+                HistoryDetailField("Recorded", recorded)
+            }
+            HistoryDetailField("Category", txn.category.ifBlank { "Not specified" })
+            if (txn.person.isNotBlank()) HistoryDetailField("Person", txn.person)
+            if (txn.subcat.isNotBlank()) HistoryDetailField("Subcategory", txn.subcat)
+            if (txn.desc.isNotBlank()) HistoryDetailField("Description", txn.desc)
+            val from = txn.displayFromAcct(accountIdToName)
+            val to = txn.displayToAcct(accountIdToName)
+            if (from.isNotBlank()) HistoryDetailField("From account", from)
+            if (to.isNotBlank()) HistoryDetailField("To account", to)
+            if (txn.notes.isNotBlank()) HistoryDetailField("Notes", txn.notes)
+            if (!isManagedEntry && balanceImpacts.isEmpty()) {
+                Text("Account balance history is unavailable for this entry.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            balanceImpacts.forEach { impact ->
+                HorizontalDivider(Modifier.padding(vertical = 12.dp))
+                Text(impact.accountName, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                HistoryDetailField("Balance before", if (isPrivacy) "Hidden" else CurrencyFormatter.exact(impact.before, currencyCode, locale))
+                HistoryDetailField("Change", if (isPrivacy) "Hidden" else if (impact.delta < 0) CurrencyFormatter.negativeExact(impact.delta, currencyCode, locale) else "+${CurrencyFormatter.exact(impact.delta, currencyCode, locale)}")
+                HistoryDetailField("Balance after", if (isPrivacy) "Hidden" else CurrencyFormatter.exact(impact.after, currencyCode, locale))
+            }
+            Spacer(Modifier.height(12.dp))
+            if (isManagedEntry) {
+                Text("Change the original loan or debt payment to update this record.", style = MaterialTheme.typography.bodyMedium)
+            } else {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    OutlinedButton(onClick = { showDetails = false; showEditDialog = true }, modifier = Modifier.weight(1f)) {
+                        Icon(Icons.Default.Edit, null, Modifier.size(18.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text("Edit")
+                    }
+                    OutlinedButton(onClick = { showDetails = false; showDeleteConfirm = true }, modifier = Modifier.weight(1f), colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)) {
+                        Icon(Icons.Default.DeleteOutline, null, Modifier.size(18.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text("Delete")
+                    }
+                }
+            }
+        }
+    }
 
     if (showManagedEntry) {
         FynloConfirmDialog(
@@ -659,32 +709,27 @@ fun TransactionItem(
             .combinedClickable(
                 onClick = {
                     when {
-                        isManagedEntry -> showManagedEntry = true
-                        selectionMode -> onSelect()
-                        else -> showEditDialog = true
+                        selectionMode -> if (!isManagedEntry) onSelect()
+                        else -> showDetails = true
                     }
                 },
                 onLongClick = {
                     if (isManagedEntry) showManagedEntry = true else onLongPress()
                 }
             ),
-        shape = RoundedCornerShape(18.dp),
-        color = if (isSelected) rowColor.copy(alpha = 0.10f) else MaterialTheme.colorScheme.surface,
+        shape = RoundedCornerShape(8.dp),
+        color = if (isSelected) rowColor.copy(alpha = 0.10f) else MaterialTheme.colorScheme.background,
         tonalElevation = 0.dp,
         shadowElevation = 0.dp,
-        border = BorderStroke(
-            0.7.dp,
-            if (isSelected) rowColor.copy(alpha = 0.34f)
-            else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f),
-        ),
+        border = if (isSelected) BorderStroke(1.dp, rowColor) else null,
     ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically
+            .padding(vertical = 14.dp),
+        verticalAlignment = Alignment.Top
     ) {
-        // Leading: checkbox in selection mode, else colored category chip
+        // Leading checkbox in selection mode, otherwise a neutral category icon.
         if (selectionMode) {
             Box(Modifier.size(40.dp), contentAlignment = Alignment.Center) {
                 if (isSelected) {
@@ -697,29 +742,27 @@ fun TransactionItem(
             }
         } else {
             Box(
-                modifier = Modifier.size(42.dp).background(rowColor.copy(alpha = 0.13f), RoundedCornerShape(13.dp)),
+                modifier = Modifier.size(32.dp).background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(8.dp)),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(getCategoryIcon(txn.category), null, tint = rowColor, modifier = Modifier.size(20.dp))
+                Icon(getCategoryIcon(txn.category), null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
             }
         }
 
         Spacer(Modifier.width(12.dp))
 
         Column(Modifier.weight(1f)) {
+            val title = txn.desc.ifBlank { txn.person.ifBlank { txn.category.ifBlank { "Transaction" } } }
             Text(
-                txn.category,
-                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
-                maxLines = 1,
+                title,
+                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
             // C03b Stage #1b-2: resolve via id (renames take immediate effect);
             // falls back to stored name for legacy orphan rows.
-            val sub = txn.desc.ifBlank {
-                if (isExpense) txn.displayFromAcct(accountIdToName)
-                else           txn.displayToAcct(accountIdToName)
-            }
-            if (sub.isNotBlank()) {
+            val sub = txn.category
+            if (sub.isNotBlank() && !sub.equals(title, ignoreCase = true)) {
                 Text(sub,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -728,10 +771,10 @@ fun TransactionItem(
             }
             if (showTimestamp) {
                 Text(
-                    transactionTimestampLabel(txn),
+                    DateUtils.formatToDisplay(txn.date),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
+                    maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.padding(top = 2.dp),
                 )
@@ -751,35 +794,11 @@ fun TransactionItem(
                     Icon(Icons.AutoMirrored.Filled.Notes, null, Modifier.size(12.dp),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(Modifier.width(4.dp))
-                    Text(txn.notes,
+                    Text("Note attached",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis)
-                }
-            }
-            if (balanceImpacts.isNotEmpty()) {
-                if (balanceImpacts.size == 1) {
-                    RunningBalanceStrip(
-                        impact = balanceImpacts.first(),
-                        currencyCode = currencyCode,
-                        isPrivacy = isPrivacy,
-                    )
-                } else {
-                    val impactText = if (isPrivacy) {
-                        "Balance: hidden"
-                    } else {
-                        balanceImpacts.take(2).joinToString(" | ") { impact ->
-                            "${impact.accountName} after ${CurrencyFormatter.exact(impact.after, currencyCode, locale)}"
-                        }
-                    }
-                    Text(
-                        impactText,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 2,
-                        modifier = Modifier.padding(top = 3.dp),
-                    )
                 }
             }
         }
@@ -788,111 +807,41 @@ fun TransactionItem(
 
         val amountText = if (isPrivacy) "Hidden"
                          else when {
-                             isIncome  -> "+${CurrencyFormatter.detail(txn.amount, currencyCode, locale)}"
-                             isExpense -> CurrencyFormatter.negative(txn.amount, currencyCode, locale)
-                              else      -> "Transfer ${CurrencyFormatter.detail(txn.amount, currencyCode, locale)}"
+                             isIncome && !isManagedEntry -> "+${CurrencyFormatter.exact(txn.amount, currencyCode, locale)}"
+                             isExpense && !isManagedEntry -> CurrencyFormatter.negativeExact(txn.amount, currencyCode, locale)
+                             else -> CurrencyFormatter.exact(txn.amount, currencyCode, locale)
                          }
+        Column(horizontalAlignment = Alignment.End, modifier = Modifier.widthIn(max = 136.dp)) {
         Text(
             text  = amountText,
-            style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.ExtraBold),
-            color = rowColor,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
+            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+            color = MaterialTheme.colorScheme.onSurface,
             textAlign = TextAlign.End,
-            modifier = Modifier.widthIn(min = 82.dp, max = 132.dp),
         )
-    }
-    }
-    }
-}
-
-@Composable
-private fun RunningBalanceStrip(
-    impact: TransactionBalanceImpact,
-    currencyCode: String,
-    isPrivacy: Boolean,
-) {
-    val locale = LocalLocale.current.platformLocale
-    val deltaColor = when {
-        impact.delta > 0.005 -> Emerald500
-        impact.delta < -0.005 -> SemanticRed
-        else -> MaterialTheme.colorScheme.onSurfaceVariant
-    }
-    val changeText = if (isPrivacy) {
-        "Hidden"
-    } else if (impact.delta < -0.005) {
-        CurrencyFormatter.negativeExact(abs(impact.delta), currencyCode, locale)
-    } else {
-        "+${CurrencyFormatter.exact(impact.delta, currencyCode, locale)}"
-    }
-
-    Surface(
-        modifier = Modifier.fillMaxWidth().padding(top = 7.dp),
-        shape = RoundedCornerShape(13.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.28f),
-        border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.32f)),
-    ) {
-        Column(
-            Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
-            verticalArrangement = Arrangement.spacedBy(5.dp),
-        ) {
-            Text(
-                "Balance moved",
-                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-            )
-            Row(
-                Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                RunningBalanceMetric(
-                    label = "Before",
-                    value = if (isPrivacy) "Hidden" else CurrencyFormatter.exact(impact.before, currencyCode, locale),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.weight(1f),
-                )
-                RunningBalanceMetric(
-                    label = "Change",
-                    value = changeText,
-                    color = deltaColor,
-                    modifier = Modifier.weight(1f),
-                )
-                RunningBalanceMetric(
-                    label = "After",
-                    value = if (isPrivacy) "Hidden" else CurrencyFormatter.exact(impact.after, currencyCode, locale),
-                    color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.weight(1f),
-                )
-            }
+        Icon(Icons.Default.ChevronRight, "View transaction details", Modifier.padding(top = 4.dp).size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
+    }
+    }
+    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
 }
 
 @Composable
-private fun RunningBalanceMetric(
-    label: String,
-    value: String,
-    color: androidx.compose.ui.graphics.Color,
-    modifier: Modifier = Modifier,
-) {
-    Column(modifier, verticalArrangement = Arrangement.spacedBy(2.dp)) {
-        Text(
-            label,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            maxLines = 1,
-        )
-        Text(
-            value,
-            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-            color = color,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
+private fun HistorySummaryMetric(label: String, value: String, modifier: Modifier = Modifier) {
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(value, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
     }
 }
+
+@Composable
+private fun HistoryDetailField(label: String, value: String) {
+    Column(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(value, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
+    }
+}
+
 
 private fun transactionAccountTrace(
     txn: Transaction,
@@ -924,17 +873,6 @@ private fun transactionAccountTrace(
     }
 }
 
-private fun transactionTimestampLabel(txn: Transaction): String {
-    val dateLabel = DateUtils.formatToDisplay(txn.date)
-    val eventMillis = TransactionOrdering.eventMillis(txn)
-    if (eventMillis <= 0L) return dateLabel
-    val timeLabel = runCatching {
-        java.time.Instant.ofEpochMilli(eventMillis)
-            .atZone(java.time.ZoneId.systemDefault())
-            .format(java.time.format.DateTimeFormatter.ofPattern("h:mm a"))
-    }.getOrNull() ?: return dateLabel
-    return "$dateLabel - $timeLabel"
-}
 
 @Composable
 fun EmptyTransactionState(
