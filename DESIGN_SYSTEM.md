@@ -1,5 +1,45 @@
 # Fynlo Design System
 
+## 2026-10-02 Drawer and Forms Consistency (3.3.20)
+
+- Drawer destinations use the contextual toolbar as their page title; do not repeat a large title/subtitle beneath it. Keep meaningful controls inside the page.
+- Settings sections are flat expandable rows with dividers, readable labels and neutral icons. Profile/security, budgets, goals, contacts, projects, recurring, calculator and About follow the same neutral/blue foundation.
+- The drawer retains every existing destination and adds Transaction history. Selection uses blue; ordinary destinations are neutral. Signed-in identity must not claim that a backup has completed.
+- FormDialog is the shared shell for add/edit loan, debt, investment, transaction, payment, waiver and utility forms: bounded 640dp width, content-sized up to 92% of available height, persistent title/48dp close control, scrollable fields and keyboard avoidance.
+- Confirmation dialogs remain visually distinct and compact, bounded to 560dp, with scrollable content and wrapping actions for large text. Destructive actions remain red.
+- Form focus and ordinary save actions use the shared blue. Preserve disabled-state validation, financial impact previews, confirmations, dates and source-account controls.
+- Use full-width rows or vertical details where side-by-side amounts become crowded. Do not remove monetary detail to make a layout fit.
+
+## 2026-10-02 Contextual Header and Loan Lists (3.3.19)
+
+- Brand name/mark appear on Home only. Other shared toolbars show the current screen title.
+- The shared toolbar scrolls away with content and returns on upward scroll. Each route starts expanded; full-screen detail/search routes retain their own bars.
+- Primary blue is #0866FF; dark-mode interactive blue is #4D94FF for contrast. Launcher/in-app brand background matches #0866FF.
+- Loans uses compact underline Lent/Owed tabs, a two-column principal/interest summary, quiet utilities and underline status filters.
+- Borrower and debtor lists share full-width, unframed rows. Names, dates, amounts and account labels can wrap; do not ellipsize money.
+- This supersedes the prior fixed brand toolbar and pill/card treatment of loan lists. Calculations, filters, source accounts and payments are unchanged.
+
+## 2026-10-02 Approved Personal Ledger Refresh (3.3.18)
+
+This owner-approved visual update supersedes older emerald-brand, large-hero,
+zero-decimal and floating-navigation prescriptions below. Accounting rules do not change.
+
+- Primary actions/navigation: LedgerBlue #185ADB in light mode, #97BCFF in dark mode.
+- Backgrounds: neutral white/silver and charcoal. Green/red remain semantic money-in/out cues.
+- Header: flat blue brand mark, Fynlo Ledger, cloud state; Search and Hide/Show balances in the labelled overflow menu.
+- Home: exact net worth (paise visible), assets/debts, Income/Expense/Transfer, flat account rows,
+  compact accrued-interest summary, latest three activities with explicit History link.
+- No dashboard charts or duplicate summary cards. Tap Assets for the existing balance breakdown;
+  tap Net worth for its existing history. Do not remove the underlying reports.
+- Account rows and transaction details retain exact currency amounts. Never abbreviate or
+  silently truncate a balance to fit. Long labels wrap; large text must remain scrollable.
+- Bottom navigation is stable, slim, labelled, with the Android navigation inset applied once.
+  It does not collapse on scroll or sit inside another padded floating container.
+- Body text is 14-16sp, headings semibold, compact hero 34sp. Avoid all-bold labels.
+- Shared buttons use matched theme foreground/background pairs; contrast tests cover both themes.
+- The flat blue launcher and in-app mark share one vector asset. App IDs stay unchanged.
+
+
 **Version:** 1.1 (extracted from v3.2.1, two-archetype model)
 **Last updated:** 2026-05-25
 **Authority:** This document is the source of truth for visual & interaction patterns. When a screen disagrees with this document, the screen is wrong.

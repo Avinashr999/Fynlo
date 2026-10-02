@@ -82,7 +82,7 @@ fun OrphanRepairDialog(
             onClick  = onDismiss,
             modifier = Modifier.fillMaxWidth().height(48.dp),
             shape    = RoundedCornerShape(14.dp),
-            colors   = ButtonDefaults.buttonColors(containerColor = Emerald500),
+            colors   = ButtonDefaults.buttonColors(),
         ) {
             Text("Done", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold))
         }
@@ -164,7 +164,7 @@ private fun OrphanRow(
                 enabled  = picked.isNotBlank() && accounts.isNotEmpty(),
                 modifier = Modifier.fillMaxWidth().height(40.dp),
                 shape    = RoundedCornerShape(12.dp),
-                colors   = ButtonDefaults.buttonColors(containerColor = Emerald500),
+                colors   = ButtonDefaults.buttonColors(),
             ) { Text("Fix") }
         }
     }

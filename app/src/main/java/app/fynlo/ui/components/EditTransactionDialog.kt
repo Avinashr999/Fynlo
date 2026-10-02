@@ -69,20 +69,7 @@ fun EditTransactionDialog(
         app.fynlo.data.Categories.forType(type) + "Custom"
     }
 
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false)
-    ) {
-        Surface(
-            modifier = Modifier.fillMaxWidth(0.95f).padding(vertical = 24.dp).imePadding(),
-            shape = MaterialTheme.shapes.extraLarge,
-            color = MaterialTheme.colorScheme.surface,
-            tonalElevation = 6.dp
-        ) {
-            Column(modifier = Modifier.padding(24.dp).verticalScroll(rememberScrollState())) {
-                Text("Edit Transaction", style = MaterialTheme.typography.headlineSmall)
-                Spacer(Modifier.height(16.dp))
-
+    FormDialog(title = "Edit transaction", onDismiss = onDismiss) {
                 // C13 #9 — Type segmented row. Changing type re-pivots the
                 // category list (e.g. switching Income → Expense hides
                 // "Salary" / shows "Food"). The category state is left in
@@ -100,7 +87,7 @@ fun EditTransactionDialog(
                     label = { Text("Amount") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(8.dp),
                 )
 
                 Spacer(Modifier.height(8.dp))
@@ -114,7 +101,7 @@ fun EditTransactionDialog(
                         label = { Text("Category") },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expandedCat) },
                         modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, true).fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
+                        shape = RoundedCornerShape(8.dp),
                     )
                     ExposedDropdownMenu(expanded = expandedCat, onDismissRequest = { expandedCat = false }) {
                         categories.forEach { c ->
@@ -136,7 +123,7 @@ fun EditTransactionDialog(
                             label = { Text(if (type == "Income") "Deposit to" else "Pay from") },
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expandedAcct) },
                             modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, true).fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp),
+                            shape = RoundedCornerShape(8.dp),
                         )
                         ExposedDropdownMenu(expanded = expandedAcct, onDismissRequest = { expandedAcct = false }) {
                             bankAccounts.forEach { a ->
@@ -151,14 +138,14 @@ fun EditTransactionDialog(
                     value = desc, onValueChange = { desc = it },
                     label = { Text("Description") },
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(8.dp),
                 )
                 Spacer(Modifier.height(8.dp))
                 OutlinedTextField(
                     value = notes, onValueChange = { notes = it },
                     label = { Text("Notes") },
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(8.dp),
                 )
                 // C13 #7 — Tags field.
                 Spacer(Modifier.height(8.dp))
@@ -167,7 +154,7 @@ fun EditTransactionDialog(
                     label = { Text("Tags (comma-separated)") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(8.dp),
                 )
 
                 val parsedPreview = amount.toDoubleOrNull() ?: 0.0
@@ -266,8 +253,6 @@ fun EditTransactionDialog(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-            }
-        }
     }
 }
 

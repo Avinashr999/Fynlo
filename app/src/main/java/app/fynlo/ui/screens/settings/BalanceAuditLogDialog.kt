@@ -118,7 +118,7 @@ internal fun BalanceAuditLogDialog(
                 onClick = onDismiss,
                 modifier = Modifier.weight(1f),
                 shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Emerald500),
+                colors = ButtonDefaults.buttonColors(),
             ) { Text("Close") }
         }
     }
@@ -171,4 +171,3 @@ internal fun AuditEntryRow(
         }
     }
 }
-

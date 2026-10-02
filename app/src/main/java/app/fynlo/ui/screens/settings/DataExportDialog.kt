@@ -186,7 +186,7 @@ internal fun DataExportDialog(
             onClick = onExport,
             modifier = Modifier.fillMaxWidth().height(48.dp),
             shape = RoundedCornerShape(14.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Emerald500),
+            colors = ButtonDefaults.buttonColors(),
         ) {
             Icon(Icons.Default.Share, null, Modifier.size(18.dp))
             Spacer(Modifier.width(8.dp))
@@ -194,4 +194,3 @@ internal fun DataExportDialog(
         }
     }
 }
-

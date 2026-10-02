@@ -110,7 +110,8 @@ val debts by viewModel.debts.collectAsState()
         "Closed"  -> closedDebts
         else      -> activeDebts
     }
-    val isInitialLoading = syncStatus is app.fynlo.data.SyncStatus.Initialising &&
+    val localDataReady by viewModel.localDataReady.collectAsState()
+    val isInitialLoading = !localDataReady &&
         debts.isEmpty() &&
         searchQuery.isBlank()
     var showAddDialog by remember { mutableStateOf(false) }
@@ -167,39 +168,11 @@ val debts by viewModel.debts.collectAsState()
         // debt list. Tappable Surface; full-width so the tap target
         // matches its visual prominence.
         if (debts.any { app.fynlo.logic.InterestPolicy.debtPrincipalOutstanding(it, paymentsByDebt[it.id].orEmpty()) > 0.01 }) {
-            Surface(
-                onClick = onNavigateToPayoffPlan,
-                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-                shape = RoundedCornerShape(14.dp),
-                color = Emerald500.copy(alpha = 0.08f),
-                border = androidx.compose.foundation.BorderStroke(0.5.dp, Emerald500.copy(alpha = 0.35f)),
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(14.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    Box(
-                        Modifier.size(40.dp).clip(RoundedCornerShape(10.dp))
-                            .background(Emerald500.copy(alpha = 0.15f)),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(Icons.Default.CreditCard, null, tint = Emerald500, modifier = Modifier.size(20.dp))
-                    }
-                    Column(Modifier.weight(1f)) {
-                        Text(
-                            "Payoff plan: Snowball vs Avalanche",
-                            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                            color = Emerald500,
-                        )
-                        Text(
-                            "Compare strategies and see when you'll be debt-free.",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = Emerald500)
-                }
+            TextButton(onClick = onNavigateToPayoffPlan, modifier = Modifier.fillMaxWidth()) {
+                Icon(Icons.Default.CreditCard, null, Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text("Plan repayments", Modifier.weight(1f))
+                Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null)
             }
         }
 
@@ -246,7 +219,7 @@ val debts by viewModel.debts.collectAsState()
                     "Overdue" to overdueDebts.size,
                     "Closed"  to closedDebts.size,
                 )
-                TemplateSegmentedSelector(
+                app.fynlo.ui.components.LoanFilterTabs(
                     options = filters.map { (label, count) -> "$label  $count" },
                     selectedIndex = filters.indexOfFirst { it.first == statusFilter }.coerceAtLeast(0),
                     onSelected = { idx -> statusFilter = filters[idx].first },
@@ -279,16 +252,6 @@ val debts by viewModel.debts.collectAsState()
                 }
             }
         } else {
-            item {
-                DebtListSectionHeader(
-                    title = when (statusFilter) {
-                        "Overdue" -> "Overdue debtors"
-                        "Closed" -> "Closed debtors"
-                        else -> "Active debtors"
-                    },
-                    count = filteredDebts.size,
-                )
-            }
             items(filteredDebts, key = { it.id }) { debt ->
                     DebtCard(
                         debt = debt,
@@ -330,98 +293,20 @@ fun DebtCard(
     val liability = app.fynlo.logic.DebtLiabilityCalculator.outstanding(debt, payments)
     val outstanding = liability.total
 
-    Surface(
+    val dateLabel = when {
+        isOverdue && debt.due.isNotBlank() -> "Overdue since ${DateUtils.formatToDisplay(debt.due)}"
+        debt.due.isNotBlank() -> "Due ${DateUtils.formatToDisplay(debt.due)}"
+        else -> "Borrowed ${DateUtils.formatToDisplay(debt.date)}"
+    }
+    app.fynlo.ui.components.LoanLedgerRow(
+        name = debt.name,
+        amount = if (isPrivacy) "Hidden" else CurrencyFormatter.detail(outstanding, currencyCode, locale),
+        amountLabel = "To pay",
+        dateLabel = dateLabel,
+        accountLabel = if (receivedIntoAccount.isBlank()) "" else "Into $receivedIntoAccount",
+        overdue = isOverdue,
         onClick = onClick,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 1.dp)
-            .heightIn(min = 74.dp),
-        shape = RoundedCornerShape(18.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerLowest,
-        border = androidx.compose.foundation.BorderStroke(
-            0.7.dp,
-            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.42f),
-        ),
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(11.dp)
-        ) {
-        Box(
-            Modifier.size(38.dp).clip(CircleShape).background(SemanticRed.copy(alpha = 0.14f)),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(Icons.Default.CreditCard, null, tint = SemanticRed, modifier = Modifier.size(19.dp))
-        }
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-            Text(
-                debt.name,
-                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                maxLines = 1,
-                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-            )
-            val sub = when {
-                isOverdue && debt.due.isNotBlank() -> "Overdue since ${DateUtils.formatToDisplay(debt.due)}"
-                debt.due.isNotBlank() -> "Due ${DateUtils.formatToDisplay(debt.due)}"
-                else -> "Borrowed ${DateUtils.formatToDisplay(debt.date)}"
-            }
-            Text(
-                sub,
-                style = MaterialTheme.typography.labelSmall,
-                color = if (isOverdue) SemanticRed else MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-            )
-            if (receivedIntoAccount.isNotBlank()) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        Icons.Default.AccountBalanceWallet,
-                        contentDescription = null,
-                        modifier = Modifier.size(13.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(Modifier.width(5.dp))
-                    Text(
-                        "Into $receivedIntoAccount",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                    )
-                }
-            }
-        }
-        Column(
-            modifier = Modifier.widthIn(min = 92.dp, max = 128.dp),
-            horizontalAlignment = Alignment.End,
-        ) {
-            val outstandingText = if (isPrivacy) "••••" else CurrencyFormatter.detail(outstanding, currencyCode, locale)
-            Text(
-                text = outstandingText,
-                style = MaterialTheme.typography.titleSmall.copy(
-                    fontWeight = FontWeight.Bold,
-                    color = if (isOverdue) SemanticRed else MaterialTheme.colorScheme.onSurface
-                ),
-                maxLines = 1,
-                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-            )
-            Text(
-                "To pay",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-            )
-        }
-        Icon(
-            Icons.AutoMirrored.Filled.KeyboardArrowRight,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-            modifier = Modifier.size(18.dp)
-        )
-    }
-    }
+    )
 }
 
 @Composable

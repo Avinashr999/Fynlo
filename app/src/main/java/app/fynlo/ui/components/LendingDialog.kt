@@ -27,7 +27,6 @@ import app.fynlo.data.model.Person
 import app.fynlo.logic.CurrencyFormatter
 import app.fynlo.logic.CurrencyUtils
 import app.fynlo.logic.DateUtils
-import app.fynlo.ui.theme.Emerald500
 import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -73,40 +72,7 @@ fun AddLendingDialog(
     val isEdit = initialBorrower != null
     var submitting by remember(initialBorrower?.id) { mutableStateOf(false) }
 
-    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        Box(
-            modifier = Modifier.fillMaxSize().imePadding(),
-            contentAlignment = Alignment.BottomCenter,
-        ) {
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .fillMaxHeight(0.92f),
-                shape = androidx.compose.foundation.shape.RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
-                color = MaterialTheme.colorScheme.surfaceContainerLowest,
-                tonalElevation = 6.dp
-            ) {
-                Column(
-                    Modifier
-                        .fillMaxSize()
-                        .padding(20.dp)
-                        .verticalScroll(rememberScrollState())
-                ) {
-                    Surface(
-                        modifier = Modifier
-                            .size(width = 44.dp, height = 5.dp)
-                            .align(Alignment.CenterHorizontally),
-                        shape = androidx.compose.foundation.shape.RoundedCornerShape(99.dp),
-                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f),
-                    ) {}
-                    Spacer(Modifier.height(10.dp))
-                    Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
-                        Text(if (isEdit) "Edit Loan" else "New Loan",
-                            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold))
-                        IconButton(onClick = onDismiss) { Icon(Icons.Default.Close, "Close") }
-                    }
-                Spacer(Modifier.height(16.dp))
-
+    FormDialog(title = if (isEdit) "Edit loan" else "New loan", onDismiss = onDismiss) {
                 // -- Amount hero -----------------------------------------------
                 AmountHero(amount, currencyCode, amountAllowsPaise) { amount = it }
                 Spacer(Modifier.height(24.dp))
@@ -134,7 +100,7 @@ fun AddLendingDialog(
                             modifier = Modifier
                                 .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, true)
                                 .fillMaxWidth(),
-                            shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+                            shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
                         )
                         ExposedDropdownMenu(
                             expanded = borrowerExpanded,
@@ -169,14 +135,14 @@ fun AddLendingDialog(
                             Text(
                                 "${selectedAccount.type}  -  Balance: ${CurrencyFormatter.exact(selectedAccount.balance, currencyCode, locale)}",
                                 style = MaterialTheme.typography.labelSmall,
-                                color = Emerald500,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = accountExpanded) },
                         modifier = Modifier
                             .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, true)
                             .fillMaxWidth(),
-                        shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+                        shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
                     )
                     ExposedDropdownMenu(
                         expanded = accountExpanded,
@@ -201,7 +167,7 @@ fun AddLendingDialog(
                                         Text(
                                             CurrencyFormatter.exact(acct.balance, currencyCode, locale),
                                             style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
-                                            color = if (acct.balance >= 0) Emerald500 else MaterialTheme.colorScheme.error,
+                                            color = if (acct.balance >= 0) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.error,
                                         )
                                     }
                                 },
@@ -266,7 +232,7 @@ fun AddLendingDialog(
                 Spacer(Modifier.height(12.dp))
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
                     color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
                 ) {
                     Row(
@@ -336,11 +302,7 @@ fun AddLendingDialog(
                     }
                     DisabledButtonHint(reason)
                 }
-            }
-        }
     }
-}
-
 }
 
 @Composable
@@ -352,14 +314,14 @@ internal fun LendSoftField(value: String, label: String, keyboard: KeyboardType,
         singleLine = true,
         keyboardOptions = KeyboardOptions(keyboardType = keyboard),
         modifier = Modifier.fillMaxWidth(),
-        shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
         colors = OutlinedTextFieldDefaults.colors(
             focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
             unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
-            focusedBorderColor = Emerald500,
+            focusedBorderColor = MaterialTheme.colorScheme.primary,
             unfocusedBorderColor = Color.Transparent,
-            focusedLabelColor = Emerald500,
-            cursorColor = Emerald500
+            focusedLabelColor = MaterialTheme.colorScheme.primary,
+            cursorColor = MaterialTheme.colorScheme.primary
         )
     )
 }
@@ -382,13 +344,13 @@ internal fun AmountHero(amount: String, currencyCode: String, allowPaise: Boolea
             androidx.compose.foundation.text.BasicTextField(
                 value = amount,
                 onValueChange = { onChange(if (allowPaise) decimalOnly(it) else it.filter { c -> c.isDigit() }) },
-                textStyle = TextStyle(fontSize = 40.sp, fontWeight = FontWeight.ExtraBold,
+                textStyle = TextStyle(fontSize = 32.sp, fontWeight = FontWeight.ExtraBold,
                     color = MaterialTheme.colorScheme.onSurface, textAlign = TextAlign.Start),
                 keyboardOptions = KeyboardOptions(keyboardType = if (allowPaise) KeyboardType.Decimal else KeyboardType.Number),
-                cursorBrush = SolidColor(Emerald500),
+                cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
                 singleLine = true,
                 decorationBox = { inner ->
-                    if (amount.isBlank()) Text("0", fontSize = 40.sp, fontWeight = FontWeight.ExtraBold,
+                    if (amount.isBlank()) Text("0", fontSize = 32.sp, fontWeight = FontWeight.ExtraBold,
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f))
                     inner()
                 }

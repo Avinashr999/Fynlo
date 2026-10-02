@@ -149,7 +149,8 @@ fun GlobalSearchScreen(
             // Cap result list — anything past 60 is noise the user won't scroll to.
             .take(60)
     }
-    val isInitialLoading = syncStatus is app.fynlo.data.SyncStatus.Initialising &&
+    val localDataReady by viewModel.localDataReady.collectAsState()
+    val isInitialLoading = !localDataReady &&
         borrowers.isEmpty() &&
         debts.isEmpty() &&
         transactions.isEmpty() &&

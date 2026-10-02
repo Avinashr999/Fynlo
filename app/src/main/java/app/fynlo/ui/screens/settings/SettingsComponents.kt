@@ -81,11 +81,11 @@ internal fun SettingsSectionLabel(title: String) {
 internal fun SettingsCard(content: @Composable ColumnScope.() -> Unit) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(TemplateCardRadius),
-        color = MaterialTheme.colorScheme.surfaceContainerLowest,
+        shape = RoundedCornerShape(0.dp),
+        color = Color.Transparent,
         tonalElevation = 0.dp,
         shadowElevation = 0.dp,
-        border = BorderStroke(0.8.dp, TemplateBorder),
+        border = null,
     ) {
         Column(
             modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
@@ -107,11 +107,11 @@ internal fun SettingsExpandableCard(
     val haptic = LocalHapticFeedback.current
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(TemplateCardRadius),
-        color = MaterialTheme.colorScheme.surfaceContainerLowest,
+        shape = RoundedCornerShape(0.dp),
+        color = Color.Transparent,
         tonalElevation = 0.dp,
         shadowElevation = 0.dp,
-        border = BorderStroke(0.8.dp, TemplateBorder),
+        border = null,
     ) {
         Column(Modifier.fillMaxWidth().animateContentSize()) {
             Row(
@@ -129,16 +129,12 @@ internal fun SettingsExpandableCard(
                 Column(Modifier.weight(1f)) {
                     Text(
                         title,
-                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.ExtraBold),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
+                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
                     )
                     Text(
                         subtitle,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
                     )
                 }
                 Icon(
@@ -160,6 +156,7 @@ internal fun SettingsExpandableCard(
             }
         }
     }
+    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
 }
 
 @Composable
@@ -271,10 +268,10 @@ internal fun SettingsStatusPill(
 @Composable
 internal fun SettingsIconBubble(icon: ImageVector, color: Color) {
     Box(
-        Modifier.size(42.dp).clip(RoundedCornerShape(14.dp)).background(color.copy(alpha = 0.12f)),
+        Modifier.size(32.dp),
         Alignment.Center,
     ) {
-        Icon(icon, null, Modifier.size(21.dp), tint = color)
+        Icon(icon, null, Modifier.size(21.dp), tint = if (color == MaterialTheme.colorScheme.error) color else MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
@@ -295,10 +292,10 @@ internal fun SettingsActionRow(
         Alignment.CenterVertically
     ) {
         Box(
-            Modifier.size(42.dp).clip(RoundedCornerShape(14.dp)).background(color.copy(0.12f)),
+            Modifier.size(32.dp),
             Alignment.Center
         ) {
-            Icon(icon, null, Modifier.size(21.dp), tint = color)
+            Icon(icon, null, Modifier.size(21.dp), tint = if (color == MaterialTheme.colorScheme.error) color else MaterialTheme.colorScheme.onSurfaceVariant)
         }
         Column(Modifier.weight(1f)) {
             Text(title,
@@ -311,4 +308,3 @@ internal fun SettingsActionRow(
             Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.65f))
     }
 }
-

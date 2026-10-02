@@ -97,7 +97,7 @@ internal fun WhatsNewDialog(onDismiss: () -> Unit) {
             onClick = onDismiss,
             modifier = Modifier.fillMaxWidth().height(48.dp),
             shape = RoundedCornerShape(14.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Emerald500),
+            colors = ButtonDefaults.buttonColors(),
         ) {
             Text("Got it", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold))
         }
@@ -120,16 +120,16 @@ internal fun SettingsHelpBlock(
         Box(
             modifier = Modifier
                 .size(38.dp)
-                .clip(RoundedCornerShape(12.dp))
-                .background(Emerald500.copy(alpha = 0.12f)),
+                .clip(RoundedCornerShape(8.dp))
+                .background(MaterialTheme.colorScheme.primaryContainer),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(icon, contentDescription = null, modifier = Modifier.size(19.dp), tint = Emerald700)
+            Icon(icon, contentDescription = null, modifier = Modifier.size(19.dp), tint = MaterialTheme.colorScheme.onPrimaryContainer)
         }
         Column(Modifier.weight(1f)) {
             Text(
                 title,
-                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.ExtraBold),
+                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
                 color = MaterialTheme.colorScheme.onSurface,
             )
             Spacer(Modifier.height(3.dp))

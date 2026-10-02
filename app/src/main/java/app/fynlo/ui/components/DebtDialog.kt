@@ -85,40 +85,7 @@ fun AddDebtDialog(
     val lenderName = if (useCustomName) customLenderName else selectedPerson?.name ?: ""
     val isValid    = lenderName.isNotBlank() && (amount.toDoubleOrNull() ?: 0.0) > 0.0
 
-    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        Box(
-            modifier = Modifier.fillMaxSize().imePadding(),
-            contentAlignment = Alignment.BottomCenter,
-        ) {
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .fillMaxHeight(0.92f),
-                shape = androidx.compose.foundation.shape.RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
-                color = MaterialTheme.colorScheme.surfaceContainerLowest,
-                tonalElevation = 6.dp
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(20.dp)
-                        .verticalScroll(rememberScrollState())
-                ) {
-                    Surface(
-                        modifier = Modifier
-                            .size(width = 44.dp, height = 5.dp)
-                            .align(Alignment.CenterHorizontally),
-                        shape = androidx.compose.foundation.shape.RoundedCornerShape(99.dp),
-                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f),
-                    ) {}
-                    Spacer(Modifier.height(10.dp))
-                    Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
-                        Text(if (initialDebt == null) "New Debt" else "Edit Debt",
-                            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold))
-                        IconButton(onClick = onDismiss) { Icon(Icons.Default.Close, "Close") }
-                    }
-                    Spacer(Modifier.height(16.dp))
-
+    FormDialog(title = if (initialDebt == null) "New debt" else "Edit debt", onDismiss = onDismiss) {
                 // -- Amount hero (same as the loan form) --------------------
                 AmountHero(amount, currencyCode, amountAllowsPaise) { amount = it }
                 Spacer(Modifier.height(24.dp))
@@ -171,7 +138,7 @@ fun AddDebtDialog(
                             supportingText = {
                                 Text("${selectedAccount.type} - Balance: ${CurrencyFormatter.exact(selectedAccount.balance, currencyCode, locale)}",
                                     style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.primary)
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant)
                             },
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedDest) },
                             modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, true).fillMaxWidth()
@@ -196,7 +163,7 @@ fun AddDebtDialog(
                                             }
                                             Text(CurrencyFormatter.exact(acct.balance, currencyCode, locale),
                                                 style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
-                                                color = Emerald500)
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant)
                                         }
                                     },
                                     onClick = { selectedAccount = acct; expandedDest = false }
@@ -306,8 +273,5 @@ fun AddDebtDialog(
                     else                 -> null
                 }
                 DisabledButtonHint(debtDisabledReason)
-            }
-        }
     }
-}
 }

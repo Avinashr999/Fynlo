@@ -147,44 +147,7 @@ fun AddTransactionDialog(
         else -> "Add Expense"
     }
 
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false)
-    ) {
-        Box(
-            modifier = Modifier.fillMaxSize().imePadding(),
-            contentAlignment = Alignment.BottomCenter,
-        ) {
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .fillMaxHeight(0.92f),
-                shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
-                color = MaterialTheme.colorScheme.surfaceContainerLowest,
-                tonalElevation = 6.dp
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(20.dp)
-                        .verticalScroll(rememberScrollState())
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(width = 44.dp, height = 5.dp)
-                            .clip(RoundedCornerShape(99.dp))
-                            .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f))
-                            .align(Alignment.CenterHorizontally)
-                    )
-                    Spacer(Modifier.height(10.dp))
-                // -- Header ----------------------------------------------------
-                Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
-                    Text(dialogTitle,
-                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold))
-                    IconButton(onClick = onDismiss) { Icon(Icons.Default.Close, "Close") }
-                }
-                Spacer(Modifier.height(16.dp))
-
+    FormDialog(title = dialogTitle, onDismiss = onDismiss) {
                 // -- Expense / Income toggle -----------------------------------
                 if (allowTypeSwitch) {
                     TemplateSegmentedSelector(
@@ -321,7 +284,7 @@ fun AddTransactionDialog(
                         onCheckedChange = { repeatMonthly = it },
                         colors = SwitchDefaults.colors(
                             checkedThumbColor    = androidx.compose.ui.graphics.Color.White,
-                            checkedTrackColor    = Emerald500,
+                            checkedTrackColor    = MaterialTheme.colorScheme.primary,
                             uncheckedThumbColor  = MaterialTheme.colorScheme.onSurfaceVariant,
                             uncheckedTrackColor  = MaterialTheme.colorScheme.surface,
                             uncheckedBorderColor = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -377,7 +340,7 @@ fun AddTransactionDialog(
                     Spacer(Modifier.height(10.dp))
                     Surface(
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(16.dp),
+                        shape = RoundedCornerShape(8.dp),
                         color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.55f),
                     ) {
                         Text(
@@ -392,7 +355,7 @@ fun AddTransactionDialog(
                     Spacer(Modifier.height(10.dp))
                     Surface(
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(16.dp),
+                        shape = RoundedCornerShape(8.dp),
                         color = Emerald500.copy(alpha = 0.10f),
                     ) {
                         Text(
@@ -452,10 +415,7 @@ fun AddTransactionDialog(
                     }
                     DisabledButtonHint(reason)
                 }
-            }
-        }
     }
-}
 }
 
 @Composable
@@ -480,7 +440,7 @@ fun AccountImpactPreview(
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(8.dp),
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.42f),
     ) {
         Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -633,17 +593,17 @@ private fun SourceDropdown(
                 label         = { Text(label) },
                 trailingIcon  = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
                 singleLine    = true,
-                shape         = RoundedCornerShape(16.dp),
+                shape         = RoundedCornerShape(8.dp),
                 modifier      = Modifier
                     .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, true)
                     .fillMaxWidth(),
                 colors        = OutlinedTextFieldDefaults.colors(
                     focusedContainerColor   = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
                     unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
-                    focusedBorderColor      = Emerald500,
+                    focusedBorderColor      = MaterialTheme.colorScheme.primary,
                     unfocusedBorderColor    = androidx.compose.ui.graphics.Color.Transparent,
-                    focusedLabelColor       = Emerald500,
-                    cursorColor             = Emerald500
+                    focusedLabelColor       = MaterialTheme.colorScheme.primary,
+                    cursorColor             = MaterialTheme.colorScheme.primary
                 )
             )
             ExposedDropdownMenu(
@@ -658,7 +618,7 @@ private fun SourceDropdown(
                 }
                 HorizontalDivider()
                 DropdownMenuItem(
-                    text    = { Text(createNew, color = Emerald500) },
+                    text    = { Text(createNew, color = MaterialTheme.colorScheme.primary) },
                     onClick = { onPick(""); createMode = true; expanded = false }
                 )
             }
@@ -674,14 +634,14 @@ private fun SoftField(value: String, label: String, onChange: (String) -> Unit) 
         label = { Text(label) },
         singleLine = true,
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(8.dp),
         colors = OutlinedTextFieldDefaults.colors(
             focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
             unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
-            focusedBorderColor = Emerald500,
+            focusedBorderColor = MaterialTheme.colorScheme.primary,
             unfocusedBorderColor = androidx.compose.ui.graphics.Color.Transparent,
-            focusedLabelColor = Emerald500,
-            cursorColor = Emerald500
+            focusedLabelColor = MaterialTheme.colorScheme.primary,
+            cursorColor = MaterialTheme.colorScheme.primary
         )
     )
 }

@@ -198,7 +198,7 @@ fun SmartFlowWizardScreen(
                             onNavigateBack()
                         },
                         shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Emerald500)
+                        colors = ButtonDefaults.buttonColors()
                     ) {
                         Icon(Icons.Default.Check, null, Modifier.size(18.dp))
                         Spacer(Modifier.width(8.dp))

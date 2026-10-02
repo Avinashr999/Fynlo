@@ -17,6 +17,7 @@ import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -35,6 +36,9 @@ import app.fynlo.FinanceViewModel
 import app.fynlo.data.SyncStatus
 import app.fynlo.data.model.Account
 import app.fynlo.logic.CurrencyFormatter
+import app.fynlo.ui.dashboardRecentActivity
+import app.fynlo.ui.components.LedgerDashboardSummary
+import app.fynlo.ui.components.LedgerInterestToday
 import app.fynlo.logic.isGeneratedJournalEntry
 import app.fynlo.logic.isSpendingExpense
 import app.fynlo.logic.LedgerAccountabilityReport
@@ -80,7 +84,7 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
     val lastRecalcAt by app.fynlo.data.UserPreferences
         .lastRecalcAt(context).collectAsState(initial = 0L)
 
-    fun fmt(v: Double) = if (isPrivacy) "••••" else CurrencyFormatter.hero(v, currencyCode, locale)
+    fun fmt(v: Double) = if (isPrivacy) "Hidden" else CurrencyFormatter.exact(v, currencyCode, locale)
 
     // Map account name -> an icon based on its type (Bank/Cash/UPI/Trading)
     val typeByName = remember(accounts) { accounts.associate { it.name to it.type.lowercase() } }
@@ -100,9 +104,6 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
     val allDebtsHome by viewModel.debts.collectAsState()
     val allBorrowersHome by viewModel.borrowers.collectAsState()
     val allTransactionsHome by viewModel.transactions.collectAsState()
-    val budgetsHome by viewModel.budgets.collectAsState()
-    val recurringHome by viewModel.recurringTransactions.collectAsState()
-    val proofAttachmentsHome by viewModel.proofAttachments.collectAsState()
     val activeAccounts = remember(accounts) { accounts.filterNot { it.isClosedAccount() } }
     val activeAccountNames = remember(activeAccounts) { activeAccounts.map { it.name } }
     val cashInHandBreakdown = remember(activeAccounts) {
@@ -124,29 +125,6 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
     val accountNames = activeAccountNames
     val orphans = remember(allTransactionsHome, accountNames) {
         app.fynlo.logic.OrphanTransactionsScanner.scan(allTransactionsHome, accountNames)
-    }
-    val today = remember { java.time.LocalDate.now() }
-    val recentActivityCount = remember(allTransactionsHome, today) {
-        allTransactionsHome.count { txn ->
-            runCatching { java.time.LocalDate.parse(txn.date) }
-                .getOrNull()
-                ?.let { !it.isBefore(today.minusDays(7)) && !it.isAfter(today) } == true
-        }
-    }
-    val dueSoonCount = remember(allBorrowersHome, allDebtsHome, today) {
-        fun isDueSoon(due: String): Boolean {
-            val date = runCatching { java.time.LocalDate.parse(due) }.getOrNull() ?: return false
-            return !date.isBefore(today) && !date.isAfter(today.plusDays(7))
-        }
-        allBorrowersHome.count { it.status != "Cleared" && isDueSoon(it.due) } +
-            allDebtsHome.count { it.status != "Cleared" && isDueSoon(it.due) }
-    }
-    val todayMovement = remember(allTransactionsHome, today) {
-        allTransactionsHome.moneyMovementForDate(today)
-    }
-    val monthMovement = remember(allTransactionsHome, today) {
-        val month = java.time.YearMonth.from(today)
-        allTransactionsHome.moneyMovementForMonth(month)
     }
     val isFreshBook = activeAccounts.isEmpty() &&
         allTransactionsHome.isEmpty() &&
@@ -321,15 +299,6 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
         return
     }
 
-    val greeting = remember {
-        when (java.time.LocalTime.now().hour) {
-            in 5..11  -> "Good morning"
-            in 12..16 -> "Good afternoon"
-            in 17..20 -> "Good evening"
-            else      -> "Good night"
-        }
-    }
-
     app.fynlo.ui.components.PullRefresh(viewModel) {
     Column(
         modifier = Modifier
@@ -376,30 +345,9 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
             Spacer(Modifier.height(12.dp))
         }
 
-        // -- Greeting + project switcher ---------------------------------------
-        if (isFreshBook) {
-            FirstRunChecklistCard(
-                onAddAccount = {
-                    accountDialogInitial = null
-                    accountDialogDefaultType = "Bank"
-                    showAccountDialog = true
-                },
-                onAddExpense = {
-                    addTxnIncome = false
-                    showAddTxn = true
-                },
-                onGoLoans = { onNavigateToScreen("loans") },
-                onGoInvest = { onNavigateToScreen("invest") },
-            )
-            Spacer(Modifier.height(12.dp))
-        }
-
-        Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
-            Text(greeting, style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant)
-            if (projects.size > 1) {
+        if (projects.size > 1) {
                 Row(
-                    modifier = Modifier.horizontalScroll(rememberScrollState()),
+                    modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     projects.forEach { project ->
@@ -407,78 +355,37 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
                         Surface(
                             onClick = { viewModel.switchProject(project.id) },
                             shape = RoundedCornerShape(20.dp),
-                            color = if (sel) Emerald500.copy(alpha = 0.12f) else Color.Transparent,
+                            color = if (sel) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
                             border = if (sel) null else BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
                         ) {
                             Text(project.name,
                                 style = MaterialTheme.typography.labelSmall.copy(
                                     fontWeight = if (sel) FontWeight.Bold else FontWeight.Normal),
-                                color = if (sel) Emerald500 else MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp))
+                                color = if (sel) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 14.dp))
                         }
                     }
                 }
-            }
-        }
-
         Spacer(Modifier.height(10.dp))
-
-        // -- Hero: big net worth number - tap to open Net Worth History --------
-        if (isFreshBook) {
-            FreshStartCard(
-                projectName = currentProject?.name ?: "Personal",
-                onAddAccount = {
-                    accountDialogInitial = null
-                    accountDialogDefaultType = "Bank"
-                    showAccountDialog = true
-                },
-                onAddTransaction = {
-                    addTxnIncome = false
-                    showAddTxn = true
-                },
-                onCreateProject = { onNavigateToScreen("projects") },
-            )
-            Spacer(Modifier.height(16.dp))
         }
 
-        val nwText = if (isPrivacy) "Hidden" else CurrencyFormatter.hero(summary.netWorth, currencyCode, locale)
         val lastUpdatedLabel = dashboardFreshnessLabel(latestMoneyActivityAt, isFreshBook, locale)
-        LedgerHeroPanel(
-            label = "Total net worth",
-            value = nwText,
-            subtitle = lastUpdatedLabel,
-            containerColor = Emerald700,
-            modifier = Modifier.clickable { onNavigateToScreen("net_worth_hist") },
-        ) {
-            Row(Modifier.fillMaxWidth(), Arrangement.spacedBy(8.dp)) {
-                Surface(
-                    onClick = { onNavigateToScreen("reports_hub") },
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(14.dp),
-                    color = Color.White.copy(alpha = 0.14f),
-                    border = BorderStroke(0.6.dp, Color.White.copy(alpha = 0.18f)),
-                ) {
-                    Column(Modifier.padding(11.dp)) {
-                        Text("Assets", style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.72f))
-                        Text(fmt(summary.totalAssets), style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.ExtraBold), color = Color.White)
-                    }
-                }
-                Surface(
-                    onClick = { onNavigateToScreen("loans_hub?tab=1") },
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(14.dp),
-                    color = Color.White.copy(alpha = 0.14f),
-                    border = BorderStroke(0.6.dp, Color.White.copy(alpha = 0.18f)),
-                ) {
-                    Column(Modifier.padding(11.dp)) {
-                        Text("Debt owed", style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.72f))
-                        Text(
-                            fmt(summary.totalDebtPrincipal + summary.totalDebtInterest),
-                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.ExtraBold),
-                            color = Color.White,
-                        )
-                    }
-                }
+        var showBalanceBreakdown by rememberSaveable { mutableStateOf(false) }
+        LedgerDashboardSummary(
+            netWorth = fmt(summary.netWorth),
+            assets = fmt(summary.totalAssets),
+            debts = fmt(summary.totalDebtPrincipal + summary.totalDebtInterest),
+            freshness = lastUpdatedLabel,
+            onNetWorth = { onNavigateToScreen("net_worth_hist") },
+            onAssets = { showBalanceBreakdown = !showBalanceBreakdown },
+            onDebts = { onNavigateToScreen("loans_hub?tab=1") },
+        )
+        if (showBalanceBreakdown) {
+            Column(Modifier.padding(vertical = 8.dp)) {
+                NeoInsightRow("Bank balances", fmt(bankCashTotal), MaterialTheme.colorScheme.onSurface) { activeBreakdownType = BreakdownType.BANK_CASH }
+                NeoInsightRow("Cash in hand", fmt(cashInHandTotal), MaterialTheme.colorScheme.onSurface) { activeBreakdownType = BreakdownType.CASH_IN_HAND }
+                NeoInsightRow("Investments and interest loans", fmt(summary.totalInvestments + summary.totalInterestLoans), MaterialTheme.colorScheme.onSurface) { activeBreakdownType = BreakdownType.GROWING_ASSETS }
+                NeoInsightRow("Interest-free loans", fmt(summary.totalHandLoans), MaterialTheme.colorScheme.onSurface) { activeBreakdownType = BreakdownType.HAND_LOANS }
             }
         }
 
@@ -498,52 +405,33 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
         }
 
         // -- Quick actions -----------------------------------------------------
-        LedgerPanel {
-            LedgerSectionTitle("Quick actions")
-            Spacer(Modifier.height(10.dp))
+        Column {
             Row(Modifier.fillMaxWidth(), Arrangement.spacedBy(10.dp)) {
-                NeoAction("Expense", Icons.Default.Remove, SemanticRed, Modifier.weight(1f)) { addTxnIncome = false; showAddTxn = true }
-                NeoAction("Income", Icons.Default.Add, Emerald500, Modifier.weight(1f)) { addTxnIncome = true; showAddTxn = true }
-                NeoAction("Transfer", Icons.Default.SwapHoriz, Emerald500, Modifier.weight(1f)) {
+                NeoAction("Income", Icons.Default.SouthWest, LedgerIncome, Modifier.weight(1f)) { addTxnIncome = true; showAddTxn = true }
+                NeoAction("Expense", Icons.Default.NorthEast, MaterialTheme.colorScheme.error, Modifier.weight(1f)) { addTxnIncome = false; showAddTxn = true }
+                NeoAction("Transfer", Icons.Default.SwapHoriz, MaterialTheme.colorScheme.primary, Modifier.weight(1f)) {
                     transferFromAccount = null
                     showTransferDialog = true
                 }
-                NeoAction("Lend", Icons.Default.Handshake, SemanticBlue, Modifier.weight(1f)) { onNavigateToScreen("loans_hub") }
-                NeoAction("History", Icons.Default.History, Carbon500, Modifier.weight(1f)) { onNavigateToScreen("history") }
             }
         }
 
-        Spacer(Modifier.height(6.dp))
-
-        if (!isFreshBook) {
-            DashboardNudges(
-                dueSoonCount = dueSoonCount,
-                recentActivityCount = recentActivityCount,
-                onOpenDues = { onNavigateToScreen("collection_calendar") },
-                onAddTransaction = {
-                    addTxnIncome = false
-                    showAddTxn = true
-                },
-            )
-            Spacer(Modifier.height(6.dp))
-        }
+        Spacer(Modifier.height(16.dp))
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
 
         // -- Accounts ----------------------------------------------------------
         val activeAccountByName = activeAccounts.associateBy { it.name }
         val visibleAccountEntries = summary.accountBreakdown.entries.filter { activeAccountByName[it.key] != null }
-        LedgerPanel {
+        Column {
             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
-                LedgerSectionTitle(
-                    title = "Accounts",
-                    modifier = Modifier.weight(1f),
-                    count = visibleAccountEntries.size.takeIf { it > 0 }?.toString(),
-                )
+                Text("Accounts", Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
+                Text(fmt(visibleAccountEntries.sumOf { it.value }), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
                 IconButton(onClick = {
                     accountDialogInitial = null
                     accountDialogDefaultType = "Bank"
                     showAccountDialog = true
                 }) {
-                    Icon(Icons.Default.Add, contentDescription = "Add Account", tint = Emerald500)
+                    Icon(Icons.Default.Add, contentDescription = "Add Account", tint = MaterialTheme.colorScheme.primary)
                 }
             }
             Spacer(Modifier.height(4.dp))
@@ -565,9 +453,9 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
                     val account = activeAccountByName[entry.key]
                     NeoAccountRow(
                         name = entry.key,
-                        balance = CurrencyFormatter.exact(entry.value, currencyCode, locale),
+                        balance = fmt(entry.value),
                         icon = iconFor(entry.key),
-                        onClick = { onNavigateToScreen("statement/${entry.key}") },
+                        onClick = { onNavigateToScreen("statement/${android.net.Uri.encode(entry.key)}") },
                         onEdit = account?.let { account ->
                             {
                                 accountDialogInitial = account
@@ -584,39 +472,47 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
         // -- Insights ----------------------------------------------------------
         val hasDailyInterest =
             summary.dailyBorrowerInterestAccrued > 0.005 || summary.dailyDebtInterestAccrued > 0.005
-        if (!isFreshBook && (todayMovement.entries > 0 || monthMovement.entries > 0 || hasDailyInterest)) {
-            DashboardMovementStrip(
-                todayMovement = todayMovement,
-                monthMovement = monthMovement,
-                dailyBorrowerInterest = summary.dailyBorrowerInterestAccrued,
-                dailyDebtInterest = summary.dailyDebtInterestAccrued,
-                dailyNetInterest = summary.dailyNetWorthInterestEffect,
-                currencyCode = currencyCode,
-                locale = locale,
-                isPrivacy = isPrivacy,
-                onOpenHistory = { onNavigateToScreen("history") },
-                onOpenMonthly = { onNavigateToScreen("monthly") },
+        if (!isFreshBook && hasDailyInterest) {
+            LedgerInterestToday(
+                earned = fmt(summary.dailyBorrowerInterestAccrued),
+                owed = fmt(summary.dailyDebtInterestAccrued),
+                net = fmt(summary.dailyNetWorthInterestEffect),
             )
             Spacer(Modifier.height(14.dp))
         }
 
-        LedgerPanel {
-            LedgerSectionTitle("Balance breakdown")
-            Spacer(Modifier.height(4.dp))
-            NeoInsightRow("Bank balances", fmt(bankCashTotal), MaterialTheme.colorScheme.onSurface) { activeBreakdownType = BreakdownType.BANK_CASH }
-            HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f))
-            NeoInsightRow("Cash in hand", fmt(cashInHandTotal), MaterialTheme.colorScheme.onSurface) { activeBreakdownType = BreakdownType.CASH_IN_HAND }
-            HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f))
-            NeoInsightRow("Investments and interest loans", fmt(summary.totalInvestments + summary.totalInterestLoans), MaterialTheme.colorScheme.onSurface) { activeBreakdownType = BreakdownType.GROWING_ASSETS }
-            HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f))
-            NeoInsightRow("Interest-free loans", fmt(summary.totalHandLoans), MaterialTheme.colorScheme.onSurface) { activeBreakdownType = BreakdownType.HAND_LOANS }
-            HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f))
-            NeoInsightRow(
-                label = "Debt outstanding",
-                value = fmt(summary.totalDebtPrincipal + summary.totalDebtInterest),
-                color = SemanticRed,
-                subtitle = "Money you still owe",
-            ) { onNavigateToScreen("loans_hub?tab=1") }
+        val recentTransactions = remember(allTransactionsHome) {
+            dashboardRecentActivity(allTransactionsHome)
+        }
+        val accountIdToName = remember(accounts) { accounts.associate { it.id to it.name } }
+        val recentImpacts = remember(allTransactionsHome, accounts) {
+            buildBalanceImpactsByTransaction(allTransactionsHome, accounts)
+        }
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text("Recent activity", Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
+            TextButton(onClick = { viewModel.updateSearchQuery(""); onNavigateToScreen("history") }) {
+                Text("History")
+                Icon(Icons.AutoMirrored.Filled.ArrowForward, null, Modifier.padding(start = 6.dp).size(16.dp))
+            }
+        }
+        if (recentTransactions.isEmpty()) {
+            Text("No transactions yet", Modifier.padding(vertical = 16.dp), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        recentTransactions.forEach { txn ->
+            key(txn.id) {
+                TransactionItem(
+                    txn = txn,
+                    currencyCode = currencyCode,
+                    isPrivacy = isPrivacy,
+                    accountIdToName = accountIdToName,
+                    bankAccounts = activeAccountNames,
+                    balanceImpacts = recentImpacts[txn.id].orEmpty(),
+                    showTimestamp = true,
+                    compact = true,
+                    onEdit = { updated -> viewModel.editTransaction(txn, updated) },
+                    onDelete = { viewModel.deleteTransactions(listOf(txn)) },
+                )
+            }
         }
 
         Spacer(Modifier.height(32.dp))
@@ -1408,24 +1304,23 @@ private fun SectionHeader(title: String) {
 private fun NeoAction(label: String, icon: ImageVector, color: Color, modifier: Modifier, onClick: () -> Unit) {
     Surface(
         onClick = onClick,
-        modifier = modifier.heightIn(min = 58.dp),
-        shape = RoundedCornerShape(15.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = 0.86f),
+        modifier = modifier.heightIn(min = 80.dp),
+        shape = RoundedCornerShape(8.dp),
+        color = Color.Transparent,
         tonalElevation = 0.dp,
         shadowElevation = 0.dp,
-        border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.34f)),
     ) {
         Column(
             modifier = Modifier.padding(horizontal = 5.dp, vertical = 8.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(5.dp),
         ) {
-            Box(Modifier.size(30.dp).clip(RoundedCornerShape(12.dp)).background(color.copy(alpha = 0.11f)), Alignment.Center) {
-                Icon(icon, null, Modifier.size(18.dp), tint = color)
+            Box(Modifier.size(48.dp).clip(CircleShape).background(color.copy(alpha = 0.10f)), Alignment.Center) {
+                Icon(icon, null, Modifier.size(24.dp), tint = color)
             }
             Text(
                 label,
-                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,
             )
@@ -1443,10 +1338,8 @@ private fun NeoAccountRow(
     onEdit: (() -> Unit)?= null,
 ) {
     Surface(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 5.dp),
-        shape = RoundedCornerShape(18.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.60f),
-        border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.28f)),
+        modifier = Modifier.fillMaxWidth(),
+        color = Color.Transparent,
         tonalElevation = 0.dp,
     ) {
         Row(
@@ -1456,7 +1349,8 @@ private fun NeoAccountRow(
                 onClick = onClick,
                 onLongClick = onEdit,
                 )
-                .padding(horizontal = 12.dp, vertical = 10.dp),
+                .heightIn(min = 56.dp)
+                .padding(vertical = 12.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -1465,26 +1359,26 @@ private fun NeoAccountRow(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                Box(Modifier.size(38.dp).clip(RoundedCornerShape(14.dp)).background(Emerald500.copy(alpha = 0.12f)), Alignment.Center) {
-                    Icon(icon, null, Modifier.size(19.dp), tint = Emerald500)
-                }
+                Icon(icon, null, Modifier.size(22.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 Column(verticalArrangement = Arrangement.spacedBy(0.dp)) {
                     Text(
                         name,
-                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.ExtraBold),
-                        maxLines = 1,
+                        style = MaterialTheme.typography.bodyMedium,
                     )
                 }
             }
             Spacer(Modifier.width(12.dp))
             Text(
                 balance,
-                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.ExtraBold),
+                modifier = Modifier.widthIn(max = 160.dp),
+                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
                 color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 1,
+                textAlign = androidx.compose.ui.text.style.TextAlign.End,
             )
+            Icon(Icons.Default.ChevronRight, null, Modifier.padding(start = 8.dp).size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
+    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

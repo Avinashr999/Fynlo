@@ -41,6 +41,16 @@ class FinanceViewModel @Inject constructor(
     val syncStatus: StateFlow<SyncStatus>
         get() = repository.syncStatus
 
+    // Local lists are ready after Room emits, even when cloud sign-in is unused.
+    val localDataReady: StateFlow<Boolean> = combine(
+        repository.allBorrowers,
+        repository.allTransactions,
+        repository.allAccounts,
+        repository.allInvestments,
+        repository.allDebts,
+    ) { _, _, _, _, _ -> true }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+
     private fun runMoneyAction(block: suspend () -> Unit) {
         viewModelScope.launch(Dispatchers.IO) {
             runCatching { block() }

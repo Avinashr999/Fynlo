@@ -145,7 +145,7 @@ internal fun LedgerHealthDialog(
             Button(
                 onClick = onDismiss,
                 modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(containerColor = Emerald500),
+                colors = ButtonDefaults.buttonColors(),
                 shape = RoundedCornerShape(14.dp),
             ) { Text("Done") }
         }
@@ -598,4 +598,3 @@ internal fun ledgerIssueSuggestion(issue: app.fynlo.logic.LedgerIssue): String {
             "Open the original loan, debt, investment, or transaction before changing balances."
     }
 }
-

@@ -79,7 +79,6 @@ fun BudgetScreen(viewModel: FinanceViewModel) {
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        PremiumScreenHeader("Budgeting", subtitle = "Monthly spending limits")
         val sorted = remember(budgets, expenses) {
             budgets.sortedByDescending { b ->
                 val pct = (expenses[b.category] ?: 0.0) / b.limitAmount
@@ -118,17 +117,15 @@ fun BudgetScreen(viewModel: FinanceViewModel) {
 
                     Column(
                         Modifier.fillMaxWidth()
-                            .clip(RoundedCornerShape(20.dp))
-                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
-                            .padding(16.dp),
+                            .padding(vertical = 16.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                            Text("This Month's Overview", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold))
+                            Text("This month", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold))
                             Row(Modifier.fillMaxWidth(), Arrangement.spacedBy(8.dp)) {
                                 OverviewChip("Total Budget", CurrencyFormatter.detail(totalLimit, currencyCode, locale),
                                     MaterialTheme.colorScheme.primary, Modifier.weight(1f))
                                 OverviewChip("Spent", CurrencyFormatter.detail(totalSpent, currencyCode, locale),
-                                    if (totalSpent > totalLimit) SemanticRed else Emerald500, Modifier.weight(1f))
+                                    if (totalSpent > totalLimit) SemanticRed else MaterialTheme.colorScheme.primary, Modifier.weight(1f))
                                 OverviewChip("Remaining",
                                     if (totalRemain < 0) CurrencyFormatter.negative(totalRemain, currencyCode, locale)
                                     else CurrencyFormatter.detail(totalRemain, currencyCode, locale),
@@ -199,9 +196,9 @@ fun BudgetScreen(viewModel: FinanceViewModel) {
                     showAddDialog = true
                 },
                 modifier = Modifier.align(Alignment.BottomEnd).padding(24.dp).size(54.dp),
-                shape = RoundedCornerShape(14.dp),
-                containerColor = Emerald500,
-                contentColor = Color.White,
+                shape = RoundedCornerShape(8.dp),
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary,
             ) {
                 Icon(Icons.Default.Add, contentDescription = "Add Budget")
             }
@@ -258,7 +255,7 @@ fun BudgetCard(
 
     Column(Modifier.fillMaxWidth().animateContentSize().padding(vertical = 14.dp)) {
             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     if (isExceeded) {
                         Surface(shape = RoundedCornerShape(8.dp), color = SemanticRed.copy(alpha = 0.15f)) {
                             Text("EXCEEDED", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
@@ -270,12 +267,12 @@ fun BudgetCard(
                                 color = SemanticAmber, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
                         }
                     }
-                    Text(budget.category, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
+                    Text(budget.category, modifier = Modifier.weight(1f), style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
                 }
-                IconButton(onClick = { haptic.performHapticFeedback(HapticFeedbackType.LongPress); showDeleteConfirm = true }, modifier = Modifier.size(32.dp)) {
+                IconButton(onClick = { haptic.performHapticFeedback(HapticFeedbackType.LongPress); showDeleteConfirm = true }, modifier = Modifier.size(48.dp)) {
                     // 3.2.65 — was Color.Red; theme-aware error token so the
                     // delete tint stays balanced in both light and dark.
-                    Icon(Icons.Default.Delete, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.error.copy(alpha = 0.5f))
+                    Icon(Icons.Default.Delete, "Delete budget", Modifier.size(18.dp), tint = MaterialTheme.colorScheme.error.copy(alpha = 0.5f))
                 }
             }
 
@@ -290,7 +287,7 @@ fun BudgetCard(
 
             Spacer(Modifier.height(6.dp))
 
-            Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
+            Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text("${CurrencyFormatter.detail(actualSpent, currencyCode, locale)} spent",
                     style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold))
                 Text("$pct% of ${CurrencyFormatter.detail(budget.limitAmount, currencyCode, locale)}",
@@ -299,22 +296,22 @@ fun BudgetCard(
 
             Spacer(Modifier.height(8.dp))
 
-            Row(
+            Column(
                 Modifier.fillMaxWidth()
                     .clip(RoundedCornerShape(8.dp))
                     .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
                     .padding(horizontal = 10.dp, vertical = 6.dp),
-                Arrangement.SpaceBetween
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                     InfoItem("Remaining", if (isExceeded) CurrencyFormatter.negative(remaining, currencyCode, locale)
                         else CurrencyFormatter.detail(remaining, currencyCode, locale),
-                        if (isExceeded) SemanticRed else Emerald500)
+                        if (isExceeded) SemanticRed else MaterialTheme.colorScheme.primary)
                     InfoItem("Daily Budget", CurrencyFormatter.detail(dailyBudget, currencyCode, locale),
                         MaterialTheme.colorScheme.onSurfaceVariant)
                     InfoItem("Daily Spent", CurrencyFormatter.detail(dailySpent, currencyCode, locale),
                         if (dailySpent > dailyBudget) SemanticRed else MaterialTheme.colorScheme.onSurfaceVariant)
                     InfoItem("Projected", CurrencyFormatter.detail(projectedEnd, currencyCode, locale),
-                        if (projectedEnd > budget.limitAmount) SemanticRed else Emerald500)
+                        if (projectedEnd > budget.limitAmount) SemanticRed else MaterialTheme.colorScheme.primary)
             }
 
             if (projectedEnd > budget.limitAmount && !isExceeded) {
@@ -333,7 +330,7 @@ fun BudgetCard(
                 Text(
                     "Warning set at ${budget.alertThresholdPct}%",
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.outlineVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
     }
@@ -341,9 +338,10 @@ fun BudgetCard(
 
 @Composable
 private fun InfoItem(label: String, value: String, color: Color) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outlineVariant)
-        Text(value, style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold), color = color)
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text(label, Modifier.weight(1f), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(value, Modifier.weight(1f), style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold), color = color,
+            textAlign = androidx.compose.ui.text.style.TextAlign.End)
     }
 }
 
@@ -351,7 +349,7 @@ private fun InfoItem(label: String, value: String, color: Color) {
 private fun OverviewChip(label: String, value: String, color: Color, modifier: Modifier) {
     Surface(
         modifier = modifier,
-        shape = RoundedCornerShape(14.dp),
+        shape = RoundedCornerShape(8.dp),
         color = color.copy(alpha = 0.08f),
         border = androidx.compose.foundation.BorderStroke(0.5.dp, color.copy(alpha = 0.25f))
     ) {
@@ -361,7 +359,7 @@ private fun OverviewChip(label: String, value: String, color: Color, modifier: M
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             Text(label, style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Medium), color = color)
-            Text(value, style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.ExtraBold), color = MaterialTheme.colorScheme.onSurface)
+            Text(value, style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold), color = MaterialTheme.colorScheme.onSurface)
         }
     }
 }
@@ -460,7 +458,7 @@ fun AddBudgetDialog(
                 placeholder = { Text("Custom category name") },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(8.dp),
             )
         }
 
@@ -474,7 +472,7 @@ fun AddBudgetDialog(
             singleLine = true,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
+            shape = RoundedCornerShape(8.dp),
         )
 
         // C22 (3.2.57) — discrete warning-threshold slider (50..95 in 5%
@@ -496,17 +494,17 @@ fun AddBudgetDialog(
             modifier = Modifier.fillMaxWidth(),
         )
         Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
-            Text("50%", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outlineVariant)
-            Text("95%", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outlineVariant)
+            Text("50%", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("95%", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
 
         Spacer(Modifier.height(20.dp))
         Button(
             onClick = { onConfirm(Budget(finalCategory, limitNum, alertThresholdPct = thresholdPct)) },
             enabled = disabledReason == null,
-            modifier = Modifier.fillMaxWidth().height(52.dp),
-            shape = RoundedCornerShape(16.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Emerald500),
+            modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
+            shape = RoundedCornerShape(8.dp),
+            colors = ButtonDefaults.buttonColors(),
         ) {
             Text("Save Budget", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
         }

@@ -153,7 +153,7 @@ internal fun BackupPasswordDialog(
             enabled  = canConfirm,
             modifier = Modifier.fillMaxWidth().height(48.dp),
             shape    = RoundedCornerShape(14.dp),
-            colors   = ButtonDefaults.buttonColors(containerColor = Emerald500),
+            colors   = ButtonDefaults.buttonColors(),
         ) {
             Text(when (mode) {
                 BackupPasswordMode.SET   -> "Encrypt & save"
@@ -162,4 +162,3 @@ internal fun BackupPasswordDialog(
         }
     }
 }
-

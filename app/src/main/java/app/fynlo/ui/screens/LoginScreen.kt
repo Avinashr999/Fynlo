@@ -3,6 +3,8 @@ package app.fynlo.ui.screens
 import androidx.compose.animation.core.*
 import app.fynlo.data.Analytics
 import androidx.compose.foundation.background
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -124,52 +126,14 @@ fun LoginScreen(onSignedIn: () -> Unit) {
         )
     }
 
-    // ── Root: emerald gradient matching the app's PremiumScreenHeader ─────
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(
-                Brush.verticalGradient(
-                    colors = listOf(
-                        Color(0xFF022C22), // very dark emerald top
-                        Emerald900,
-                        Emerald800,
-                        Emerald700        // same as PremiumScreenHeader
-                    )
-                )
-            )
-    ) {
-        // ── Decorative circles (identical to PremiumScreenHeader) ─────────
-        Box(
-            Modifier
-                .size(220.dp)
-                .offset(x = 160.dp, y = (-60).dp)
-                .clip(CircleShape)
-                .background(Emerald600.copy(alpha = 0.35f))
-                .align(Alignment.TopEnd)
-        )
-        Box(
-            Modifier
-                .size(140.dp)
-                .offset(x = (-50).dp, y = 120.dp)
-                .clip(CircleShape)
-                .background(Emerald600.copy(alpha = 0.2f))
-                .align(Alignment.TopStart)
-        )
-        Box(
-            Modifier
-                .size(180.dp)
-                .offset(x = 60.dp, y = (-40).dp)
-                .clip(CircleShape)
-                .background(Emerald500.copy(alpha = 0.12f))
-                .align(Alignment.BottomStart)
-        )
-
+    Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         // ── Content ───────────────────────────────────────────────────────
         Column(
             modifier              = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 32.dp),
+                .safeDrawingPadding()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 32.dp, vertical = 24.dp),
             horizontalAlignment   = Alignment.CenterHorizontally,
             verticalArrangement   = Arrangement.Center
         ) {
@@ -180,9 +144,9 @@ fun LoginScreen(onSignedIn: () -> Unit) {
             // App name
             Text(
                 "Fynlo Ledger",
-                fontSize   = 40.sp,
-                fontWeight = FontWeight.ExtraBold,
-                color      = Color.White,
+                fontSize   = 30.sp,
+                fontWeight = FontWeight.SemiBold,
+                color      = MaterialTheme.colorScheme.onSurface,
                 letterSpacing = 0.sp
             )
 
@@ -192,7 +156,7 @@ fun LoginScreen(onSignedIn: () -> Unit) {
             Text(
                 "Personal Finance Manager",
                 fontSize  = 15.sp,
-                color     = Emerald200.copy(alpha = 0.9f),
+                color     = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontWeight = FontWeight.Medium
             )
 
@@ -201,7 +165,7 @@ fun LoginScreen(onSignedIn: () -> Unit) {
             Text(
                 "Track loans, debts, investments & net worth\nall in one place.",
                 fontSize   = 14.sp,
-                color      = Emerald200.copy(alpha = 0.65f),
+                color      = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign  = TextAlign.Center,
                 lineHeight = 22.sp
             )
@@ -214,7 +178,7 @@ fun LoginScreen(onSignedIn: () -> Unit) {
                     startGoogleSignIn()
                 },
                 enabled  = !loading,
-                modifier = Modifier.fillMaxWidth().height(56.dp),
+                modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
                 shape    = RoundedCornerShape(16.dp),
                 colors   = ButtonDefaults.buttonColors(
                     containerColor = Color.White,
@@ -225,13 +189,13 @@ fun LoginScreen(onSignedIn: () -> Unit) {
                 if (loading) {
                     CircularProgressIndicator(
                         modifier    = Modifier.size(22.dp),
-                        color       = Emerald600,
+                        color       = MaterialTheme.colorScheme.primary,
                         strokeWidth = 2.5.dp
                     )
                 } else {
                     Box(
                         modifier         = Modifier.size(22.dp).clip(CircleShape)
-                            .background(Emerald600),
+                            .background(MaterialTheme.colorScheme.primary),
                         contentAlignment = Alignment.Center
                     ) {
                         Text("G", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
@@ -251,16 +215,16 @@ fun LoginScreen(onSignedIn: () -> Unit) {
             // ── Skip option ───────────────────────────────────────────────
             OutlinedButton(
                 onClick  = onSignedIn,
-                modifier = Modifier.fillMaxWidth().height(52.dp),
+                modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
                 shape    = RoundedCornerShape(16.dp),
-                colors   = ButtonDefaults.outlinedButtonColors(contentColor = Emerald200),
-                border   = androidx.compose.foundation.BorderStroke(1.dp, Emerald500.copy(alpha = 0.5f))
+                colors   = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.primary),
+                border   = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
             ) {
                 Text(
                     "Continue without signing in",
                     fontSize   = 15.sp,
                     fontWeight = FontWeight.Medium,
-                    color      = Emerald200
+                    color      = MaterialTheme.colorScheme.primary
                 )
             }
 
@@ -287,8 +251,8 @@ fun LoginScreen(onSignedIn: () -> Unit) {
             // ── Bottom privacy note ───────────────────────────────────────
             Text(
                 "Your data is stored securely on your device\nand optionally synced to your Google account.",
-                fontSize  = 11.sp,
-                color     = Emerald200.copy(alpha = 0.4f),
+                fontSize  = 12.sp,
+                color     = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
                 lineHeight = 16.sp
             )

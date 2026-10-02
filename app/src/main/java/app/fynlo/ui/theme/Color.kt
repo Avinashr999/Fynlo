@@ -1,6 +1,9 @@
 package app.fynlo.ui.theme
 
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.Composable
 
 // ── Fynlo Design System — Carbon + Emerald ──────────────────────────────────
 
@@ -16,12 +19,12 @@ val Emerald100 = Color(0xFFDDF4EA)
 val Emerald50  = Color(0xFFF0FAF5)
 
 // Carbon (neutral base)
-val Carbon950  = Color(0xFF07130F)  // deepest
-val Carbon900  = Color(0xFF10201A)  // dark bg
-val Carbon800  = Color(0xFF1C2D26)  // dark surface
-val Carbon700  = Color(0xFF34453D)  // dark surface2 / border dark
-val Carbon600  = Color(0xFF5A6D64)  // muted text dark
-val Carbon500  = Color(0xFF71847B)  // secondary text
+val Carbon950  = Color(0xFF101418)  // deepest
+val Carbon900  = Color(0xFF182029)  // primary text
+val Carbon800  = Color(0xFF242A30)  // dark surface
+val Carbon700  = Color(0xFF39434D)  // dark surface2 / border dark
+val Carbon600  = Color(0xFF526171)  // secondary text
+val Carbon500  = Color(0xFF637282)  // secondary text
 val Carbon400  = Color(0xFFA7B4AE)  // tertiary text
 val Carbon200  = Color(0xFFDCE5DF)  // border light
 val Carbon100  = Color(0xFFF0F5F1)  // surface light
@@ -47,7 +50,11 @@ val ChartColors = listOf(
 )
 
 // Light theme surface colors
-val LightBackground = Color(0xFFF5F6F7)
+val LedgerBlue = Color(0xFF0866FF)
+val LedgerBlueDark = Color(0xFF4D94FF)
+val LedgerIncome: Color
+    @Composable get() = if (MaterialTheme.colorScheme.background.luminance() < 0.5f) Color(0xFF74DBB2) else Color(0xFF087A55)
+val LightBackground = Color(0xFFFAFBFD)
 val LightSurface    = Color(0xFFFFFFFF)
 val LightSurface2   = Carbon100
 

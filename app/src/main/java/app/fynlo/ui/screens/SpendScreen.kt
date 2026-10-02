@@ -67,7 +67,8 @@ val transactions by viewModel.transactions.collectAsState()
     val allExpenses = remember(transactions) {
         transactions.filter { it.isSpendingExpense() }
     }
-    val isInitialLoading = syncStatus is app.fynlo.data.SyncStatus.Initialising &&
+    val localDataReady by viewModel.localDataReady.collectAsState()
+    val isInitialLoading = !localDataReady &&
         allExpenses.isEmpty()
     val expenses = remember(allExpenses, monthKey) {
         allExpenses.filter { it.date.startsWith(monthKey) }
@@ -149,8 +150,8 @@ val transactions by viewModel.transactions.collectAsState()
                     onClick = { showDialog = true },
                     shape = RoundedCornerShape(14.dp),
                     colors = IconButtonDefaults.filledIconButtonColors(
-                        containerColor = SemanticRed,
-                        contentColor = Color.White,
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary,
                     ),
                 ) {
                     Icon(Icons.Default.Add, contentDescription = "Add Expense")

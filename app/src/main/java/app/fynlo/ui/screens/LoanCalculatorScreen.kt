@@ -259,17 +259,6 @@ fun LoanCalculatorScreen(viewModel: FinanceViewModel?= null) {
             .imeNestedScroll()
             .nestedScroll(hideKeyboardOnScroll)
     ) {
-        PremiumScreenHeader(
-            title = "EMI Calculator",
-            subtitle = "Plan your EMI before borrowing",
-            action = {
-                // 3.2.16 — Reset button. Tonal so it's discoverable but
-                // doesn't compete with the primary input flow.
-                FilledTonalIconButton(onClick = resetAll) {
-                    Icon(Icons.Default.Refresh, contentDescription = "Reset")
-                }
-            }
-        )
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -278,13 +267,17 @@ fun LoanCalculatorScreen(viewModel: FinanceViewModel?= null) {
                 .verticalScroll(scrollState)
                 .imePadding()
         ) {
-            Spacer(Modifier.height(14.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                TextButton(onClick = resetAll) {
+                    Icon(Icons.Default.Refresh, "Reset calculator", Modifier.size(18.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("Reset")
+                }
+            }
 
             // ── Input card ────────────────────────────────────────────────
             Column(
-                Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp))
-                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
-                    .padding(16.dp),
+                Modifier.fillMaxWidth().padding(vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 OutlinedTextField(
@@ -372,7 +365,7 @@ fun LoanCalculatorScreen(viewModel: FinanceViewModel?= null) {
                 if (result != null) {
                     Surface(
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(18.dp),
+                        shape = RoundedCornerShape(8.dp),
                         color = Emerald500.copy(alpha = 0.10f),
                         border = BorderStroke(1.dp, Emerald500.copy(alpha = 0.18f)),
                     ) {
@@ -389,8 +382,8 @@ fun LoanCalculatorScreen(viewModel: FinanceViewModel?= null) {
                                 )
                                 Text(
                                     CurrencyFormatter.detail(result.emi, currencyCode, locale),
-                                    style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.ExtraBold),
-                                    color = Emerald700,
+                                    style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.SemiBold),
+                                    color = MaterialTheme.colorScheme.primary,
                                 )
                             }
                             TextButton(onClick = { focusManager.clearFocus() }) {
@@ -426,7 +419,7 @@ fun LoanCalculatorScreen(viewModel: FinanceViewModel?= null) {
                 ) {
                     Column(Modifier.weight(1f)) {
                         Text(
-                            "Already took this loan-",
+                            "Already took this loan?",
                             style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
                         )
                         Text(
@@ -489,8 +482,8 @@ fun LoanCalculatorScreen(viewModel: FinanceViewModel?= null) {
                     Spacer(Modifier.height(4.dp))
                     Text(
                         CurrencyFormatter.detail(result.emi, currencyCode, locale),
-                        style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.ExtraBold),
-                        color = Emerald500,
+                        style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.SemiBold),
+                        color = MaterialTheme.colorScheme.primary,
                     )
                 }
 
@@ -648,7 +641,7 @@ fun LoanCalculatorScreen(viewModel: FinanceViewModel?= null) {
                             )
                             Text(
                                 CurrencyFormatter.detail(outstanding, currencyCode, locale),
-                                style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.ExtraBold),
+                                style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.SemiBold),
                                 color = SemanticRed,
                             )
                         }
@@ -684,7 +677,7 @@ fun LoanCalculatorScreen(viewModel: FinanceViewModel?= null) {
                     Spacer(Modifier.height(12.dp))
 
                     Column(
-                        Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp))
+                        Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp))
                             .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
                             .padding(16.dp)
                     ) {
@@ -836,7 +829,7 @@ fun LoanCalculatorScreen(viewModel: FinanceViewModel?= null) {
                         Icons.Default.Calculate,
                         contentDescription = null,
                         modifier = Modifier.size(48.dp),
-                        tint = MaterialTheme.colorScheme.outlineVariant,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     Spacer(Modifier.height(8.dp))
                     Text(
@@ -847,7 +840,7 @@ fun LoanCalculatorScreen(viewModel: FinanceViewModel?= null) {
                     Text(
                         "Your EMI and full amortization will appear here.",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.outlineVariant,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }
@@ -906,7 +899,7 @@ private fun PrepaymentWhatIfSection(
                     onCheckedChange = { expanded = it },
                     colors = SwitchDefaults.colors(
                         checkedThumbColor    = Color.White,
-                        checkedTrackColor    = Emerald500,
+                        checkedTrackColor    = MaterialTheme.colorScheme.primary,
                         uncheckedThumbColor  = MaterialTheme.colorScheme.onSurfaceVariant,
                         uncheckedTrackColor  = MaterialTheme.colorScheme.surface,
                         uncheckedBorderColor = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -971,13 +964,13 @@ private fun PrepaymentWhatIfSection(
                         ResultCard(
                             "Months saved",
                             "${r.monthsSaved}",
-                            if (r.monthsSaved > 0) Emerald500 else MaterialTheme.colorScheme.outlineVariant,
+                            if (r.monthsSaved > 0) Emerald500 else MaterialTheme.colorScheme.onSurfaceVariant,
                             Modifier.weight(1f),
                         )
                         ResultCard(
                             "Interest saved",
                             CurrencyFormatter.detail(r.interestSaved, currencyCode, locale),
-                            if (r.interestSaved > 1.0) Emerald500 else MaterialTheme.colorScheme.outlineVariant,
+                            if (r.interestSaved > 1.0) Emerald500 else MaterialTheme.colorScheme.onSurfaceVariant,
                             Modifier.weight(1f),
                         )
                     }
@@ -993,7 +986,7 @@ private fun PrepaymentWhatIfSection(
                     Text(
                         "Enter a positive amount to see how prepayments shorten your loan.",
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.outlineVariant,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }
@@ -1023,7 +1016,7 @@ private fun AffordabilitySection(
         Column(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text("Can I afford this EMI-",
+                    Text("Can I afford this EMI?",
                         style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold))
                     Text("Compare against your monthly income",
                         style = MaterialTheme.typography.labelSmall,
@@ -1034,7 +1027,7 @@ private fun AffordabilitySection(
                     onCheckedChange = { expanded = it },
                     colors = SwitchDefaults.colors(
                         checkedThumbColor    = Color.White,
-                        checkedTrackColor    = Emerald500,
+                        checkedTrackColor    = MaterialTheme.colorScheme.primary,
                         uncheckedThumbColor  = MaterialTheme.colorScheme.onSurfaceVariant,
                         uncheckedTrackColor  = MaterialTheme.colorScheme.surface,
                         uncheckedBorderColor = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -1063,7 +1056,7 @@ private fun AffordabilitySection(
                     app.fynlo.logic.EmiAffordability.Verdict.MANAGEABLE  -> SemanticBlue
                     app.fynlo.logic.EmiAffordability.Verdict.STRETCHED   -> SemanticAmber
                     app.fynlo.logic.EmiAffordability.Verdict.RISKY       -> SemanticRed
-                    else                                                 -> MaterialTheme.colorScheme.outlineVariant
+                    else                                                 -> MaterialTheme.colorScheme.onSurfaceVariant
                 }
 
                 Spacer(Modifier.height(12.dp))
@@ -1101,7 +1094,7 @@ private fun AffordabilitySection(
                     Text(
                         assessment.explanation,
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.outlineVariant,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }

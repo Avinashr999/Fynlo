@@ -152,7 +152,7 @@ internal fun SyncConflictDialog(
         Button(
             onClick = onDismiss,
             modifier = Modifier.fillMaxWidth(),
-            colors = ButtonDefaults.buttonColors(containerColor = Emerald500),
+            colors = ButtonDefaults.buttonColors(),
             shape = RoundedCornerShape(14.dp),
         ) { Text("Done") }
     }
@@ -251,4 +251,3 @@ internal fun friendlyConflictLabel(key: String): String? {
         else -> null
     }
 }
-

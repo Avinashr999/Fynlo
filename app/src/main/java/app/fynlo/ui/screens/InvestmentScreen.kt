@@ -78,7 +78,8 @@ fun InvestmentScreen(viewModel: FinanceViewModel) {
     var viewingHistory by remember { mutableStateOf<Investment?>(null) }
     var pendingDeleteIds by remember { mutableStateOf(emptySet<String>()) }
     val visibleInvestments = investments.filterNot { it.id in pendingDeleteIds }
-    val isInitialLoading = syncStatus is app.fynlo.data.SyncStatus.Initialising &&
+    val localDataReady by viewModel.localDataReady.collectAsState()
+    val isInitialLoading = !localDataReady &&
         visibleInvestments.isEmpty()
 
     // ── Edit dialog ────────────────────────────────────────────────────────────
@@ -159,21 +160,11 @@ fun InvestmentScreen(viewModel: FinanceViewModel) {
         }
         var withdrawAccount by remember(withdrawAccountOptions) { mutableStateOf(preferredWithdrawAccount) }
 
-        androidx.compose.ui.window.Dialog(
-            onDismissRequest = { withdrawingInvest = null },
-            properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)
+        FormDialog(
+            title = "Withdraw from investment",
+            subtitle = "${inv.name} - Current value: ${CurrencyFormatter.detail(inv.currentVal, currencyCode)}",
+            onDismiss = { withdrawingInvest = null },
         ) {
-            Surface(
-                modifier = Modifier.fillMaxWidth(0.9f),
-                shape = MaterialTheme.shapes.extraLarge,
-                tonalElevation = 6.dp
-            ) {
-                Column(Modifier.padding(24.dp)) {
-                    Text("Withdraw from Investment", style = MaterialTheme.typography.headlineSmall)
-                    Text("${inv.name} - Current Value: ${CurrencyFormatter.detail(inv.currentVal, currencyCode)}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Spacer(Modifier.height(16.dp))
                     OutlinedTextField(
                         value = withdrawAmt, onValueChange = { withdrawAmt = it },
                         label = { Text("Withdrawal Amount") }, prefix = { Text(currencySymbol) },
@@ -224,8 +215,6 @@ fun InvestmentScreen(viewModel: FinanceViewModel) {
                             enabled = withdrawAmt.toDoubleOrNull().let { it != null && it > 0.0 }
                         ) { Text("Withdraw") }
                     }
-                }
-            }
         }
     }
 
@@ -372,8 +361,8 @@ fun InvestmentScreen(viewModel: FinanceViewModel) {
                                 },
                                 shape = RoundedCornerShape(14.dp),
                                 colors = IconButtonDefaults.filledIconButtonColors(
-                                    containerColor = Emerald500,
-                                    contentColor = Color.White,
+                                    containerColor = MaterialTheme.colorScheme.primary,
+                                    contentColor = MaterialTheme.colorScheme.onPrimary,
                                 ),
                             ) {
                                 Icon(Icons.Default.Add, contentDescription = "Add Investment")
@@ -423,8 +412,8 @@ fun InvestmentScreen(viewModel: FinanceViewModel) {
                                 },
                                 shape = RoundedCornerShape(14.dp),
                                 colors = IconButtonDefaults.filledIconButtonColors(
-                                    containerColor = Emerald500,
-                                    contentColor = Color.White,
+                                    containerColor = MaterialTheme.colorScheme.primary,
+                                    contentColor = MaterialTheme.colorScheme.onPrimary,
                                 ),
                             ) {
                                 Icon(Icons.Default.Add, contentDescription = "Add Investment")
@@ -1110,7 +1099,7 @@ fun UpdateInvestmentValueDialog(
                             Text(
                                 "$deltaStr since last update",
                                 style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
-                                color = if (deltaSinceLast >= 0) Emerald500 else SemanticRed,
+                                color = if (deltaSinceLast >= 0) LedgerIncome else MaterialTheme.colorScheme.error,
                             )
                             Text(
                                 "Previously ${CurrencyFormatter.detail(prevVal, currencyCode, locale)}",
@@ -1128,7 +1117,7 @@ fun UpdateInvestmentValueDialog(
             Text(
                 "Total Growth: $growthStr (${String.format(locale, "%.1f", pct)}%)",
                 style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
-                color = if (growth >= 0) Emerald500 else SemanticRed
+                color = if (growth >= 0) LedgerIncome else MaterialTheme.colorScheme.error
             )
         }
 
@@ -1138,7 +1127,7 @@ fun UpdateInvestmentValueDialog(
             enabled = parsed != null,
             modifier = Modifier.fillMaxWidth().height(52.dp),
             shape = RoundedCornerShape(16.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Emerald500),
+            colors = ButtonDefaults.buttonColors(),
         ) {
             Text("Log Valuation", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
         }

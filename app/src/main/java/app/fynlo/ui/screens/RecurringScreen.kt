@@ -72,42 +72,6 @@ fun RecurringScreen(viewModel: FinanceViewModel) {
     val dueCount = recurringList.count { rec -> rec.isActive && !today.isBefore(nextDue(rec)) }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        // C07 fix (UX_AUDIT §C07): the header action row (due-count badge + `+`
-        // IconButton) only renders when the list has data. On empty state the
-        // shared `EmptyState` composable below is the single unambiguous CTA —
-        // hiding the header `+` here prevents the pre-3.2.12 triple-entry-point
-        // (header `+` + inline "Add First" + Scaffold FAB) on the empty screen.
-        PremiumScreenHeader(
-            title = "Recurring",
-            subtitle = "Auto-log on schedule",
-            action = if (recurringList.isNotEmpty()) {
-                {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        if (dueCount > 0) {
-                            Surface(shape = RoundedCornerShape(20.dp), color = SemanticAmber) {
-                                Text("$dueCount due",
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
-                                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                                    color = Color.White)
-                            }
-                        }
-                        // 3.2.7 fix: was `IconButton + tint = Color.White` against
-                        // the plain surface background of `PremiumScreenHeader` —
-                        // invisible in light mode (smoke-test finding on 3.2.6).
-                        // `FilledTonalIconButton` paints a theme-aware secondary
-                        // container behind a properly-tinted icon, so it stays
-                        // legible in both light and dark themes without needing a
-                        // hardcoded colour.
-                        FilledTonalIconButton(onClick = {
-                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                            showAddDialog = true
-                        }) {
-                            Icon(Icons.Default.Add, "Add recurring transaction")
-                        }
-                    }
-                }
-            } else null,
-        )
         Box(modifier = Modifier.weight(1f)) {
         if (recurringList.isEmpty()) {
             // C07 fix: shared EmptyState replaces the bespoke empty layout.
@@ -133,12 +97,12 @@ fun RecurringScreen(viewModel: FinanceViewModel) {
                     item {
                             Row(
                                 Modifier.fillMaxWidth()
-                                    .clip(RoundedCornerShape(16.dp))
+                                    .clip(RoundedCornerShape(8.dp))
                                     .background(SemanticAmber.copy(alpha = 0.08f))
                                     .padding(14.dp),
                                 Arrangement.SpaceBetween, Alignment.CenterVertically
                             ) {
-                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                                     Icon(Icons.Default.NotificationImportant, null, Modifier.size(20.dp), tint = SemanticAmber)
                                     Column {
                                         Text("$dueCount due today",
@@ -189,9 +153,9 @@ fun RecurringScreen(viewModel: FinanceViewModel) {
                     showAddDialog = true
                 },
                 modifier = Modifier.align(Alignment.BottomEnd).padding(24.dp).size(54.dp),
-                shape = RoundedCornerShape(14.dp),
-                containerColor = Emerald500,
-                contentColor = Color.White,
+                shape = RoundedCornerShape(8.dp),
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary,
             ) {
                 Icon(Icons.Default.Add, contentDescription = "Add Recurring")
             }
@@ -219,8 +183,8 @@ private fun RecurringCard(r: RecurringTransaction, isDue: Boolean = false, daysU
         )
     }
         Row(Modifier.fillMaxWidth().animateContentSize().padding(vertical = 14.dp), Arrangement.SpaceBetween, Alignment.CenterVertically) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Surface(Modifier.size(44.dp), RoundedCornerShape(12.dp),
+            Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Surface(Modifier.size(44.dp), RoundedCornerShape(8.dp),
                     color = if (r.type == "Income") Emerald500.copy(0.1f) else SemanticRed.copy(0.1f)) {
                     Box(contentAlignment = Alignment.Center) {
                         Icon(if (r.type == "Income") Icons.Default.ArrowDownward else Icons.Default.ArrowUpward,
@@ -228,7 +192,7 @@ private fun RecurringCard(r: RecurringTransaction, isDue: Boolean = false, daysU
                             modifier = Modifier.size(22.dp))
                     }
                 }
-                Column {
+                Column(Modifier.weight(1f)) {
                     Text(r.name, style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold))
                     Text("${r.frequency} " + if (r.amount > 0) "• Rs${r.amount.toLong()}" else "• Amount on run",
                         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -246,7 +210,7 @@ private fun RecurringCard(r: RecurringTransaction, isDue: Boolean = false, daysU
             }
             IconButton(onClick = { haptic.performHapticFeedback(HapticFeedbackType.LongPress); showDeleteConfirm = true }) {
                 // 3.2.65 — was Color.Red; theme-aware error token.
-                Icon(Icons.Default.Delete, null, tint = MaterialTheme.colorScheme.error.copy(0.6f), modifier = Modifier.size(20.dp))
+                Icon(Icons.Default.Delete, "Delete recurring entry", tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(20.dp))
             }
         }
 }
@@ -321,7 +285,7 @@ private fun AddRecurringDialog(
             value = name, onValueChange = { name = it },
             placeholder = { Text("e.g. Monthly Rent") },
             singleLine = true,
-            modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)
+            modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(8.dp)
         )
 
         Spacer(Modifier.height(14.dp))
@@ -342,7 +306,7 @@ private fun AddRecurringDialog(
             placeholder = { Text("Leave blank to enter each time") },
             singleLine = true,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-            modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)
+            modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(8.dp)
         )
 
         Spacer(Modifier.height(14.dp))
@@ -360,7 +324,7 @@ private fun AddRecurringDialog(
             OutlinedTextField(
                 value = customCategory, onValueChange = { customCategory = it },
                 placeholder = { Text("Custom category name") }, singleLine = true,
-                modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)
+                modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(8.dp)
             )
         }
 
@@ -370,7 +334,7 @@ private fun AddRecurringDialog(
         OutlinedTextField(
             value = fromAcct, onValueChange = { fromAcct = it },
             placeholder = { Text("e.g. HDFC Bank") }, singleLine = true,
-            modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)
+            modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(8.dp)
         )
 
         Spacer(Modifier.height(14.dp))
@@ -417,7 +381,7 @@ private fun AddRecurringDialog(
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(8.dp),
                 enabled = !isLastDay,
             )
         }
@@ -487,9 +451,9 @@ private fun AddRecurringDialog(
                 }
             },
             enabled = name.isNotBlank(),
-            modifier = Modifier.fillMaxWidth().height(52.dp),
-            shape = RoundedCornerShape(16.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = app.fynlo.ui.theme.Emerald500),
+            modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
+            shape = RoundedCornerShape(8.dp),
+            colors = ButtonDefaults.buttonColors(),
         ) {
             Text("Add Recurring", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
         }

@@ -1,3 +1,34 @@
+## 2026-10-03 - Personal Follow-Up Fixes 3.3.21 / 261
+
+- Delivery follow-up: owner requested commit/push and install (not uninstall). Both debug builds/unit-test task rechecked successfully, 562 passing tests retained; both phone APKs updated in place again with versions/codes confirmed and launches accepted. No Fynlo crash observed. Approved pending design/fix changes and documentation are the commit scope; private backups/attachments/evidence are excluded. No public-release workflow or AAB.
+- Three 3.3.20 QA follow-ups addressed: shared borrower/debt start-day breakdown now counts the inclusive boundary; guest cloud presentation says Local only and suppresses startup cloud feedback; loan/debt balance helpers use readable neutral theme text.
+- No stored-data repair, account/principal/payment mutation, schema migration, auth transport or Firestore change. Existing due/settlement math is untouched. New start-day regressions failed before the fix; final 562 prod unit tests pass with zero failures/errors/skips. Prod/dev debug APKs and UI test APK build pass.
+- Both phone apps installed in place as 3.3.21 / 261 after fresh validated private backups. Final phone check verified developer Local only badge/tap guidance, production Synced, readable loan/debt balance helpers; forms cancelled, no Fynlo crash, production returned to Home. All three isolated emulator UI tests passed for guest/account state transitions and matching same-day borrower/debt accrued/due labels. No fresh auth/cloud round-trip or financial submission tested. No uninstall/reset, AAB, commit or push. App remains personal-use only; no Play workflow introduced.
+
+## 2026-10-02 - Personal Drawer/Forms Update 3.3.20 / 260
+
+- Unlocked-phone follow-up completed by Codex: production dark-mode requested drawer destinations and representative forms, History/detail, EMI keyboard dismissal and Loans/add form; developer guest Home/Settings/account form. No saved financial edits or Fynlo crash. Production returned to Home. Initial locked-phone limitation below superseded within the scope in design-qa.md, not exhaustive acceptance.
+- Follow-ups remain: old green source-balance helper in new-loan dark form; developer guest toolbar Connecting instead of Local only; previously recorded synthetic accrued/due mismatch. Production existing signed-in state shows Synced/Cloud backup active, but no fresh auth/cloud round-trip tested. No build/version bump, AAB, commit or push for this documentation-only QA follow-up.
+- Drawer screens and money/utility forms brought into the shared neutral/blue presentation. Existing financial actions, validation and data preserved.
+- Contextual page headings, flat Settings sections, quieter utility lists, direct Transaction history, one shared bounded/scrollable form shell and wrapping confirmation actions.
+- Both final debug builds and 553 prod unit tests pass. Installed prod/dev 3.3.20 / 260 in place after private backups. Launches accepted; no Fynlo crash in phone crash buffer. Phone is locked, so no claim of phone visual verification. Emulator utility/form checks and large-text UI tests are detailed in design-qa.md.
+- Separate synthetic same-day payment-summary mismatch found: accrued display 0 vs due 493, due and breakdown sourced from different existing engines. Accounting not changed by this design pass; follow-up recorded in PROJECT_STATE_FOR_AI.md. Personal-use update only; no Play release, AAB, commit or push requested.
+
+## 2026-10-02 - Personal Design Refinement 3.3.19 / 259
+
+- Contextual scroll-away toolbar replaces repeated app branding outside Home. Loans Lent/Owed summaries, filters and list rows refined consistently.
+- Brighter blue accents and matching launcher background. No financial or cloud behavior changed; personal-use APK update only.
+- Both final debug builds and 553 prod unit tests pass. Installed both phone apps in place, confirmed 3.3.19 / 259 and 3.3.19-dev / 259; no uninstall/reset. Phone visual verification awaits unlock. Emulator light/dark loan layout, privacy and collapsing header inspected with test data only.
+- Primary navigation now opens its own tab root instead of restoring an unrelated nested drawer screen. No Play release, AAB, commit or push requested. See design-qa.md for verification scope.
+
+## 2026-10-02 - Personal Design Update 3.3.18 / 258
+
+- Approved chart-free dashboard applied with blue actions, exact balances, compact account list, daily accrual details and explicit History access.
+- Shared theme, form controls, header, navigation and brand mark updated. Financial storage/calculations/auth/cloud sync are untouched.
+- This remains a private personal-use application. No Play upload, new OAuth setup, release AAB or cloud round-trip is required solely for this presentation update.
+- Both debug builds and all 551 prod unit tests pass. Installed both apps in place on the connected phone after private backups; launch and read-only main-screen smoke checks passed. No user records were edited, no uninstall/reset, no commit/push or AAB in this task.
+- Local list skeletons now depend on Room data readiness rather than cloud connection. Sign-in presentation follows the new theme; authentication/cloud behavior is unchanged. See PROJECT_STATE_FOR_AI.md and design-qa.md for coverage and remaining limits. Codex smoke checks are not user visual approval.
+
 ## 2026-08-16 - New Investment Current Value Default Fix
 
 - Fixed add-investment flow where a blank placeholder record could make a new holding save with current value `0` even when invested amount was entered.

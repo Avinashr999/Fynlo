@@ -30,7 +30,7 @@ import app.fynlo.ui.theme.*
 
 @Composable
 fun AboutScreen() {
-    val green = Emerald500
+    val accent = MaterialTheme.colorScheme.primary
 
     Column(
         modifier = Modifier
@@ -38,14 +38,12 @@ fun AboutScreen() {
             .padding(horizontal = 16.dp)
             .verticalScroll(rememberScrollState())
     ) {
-        PremiumScreenHeader("About Fynlo Ledger", subtitle = "Ledger-first finance, built for clarity")
         Spacer(Modifier.height(16.dp))
 
         // ── App identity card ────────────────────────────────────────────────
         Row(
             modifier = Modifier.fillMaxWidth()
-                .clip(RoundedCornerShape(20.dp))
-                .background(green.copy(alpha = 0.08f))
+                .background(Color.Transparent)
                 .padding(20.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(16.dp)
@@ -53,16 +51,16 @@ fun AboutScreen() {
                 FynloBrandMark(size = 56.dp)
                 Column {
                     Text("Fynlo Ledger",
-                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold))
+                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold))
                     Text("Personal finance ledger",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(Modifier.height(4.dp))
                     Text("v${BuildConfig.VERSION_NAME}",
                         style    = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                        color    = green,
+                        color    = accent,
                         modifier = Modifier.clip(RoundedCornerShape(6.dp))
-                            .background(green.copy(alpha = 0.12f))
+                            .background(accent.copy(alpha = 0.12f))
                             .padding(horizontal = 8.dp, vertical = 3.dp))
                 }
             }
@@ -86,9 +84,9 @@ fun AboutScreen() {
         )
 
         Column(
-            Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp))
-                .background(MaterialTheme.colorScheme.surface)
-                .padding(16.dp),
+            Modifier.fillMaxWidth()
+                .background(Color.Transparent)
+                .padding(vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
                 features.forEach { (icon, desc) ->
@@ -96,7 +94,7 @@ fun AboutScreen() {
                         verticalAlignment     = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        Icon(icon, null, Modifier.size(18.dp), tint = green)
+                        Icon(icon, null, Modifier.size(18.dp), tint = accent)
                         Text(desc, style = MaterialTheme.typography.bodySmall)
                     }
                 }
@@ -110,9 +108,9 @@ fun AboutScreen() {
             modifier = Modifier.padding(bottom = 10.dp))
 
         Column(
-            Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp))
-                .background(MaterialTheme.colorScheme.surface)
-                .padding(16.dp),
+            Modifier.fillMaxWidth()
+                .background(Color.Transparent)
+                .padding(vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             AboutBulletRow(
@@ -144,9 +142,9 @@ fun AboutScreen() {
             modifier = Modifier.padding(bottom = 10.dp))
 
         Column(
-            Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp))
-                .background(MaterialTheme.colorScheme.surface)
-                .padding(16.dp),
+            Modifier.fillMaxWidth()
+                .background(Color.Transparent)
+                .padding(vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             AboutStepRow("1", "Create accounts first", "Add cash, bank, and wallet accounts before entering loans, debts, investments, or expenses.")
@@ -162,7 +160,7 @@ fun AboutScreen() {
             icon  = Icons.Default.Shield,
             title = "Privacy & Security",
             body  = "Your data stays on your device and, if you sign in, your personal Google cloud backup. We do not collect, sell, or share your financial information with any third parties.",
-            color = SemanticBlue
+            color = MaterialTheme.colorScheme.onSurface
         )
 
         Spacer(Modifier.height(12.dp))
@@ -172,7 +170,7 @@ fun AboutScreen() {
             icon  = Icons.Default.Gavel,
             title = "Legal Disclaimer",
             body  = "Fynlo Ledger is a manual-entry personal finance ledger for personal use only. It is NOT a banking, lending, or investment advisory service. Always verify your data with official bank statements. Fynlo Ledger is not responsible for financial decisions made using this app.",
-            color = SemanticRed
+            color = MaterialTheme.colorScheme.onSurface
         )
 
         Spacer(Modifier.height(20.dp))
@@ -194,8 +192,8 @@ fun AboutScreen() {
             }
         }
         Column(
-            Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp))
-                .background(MaterialTheme.colorScheme.surface)
+            Modifier.fillMaxWidth()
+                .background(Color.Transparent)
         ) {
             AboutLinkRow(
                 icon  = Icons.Default.Shield,
@@ -236,9 +234,9 @@ fun AboutScreen() {
 
         // ── Footer ───────────────────────────────────────────────────────────
         Column(
-            Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp))
-                .background(MaterialTheme.colorScheme.surface)
-                .padding(16.dp),
+            Modifier.fillMaxWidth()
+                .background(Color.Transparent)
+                .padding(vertical = 16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
@@ -248,7 +246,7 @@ fun AboutScreen() {
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
             Text("Build ${BuildConfig.VERSION_CODE}",
                 style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.outlineVariant)
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
 
         Spacer(Modifier.height(48.dp))
@@ -272,10 +270,10 @@ private fun AboutBulletRow(
     ) {
         Box(
             modifier = Modifier.size(36.dp).clip(RoundedCornerShape(12.dp))
-                .background(Emerald500.copy(alpha = 0.12f)),
+                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)),
             contentAlignment = Alignment.Center
         ) {
-            Icon(icon, null, Modifier.size(18.dp), tint = Emerald700)
+            Icon(icon, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
         }
         Column(Modifier.weight(1f)) {
             Text(
@@ -304,13 +302,13 @@ private fun AboutStepRow(
     ) {
         Box(
             modifier = Modifier.size(30.dp).clip(CircleShape)
-                .background(Emerald500.copy(alpha = 0.12f)),
+                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)),
             contentAlignment = Alignment.Center
         ) {
             Text(
                 number,
-                style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.ExtraBold),
-                color = Emerald700,
+                style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
+                color = MaterialTheme.colorScheme.primary,
             )
         }
         Column(Modifier.weight(1f)) {
@@ -365,9 +363,7 @@ private fun AboutInfoCard(
     color: Color
 ) {
     Column(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp))
-            .background(color.copy(alpha = 0.06f))
-            .padding(14.dp),
+        Modifier.fillMaxWidth().padding(vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically,

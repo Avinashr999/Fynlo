@@ -99,7 +99,8 @@ fun TransactionHistoryScreen(viewModel: FinanceViewModel) {
         selectedType != HistoryFilter.ALL ||
         fromDate.isNotBlank() ||
         toDate.isNotBlank()
-    val isInitialLoading = syncStatus is app.fynlo.data.SyncStatus.Initialising &&
+    val localDataReady by viewModel.localDataReady.collectAsState()
+    val isInitialLoading = !localDataReady &&
         allProjectTransactions.isEmpty() &&
         !hasActiveFilters
     val hairline = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f)
@@ -142,7 +143,7 @@ fun TransactionHistoryScreen(viewModel: FinanceViewModel) {
             )
         } else {
             Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text("History", Modifier.weight(1f), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
+                Spacer(Modifier.weight(1f))
                 Text(app.fynlo.logic.pluralize(filteredHistory.size, "entry", "entries"), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             if (selectedType == HistoryFilter.TRANSFERS) {
@@ -550,6 +551,7 @@ fun TransactionItem(
     accountIdToName: Map<String, String> = emptyMap(),
     balanceImpacts: List<TransactionBalanceImpact> = emptyList(),
     showTimestamp: Boolean = false,
+    compact: Boolean = false,
 ) {
     val isExpense  = txn.type.lowercase() == "expense"
     val isIncome   = txn.type.lowercase() == "income"
@@ -726,7 +728,7 @@ fun TransactionItem(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 14.dp),
+            .padding(vertical = if (compact) 10.dp else 14.dp),
         verticalAlignment = Alignment.Top
     ) {
         // Leading checkbox in selection mode, otherwise a neutral category icon.
@@ -762,7 +764,7 @@ fun TransactionItem(
             // C03b Stage #1b-2: resolve via id (renames take immediate effect);
             // falls back to stored name for legacy orphan rows.
             val sub = txn.category
-            if (sub.isNotBlank() && !sub.equals(title, ignoreCase = true)) {
+            if (!compact && sub.isNotBlank() && !sub.equals(title, ignoreCase = true)) {
                 Text(sub,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -789,7 +791,7 @@ fun TransactionItem(
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            if (txn.notes.isNotEmpty()) {
+            if (!compact && txn.notes.isNotEmpty()) {
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 2.dp)) {
                     Icon(Icons.AutoMirrored.Filled.Notes, null, Modifier.size(12.dp),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant)

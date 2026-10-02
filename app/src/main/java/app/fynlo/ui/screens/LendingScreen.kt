@@ -123,7 +123,8 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
         "Closed"  -> closedLoans
         else      -> activeLoans
     }
-    val isInitialLoading = syncStatus is app.fynlo.data.SyncStatus.Initialising &&
+    val localDataReady by viewModel.localDataReady.collectAsState()
+    val isInitialLoading = !localDataReady &&
         borrowers.isEmpty() &&
         searchQuery.isBlank()
 
@@ -161,41 +162,18 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
                 }
             }
 
-            // C12 Stage 2 - top toolbar row: EMI calculator + Calendar shortcut.
-            // The stats line ("X interest - Y hand - Z settled") is gone - the
-            // segmented filter below shows per-status counts, which is more
-            // useful UX. The sort dropdown is gone (audit #4) - processed list
-            // uses a fixed overdue-first / amount-desc sort.
             item {
-                Row(
-                    Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 2.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        PremiumStatCard(
-                            label = "Yield",
-                            value = if (isPrivacy) "----" else "${String.format(locale, "%.1f", summary.lendingYield)}%",
-                            iconTint = Emerald500
-                        )
-                        if (!summary.lendingXirr.isNaN()) {
-                            PremiumStatCard(
-                                label = "XIRR",
-                                value = if (isPrivacy) "----" else app.fynlo.logic.XirrCalculator.format(summary.lendingXirr),
-                                iconTint = Emerald500
-                            )
-                        }
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text(if (isPrivacy) "Yield hidden" else "Yield ${String.format(locale, "%.1f", summary.lendingYield)}%",
+                            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        if (!summary.lendingXirr.isNaN()) Text(
+                            if (isPrivacy) "XIRR hidden" else "XIRR ${app.fynlo.logic.XirrCalculator.format(summary.lendingXirr)}",
+                            style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Button(onClick = { showEmiCalc = true }, shape = RoundedCornerShape(14.dp),
-                            contentPadding = PaddingValues(horizontal = 18.dp, vertical = 10.dp)) {
-                            Text("EMI", style = MaterialTheme.typography.labelMedium)
-                        }
-                        Spacer(Modifier.width(8.dp))
-                        Button(onClick = onNavigateToCalendar, shape = RoundedCornerShape(14.dp),
-                            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 10.dp)) {
-                            Icon(Icons.Default.CalendarMonth, contentDescription = "Collection Calendar", Modifier.size(18.dp))
-                        }
+                    TextButton(onClick = { showEmiCalc = true }) { Text("EMI") }
+                    IconButton(onClick = onNavigateToCalendar) {
+                        Icon(Icons.Default.CalendarMonth, "Collection calendar", tint = MaterialTheme.colorScheme.primary)
                     }
                 }
             }
@@ -220,7 +198,7 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
                     "Overdue" to overdueLoans.size,
                     "Closed"  to closedLoans.size,
                 )
-                TemplateSegmentedSelector(
+                app.fynlo.ui.components.LoanFilterTabs(
                     options = filters.map { (label, count) -> "$label  $count" },
                     selectedIndex = filters.indexOfFirst { it.first == statusFilter }.coerceAtLeast(0),
                     onSelected = { idx -> statusFilter = filters[idx].first },
@@ -259,16 +237,6 @@ fun LendingScreen(viewModel: FinanceViewModel, onNavigateToDetail: (String) -> U
                     }
                 }
             } else {
-                item {
-                    LoanListSectionHeader(
-                        title = when (statusFilter) {
-                            "Overdue" -> "Overdue borrowers"
-                            "Closed" -> "Closed borrowers"
-                            else -> "Active borrowers"
-                        },
-                        count = displayed.size,
-                    )
-                }
                 items(displayed, key = { it.id }) { borrower ->
                     LendingCard(
                         borrower     = borrower,
@@ -307,111 +275,20 @@ fun LendingCard(
     val principalOutstanding = snapshot.principalOutstanding
     val outstanding = snapshot.totalReceivable
 
-    Surface(
-        onClick = onClick,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 1.dp)
-            .heightIn(min = 74.dp),
-        shape = RoundedCornerShape(18.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerLowest,
-        border = androidx.compose.foundation.BorderStroke(
-            0.7.dp,
-            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.42f),
-        ),
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(11.dp)
-        ) {
-            androidx.compose.foundation.layout.Box(
-                modifier = Modifier
-                    .size(38.dp)
-                    .clip(androidx.compose.foundation.shape.CircleShape)
-                    .background((if (isOverdue) SemanticRed else Emerald500).copy(alpha = 0.14f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    Icons.Default.Person,
-                    contentDescription = null,
-                    tint = if (isOverdue) SemanticRed else Emerald500,
-                    modifier = Modifier.size(19.dp)
-                )
-            }
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                Text(
-                    borrower.name,
-                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                    maxLines = 1,
-                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                )
-                val source = borrower.sourceAccount.ifBlank { "Unknown account" }
-                val sub = when {
-                    isOverdue && borrower.due.isNotBlank() -> "Overdue since ${DateUtils.formatToDisplay(borrower.due)}"
-                    borrower.due.isNotBlank() -> "Due ${DateUtils.formatToDisplay(borrower.due)}"
-                    else -> "Lent ${DateUtils.formatToDisplay(borrower.date)}"
-                }
-                Text(
-                    sub,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = if (isOverdue) SemanticRed else MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                )
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    Icon(
-                        Icons.Default.AccountBalanceWallet,
-                        contentDescription = null,
-                        modifier = Modifier.size(12.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Text(
-                        "From $source",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                    )
-                }
-            }
-            Column(
-                modifier = Modifier.widthIn(min = 92.dp, max = 128.dp),
-                horizontalAlignment = Alignment.End,
-            ) {
-                // C16 (3.2.41) - Outstanding on the Lent side is a receivable
-                // (asset), not a debt to the user. Colour: green for normal
-                // (asset), red for overdue (urgency). Pre-C16 normal state was
-                // neutral onSurface - audit said it should signal asset-ness.
-                val outstandingText = if (isPrivacy) "----" else CurrencyFormatter.detail(outstanding, currencyCode, locale)
-                Text(
-                    text = outstandingText,
-                    style = MaterialTheme.typography.titleSmall.copy(
-                        fontWeight = FontWeight.Bold,
-                        color = if (isOverdue) SemanticRed else Emerald500
-                    ),
-                    maxLines = 1,
-                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                )
-                Text(
-                    "To collect",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                )
-            }
-            Icon(
-                Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                modifier = Modifier.size(18.dp)
-            )
-        }
+    val dateLabel = when {
+        isOverdue && borrower.due.isNotBlank() -> "Overdue since ${DateUtils.formatToDisplay(borrower.due)}"
+        borrower.due.isNotBlank() -> "Due ${DateUtils.formatToDisplay(borrower.due)}"
+        else -> "Lent ${DateUtils.formatToDisplay(borrower.date)}"
     }
+    app.fynlo.ui.components.LoanLedgerRow(
+        name = borrower.name,
+        amount = if (isPrivacy) "Hidden" else CurrencyFormatter.detail(outstanding, currencyCode, locale),
+        amountLabel = "To collect",
+        dateLabel = dateLabel,
+        accountLabel = "From ${borrower.sourceAccount.ifBlank { "Unknown account" }}",
+        overdue = isOverdue,
+        onClick = onClick,
+    )
 }
 
 @Composable
@@ -506,10 +383,10 @@ fun EmiCalculatorDialog(currencyCode: String, onDismiss: () -> Unit) {
         val emiFieldColors = OutlinedTextFieldDefaults.colors(
             focusedContainerColor   = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
             unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
-            focusedBorderColor      = Emerald500,
+            focusedBorderColor      = MaterialTheme.colorScheme.primary,
             unfocusedBorderColor    = Color.Transparent,
-            focusedLabelColor       = Emerald500,
-            cursorColor             = Emerald500
+            focusedLabelColor       = MaterialTheme.colorScheme.primary,
+            cursorColor             = MaterialTheme.colorScheme.primary
         )
 
         app.fynlo.ui.components.FormSectionLabel("Principal amount (${app.fynlo.logic.CurrencyUtils.symbolFor(currencyCode)})")

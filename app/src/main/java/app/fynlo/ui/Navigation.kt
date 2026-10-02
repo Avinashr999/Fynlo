@@ -13,6 +13,11 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.material.icons.outlined.AccountBalanceWallet
+import androidx.compose.material.icons.outlined.WorkOutline
+import androidx.compose.material.icons.outlined.Description
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -61,13 +66,13 @@ import kotlinx.coroutines.launch
 import app.fynlo.ui.theme.*
 
 sealed class Screen(val route: String, val label: String, val icon: ImageVector) {
-    object Home : Screen("home", "Dashboard", Icons.Default.Home)
+    object Home : Screen("home", "Home", Icons.Default.Home)
     object History : Screen("history", "History", Icons.AutoMirrored.Filled.ReceiptLong)
     object Lending : Screen("lending", "Lending", Icons.Default.Group)
     object Debts : Screen("debts", "Debts", Icons.Default.CreditCard)
     object Loans : Screen("loans_hub", "Loans", Icons.Default.Handshake)
-    object Invest : Screen("invest", "Invest", Icons.AutoMirrored.Filled.TrendingUp)
-    object Spend : Screen("spend", "Expenses", Icons.AutoMirrored.Filled.ReceiptLong)
+    object Invest : Screen("invest", "Invest", Icons.Outlined.WorkOutline)
+    object Spend : Screen("spend", "Expenses", Icons.Outlined.AccountBalanceWallet)
     object Settings : Screen("settings", "Settings", Icons.Default.Settings)
     object BookCheck : Screen("book_check", "Book check", Icons.Default.Verified)
     object About : Screen("about", "About", Icons.Default.Info)
@@ -84,7 +89,7 @@ sealed class Screen(val route: String, val label: String, val icon: ImageVector)
     object NetWorthH  : Screen("net_worth_hist", "Net Worth History",Icons.AutoMirrored.Filled.TrendingUp)
     object MoneyFlow  : Screen("money_flow",     "Money Flow",       Icons.Default.SwapHoriz)
     object LoanCalc   : Screen("loan_calc",      "EMI Calculator",   Icons.Default.Calculate)
-    object Reports     : Screen("reports_hub",   "Reports",          Icons.Default.Assessment)
+    object Reports     : Screen("reports_hub",   "Reports",          Icons.Outlined.Description)
     object GlobalSearch: Screen("global_search",  "Search",           Icons.Default.Search)
     object Calendar    : Screen("collection_calendar", "Collection Calendar", Icons.Default.CalendarMonth)
     object InterestIncome : Screen("interest_income", "Interest Income", Icons.AutoMirrored.Filled.TrendingUp)
@@ -117,6 +122,9 @@ fun MainNavigation(viewModel: FinanceViewModel) {
     val snackbarHostState = remember { SnackbarHostState() }
     val app = context.applicationContext as app.fynlo.FynloApplication
     var isLoggedIn by remember { mutableStateOf(app.authManager.isSignedInWithGoogle) }
+    val authUser by app.authManager.user.collectAsState()
+    val hasCloudAccount = authUser?.providerData
+        ?.any { it.providerId == com.google.firebase.auth.GoogleAuthProvider.PROVIDER_ID } == true
     val pinManager = remember { PinManager(context) }
 
     LaunchedEffect(Unit) {
@@ -186,6 +194,9 @@ fun MainNavigation(viewModel: FinanceViewModel) {
     val currentRoute = navBackStackEntry?.destination?.route
     // Strip any query args (e.g. "loans_hub?tab=1") so route comparisons still match.
     val baseRoute = currentRoute?.substringBefore("?")
+    val topBarState = rememberTopAppBarState()
+    val topBarBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior(topBarState)
+    LaunchedEffect(baseRoute) { topBarState.heightOffset = 0f; topBarState.contentOffset = 0f }
 
     // C07 fix (UX_AUDIT §C07): the Scaffold FAB opens the QuickActionMenu
     // (all transaction types). Hide it on screens that have their own
@@ -201,30 +212,18 @@ fun MainNavigation(viewModel: FinanceViewModel) {
         currentRoute?.startsWith("customer/") == true ||
         currentRoute?.startsWith("debt/") == true ||
         currentRoute?.startsWith("statement/") == true
-    val isBottomNavRoute = bottomNavItems.any { it.route == baseRoute }
-    var isBottomNavCompact by remember { mutableStateOf(false) }
-    val bottomNavScrollConnection = remember(isBottomNavRoute) {
-        object : NestedScrollConnection {
-            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-                if (!isBottomNavRoute) {
-                    isBottomNavCompact = false
-                    return Offset.Zero
-                }
-                when {
-                    available.y < -10f -> isBottomNavCompact = true
-                    available.y > 10f -> isBottomNavCompact = false
-                }
-                return Offset.Zero
-            }
-        }
-    }
 
     val syncStatus by viewModel.syncStatus.collectAsState()
     val existingTransactionsForDialog by viewModel.transactions.collectAsState()
     var startupSyncStartedFeedbackShown by remember { mutableStateOf(false) }
     var startupSyncFinishedFeedbackShown by remember { mutableStateOf(false) }
 
-    LaunchedEffect(syncStatus, isLoggedIn, isPinUnlocked) {
+    LaunchedEffect(syncStatus, isLoggedIn, isPinUnlocked, hasCloudAccount) {
+        if (!hasCloudAccount) {
+            startupSyncStartedFeedbackShown = false
+            startupSyncFinishedFeedbackShown = false
+            return@LaunchedEffect
+        }
         if (!isLoggedIn || !isPinUnlocked) return@LaunchedEffect
         when (syncStatus) {
             SyncStatus.Initialising,
@@ -350,8 +349,8 @@ fun MainNavigation(viewModel: FinanceViewModel) {
         )
     }
 
-    val canNavigateBack = currentRoute != Screen.Home.route &&
-        !bottomNavItems.any { it.route == currentRoute }
+    val canNavigateBack = baseRoute != Screen.Home.route &&
+        !bottomNavItems.any { it.route == baseRoute }
 
     ModalNavigationDrawer(
         drawerState     = drawerState,
@@ -385,13 +384,10 @@ fun MainNavigation(viewModel: FinanceViewModel) {
                     Surface(
                         modifier = Modifier.fillMaxWidth()
                             .padding(start = 16.dp, end = 16.dp, top = 18.dp, bottom = 10.dp),
-                        shape = RoundedCornerShape(20.dp),
-                        color = MaterialTheme.colorScheme.surfaceContainerLowest,
+                        shape = RoundedCornerShape(0.dp),
+                        color = Color.Transparent,
                         tonalElevation = 0.dp,
-                        border = androidx.compose.foundation.BorderStroke(
-                            0.8.dp,
-                            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f),
-                        ),
+                        border = null,
                     ) {
                         Row(
                             modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 13.dp),
@@ -415,14 +411,13 @@ fun MainNavigation(viewModel: FinanceViewModel) {
                                 )
                                 Spacer(Modifier.height(6.dp))
                                 Surface(
-                                    shape = RoundedCornerShape(999.dp),
-                                    color = if (hasSignedInProfile) Emerald100.copy(alpha = 0.75f)
-                                    else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = MaterialTheme.colorScheme.primaryContainer,
                                 ) {
                                     Text(
-                                        if (hasSignedInProfile) "Cloud backup ready" else "Local ledger",
+                                        if (hasSignedInProfile) "Google account" else "Local ledger",
                                         style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                                        color = if (hasSignedInProfile) Emerald700 else MaterialTheme.colorScheme.onSurfaceVariant,
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer,
                                         modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.dp),
                                     )
                                 }
@@ -453,31 +448,31 @@ fun MainNavigation(viewModel: FinanceViewModel) {
                     // bottom-nav TrendingUp).
                     DrawerItem(Icons.Default.Settings, "Settings",
                         currentRoute == Screen.Settings.route,
-                        accent = true) {
+                        accent = false) {
                         navController.navigate(Screen.Settings.route)
                         scope.launch { drawerState.close() }
                     }
                     DrawerItem(Icons.Default.Person, "Profile & Security",
                         currentRoute == Screen.Profile.route,
-                        accent = true) {
+                        accent = false) {
                         navController.navigate(Screen.Profile.route)
                         scope.launch { drawerState.close() }
                     }
                     DrawerItem(Icons.Default.AccountBalanceWallet, "Budgeting",
                         currentRoute == Screen.Budgets.route,
-                        accent = true) {
+                        accent = false) {
                         navController.navigate(Screen.Budgets.route)
                         scope.launch { drawerState.close() }
                     }
                     DrawerItem(Icons.Default.Star, "Savings Goals",
                         currentRoute == Screen.Goals.route,
-                        accent = true) {
+                        accent = false) {
                         navController.navigate(Screen.Goals.route)
                         scope.launch { drawerState.close() }
                     }
                     DrawerItem(Icons.Default.Group, "Contact Book",
                         currentRoute == Screen.People.route,
-                        accent = true) {
+                        accent = false) {
                         navController.navigate(Screen.People.route)
                         scope.launch { drawerState.close() }
                     }
@@ -485,6 +480,11 @@ fun MainNavigation(viewModel: FinanceViewModel) {
                     DrawerDivider()
 
                     // Secondary destinations (grey tint).
+                    DrawerItem(Icons.Default.History, "Transaction history",
+                        baseRoute == Screen.History.route) {
+                        navController.navigate(Screen.History.route)
+                        scope.launch { drawerState.close() }
+                    }
                     DrawerItem(Icons.Default.Repeat, "Recurring Transactions",
                         currentRoute == Screen.Recurring.route) {
                         navController.navigate(Screen.Recurring.route)
@@ -529,15 +529,19 @@ fun MainNavigation(viewModel: FinanceViewModel) {
         }  // close drawerContent
     ) {
         Scaffold(
-            modifier = Modifier.nestedScroll(bottomNavScrollConnection),
+            modifier = if (isFullScreenRoute) Modifier else Modifier.nestedScroll(topBarBehavior.nestedScrollConnection),
             contentWindowInsets = WindowInsets(0.dp),
             topBar = {
                 if (!isFullScreenRoute) {
                     val isPrivacy by viewModel.isPrivacyMode.collectAsState()
                     LedgerAppTopBar(
+                        title = ledgerNavigationTitle(baseRoute),
+                        showBrand = baseRoute == Screen.Home.route,
+                        scrollBehavior = topBarBehavior,
                         canNavigateBack = canNavigateBack,
                         isPrivacy = isPrivacy,
                         syncStatus = syncStatus,
+                        hasCloudAccount = hasCloudAccount,
                         onBack = {
                             haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                             navController.navigateUp()
@@ -564,13 +568,7 @@ fun MainNavigation(viewModel: FinanceViewModel) {
                         },
                         onSyncClick = {
                             haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                            val msg = when (syncStatus) {
-                                is app.fynlo.data.SyncStatus.Synced       -> "All changes synced to cloud"
-                                is app.fynlo.data.SyncStatus.Syncing      -> "Syncing..."
-                                is app.fynlo.data.SyncStatus.Offline      -> "Offline - changes sync when reconnected"
-                                is app.fynlo.data.SyncStatus.Initialising -> "Checking cloud backup..."
-                                is app.fynlo.data.SyncStatus.Error        -> "Sync error - sign in again to retry"
-                            }
+                            val msg = cloudStatusPresentation(syncStatus, hasCloudAccount).message
                             viewModel.showFeedback(msg)
                         },
                     )
@@ -591,23 +589,18 @@ fun MainNavigation(viewModel: FinanceViewModel) {
                 LedgerBottomNav(
                     items = bottomNavItems,
                     selectedRoute = baseRoute,
-                    compact = isBottomNavCompact,
                     onSelect = { screen ->
                                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                 if (baseRoute != screen.route) {
-                                    val isHome = screen.route == Screen.Home.route
                                     navController.navigate(screen.route) {
-                                        // Pop everything up to Home (clears Settings, History,
-                                        // detail screens etc. from the back stack).
-                                        // Don't save/restore state when the target IS Home —
-                                        // otherwise the popped child gets saved under Home's key
-                                        // and immediately restored, bouncing back to it.
+                                        // A primary tab always opens its root, never a drawer/detail
+                                        // route previously saved beneath that tab.
                                         popUpTo(Screen.Home.route) {
                                             inclusive = false
-                                            saveState = !isHome
+                                            saveState = false
                                         }
                                         launchSingleTop = true
-                                        restoreState    = !isHome
+                                        restoreState = false
                                     }
                                 }
                     }
@@ -961,11 +954,16 @@ fun ActionItem(icon: ImageVector, label: String, color: Color, onClick: () -> Un
 
 // ── Drawer helper composables ────────────────────────────────────────
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun LedgerAppTopBar(
+    title: String,
+    showBrand: Boolean,
+    scrollBehavior: TopAppBarScrollBehavior,
     canNavigateBack: Boolean,
     isPrivacy: Boolean,
     syncStatus: SyncStatus,
+    hasCloudAccount: Boolean,
     onBack: () -> Unit,
     onMenu: () -> Unit,
     onHome: () -> Unit,
@@ -973,223 +971,83 @@ private fun LedgerAppTopBar(
     onSearch: () -> Unit,
     onSyncClick: () -> Unit,
 ) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        color = MaterialTheme.colorScheme.surface,
-        tonalElevation = 0.dp,
-        shadowElevation = 0.dp,
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .statusBarsPadding()
-                .height(54.dp)
-                .padding(horizontal = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            LedgerShellButton(
-                icon = if (canNavigateBack) Icons.AutoMirrored.Filled.ArrowBack else Icons.AutoMirrored.Filled.Segment,
-                contentDescription = if (canNavigateBack) "Back" else "Menu",
-                onClick = if (canNavigateBack) onBack else onMenu,
-            )
+    var showTools by remember { mutableStateOf(false) }
+    TopAppBar(
+        title = {
             Row(
-                modifier = Modifier
-                    .weight(1f)
-                    .clip(RoundedCornerShape(12.dp))
-                    .clickable(onClick = onHome)
-                    .padding(horizontal = 2.dp, vertical = 5.dp),
+                if (showBrand) Modifier.clickable(onClick = onHome) else Modifier,
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(7.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                FynloBrandMark(size = 28.dp)
-                Text(
-                    "Ledger",
-                    style = MaterialTheme.typography.titleMedium.copy(
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface,
-                    ),
-                    maxLines = 1,
-                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                )
+                if (showBrand) FynloBrandMark(size = 28.dp)
+                Text(title, style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface, maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
             }
-            LedgerShellButton(
-                icon = if (isPrivacy) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                contentDescription = "Toggle Privacy",
-                onClick = onTogglePrivacy,
-            )
-            LedgerShellButton(
-                icon = Icons.Default.Search,
-                contentDescription = "Search",
-                onClick = onSearch,
-            )
-            Surface(
-                onClick = onSyncClick,
-                modifier = Modifier.size(42.dp),
-                shape = RoundedCornerShape(14.dp),
-                color = MaterialTheme.colorScheme.surface,
-                tonalElevation = 0.dp,
-                shadowElevation = 1.dp,
-                border = androidx.compose.foundation.BorderStroke(
-                    0.5.dp,
-                    MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f),
-                ),
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    SyncStatusBadge(status = syncStatus)
+        },
+        navigationIcon = {
+            IconButton(onClick = if (canNavigateBack) onBack else onMenu) {
+                Icon(if (canNavigateBack) Icons.AutoMirrored.Filled.ArrowBack else Icons.Default.Menu,
+                    if (canNavigateBack) "Back" else "Menu")
+            }
+        },
+        colors = TopAppBarDefaults.topAppBarColors(
+            containerColor = MaterialTheme.colorScheme.background,
+            scrolledContainerColor = MaterialTheme.colorScheme.background,
+        ),
+        scrollBehavior = scrollBehavior,
+        actions = {
+            IconButton(onClick = onSyncClick) {
+                SyncStatusBadge(status = syncStatus, hasCloudAccount = hasCloudAccount)
+            }
+            Box {
+                IconButton(onClick = { showTools = true }) {
+                    Icon(Icons.Default.MoreVert, "Search and privacy")
+                }
+                DropdownMenu(expanded = showTools, onDismissRequest = { showTools = false }) {
+                    DropdownMenuItem(
+                        text = { Text("Search") },
+                        leadingIcon = { Icon(Icons.Default.Search, null) },
+                        onClick = { showTools = false; onSearch() },
+                    )
+                    DropdownMenuItem(
+                        text = { Text(if (isPrivacy) "Show balances" else "Hide balances") },
+                        leadingIcon = { Icon(if (isPrivacy) Icons.Default.Visibility else Icons.Default.VisibilityOff, null) },
+                        onClick = { showTools = false; onTogglePrivacy() },
+                    )
                 }
             }
-        }
-    }
-}
-
-@Composable
-private fun LedgerShellButton(
-    icon: ImageVector,
-    contentDescription: String,
-    onClick: () -> Unit,
-) {
-    Surface(
-        onClick = onClick,
-        modifier = Modifier.size(42.dp),
-        shape = RoundedCornerShape(14.dp),
-        color = MaterialTheme.colorScheme.surface,
-        tonalElevation = 0.dp,
-        shadowElevation = 1.dp,
-        border = androidx.compose.foundation.BorderStroke(
-            0.5.dp,
-            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f),
-        ),
-    ) {
-        Box(contentAlignment = Alignment.Center) {
-            Icon(
-                imageVector = icon,
-                contentDescription = contentDescription,
-                modifier = Modifier.size(20.dp),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-    }
+        },
+    )
 }
 
 @Composable
 private fun LedgerBottomNav(
     items: List<Screen>,
     selectedRoute: String?,
-    compact: Boolean,
     onSelect: (Screen) -> Unit,
 ) {
-    val wrapperHeight by animateDpAsState(
-        targetValue = if (compact) 48.dp else 58.dp,
-        animationSpec = tween(220, easing = FastOutSlowInEasing),
-        label = "bottom-nav-wrapper-height",
-    )
-    val barHeight by animateDpAsState(
-        targetValue = if (compact) 46.dp else 54.dp,
-        animationSpec = tween(220, easing = FastOutSlowInEasing),
-        label = "bottom-nav-bar-height",
-    )
-    val horizontalPadding by animateDpAsState(
-        targetValue = if (compact) 22.dp else 14.dp,
-        animationSpec = tween(220, easing = FastOutSlowInEasing),
-        label = "bottom-nav-horizontal-padding",
-    )
-    val itemTopPadding by animateDpAsState(
-        targetValue = if (compact) 3.dp else 6.dp,
-        animationSpec = tween(220, easing = FastOutSlowInEasing),
-        label = "bottom-nav-item-top-padding",
-    )
-    val labelAlpha by animateFloatAsState(
-        targetValue = if (compact) 0f else 1f,
-        animationSpec = tween(140, easing = FastOutSlowInEasing),
-        label = "bottom-nav-label-alpha",
-    )
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(wrapperHeight)
-            .padding(start = horizontalPadding, end = horizontalPadding),
-        contentAlignment = Alignment.Center,
-    ) {
-        Surface(
-            modifier = Modifier.fillMaxWidth().height(barHeight),
-            shape = RoundedCornerShape(if (compact) 999.dp else 28.dp),
-            color = MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = 0.96f),
-            tonalElevation = 0.dp,
-            shadowElevation = if (compact) 2.dp else 4.dp,
-            border = androidx.compose.foundation.BorderStroke(
-                0.5.dp,
-                MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.38f),
-            ),
-        ) {
-            Row(
-                modifier = Modifier.fillMaxSize().padding(horizontal = 5.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
+    Surface(color = MaterialTheme.colorScheme.background, tonalElevation = 0.dp) {
+        Column(Modifier.navigationBarsPadding()) {
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+            Row(Modifier.fillMaxWidth().heightIn(min = 64.dp).selectableGroup()) {
                 items.forEach { screen ->
                     val selected = selectedRoute == screen.route
-                    val selectedScale by animateFloatAsState(
-                        targetValue = if (selected) 1.06f else 1f,
-                        animationSpec = tween(TemplateMotionDurationMs, easing = FastOutSlowInEasing),
-                        label = "bottom-nav-selected-scale",
-                    )
-                    val selectedPillAlpha by animateFloatAsState(
-                        targetValue = if (selected) 0.92f else 0f,
-                        animationSpec = tween(TemplateMotionDurationMs, easing = FastOutSlowInEasing),
-                        label = "bottom-nav-selected-pill",
+                    val tint by animateColorAsState(
+                        if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                        label = "navigation-color",
                     )
                     Column(
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxHeight()
-                            .clip(RoundedCornerShape(18.dp))
-                            .clickable { onSelect(screen) }
-                            .padding(top = itemTopPadding, bottom = 4.dp),
+                        Modifier.weight(1f).heightIn(min = 64.dp)
+                            .selectable(selected = selected, role = androidx.compose.ui.semantics.Role.Tab, onClick = { onSelect(screen) })
+                            .padding(vertical = 8.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center,
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .height(if (compact) 34.dp else 28.dp)
-                                .width(
-                                    when {
-                                        compact && selected -> 44.dp
-                                        compact -> 36.dp
-                                        selected -> 54.dp
-                                        else -> 36.dp
-                                    }
-                                )
-                                .clip(RoundedCornerShape(18.dp))
-                                .graphicsLayer(
-                                    scaleX = selectedScale,
-                                    scaleY = selectedScale,
-                                )
-                                .background(
-                                    if (selected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = selectedPillAlpha)
-                                    else Color.Transparent
-                                ),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Icon(
-                                imageVector = screen.icon,
-                                contentDescription = screen.label,
-                                modifier = Modifier.size(if (selected) 22.dp else 20.dp),
-                                tint = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                        if (!compact || labelAlpha > 0f) {
-                            Spacer(Modifier.height(2.dp))
-                            Text(
-                                screen.label,
-                                modifier = Modifier.graphicsLayer(alpha = labelAlpha),
-                                style = MaterialTheme.typography.labelMedium.copy(
-                                    fontWeight = if (selected) FontWeight.ExtraBold else FontWeight.SemiBold,
-                                ),
-                                color = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
-                                maxLines = 1,
-                            )
-                        }
+                        Icon(screen.icon, null, Modifier.size(23.dp), tint = tint)
+                        Text(screen.label, style = MaterialTheme.typography.labelMedium,
+                            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+                            color = tint, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
                     }
                 }
             }
@@ -1200,13 +1058,13 @@ private fun LedgerBottomNav(
 @Composable
 fun DrawerSectionLabel(title: String) {
     Text(
-        text     = title.uppercase(),
+        text     = title,
         style    = MaterialTheme.typography.labelSmall.copy(
-            fontWeight = FontWeight.Bold,
-            letterSpacing = androidx.compose.ui.unit.TextUnit(1.5f,
+            fontWeight = FontWeight.Medium,
+            letterSpacing = androidx.compose.ui.unit.TextUnit(0f,
                 androidx.compose.ui.unit.TextUnitType.Sp)
         ),
-        color    = Emerald500,
+        color    = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.padding(start = 20.dp, top = 12.dp, bottom = 4.dp)
     )
 }
@@ -1228,12 +1086,12 @@ fun DrawerItem(
 ) {
     val haptic = LocalHapticFeedback.current
     val iconTint = when {
-        selected -> Emerald700
-        accent   -> Emerald700
+        selected -> MaterialTheme.colorScheme.primary
+        accent   -> MaterialTheme.colorScheme.primary
         else     -> MaterialTheme.colorScheme.onSurfaceVariant
     }
     val labelColor = when {
-        selected -> Emerald700
+        selected -> MaterialTheme.colorScheme.primary
         else     -> MaterialTheme.colorScheme.onSurface
     }
     NavigationDrawerItem(
@@ -1249,21 +1107,22 @@ fun DrawerItem(
             Text(
                 text       = label,
                 style      = MaterialTheme.typography.bodyMedium.copy(
-                    fontWeight = if (selected) FontWeight.ExtraBold else FontWeight.SemiBold
+                    fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal
                 ),
                 color      = labelColor
             )
         },
         selected = selected,
+        shape = RoundedCornerShape(8.dp),
         onClick  = {
             haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
             onClick()
         },
         colors   = NavigationDrawerItemDefaults.colors(
-            selectedContainerColor   = Emerald100.copy(alpha = 0.85f),
+            selectedContainerColor   = MaterialTheme.colorScheme.primaryContainer,
             unselectedContainerColor = Color.Transparent
         ),
-        modifier = Modifier.padding(horizontal = 12.dp, vertical = 1.dp).height(46.dp)
+        modifier = Modifier.padding(horizontal = 12.dp, vertical = 1.dp).heightIn(min = 48.dp)
     )
 }
 

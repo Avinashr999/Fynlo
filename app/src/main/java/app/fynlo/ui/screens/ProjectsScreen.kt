@@ -93,7 +93,6 @@ fun ProjectsScreen(viewModel: FinanceViewModel) {
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        PremiumScreenHeader("Projects", subtitle = "Separate books for every money world")
         Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
         Row(
             modifier            = Modifier.fillMaxWidth(),
@@ -102,7 +101,7 @@ fun ProjectsScreen(viewModel: FinanceViewModel) {
         ) {
             Text(
                 "Your books",
-                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold)
             )
             Button(
                 onClick = {
@@ -110,8 +109,8 @@ fun ProjectsScreen(viewModel: FinanceViewModel) {
                     showAddDialog = true
                 },
                 colors = ButtonDefaults.filledTonalButtonColors(
-                    containerColor = Emerald500.copy(alpha = 0.12f),
-                    contentColor = Emerald500,
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
                 ),
             ) {
                 Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
@@ -150,14 +149,14 @@ private fun ProjectCard(
 ) {
         val haptic = LocalHapticFeedback.current
         val cardColor by animateColorAsState(
-            targetValue = if (isActive) MaterialTheme.colorScheme.primary.copy(alpha = 0.08f) else MaterialTheme.colorScheme.surface,
+            targetValue = if (isActive) MaterialTheme.colorScheme.primary.copy(alpha = 0.08f) else Color.Transparent,
             label = "projectCardColor",
         )
         Surface(
             modifier = Modifier.fillMaxWidth().animateContentSize(),
-            shape = RoundedCornerShape(18.dp),
+            shape = RoundedCornerShape(8.dp),
             color = cardColor,
-            tonalElevation = 1.dp,
+            tonalElevation = 0.dp,
             border = androidx.compose.foundation.BorderStroke(
                 0.5.dp,
                 if (isActive) MaterialTheme.colorScheme.primary.copy(alpha = 0.28f)
@@ -174,7 +173,7 @@ private fun ProjectCard(
             // Color dot — now renders the user-picked icon (C22 3.2.56).
             Surface(
                 modifier = Modifier.size(42.dp),
-                shape    = RoundedCornerShape(12.dp),
+                shape    = RoundedCornerShape(8.dp),
                 color    = runCatching { Color(project.color.toColorInt()) }
                               .getOrDefault(MaterialTheme.colorScheme.primary)
             ) {
@@ -289,7 +288,7 @@ private fun AddProjectDialog(
             placeholder   = { Text("e.g. Personal") },
             singleLine    = true,
             modifier      = Modifier.fillMaxWidth(),
-            shape         = RoundedCornerShape(12.dp),
+            shape         = RoundedCornerShape(8.dp),
         )
 
         Spacer(Modifier.height(14.dp))
@@ -301,7 +300,7 @@ private fun AddProjectDialog(
             placeholder   = { Text("e.g. Side-business expenses") },
             singleLine    = true,
             modifier      = Modifier.fillMaxWidth(),
-            shape         = RoundedCornerShape(12.dp),
+            shape         = RoundedCornerShape(8.dp),
         )
 
         Spacer(Modifier.height(14.dp))
@@ -312,7 +311,7 @@ private fun AddProjectDialog(
                 val selected = iconKey == opt.key
                 Surface(
                     modifier = Modifier.size(40.dp),
-                    shape    = RoundedCornerShape(12.dp),
+                    shape    = RoundedCornerShape(8.dp),
                     color    = if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.18f)
                                else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
                     onClick  = { iconKey = opt.key },
@@ -340,7 +339,7 @@ private fun AddProjectDialog(
                 readOnly    = true,
                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(currExpanded) },
                 modifier    = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, true).fillMaxWidth(),
-                shape       = RoundedCornerShape(12.dp),
+                shape       = RoundedCornerShape(8.dp),
             )
             ExposedDropdownMenu(expanded = currExpanded, onDismissRequest = { currExpanded = false }) {
                 app.fynlo.logic.CurrencyUtils.supported.forEach { c ->
@@ -402,9 +401,9 @@ private fun AddProjectDialog(
                 }
             },
             enabled = name.isNotBlank(),
-            modifier = Modifier.fillMaxWidth().height(52.dp),
-            shape = RoundedCornerShape(16.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = app.fynlo.ui.theme.Emerald500),
+            modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
+            shape = RoundedCornerShape(8.dp),
+            colors = ButtonDefaults.buttonColors(),
         ) {
             Text("Create Project", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
         }

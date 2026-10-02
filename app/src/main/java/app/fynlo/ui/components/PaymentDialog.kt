@@ -8,7 +8,8 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountBalance
-import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Payments
+import androidx.compose.material.icons.filled.DoneAll
 import androidx.compose.material.icons.filled.MonetizationOn
 import androidx.compose.material.icons.filled.Wallet
 import androidx.compose.material3.*
@@ -143,25 +144,10 @@ fun CollectPaymentDialog(
         }
     }
 
-    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        Surface(
-            modifier = Modifier.fillMaxWidth(0.95f).padding(vertical = 16.dp).imePadding(),
-            shape    = MaterialTheme.shapes.extraLarge,
-            color    = MaterialTheme.colorScheme.surface,
-            tonalElevation = 6.dp
-        ) {
-            Column(modifier = Modifier.padding(24.dp).verticalScroll(rememberScrollState())) {
-
-                Text("Collect Repayment",
-                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.Bold))
-                Text("From: ${borrower.name}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.primary)
-                Spacer(Modifier.height(12.dp))
-
+    FormDialog(title = "Collect payment", subtitle = "From: ${borrower.name}", onDismiss = onDismiss) {
                 // -- Outstanding summary --------------------------------------
                 Surface(
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(8.dp),
                     color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
                 ) {
                     Column(Modifier.padding(12.dp)) {
@@ -233,7 +219,7 @@ fun CollectPaymentDialog(
                 // -- Auto-suggest buttons -------------------------------------
                 // Interest Only: show when interest is outstanding
                 if (borrower.rate > 0 && interestOutstanding > 0) {
-                    Button(
+                    FilledTonalButton(
                         onClick = {
                             if (usePaise) {
                                 leanAmountPreset = "interest"
@@ -246,7 +232,7 @@ fun CollectPaymentDialog(
                         modifier = Modifier.fillMaxWidth(),
                         shape    = RoundedCornerShape(10.dp)
                     ) {
-                        Icon(Icons.Default.AutoAwesome, null, Modifier.size(16.dp))
+                        Icon(Icons.Default.Payments, null, Modifier.size(16.dp))
                         Spacer(Modifier.width(6.dp))
                         Text("Interest Only - ${CurrencyFormatter.detail(interestOutstanding, currencyCode, locale)}")
                     }
@@ -254,7 +240,7 @@ fun CollectPaymentDialog(
                 }
                 // Full Settlement: show whenever ANY amount is outstanding
                 if (totalOutstanding > 0) {
-                    Button(
+                    FilledTonalButton(
                         onClick = {
                             if (usePaise) {
                                 leanAmountPreset = "full"
@@ -267,7 +253,7 @@ fun CollectPaymentDialog(
                         modifier = Modifier.fillMaxWidth(),
                         shape    = RoundedCornerShape(10.dp)
                     ) {
-                        Icon(Icons.Default.AutoAwesome, null, Modifier.size(16.dp))
+                        Icon(Icons.Default.DoneAll, null, Modifier.size(16.dp))
                         Spacer(Modifier.width(6.dp))
                         Text("Full Settlement - ${CurrencyFormatter.detail(totalOutstanding, currencyCode, locale)}")
                     }
@@ -295,7 +281,7 @@ fun CollectPaymentDialog(
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         modifier = Modifier.fillMaxWidth(),
                         supportingText = {
-                            Text("Split is automatic: interest first, then principal. Settlement uses the payment date above.")
+                            Text("Split is automatic: interest first, then principal. Settlement uses the selected payment date.")
                         },
                     )
                 } else {
@@ -345,7 +331,7 @@ fun CollectPaymentDialog(
                 paisePreview?.let { split ->
                     Spacer(Modifier.height(10.dp))
                     Surface(
-                        shape = RoundedCornerShape(12.dp),
+                        shape = RoundedCornerShape(8.dp),
                         color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f),
                     ) {
                         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -562,7 +548,7 @@ fun CollectPaymentDialog(
                         },
                         enabled = isValid && !submitting && dateError == null,
                         shape = RoundedCornerShape(14.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = app.fynlo.ui.theme.Emerald500)
+                        colors = ButtonDefaults.buttonColors()
                     ) { Text("Record ${CurrencyFormatter.detail(totalAmount, currencyCode, locale)}") }
                 }
                 if (confirmFutureDate) {
@@ -577,8 +563,6 @@ fun CollectPaymentDialog(
                 // C17 (3.2.42) - both PaymentDialog action buttons gate on
                 // totalAmount > 0; surface that as an inline hint when zero.
                 DisabledButtonHint(if (isValid) null else "Enter an amount to continue")
-            }
-        }
     }
 }
 
@@ -672,22 +656,9 @@ fun PayDebtDialog(
         }
     }
 
-    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        Surface(
-            modifier = Modifier.fillMaxWidth(0.95f).padding(vertical = 16.dp).imePadding(),
-            shape    = MaterialTheme.shapes.extraLarge,
-            color    = MaterialTheme.colorScheme.surface,
-            tonalElevation = 6.dp
-        ) {
-            Column(modifier = Modifier.padding(24.dp).verticalScroll(rememberScrollState())) {
-                Text("Pay Debt",
-                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.Bold))
-                Text("To: ${debt.name}", style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.error)
-                Spacer(Modifier.height(12.dp))
-
+    FormDialog(title = "Pay debt", subtitle = "To: ${debt.name}", onDismiss = onDismiss) {
                 // Outstanding summary
-                Surface(shape = RoundedCornerShape(12.dp),
+                Surface(shape = RoundedCornerShape(8.dp),
                     color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)) {
                     Column(Modifier.padding(12.dp)) {
                         Text("You Owe", style = MaterialTheme.typography.labelMedium,
@@ -755,7 +726,7 @@ fun PayDebtDialog(
 
                 // Auto-suggest buttons
                 if (debt.rate > 0 && interestOutstanding > 0) {
-                    Button(onClick = {
+                    FilledTonalButton(onClick = {
                         if (usePaise) {
                             leanAmountPreset = "interest"
                             amountStr = CurrencyFormatter.wholeRupeesInput(interestOutstanding)
@@ -763,7 +734,7 @@ fun PayDebtDialog(
                             interestStr = CurrencyFormatter.wholeRupeesInput(interestOutstanding); principalStr = ""
                         }
                     }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(10.dp)) {
-                        Icon(Icons.Default.AutoAwesome, null, Modifier.size(16.dp))
+                        Icon(Icons.Default.Payments, null, Modifier.size(16.dp))
                         Spacer(Modifier.width(6.dp))
                         Text("Interest Only - ${CurrencyFormatter.detail(interestOutstanding, currencyCode, locale)}")
                     }
@@ -780,10 +751,10 @@ fun PayDebtDialog(
                             principalStr = CurrencyFormatter.wholeRupeesInput(principalOutstanding)
                         }
                     }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(10.dp),
-                    colors = ButtonDefaults.filledTonalButtonColors(containerColor = Emerald500.copy(alpha = 0.15f))) {
-                        Icon(Icons.Default.AutoAwesome, null, Modifier.size(16.dp), tint = Emerald500)
+                    colors = ButtonDefaults.filledTonalButtonColors()) {
+                        Icon(Icons.Default.DoneAll, null, Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSecondaryContainer)
                         Spacer(Modifier.width(6.dp))
-                        Text("Full Settlement - ${CurrencyFormatter.detail(totalOutstanding, currencyCode, locale)}", color = Emerald500)
+                        Text("Full Settlement - ${CurrencyFormatter.detail(totalOutstanding, currencyCode, locale)}", color = MaterialTheme.colorScheme.onSecondaryContainer)
                     }
                     Spacer(Modifier.height(4.dp))
                 }
@@ -809,7 +780,7 @@ fun PayDebtDialog(
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         modifier = Modifier.fillMaxWidth(),
                         supportingText = {
-                            Text("Split is automatic: interest first, then principal. Settlement uses the payment date above.")
+                            Text("Split is automatic: interest first, then principal. Settlement uses the selected payment date.")
                         },
                     )
                 } else {
@@ -841,7 +812,7 @@ fun PayDebtDialog(
                 paisePreview?.let { split ->
                     Spacer(Modifier.height(10.dp))
                     Surface(
-                        shape = RoundedCornerShape(12.dp),
+                        shape = RoundedCornerShape(8.dp),
                         color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f),
                     ) {
                         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -1046,7 +1017,7 @@ fun PayDebtDialog(
                         },
                         enabled = isValid && !submitting && dateError == null,
                         shape   = RoundedCornerShape(14.dp),
-                        colors  = ButtonDefaults.buttonColors(containerColor = app.fynlo.ui.theme.Emerald500)
+                        colors  = ButtonDefaults.buttonColors()
                     ) { Text("Pay ${CurrencyFormatter.detail(totalAmount, currencyCode, locale)}") }
                 }
                 if (confirmFutureDate) {
@@ -1058,8 +1029,6 @@ fun PayDebtDialog(
                         onDismiss = { confirmFutureDate = false },
                     )
                 }
-            }
-        }
     }
 }
 
@@ -1094,8 +1063,8 @@ private fun InterestPeriodSelector(
                     onClick = { onSelected(value) },
                     label = { Text(label) },
                     colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = Emerald500,
-                        selectedLabelColor = Color.White,
+                        selectedContainerColor = MaterialTheme.colorScheme.primary,
+                        selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
                     ),
                 )
             }
@@ -1126,7 +1095,7 @@ private fun InterestImpactPreview(
     )
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(8.dp),
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
     ) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -1160,7 +1129,7 @@ private fun InterestImpactPreview(
 private fun PeriodCompletionNotice() {
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(8.dp),
         color = app.fynlo.ui.theme.SemanticAmber.copy(alpha = 0.12f),
     ) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -1196,18 +1165,7 @@ fun WaiveInterestDialog(
     // Whole-rupee entry: allow up to the rounded-up rupee; confirm clamps to the exact max.
     val isValid = amount > 0.0 && amount <= kotlin.math.ceil(maxWaivable)
 
-    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        Surface(
-            modifier = Modifier.fillMaxWidth(0.95f).padding(vertical = 16.dp).imePadding(),
-            shape = MaterialTheme.shapes.extraLarge,
-            color = MaterialTheme.colorScheme.surface,
-            tonalElevation = 6.dp,
-        ) {
-            Column(modifier = Modifier.padding(24.dp).verticalScroll(rememberScrollState())) {
-                Text(title, style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold))
-                Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary)
-                Spacer(Modifier.height(14.dp))
-
+    FormDialog(title = title, subtitle = subtitle, onDismiss = onDismiss) {
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(14.dp),
@@ -1273,7 +1231,5 @@ fun WaiveInterestDialog(
                         else -> null
                     }
                 )
-            }
-        }
     }
 }

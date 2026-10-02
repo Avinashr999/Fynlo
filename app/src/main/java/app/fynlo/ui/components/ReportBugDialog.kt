@@ -142,7 +142,7 @@ fun ReportBugDialog(
             enabled = canSubmit,
             modifier = Modifier.fillMaxWidth().height(48.dp),
             shape = RoundedCornerShape(14.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Emerald500),
+            colors = ButtonDefaults.buttonColors(),
         ) {
             Text(
                 if (submitState is SubmitState.Sent) "Sent" else "Send report",

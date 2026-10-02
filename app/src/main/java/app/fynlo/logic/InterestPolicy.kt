@@ -198,7 +198,8 @@ object InterestPolicy {
         val loanStart = parseLedgerDate(startDate) ?: return 0.0
         val requestedStart = parseLedgerDate(accrualStartDate) ?: loanStart
         val periodStart = laterDate(loanStart, requestedStart)
-        if (!periodStart.isBefore(asOfDate)) return 0.0
+        // Both the start day and the payment/as-of day earn interest.
+        if (periodStart.isAfter(asOfDate)) return 0.0
         val periodStartString = periodStart.format(ledgerFormatter)
         val dueDateForPeriod = normalizedDueDateFor(periodStartString, dueDate)
         var remainingPrincipal = principal
@@ -215,7 +216,7 @@ object InterestPolicy {
                 val principalPortion = rawAmount.coerceAtMost(remainingPrincipal).coerceAtLeast(0.0)
                 if (principalPortion > 0.0) {
                     val paidOn = parseLedgerDate(paidDate)
-                    if (paidOn != null && paidOn.isAfter(periodStart)) {
+                    if (paidOn != null && !paidOn.isBefore(periodStart)) {
                         accrued += InterestEngine.calcIntAccrued(
                             amount = principalPortion,
                             rate = rate,

@@ -231,7 +231,6 @@ fun PeopleScreen(viewModel: FinanceViewModel) {
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        PremiumScreenHeader("Contact Book", subtitle = "Linked to loans & reminders")
         Box(modifier = Modifier.weight(1f)) {
         Column(modifier = Modifier.fillMaxSize()) {
         OutlinedTextField(
@@ -239,21 +238,21 @@ fun PeopleScreen(viewModel: FinanceViewModel) {
             onValueChange = { searchQuery = it },
             placeholder = { Text("Search contacts") },
             leadingIcon = { Icon(Icons.Default.Search, null, Modifier.size(20.dp)) },
-            trailingIcon = { if (searchQuery.isNotEmpty()) IconButton(onClick = { searchQuery = "" }) { Icon(Icons.Default.Clear, null) } },
+            trailingIcon = { if (searchQuery.isNotEmpty()) IconButton(onClick = { searchQuery = "" }) { Icon(Icons.Default.Clear, "Clear search") } },
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-            shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp),
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
             singleLine = true
         )
 
         // C22 (3.2.71) — import from system Contacts. Permission requested
         // on tap; the contract auto-skips the prompt and proceeds straight
         // to read if it's already granted.
-        Button(
+        TextButton(
             onClick = {
                 permLauncher.launch(android.Manifest.permission.READ_CONTACTS)
             },
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
-            shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+            modifier = Modifier.align(Alignment.End).padding(horizontal = 16.dp, vertical = 4.dp),
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
         ) {
             Icon(Icons.Default.Contacts, null, Modifier.size(18.dp))
             Spacer(Modifier.width(8.dp))
@@ -272,16 +271,6 @@ fun PeopleScreen(viewModel: FinanceViewModel) {
             // contacts. On empty state the shared EmptyState body says the
             // same thing — removing the redundant double-explanation
             // (audit C19 "Contact Book: redundant double-explanation").
-            if (people.isNotEmpty()) {
-                item {
-                    Text(
-                        "Contacts link loans to people and enable WhatsApp / SMS reminders.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    )
-                }
-            }
 
             if (people.isEmpty()) {
                 item { EmptyPeopleState(onAdd = { showAddDialog = true }) }
@@ -309,9 +298,9 @@ fun PeopleScreen(viewModel: FinanceViewModel) {
         FloatingActionButton(
             onClick = { showAddDialog = true },
             modifier = Modifier.align(Alignment.BottomEnd).padding(24.dp).size(54.dp),
-            shape = RoundedCornerShape(14.dp),
-            containerColor = Emerald500,
-            contentColor = Color.White,
+            shape = RoundedCornerShape(8.dp),
+            containerColor = MaterialTheme.colorScheme.primary,
+            contentColor = MaterialTheme.colorScheme.onPrimary,
         ) { Icon(Icons.Default.Add, contentDescription = "Add Contact") }
         }
     }
@@ -348,7 +337,7 @@ fun PersonCard(person: Person, onOpenHistory: () -> Unit, onEdit: () -> Unit, on
         Row(
             modifier              = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(14.dp))
+                .clip(RoundedCornerShape(8.dp))
                 .clickable(onClick = onOpenHistory)
                 .padding(vertical = 14.dp),
             verticalAlignment     = Alignment.CenterVertically,
@@ -357,7 +346,7 @@ fun PersonCard(person: Person, onOpenHistory: () -> Unit, onEdit: () -> Unit, on
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
                 // Avatar
                 Surface(
-                    shape    = RoundedCornerShape(12.dp),
+                    shape    = RoundedCornerShape(8.dp),
                     color    = MaterialTheme.colorScheme.primaryContainer,
                     modifier = Modifier.size(44.dp)
                 ) {
@@ -401,7 +390,7 @@ fun PersonCard(person: Person, onOpenHistory: () -> Unit, onEdit: () -> Unit, on
                         Text(
                             "No phone - tap edit to add",
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.error.copy(alpha = 0.6f)
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
@@ -570,7 +559,7 @@ private fun PersonHistoryMetric(
 ) {
     Surface(
         modifier = modifier,
-        shape = RoundedCornerShape(14.dp),
+        shape = RoundedCornerShape(8.dp),
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
     ) {
         Column(Modifier.padding(12.dp)) {
@@ -583,7 +572,7 @@ private fun PersonHistoryMetric(
 @Composable
 private fun PersonHistoryRow(entry: PersonMoneyEntry) {
     Surface(
-        shape = RoundedCornerShape(14.dp),
+        shape = RoundedCornerShape(8.dp),
         color = MaterialTheme.colorScheme.surface,
         tonalElevation = 1.dp,
         border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.12f)),
@@ -653,7 +642,7 @@ fun AddPersonDialog(initial: Person? = null, onDismiss: () -> Unit, onConfirm: (
             placeholder = { Text("e.g. Priya Sharma") },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
+            shape = RoundedCornerShape(8.dp),
         )
 
         Spacer(Modifier.height(14.dp))
@@ -675,7 +664,7 @@ fun AddPersonDialog(initial: Person? = null, onDismiss: () -> Unit, onConfirm: (
                     readOnly = true,
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = codeExpanded) },
                     singleLine = true,
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(8.dp),
                     modifier = Modifier
                         .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, true)
                         .width(120.dp)
@@ -704,7 +693,7 @@ fun AddPersonDialog(initial: Person? = null, onDismiss: () -> Unit, onConfirm: (
                 placeholder = { Text("9876543210") },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(8.dp),
                 modifier = Modifier.weight(1f)
             )
         }
@@ -747,7 +736,7 @@ fun AddPersonDialog(initial: Person? = null, onDismiss: () -> Unit, onConfirm: (
             supportingText = { Text("Generated automatically") },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
+            shape = RoundedCornerShape(8.dp),
         )
 
         Spacer(Modifier.height(20.dp))
@@ -762,9 +751,9 @@ fun AddPersonDialog(initial: Person? = null, onDismiss: () -> Unit, onConfirm: (
                 )
             },
             enabled = name.isNotBlank(),
-            modifier = Modifier.fillMaxWidth().height(52.dp),
-            shape = RoundedCornerShape(16.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = app.fynlo.ui.theme.Emerald500),
+            modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
+            shape = RoundedCornerShape(8.dp),
+            colors = ButtonDefaults.buttonColors(),
         ) {
             Text(
                 if (isEdit) "Update Contact" else "Save Contact",
@@ -889,7 +878,7 @@ private fun ImportContactsDialog(
                 leadingIcon = { Icon(Icons.Default.Search, null) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(8.dp),
             )
 
             Spacer(Modifier.height(8.dp))
@@ -944,8 +933,8 @@ private fun ImportContactsDialog(
             },
             enabled = pickedCount > 0,
             modifier = Modifier.fillMaxWidth().height(48.dp),
-            shape = RoundedCornerShape(14.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Emerald500),
+            shape = RoundedCornerShape(8.dp),
+            colors = ButtonDefaults.buttonColors(),
         ) {
             Text(
                 if (pickedCount == 0) "Pick at least one contact"

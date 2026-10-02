@@ -40,8 +40,8 @@ val TemplateMotionDurationMs = 220
 val TemplateBorder = Color(0xFFE2EAE4)
 val TemplateMutedText = Carbon600
 val TemplateCanvas = LightBackground
-val TemplateAction = Emerald500
-val TemplateActionDark = Emerald700
+val TemplateAction = LedgerBlue
+val TemplateActionDark = Color(0xFF123A87)
 
 @Composable
 fun PremiumSoftGlassPanel(
@@ -234,14 +234,10 @@ fun LedgerDetailTopBar(
         ) {
             Surface(
                 onClick = onNavigateBack,
-                modifier = Modifier.size(40.dp),
-                shape = RoundedCornerShape(14.dp),
-                color = MaterialTheme.colorScheme.surfaceContainerLowest,
-                tonalElevation = 1.dp,
-                border = androidx.compose.foundation.BorderStroke(
-                    0.5.dp,
-                    MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f),
-                ),
+                modifier = Modifier.size(48.dp),
+                shape = RoundedCornerShape(8.dp),
+                color = Color.Transparent,
+                tonalElevation = 0.dp,
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
@@ -255,7 +251,7 @@ fun LedgerDetailTopBar(
             Column(Modifier.weight(1f)) {
                 Text(
                     title,
-                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold),
+                    style = MaterialTheme.typography.titleLarge,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -290,14 +286,10 @@ fun LedgerTopBarActionButton(
 ) {
     Surface(
         onClick = onClick,
-        modifier = modifier.size(40.dp),
-        shape = RoundedCornerShape(14.dp),
+        modifier = modifier.size(48.dp),
+        shape = RoundedCornerShape(8.dp),
         color = containerColor,
-        tonalElevation = 1.dp,
-        border = BorderStroke(
-            0.5.dp,
-            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f),
-        ),
+        tonalElevation = 0.dp,
     ) {
         Box(contentAlignment = Alignment.Center) {
             Icon(
@@ -323,12 +315,13 @@ fun DetailActionButton(
     val contentColor = when {
         destructive -> MaterialTheme.colorScheme.error
         warning -> SemanticAmber
-        else -> Emerald500
+        else -> MaterialTheme.colorScheme.primary
     }
     val background = if (emphasized) contentColor else MaterialTheme.colorScheme.surface
     val foreground = when {
         emphasized && destructive -> MaterialTheme.colorScheme.onError
-        emphasized -> Color.White
+        emphasized && warning -> Color.White
+        emphasized -> MaterialTheme.colorScheme.onPrimary
         else -> contentColor
     }
     Surface(
@@ -399,7 +392,7 @@ fun PremiumStatCard(
     value: String,
     modifier: Modifier = Modifier,
     icon: ImageVector?= null,
-    iconTint: Color = Emerald500,
+    iconTint: Color = MaterialTheme.colorScheme.primary,
     valueColor: Color = MaterialTheme.colorScheme.onSurface,
     onClick: (() -> Unit)?= null
 ) {
@@ -461,7 +454,7 @@ fun PremiumSettingsItem(
     icon: ImageVector,
     title: String,
     subtitle: String = "",
-    iconBg: Color = Emerald500,
+    iconBg: Color = MaterialTheme.colorScheme.primary,
     trailing: (@Composable () -> Unit)?= null,
     onClick: () -> Unit
 ) {
@@ -769,8 +762,8 @@ fun TemplatePrimaryButton(
         modifier = modifier.height(48.dp),
         shape = RoundedCornerShape(12.dp),
         colors = ButtonDefaults.buttonColors(
-            containerColor = TemplateAction,
-            contentColor = Color.White,
+            containerColor = MaterialTheme.colorScheme.primary,
+            contentColor = MaterialTheme.colorScheme.onPrimary,
             disabledContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.10f),
             disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.56f),
         ),
@@ -820,7 +813,7 @@ fun TemplatePill(
         onClick = onClick,
         modifier = modifier.height(36.dp),
         shape = RoundedCornerShape(18.dp),
-        color = if (selected) TemplateAction else MaterialTheme.colorScheme.surface,
+        color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface,
         border = if (selected) null else BorderStroke(0.8.dp, TemplateBorder),
     ) {
         Box(
@@ -830,7 +823,7 @@ fun TemplatePill(
             Text(
                 text,
                 style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.ExtraBold),
-                color = if (selected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
+                color = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
     }
@@ -941,6 +934,7 @@ fun EmptyState(
         contentAlignment = Alignment.Center,
     ) {
         Column(
+            modifier = Modifier.padding(horizontal = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
@@ -948,21 +942,23 @@ fun EmptyState(
                 icon,
                 contentDescription = null,
                 modifier = Modifier.size(56.dp),
-                tint = MaterialTheme.colorScheme.outlineVariant,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Text(
                 title,
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
             )
             Text(
                 subtitle,
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.outlineVariant,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
             )
             FilledTonalButton(
                 onClick = onAction,
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(8.dp),
             ) {
                 Icon(Icons.Filled.Add, null, Modifier.size(16.dp))
                 Spacer(Modifier.width(6.dp))

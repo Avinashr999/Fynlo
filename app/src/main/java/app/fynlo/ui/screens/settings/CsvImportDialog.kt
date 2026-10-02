@@ -235,7 +235,7 @@ internal fun CsvImportDialog(
             enabled = canConfirm,
             modifier = Modifier.fillMaxWidth().height(48.dp),
             shape = RoundedCornerShape(14.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Emerald500),
+            colors = ButtonDefaults.buttonColors(),
         ) {
             Text(
                 "Import $dataRowCount rows into $targetAccount",
@@ -301,4 +301,3 @@ internal fun CsvColumnPicker(
         }
     }
 }
-

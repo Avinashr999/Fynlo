@@ -56,7 +56,8 @@ import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 
-private val Green = Emerald500
+private val Green: Color
+    @Composable get() = LedgerIncome
 private val Blue  = SemanticBlue
 private val Red   = SemanticRed
 private val Amber = SemanticAmber
@@ -470,7 +471,6 @@ fun SettingsScreen(
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        PremiumScreenHeader("Settings", subtitle = "Private ledger preferences")
         Column(
         modifier = Modifier
             .fillMaxSize()
@@ -492,7 +492,7 @@ fun SettingsScreen(
             title = "Personalization",
             subtitle = "Theme and display name",
             icon = Icons.Default.Palette,
-            color = Emerald500,
+            color = MaterialTheme.colorScheme.primary,
             expanded = showPersonalization,
             onToggle = { showPersonalization = !showPersonalization },
         ) {
@@ -523,7 +523,7 @@ fun SettingsScreen(
                 Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                SettingsIconBubble(Icons.Default.PhoneAndroid, Emerald500)
+                SettingsIconBubble(Icons.Default.PhoneAndroid, MaterialTheme.colorScheme.primary)
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
                     Text("Follow system theme",
@@ -549,8 +549,8 @@ fun SettingsScreen(
                     // `onSurfaceVariant` for the unchecked thumb so the dot
                     // is clearly visible against the track in both themes.
                     colors = SwitchDefaults.colors(
-                        checkedThumbColor   = Emerald500,
-                        checkedTrackColor   = Emerald500.copy(alpha = 0.4f),
+                        checkedThumbColor   = MaterialTheme.colorScheme.primary,
+                        checkedTrackColor   = MaterialTheme.colorScheme.primaryContainer,
                         uncheckedThumbColor = MaterialTheme.colorScheme.onSurfaceVariant,
                         uncheckedTrackColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                         uncheckedBorderColor = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -581,8 +581,8 @@ fun SettingsScreen(
                             viewModel.showFeedback(if (it) "Dark mode saved" else "Light mode saved")
                         },
                         colors = SwitchDefaults.colors(
-                            checkedThumbColor = Emerald500,
-                            checkedTrackColor = Emerald500.copy(alpha = 0.4f))
+                            checkedThumbColor = MaterialTheme.colorScheme.primary,
+                            checkedTrackColor = MaterialTheme.colorScheme.primaryContainer)
                     )
                 }
             }
@@ -597,8 +597,8 @@ fun SettingsScreen(
                 trailingIcon  = null,
                 modifier      = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
                 colors        = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor   = Emerald500,
-                    focusedLabelColor    = Emerald500
+                    focusedBorderColor   = MaterialTheme.colorScheme.primary,
+                    focusedLabelColor    = MaterialTheme.colorScheme.primary
                 )
             )
             val trimmedDisplayName = displayName.trim()
@@ -690,8 +690,8 @@ fun SettingsScreen(
                         checked = encryptOnExport,
                         onCheckedChange = { encryptOnExport = it },
                         colors = SwitchDefaults.colors(
-                            checkedThumbColor    = Color.White,
-                            checkedTrackColor    = Emerald500,
+                            checkedThumbColor    = MaterialTheme.colorScheme.onPrimary,
+                            checkedTrackColor    = MaterialTheme.colorScheme.primary,
                             uncheckedThumbColor  = MaterialTheme.colorScheme.onSurfaceVariant,
                             uncheckedTrackColor  = MaterialTheme.colorScheme.surface,
                             uncheckedBorderColor = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -1151,8 +1151,8 @@ fun SettingsScreen(
                     // `onSurfaceVariant` for the unchecked thumb so the dot
                     // is clearly visible against the track in both themes.
                     colors = SwitchDefaults.colors(
-                        checkedThumbColor   = Emerald500,
-                        checkedTrackColor   = Emerald500.copy(alpha = 0.4f),
+                        checkedThumbColor   = MaterialTheme.colorScheme.primary,
+                        checkedTrackColor   = MaterialTheme.colorScheme.primaryContainer,
                         uncheckedThumbColor = MaterialTheme.colorScheme.onSurfaceVariant,
                         uncheckedTrackColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                         uncheckedBorderColor = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -1191,8 +1191,8 @@ fun SettingsScreen(
                     // `onSurfaceVariant` for the unchecked thumb so the dot
                     // is clearly visible against the track in both themes.
                     colors = SwitchDefaults.colors(
-                        checkedThumbColor   = Emerald500,
-                        checkedTrackColor   = Emerald500.copy(alpha = 0.4f),
+                        checkedThumbColor   = MaterialTheme.colorScheme.primary,
+                        checkedTrackColor   = MaterialTheme.colorScheme.primaryContainer,
                         uncheckedThumbColor = MaterialTheme.colorScheme.onSurfaceVariant,
                         uncheckedTrackColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                         uncheckedBorderColor = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -1579,7 +1579,7 @@ fun SettingsScreen(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(16.dp),
                     ) {
-                        CircularProgressIndicator(Modifier.size(26.dp), color = Emerald500)
+                        CircularProgressIndicator(Modifier.size(26.dp), color = MaterialTheme.colorScheme.primary)
                         Column {
                             Text(
                                 "Resetting...",

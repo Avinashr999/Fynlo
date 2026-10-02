@@ -56,7 +56,6 @@ fun GoalScreen(viewModel: FinanceViewModel) {
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        PremiumScreenHeader("Savings Goals", subtitle = "Track your financial targets")
         Box(modifier = Modifier.weight(1f)) {
             // C07 fix (UX_AUDIT §C07): on empty state show ONLY the shared
             // EmptyState CTA, hiding both the list AND the FAB so the user
@@ -81,12 +80,6 @@ fun GoalScreen(viewModel: FinanceViewModel) {
                     verticalArrangement = Arrangement.spacedBy(4.dp),
                     contentPadding = PaddingValues(bottom = FabBottomPadding)
                 ) {
-                    item {
-                        Text(
-                            "Track your progress towards big purchases or milestones.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
                     itemsIndexed(goals, key = { _, g -> g.id }) { index, goal ->
                         GoalCard(goal, currencyCode, locale, onDelete = {
                             viewModel.deleteGoal(goal)
@@ -104,9 +97,9 @@ fun GoalScreen(viewModel: FinanceViewModel) {
                         showAddDialog = true
                     },
                     modifier = Modifier.align(Alignment.BottomEnd).padding(24.dp).size(54.dp),
-                    shape = RoundedCornerShape(14.dp),
-                    containerColor = Emerald500,
-                    contentColor = Color.White,
+                    shape = RoundedCornerShape(8.dp),
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
                 ) {
                     Icon(Icons.Default.Add, contentDescription = "Add Goal")
                 }
@@ -140,7 +133,7 @@ fun GoalCard(goal: Goal, currencyCode: String, locale: Locale, onDelete: () -> U
 
     Column(modifier = Modifier.fillMaxWidth().animateContentSize().padding(vertical = 14.dp)) {
             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
-                Row(verticalAlignment = Alignment.CenterVertically,
+                Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     // C22 (3.2.55) — render the user-picked icon (defaults to
                     // Star for legacy goals). iconFor() falls back to Star on
@@ -150,7 +143,7 @@ fun GoalCard(goal: Goal, currencyCode: String, locale: Locale, onDelete: () -> U
                         app.fynlo.ui.components.GoalIcons.iconFor(goal.iconKey),
                         null, Modifier.size(20.dp), tint = SemanticAmber
                     )
-                    Text(goal.name, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
+                    Text(goal.name, modifier = Modifier.weight(1f), style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
                     if (isComplete) {
                         Surface(color = Emerald500.copy(alpha = 0.12f), shape = RoundedCornerShape(6.dp)) {
                             Text("COMPLETE", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
@@ -159,8 +152,8 @@ fun GoalCard(goal: Goal, currencyCode: String, locale: Locale, onDelete: () -> U
                         }
                     }
                 }
-                IconButton(onClick = { haptic.performHapticFeedback(HapticFeedbackType.LongPress); showDeleteConfirm = true }, modifier = Modifier.size(32.dp)) {
-                    Icon(Icons.Default.Delete, null, Modifier.size(18.dp), tint = SemanticRed.copy(alpha = 0.6f))
+                IconButton(onClick = { haptic.performHapticFeedback(HapticFeedbackType.LongPress); showDeleteConfirm = true }, modifier = Modifier.size(48.dp)) {
+                    Icon(Icons.Default.Delete, "Delete goal", Modifier.size(18.dp), tint = SemanticRed.copy(alpha = 0.6f))
                 }
             }
 
@@ -176,7 +169,7 @@ fun GoalCard(goal: Goal, currencyCode: String, locale: Locale, onDelete: () -> U
 
             Spacer(Modifier.height(8.dp))
 
-            Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
+            Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text("${CurrencyFormatter.detail(goal.savedAmount, currencyCode, locale)} saved",
                     style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
                     color = Emerald500)
@@ -247,7 +240,7 @@ fun AddGoalDialog(
             placeholder = { Text("e.g. New Car") },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
+            shape = RoundedCornerShape(8.dp),
         )
 
         Spacer(Modifier.height(14.dp))
@@ -261,7 +254,7 @@ fun AddGoalDialog(
                 keyboardType = androidx.compose.ui.text.input.KeyboardType.Decimal
             ),
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
+            shape = RoundedCornerShape(8.dp),
         )
 
         Spacer(Modifier.height(14.dp))
@@ -275,7 +268,7 @@ fun AddGoalDialog(
                 keyboardType = androidx.compose.ui.text.input.KeyboardType.Decimal
             ),
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
+            shape = RoundedCornerShape(8.dp),
         )
 
         Spacer(Modifier.height(14.dp))
@@ -286,7 +279,7 @@ fun AddGoalDialog(
             placeholder = { Text("e.g. 2026-12-31") },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
+            shape = RoundedCornerShape(8.dp),
         )
 
         // C22 (3.2.55) — icon picker. 6 curated icons; default "star" matches
@@ -299,7 +292,7 @@ fun AddGoalDialog(
                 val selected = iconKey == opt.key
                 Surface(
                     modifier = Modifier.size(40.dp),
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(8.dp),
                     color = if (selected) SemanticAmber.copy(alpha = 0.18f)
                             else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
                     onClick = { iconKey = opt.key },
@@ -337,7 +330,7 @@ fun AddGoalDialog(
                     modifier = Modifier
                         .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, true)
                         .fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(8.dp),
                 )
                 ExposedDropdownMenu(
                     expanded = acctExpanded,
@@ -371,9 +364,9 @@ fun AddGoalDialog(
                 ))
             },
             enabled = disabledReason == null,
-            modifier = Modifier.fillMaxWidth().height(52.dp),
-            shape = RoundedCornerShape(16.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Emerald500),
+            modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
+            shape = RoundedCornerShape(8.dp),
+            colors = ButtonDefaults.buttonColors(),
         ) {
             Text("Save Goal", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
         }

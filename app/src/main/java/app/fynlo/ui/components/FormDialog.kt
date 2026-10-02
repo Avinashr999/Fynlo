@@ -12,6 +12,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -26,34 +27,8 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import app.fynlo.ui.theme.SemanticRed
 import app.fynlo.ui.theme.TemplateAction
-import app.fynlo.ui.theme.TemplateBorder
 
-/**
- * C22 dialog universalization (3.2.53) - canonical form-dialog shape.
- *
- * Lifts the layout pattern established by `AddLendingDialog` /
- * `AddTransactionDialog` / `AddDebtDialog` / `AddInvestmentDialog` /
- * `PaymentDialog` so the rest of the app's form dialogs (Goal, Budget,
- * Person, Project, Recurring, EMI Calculator, Log Valuation, Edit
- * Balance) can reach the same look in one call:
- *
- *   - `Dialog` (not `AlertDialog`) so we control the surface and width.
- *   - `Surface` at 94% width, 28-dp rounded corners, tonal elevation 4dp
- *     -> the subtle green tint that distinguishes a form from a confirm.
- *   - 20-dp inner padding + `verticalScroll` so the form survives any
- *     content height (the AlertDialog text-slot clipping issue from
- *     3.2.50-3.2.51 doesn't apply here, but scroll keeps the behaviour).
- *   - `imePadding()` so the keyboard doesn't shove the bottom button
- *     off-screen when a text field is focused.
- *   - Title row with bold title + top-right X close icon (matches the
- *     Lending pattern). Cancel is the X - no bottom Cancel button.
- *
- * Form content goes inside `content`. Caller supplies the form fields,
- * then a full-width primary button + `DisabledButtonHint` at the end.
- *
- * For dialogs with a "hero number" (Lending amount, Goal target, Budget
- * limit, etc.), use [FormDialogHero] inside `content` before the fields.
- */
+/** Shared, keyboard-safe form sheet. The header stays visible while fields scroll. */
 @Composable
 fun FormDialog(
     title: String,
@@ -65,7 +40,7 @@ fun FormDialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false),
     ) {
-        Box(
+        BoxWithConstraints(
             modifier = Modifier
                 .fillMaxSize()
                 .imePadding(),
@@ -73,16 +48,17 @@ fun FormDialog(
         ) {
             Surface(
                 modifier = Modifier
+                    .widthIn(max = 640.dp)
                     .fillMaxWidth()
-                    .fillMaxHeight(0.86f),
-                shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+                    .heightIn(max = maxHeight * 0.92f),
+                shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
                 color = MaterialTheme.colorScheme.surfaceContainerLowest,
                 tonalElevation = 0.dp,
-                shadowElevation = 12.dp,
-                border = BorderStroke(0.8.dp, TemplateBorder),
+                shadowElevation = 4.dp,
+                border = BorderStroke(0.8.dp, MaterialTheme.colorScheme.outlineVariant),
             ) {
                 Column(
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier.fillMaxWidth(),
                 ) {
                     Box(
                         modifier = Modifier
@@ -103,7 +79,7 @@ fun FormDialog(
                         Column(Modifier.weight(1f)) {
                             Text(
                                 title,
-                                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold),
+                                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold),
                                 color = MaterialTheme.colorScheme.onSurface,
                             )
                             if (subtitle.isNotBlank()) {
@@ -115,27 +91,14 @@ fun FormDialog(
                                 )
                             }
                         }
-                        Surface(
-                            onClick = onDismiss,
-                            modifier = Modifier.size(40.dp),
-                            shape = RoundedCornerShape(12.dp),
-                            color = MaterialTheme.colorScheme.surface,
-                            border = BorderStroke(0.8.dp, TemplateBorder),
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Icon(
-                                    Icons.Default.Close,
-                                    contentDescription = "Close",
-                                    modifier = Modifier.size(18.dp),
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            }
+                        IconButton(onClick = onDismiss, modifier = Modifier.size(48.dp)) {
+                            Icon(Icons.Default.Close, "Close", tint = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                     Spacer(Modifier.height(10.dp))
                     Column(
                         modifier = Modifier
-                            .weight(1f)
+                            .weight(1f, fill = false)
                             .fillMaxWidth()
                             .verticalScroll(rememberScrollState())
                             .padding(start = 18.dp, end = 18.dp, bottom = 22.dp),
@@ -190,12 +153,12 @@ fun FormActionRow(
         Button(
             onClick = onPrimary,
             enabled = primaryEnabled,
-            shape = RoundedCornerShape(16.dp),
+            shape = RoundedCornerShape(8.dp),
             colors = formButtonColors(destructive),
         ) {
             Text(
                 primaryText,
-                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
             )
         }
     }
@@ -214,20 +177,20 @@ fun FormPrimaryButton(
         enabled = enabled,
         modifier = modifier
             .fillMaxWidth()
-            .height(52.dp),
-        shape = RoundedCornerShape(16.dp),
+            .heightIn(min = 52.dp),
+        shape = RoundedCornerShape(8.dp),
         colors = formButtonColors(destructive),
     ) {
         Text(
             text,
-            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
         )
     }
 }
 @Composable
 private fun formButtonColors(destructive: Boolean) = ButtonDefaults.buttonColors(
-    containerColor = if (destructive) SemanticRed else TemplateAction,
-    contentColor = MaterialTheme.colorScheme.onPrimary,
+    containerColor = if (destructive) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
+    contentColor = if (destructive) MaterialTheme.colorScheme.onError else MaterialTheme.colorScheme.onPrimary,
     disabledContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.10f),
     disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.56f),
 )

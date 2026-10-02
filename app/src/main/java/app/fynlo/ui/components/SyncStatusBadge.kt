@@ -17,15 +17,22 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import app.fynlo.data.SyncStatus
+import app.fynlo.ui.cloudStatusPresentation
 import app.fynlo.ui.theme.*
 
 @Composable
-fun SyncStatusBadge(status: SyncStatus, modifier: Modifier = Modifier) {
+fun SyncStatusBadge(status: SyncStatus, modifier: Modifier = Modifier, hasCloudAccount: Boolean = true) {
+    val description = cloudStatusPresentation(status, hasCloudAccount).label
+    if (!hasCloudAccount) {
+        Icon(Icons.Default.CloudOff, description, modifier.size(22.dp),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        return
+    }
     when (status) {
         is SyncStatus.Synced -> Icon(
             imageVector        = Icons.Default.CloudDone,
-            contentDescription = "Synced",
-            tint               = Emerald500,
+            contentDescription = description,
+            tint               = LedgerIncome,
             modifier           = modifier.size(22.dp)
         )
         is SyncStatus.Syncing -> {
@@ -38,26 +45,26 @@ fun SyncStatusBadge(status: SyncStatus, modifier: Modifier = Modifier) {
             )
             Icon(
                 imageVector        = Icons.Default.Sync,
-                contentDescription = "Syncing",
+                contentDescription = description,
                 tint               = MaterialTheme.colorScheme.primary,
                 modifier           = modifier.size(22.dp).rotate(angle)
             )
         }
         is SyncStatus.Offline -> Icon(
             imageVector        = Icons.Default.CloudOff,
-            contentDescription = "Offline",
+            contentDescription = description,
             tint               = SemanticAmber,
             modifier           = modifier.size(22.dp)
         )
         is SyncStatus.Initialising -> Icon(
             imageVector        = Icons.Default.Cloud,
-            contentDescription = "Connecting",
-            tint               = MaterialTheme.colorScheme.outlineVariant,
+            contentDescription = description,
+            tint               = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier           = modifier.size(22.dp)
         )
         is SyncStatus.Error -> Icon(
             imageVector        = Icons.Default.Warning,
-            contentDescription = "Sync Error",
+            contentDescription = description,
             // 3.2.65 — was Color.Red; theme-aware so the warning reads
             // correctly in both light and dark mode.
             tint               = MaterialTheme.colorScheme.error,

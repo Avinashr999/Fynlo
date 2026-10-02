@@ -269,8 +269,8 @@ fun FirstLaunchSetupScreen(onComplete: () -> Unit) {
                     // emerald accent (works against both light and dark
                     // backgrounds) with white text.
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Emerald500,
-                        contentColor = Color.White,
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary,
                     ),
                     shape = RoundedCornerShape(24.dp),
                     modifier = Modifier.height(48.dp)

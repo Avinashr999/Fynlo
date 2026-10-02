@@ -196,7 +196,6 @@ fun ProfileScreen(
     val name     = authUser?.displayName.orEmpty()
 
     Column(modifier = Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
-        PremiumScreenHeader("Profile & Security", subtitle = "Identity, sync, and app lock")
         Column(
         modifier = Modifier
             .fillMaxSize()
@@ -207,8 +206,7 @@ fun ProfileScreen(
         // ── Account card ──────────────────────────────────────────────────────
         Column(
             modifier = Modifier.fillMaxWidth()
-                .clip(RoundedCornerShape(20.dp))
-                .background(MaterialTheme.colorScheme.surface)
+                                .background(Color.Transparent)
                 .padding(16.dp)
         ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -243,8 +241,7 @@ fun ProfileScreen(
         // ── Sync status card ──────────────────────────────────────────────────
         Row(
             modifier = Modifier.fillMaxWidth()
-                .clip(RoundedCornerShape(20.dp))
-                .background(SemanticBlue.copy(alpha = 0.08f))
+                                .background(Color.Transparent)
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -270,8 +267,8 @@ fun ProfileScreen(
                     startGoogleSignIn()
                 },
                 enabled = !signingIn,
-                modifier = Modifier.fillMaxWidth().height(52.dp),
-                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
+                shape = RoundedCornerShape(8.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
             ) {
                 if (signingIn) {
@@ -321,15 +318,15 @@ fun ProfileScreen(
         Text(
             "Security",
             style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
-            color = Emerald500,
+            color = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.align(Alignment.Start).padding(start = 2.dp, bottom = 8.dp)
         )
         Surface(
             Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(20.dp),
-            color = MaterialTheme.colorScheme.surface,
-            tonalElevation = 1.dp,
-            border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f)),
+            shape = RoundedCornerShape(8.dp),
+            color = Color.Transparent,
+            tonalElevation = 0.dp,
+            border = null,
         ) {
         Column(Modifier.animateContentSize()) {
             // PIN Lock — tap anywhere to toggle on/off
@@ -347,12 +344,12 @@ fun ProfileScreen(
                 Box(
                     Modifier.size(40.dp).clip(CircleShape).background(
                         if (pinSet) MaterialTheme.colorScheme.primary.copy(alpha = 0.16f)
-                        else MaterialTheme.colorScheme.error.copy(alpha = 0.10f)
+                        else MaterialTheme.colorScheme.surfaceVariant
                     ), Alignment.Center
                 ) {
                     Icon(Icons.Default.Lock, null, Modifier.size(20.dp),
                         tint = if (pinSet) MaterialTheme.colorScheme.primary
-                               else MaterialTheme.colorScheme.error)
+                              else MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 Column(Modifier.weight(1f)) {
                     Text("PIN Lock",
@@ -370,9 +367,9 @@ fun ProfileScreen(
                     colors = SwitchDefaults.colors(
                         checkedThumbColor = MaterialTheme.colorScheme.primary,
                         checkedTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.42f),
-                        uncheckedThumbColor = MaterialTheme.colorScheme.error,
-                        uncheckedTrackColor = MaterialTheme.colorScheme.error.copy(alpha = 0.22f),
-                        uncheckedBorderColor = MaterialTheme.colorScheme.error.copy(alpha = 0.55f),
+                        uncheckedThumbColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant,
+                        uncheckedBorderColor = MaterialTheme.colorScheme.outline,
                     )
                 )
             }
@@ -427,8 +424,7 @@ fun ProfileScreen(
                                 else -> "Tap to enable fingerprint / face unlock"
                             },
                             style = MaterialTheme.typography.bodySmall,
-                            color = if (!pinSet) MaterialTheme.colorScheme.error.copy(alpha = 0.7f)
-                                    else MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                     Switch(
@@ -456,8 +452,8 @@ fun ProfileScreen(
                     scope.launch { GoogleSignInHelper.clearCredentialState(context) }
                     onSignOut()
                 },
-                modifier = Modifier.fillMaxWidth().height(52.dp),
-                shape    = RoundedCornerShape(16.dp)
+                modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
+                shape    = RoundedCornerShape(8.dp)
             ) {
                 Icon(Icons.Default.AccountCircle, null, Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
@@ -467,14 +463,13 @@ fun ProfileScreen(
         }
 
         // ── Lock app ──────────────────────────────────────────────────────────
-        Button(
+        OutlinedButton(
             onClick  = {
                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                 onLogout()
             },
-            modifier = Modifier.fillMaxWidth().height(56.dp),
-            shape    = RoundedCornerShape(16.dp),
-            colors   = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+            modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
+            shape    = RoundedCornerShape(8.dp)
         ) {
             Icon(Icons.Default.Lock, null, Modifier.size(18.dp))
             Spacer(Modifier.width(8.dp))

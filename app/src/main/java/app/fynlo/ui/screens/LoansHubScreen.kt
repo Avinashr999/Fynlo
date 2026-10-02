@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.BorderStroke
@@ -24,6 +25,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -74,7 +76,7 @@ fun LoansHubScreen(
     initialTab: Int = 0
 ) {
     val haptic = LocalHapticFeedback.current
-    var tab by remember { mutableIntStateOf(initialTab) }
+    var tab by rememberSaveable { mutableIntStateOf(initialTab) }
     var showAddLoanDialog by remember { mutableStateOf(false) }
     var showAddDebtDialog by remember { mutableStateOf(false) }
     val summary by viewModel.financialSummary.collectAsState()
@@ -147,57 +149,28 @@ fun LoansHubScreen(
     }
 
     val hubTopContent: @Composable () -> Unit = {
-        PremiumScreenHeader(
-            title = "Loans",
-            subtitle = if (tab == 0) "Money you've lent out" else "Money you owe",
-            action = {
-                FilledIconButton(
-                    onClick = {
-                        if (tab == 0) showAddLoanDialog = true else showAddDebtDialog = true
-                    },
-                    shape = RoundedCornerShape(14.dp),
-                    colors = IconButtonDefaults.filledIconButtonColors(
-                        containerColor = if (tab == 0) Emerald500 else SemanticRed,
-                        contentColor = Color.White,
-                    ),
-                ) {
-                    Icon(
-                        Icons.Default.Add,
-                        contentDescription = if (tab == 0) "Add Loan" else "Add Debt",
-                    )
-                }
-            },
-        )
-
+        Row(Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 8.dp),
+            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            app.fynlo.ui.components.LoanFilterTabs(
+                options = listOf("Lent", "Owed"), selectedIndex = tab, onSelected = { tab = it },
+                modifier = Modifier.weight(1f),
+            )
+            FilledIconButton(
+                onClick = { if (tab == 0) showAddLoanDialog = true else showAddDebtDialog = true },
+                modifier = Modifier.heightIn(min = 48.dp),
+                shape = RoundedCornerShape(8.dp),
+            ) { Icon(Icons.Default.Add, if (tab == 0) "Add Loan" else "Add Debt") }
+        }
         LoansReadableSummary(
-            countLabel = if (tab == 0) "Borrowers" else "Debtors",
+            countLabel = if (tab == 0) "borrowers" else "debts",
             count = heroCount,
             principalLabel = "Principal remaining",
             principalValue = if (isPrivacy) "Hidden" else CurrencyFormatter.detail(principalAmount, currencyCode, locale),
-            principalColor = if (tab == 0) Emerald500 else SemanticRed,
-            interestLabel = "Interest Due",
+            principalColor = MaterialTheme.colorScheme.onSurface,
+            interestLabel = if (tab == 0) "Interest due" else "Interest payable",
             interestValue = if (isPrivacy) "Hidden" else CurrencyFormatter.detail(interestAmount, currencyCode, locale),
-            interestColor = if (interestAmount > 0.0) SemanticRed else MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(top = 4.dp, bottom = 6.dp),
+            interestColor = MaterialTheme.colorScheme.onSurface,
         )
-
-        Row(
-            Modifier.fillMaxWidth().padding(bottom = 4.dp),
-            horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp),
-        ) {
-            TemplatePill(
-                text = "Lent",
-                selected = tab == 0,
-                onClick = { tab = 0 },
-                modifier = Modifier.weight(1f),
-            )
-            TemplatePill(
-                text = "Owed",
-                selected = tab == 1,
-                onClick = { tab = 1 },
-                modifier = Modifier.weight(1f),
-            )
-        }
     }
 
     Column(Modifier.fillMaxSize()) {
@@ -237,31 +210,28 @@ private fun LoansReadableSummary(
 ) {
     Surface(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(18.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerLowest,
-        border = BorderStroke(0.7.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f)),
+        color = Color.Transparent,
     ) {
-        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
+        Column(Modifier.padding(vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Row(
                 Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    "Loan book",
-                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.ExtraBold),
+                    if (countLabel == "borrowers") "Money to collect" else "Money to repay",
+                    style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurface,
                 )
                 Surface(
                     shape = RoundedCornerShape(999.dp),
-                    color = if (count > 0) Emerald100.copy(alpha = 0.7f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.65f),
-                    border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)),
+                    color = Color.Transparent,
                 ) {
                     Text(
-                        "$count $countLabel",
+                        "$count ${if (count == 1) countLabel.removeSuffix("s") else countLabel}",
                         modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.dp),
                         style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-                        color = if (count > 0) Emerald500 else MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }
@@ -291,27 +261,22 @@ private fun LoanMoneyStat(
     modifier: Modifier = Modifier,
 ) {
     Surface(
-        modifier = modifier.height(68.dp),
-        shape = RoundedCornerShape(14.dp),
-        color = color.copy(alpha = if (color == SemanticRed) 0.075f else 0.065f),
+        modifier = modifier.heightIn(min = 64.dp),
+        color = Color.Transparent,
     ) {
         Column(
-            modifier = Modifier.padding(horizontal = 11.dp, vertical = 9.dp),
+            modifier = Modifier.padding(vertical = 9.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             Text(
-                label.uppercase(),
-                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.ExtraBold),
+                label,
+                style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
             )
             Text(
                 value,
-                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.ExtraBold),
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
                 color = color,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
             )
         }
     }
