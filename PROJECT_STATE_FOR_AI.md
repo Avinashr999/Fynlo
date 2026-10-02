@@ -2461,3 +2461,17 @@ The user approved the combined future roadmap below. Do not treat these as compl
 - Changed the shell title from `Fynlo` to `Ledger` to reduce brand noise inside the private app while keeping the app identity elsewhere.
 - Bumped app version to `3.3.13` / `versionCode 253` because visible UI behavior changed.
 - Scope: UI/content simplification only. No database migration, no account balance mutation, no Firestore repair, no interest/accounting formula change.
+
+### 2026-10-02 - 3.3.14 Personal Ledger Detail Cleanup
+- Made the shared borrower/debt Money trail section collapsed by default, with an accessible show/hide button and saved expansion state. Financial history remains available.
+- Renamed dashboard Insights to Balance breakdown, using plain account/loan labels and neutral colors for ordinary balances.
+- Constrained balance-row labels so long labels wrap without colliding with amounts.
+- Confirmed Settings already gates developer tools to the developer debug flavor; preserved that boundary.
+- Bumped version to 3.3.14 / versionCode 254. The private-ledger turning point remains tagged private-ledger-start-3.3.13.
+- Scope: presentation only; no accounting formula, stored records, database schema, authentication, or cloud sync changes.
+- Phone verification identified white text on the pale dark-theme debt payment button. Updated the shared emphasized destructive button to use the theme's onError foreground for readable contrast.
+- Verification: production unit suite passed (532 tests, zero failures/errors). On the connected phone, checked RB borrower and Sudhakar Sabbella debt Money trail opening/closing, matching principal values, and dashboard label wrapping in dark mode.
+- Dashboard before/after installation stayed at net worth Rs. 1,80,57,653, assets Rs. 2,00,22,916, and debt Rs. 19,65,263. This is a display comparison, not a full database audit; no financial entries were edited during smoke testing.
+- Developer app launch and guest entry to its empty local dashboard passed. No Google login or cloud round-trip testing was performed in this UI pass.
+- Local screenshots are stored outside Git under C:/Users/user/.codex/tmp/fynlo-3.3.14-qa. Private DB dumps, remote attachments, and prior gate evidence remain uncommitted.
+- Final production and developer debug installs succeeded on RZGL50XVD4Z at build 254. Production screenshot confirmed readable dark-theme debt payment text after the color correction; no Fynlo crash appeared in the crash buffer.

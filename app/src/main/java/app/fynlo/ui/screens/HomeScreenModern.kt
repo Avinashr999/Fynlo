@@ -600,15 +600,15 @@ fun HomeScreenModern(viewModel: FinanceViewModel, onNavigateToScreen: (String) -
         }
 
         LedgerPanel {
-            LedgerSectionTitle("Insights")
+            LedgerSectionTitle("Balance breakdown")
             Spacer(Modifier.height(4.dp))
-            NeoInsightRow("Bank Cash", fmt(bankCashTotal), SemanticBlue) { activeBreakdownType = BreakdownType.BANK_CASH }
+            NeoInsightRow("Bank balances", fmt(bankCashTotal), MaterialTheme.colorScheme.onSurface) { activeBreakdownType = BreakdownType.BANK_CASH }
             HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f))
-            NeoInsightRow("Cash in Hand", fmt(cashInHandTotal), Emerald500) { activeBreakdownType = BreakdownType.CASH_IN_HAND }
+            NeoInsightRow("Cash in hand", fmt(cashInHandTotal), MaterialTheme.colorScheme.onSurface) { activeBreakdownType = BreakdownType.CASH_IN_HAND }
             HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f))
-            NeoInsightRow("Growing Assets", fmt(summary.totalInvestments + summary.totalInterestLoans), SemanticAmber) { activeBreakdownType = BreakdownType.GROWING_ASSETS }
+            NeoInsightRow("Investments and interest loans", fmt(summary.totalInvestments + summary.totalInterestLoans), MaterialTheme.colorScheme.onSurface) { activeBreakdownType = BreakdownType.GROWING_ASSETS }
             HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f))
-            NeoInsightRow("Hand Loans", fmt(summary.totalHandLoans), Carbon500) { activeBreakdownType = BreakdownType.HAND_LOANS }
+            NeoInsightRow("Interest-free loans", fmt(summary.totalHandLoans), MaterialTheme.colorScheme.onSurface) { activeBreakdownType = BreakdownType.HAND_LOANS }
             HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f))
             NeoInsightRow(
                 label = "Debt outstanding",
@@ -1869,7 +1869,7 @@ private fun NeoInsightRow(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        Row(modifier = Modifier.weight(1f).padding(end = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Box(Modifier.size(10.dp).clip(CircleShape).background(color))
             Column {
                 Text(label, style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium))

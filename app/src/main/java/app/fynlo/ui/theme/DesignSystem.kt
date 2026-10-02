@@ -325,6 +325,11 @@ fun DetailActionButton(
         else -> Emerald500
     }
     val background = if (emphasized) contentColor else MaterialTheme.colorScheme.surface
+    val foreground = when {
+        emphasized && destructive -> MaterialTheme.colorScheme.onError
+        emphasized -> Color.White
+        else -> contentColor
+    }
     Surface(
         onClick = onClick,
         modifier = modifier
@@ -349,13 +354,13 @@ fun DetailActionButton(
                 icon,
                 contentDescription = null,
                 modifier = Modifier.size(18.dp),
-                tint = if (emphasized) Color.White else contentColor,
+                tint = foreground,
             )
             Spacer(Modifier.width(8.dp))
             Text(
                 text,
                 style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.ExtraBold),
-                color = if (emphasized) Color.White else contentColor,
+                color = foreground,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
