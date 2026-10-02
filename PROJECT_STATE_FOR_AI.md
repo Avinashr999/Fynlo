@@ -2475,3 +2475,17 @@ The user approved the combined future roadmap below. Do not treat these as compl
 - Developer app launch and guest entry to its empty local dashboard passed. No Google login or cloud round-trip testing was performed in this UI pass.
 - Local screenshots are stored outside Git under C:/Users/user/.codex/tmp/fynlo-3.3.14-qa. Private DB dumps, remote attachments, and prior gate evidence remain uncommitted.
 - Final production and developer debug installs succeeded on RZGL50XVD4Z at build 254. Production screenshot confirmed readable dark-theme debt payment text after the color correction; no Fynlo crash appeared in the crash buffer.
+
+### 2026-10-02 - 3.3.15 Personal Ledger Visual Refinement
+- Used Design Critique and UI/UX Pro Max to refine Investments, Reports, Expenses and History for the owner's private use.
+- Investments: flat portfolio summary, smaller holding cards without nested value panels or return badges, neutral amount colors, visible Details control for funding, debt status, proof and notes. Cleared funding debt explicitly does not imply the investment has been withdrawn. Performance remains expandable.
+- Reports: compact heading/export row, removed repeated summary totals, flat report links, shorter labels, and expandable planning tools. Existing report navigation/export handlers are preserved.
+- Expenses: flat monthly total, expandable categories, quieter transaction rows, accessible month-navigation labels and 48dp action targets. History summary wraps its In/Out labels on narrow screens.
+- Theme: neutral light/dark surfaces with emerald accents; lightened dark-theme primary for contrast and made the shell title use the readable onSurface color.
+- Version 3.3.15 / code 255. No data/model/schema, calculation, account mutation, authentication or sync changes. The rollback milestone remains private-ledger-start-3.3.13.
+- Shared screen headings are smaller, and Investments/Expenses avoid duplicate horizontal header padding. Expanded details use accessible chevron controls; normal money actions remain in their existing menus.
+- Verification: both production and developer debug builds compiled and installed on the connected phone. Production unit tests passed: 532 tests, zero failures/errors/skips. Git whitespace validation passed.
+- Phone checks: light/dark investment layouts, CLX funding-details expansion (Rs. 5,00,000 still held despite cleared funding debt), report planning expansion, September expense category expansion, Settings navigation, and developer guest dashboard launch. No financial records were edited. Original system dark-mode setting was restored after testing.
+- Dashboard totals remained net worth Rs. 1,80,57,653, assets Rs. 2,00,22,916, debt Rs. 19,65,263; investment portfolio remained Rs. 37,25,000. These are display checks, not a fresh database/cloud audit. No Fynlo crash appeared in the device crash buffer during checks.
+- Read-only observation for separate investigation: September Expenses groups Lending and Investment among its spending categories. This pre-existing classification was not changed in this presentation-only pass; review the source classification before interpreting that monthly figure as consumption expenses.
+- Screenshots are outside Git at C:/Users/user/.codex/tmp/fynlo-3.3.15-qa. The owner approved the design and requested commit/push after phone review. No release AAB was created. Private dumps/attachments remain excluded.

@@ -182,18 +182,19 @@ fun PremiumScreenHeader(
     modifier: Modifier = Modifier,
     subtitle: String = "",
     action: (@Composable () -> Unit)?= null,
+    horizontalPadding: androidx.compose.ui.unit.Dp = TemplateScreenPadding,
 ) {
     Row(
         modifier = modifier.fillMaxWidth()
-            .padding(start = TemplateScreenPadding, end = TemplateScreenPadding, top = 14.dp, bottom = 6.dp),
+            .padding(start = horizontalPadding, end = horizontalPadding, top = 14.dp, bottom = 6.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(Modifier.weight(1f)) {
             Text(
                 title,
-                style = MaterialTheme.typography.headlineMedium.copy(
-                    fontWeight = FontWeight.ExtraBold,
+                style = MaterialTheme.typography.headlineSmall.copy(
+                    fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurface
                 )
             )

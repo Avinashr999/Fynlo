@@ -148,12 +148,12 @@ fun TransactionHistoryScreen(viewModel: FinanceViewModel) {
                 text = if (isPrivacy) "****"
                        else if (net < 0) CurrencyFormatter.negative(net, currencyCode, locale)
                        else "+${CurrencyFormatter.detail(net, currencyCode, locale)}",
-                style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.ExtraBold),
-                color = if (net < 0) SemanticRed else Emerald500
+                style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
+                color = MaterialTheme.colorScheme.onSurface
             )
-            Row(
+            FlowRow(
                 horizontalArrangement = Arrangement.spacedBy(14.dp),
-                verticalAlignment = Alignment.CenterVertically,
+                verticalArrangement = Arrangement.spacedBy(4.dp),
                 modifier = Modifier.padding(top = 2.dp, bottom = 4.dp)
             ) {
                 Text(app.fynlo.logic.pluralize(filteredHistory.size, "entry", "entries"),
@@ -164,14 +164,14 @@ fun TransactionHistoryScreen(viewModel: FinanceViewModel) {
                 Text(
                     "In $incText",
                     style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
-                    color = Emerald500
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
                 val expText = if (isPrivacy) "Hidden" else CurrencyFormatter.detail(totalExpense, currencyCode, locale)
                 Text(
                     "Out $expText",
                     style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
-                    color = SemanticRed
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }

@@ -1007,7 +1007,7 @@ private fun LedgerAppTopBar(
                     "Ledger",
                     style = MaterialTheme.typography.titleMedium.copy(
                         fontWeight = FontWeight.Bold,
-                        color = Emerald700,
+                        color = MaterialTheme.colorScheme.onSurface,
                     ),
                     maxLines = 1,
                     overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,

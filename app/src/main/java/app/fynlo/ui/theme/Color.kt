@@ -47,7 +47,7 @@ val ChartColors = listOf(
 )
 
 // Light theme surface colors
-val LightBackground = Color(0xFFF4F8F4)
+val LightBackground = Color(0xFFF5F6F7)
 val LightSurface    = Color(0xFFFFFFFF)
 val LightSurface2   = Carbon100
 

@@ -16,6 +16,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -53,6 +54,7 @@ val transactions by viewModel.transactions.collectAsState()
     val currencyCode = currentProject?.currency ?: "INR"
     val locale       = LocalLocale.current.platformLocale
     var showDialog   by remember { mutableStateOf(false) }
+    var showCategories by rememberSaveable { mutableStateOf(false) }
 
     // Month navigation
     var selectedMonth by remember { mutableStateOf(YearMonth.now()) }
@@ -140,7 +142,7 @@ val transactions by viewModel.transactions.collectAsState()
     ) {
         PremiumScreenHeader(
             title = "Expenses",
-            subtitle = "Track where your money goes",
+            horizontalPadding = 0.dp,
             action = {
                 FilledIconButton(
                     onClick = { showDialog = true },
@@ -165,13 +167,13 @@ val transactions by viewModel.transactions.collectAsState()
         // Month selector
             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
                 IconButton(onClick = { selectedMonth = selectedMonth.minusMonths(1) }) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, null, tint = MaterialTheme.colorScheme.primary)
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, "Previous month", tint = MaterialTheme.colorScheme.onSurface)
                 }
                 Text(selectedMonth.format(monthFmt),
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold))
                 IconButton(onClick = { if (!isCurrentMonth) selectedMonth = selectedMonth.plusMonths(1) },
                     enabled = !isCurrentMonth) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowForward, null,
+                    Icon(Icons.AutoMirrored.Filled.ArrowForward, "Next month",
                         tint = if (!isCurrentMonth) MaterialTheme.colorScheme.primary
                                else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f))
                 }
@@ -182,14 +184,11 @@ val transactions by viewModel.transactions.collectAsState()
                 // callout. The delta line uses an arrow + colour to signal
                 // direction (down green = spent less / up red = spent more). Hidden
                 // when previousMonthTotal == 0 (first month of usage).
-                LedgerHeroPanel(
-                    label = "Spent in ${selectedMonth.format(monthFmt)}",
-                    value = CurrencyFormatter.detail(total, currencyCode, locale),
-                    subtitle = app.fynlo.logic.pluralize(expenses.size, "transaction"),
-                    containerColor = Carbon700,
-                    modifier = Modifier.padding(top = 4.dp),
-                ) {
-                    if (previousMonthTotal > 0) {
+                Column(Modifier.fillMaxWidth().padding(vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text("Total spent", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(CurrencyFormatter.detail(total, currencyCode, locale), style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                    Text(app.fynlo.logic.pluralize(expenses.size, "transaction"), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    if (showCategories && previousMonthTotal > 0) {
                         val delta = total - previousMonthTotal
                         val label = when {
                             delta > 0 -> "more than last month"
@@ -199,15 +198,15 @@ val transactions by viewModel.transactions.collectAsState()
                         Text(
                             if (delta == 0.0) label else "${CurrencyFormatter.detail(kotlin.math.abs(delta), currencyCode, locale)} $label",
                             style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
-                            color = if (delta > 0) Color(0xFFFFD8D8) else Emerald100,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
-                    if (topCategory != null) {
+                    if (showCategories && topCategory != null) {
                         val (cat, amt, share) = topCategory
                         Text(
                             "Mostly on $cat - ${CurrencyFormatter.detail(amt, currencyCode, locale)} (${(share * 100).toInt()}%)",
                             style = MaterialTheme.typography.bodySmall,
-                            color = Color.White.copy(alpha = 0.76f),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                 }
@@ -216,8 +215,11 @@ val transactions by viewModel.transactions.collectAsState()
 
                 // Category breakdown with FIXED budget %
                 if (byCat.isNotEmpty()) {
-                    LedgerPanel {
-                        LedgerSectionTitle("Category Breakdown", count = byCat.size.toString())
+                    TextButton(onClick = { showCategories = !showCategories }, modifier = Modifier.fillMaxWidth()) {
+                        Text("By category", Modifier.weight(1f), color = MaterialTheme.colorScheme.onSurface)
+                        Icon(if (showCategories) Icons.Default.ExpandLess else Icons.Default.ExpandMore, null)
+                    }
+                    if (showCategories) Column {
                         Spacer(Modifier.height(12.dp))
                         Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                             byCat.forEachIndexed { i, (cat, amt) ->
@@ -231,7 +233,7 @@ val transactions by viewModel.transactions.collectAsState()
 
                                 Column {
                                     Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
-                                        Row(verticalAlignment = Alignment.CenterVertically,
+                                        Row(modifier = Modifier.weight(1f).padding(end = 12.dp), verticalAlignment = Alignment.CenterVertically,
                                             horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                             Box(Modifier.size(10.dp).clip(CircleShape).background(color))
                                             Text(cat, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold))
@@ -239,7 +241,7 @@ val transactions by viewModel.transactions.collectAsState()
                                         Text(
                                             CurrencyFormatter.detail(amt, currencyCode, locale),
                                             style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
-                                            color = color,
+                                            color = MaterialTheme.colorScheme.onSurface,
                                         )
                                     }
                                     Spacer(Modifier.height(6.dp))
@@ -332,7 +334,7 @@ val transactions by viewModel.transactions.collectAsState()
                                 // for rename-reflective sub-label.
                                 accountIdToName = allAccounts.associate { it.id to it.name },
                             )
-                            Spacer(Modifier.height(8.dp))
+                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
                         }
                     }
                 } else if (isInitialLoading) {
@@ -412,24 +414,19 @@ private fun ExpenseRow(
 
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.surface,
-        tonalElevation = 1.dp,
-        border = androidx.compose.foundation.BorderStroke(
-            0.5.dp,
-            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.28f),
-        ),
+        color = MaterialTheme.colorScheme.background,
+        tonalElevation = 0.dp,
     ) {
         Row(
-            Modifier.fillMaxWidth().padding(12.dp),
+            Modifier.fillMaxWidth().padding(vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Box(
-                Modifier.size(42.dp).clip(RoundedCornerShape(14.dp)).background(SemanticRed.copy(alpha = 0.13f)),
+                Modifier.size(32.dp).clip(RoundedCornerShape(8.dp)).background(MaterialTheme.colorScheme.surfaceVariant),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(getCategoryIcon(txn.category), null, tint = SemanticRed, modifier = Modifier.size(21.dp))
+                Icon(getCategoryIcon(txn.category), null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
             }
             Column(Modifier.weight(1f)) {
                 Text(txn.category, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.ExtraBold))
@@ -442,12 +439,12 @@ private fun ExpenseRow(
             Column(horizontalAlignment = Alignment.End) {
                 Text(CurrencyFormatter.negative(txn.amount, currencyCode, locale),
                     style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.ExtraBold),
-                    color = SemanticRed)
+                    color = MaterialTheme.colorScheme.onSurface)
                 Text(txn.date, style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Box {
-                IconButton(onClick = { menuOpen = true }, modifier = Modifier.size(34.dp)) {
+                IconButton(onClick = { menuOpen = true }, modifier = Modifier.size(48.dp)) {
                     Icon(Icons.Default.MoreVert, "More", Modifier.size(18.dp),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }

@@ -15,6 +15,7 @@ import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -143,27 +144,28 @@ fun ReportsHubScreen(
 
     fun preview(v: Double): String = CurrencyFormatter.listRow(v, currencyCode, locale)
 
-    val green = Emerald500
-    val red   = SemanticRed
-    val blue  = SemanticBlue
+    val green = MaterialTheme.colorScheme.onSurface
+    val red   = MaterialTheme.colorScheme.error
+    val blue  = MaterialTheme.colorScheme.onSurfaceVariant
+    var showPlanning by rememberSaveable { mutableStateOf(false) }
 
     Column(
         modifier = Modifier.fillMaxSize()
             .padding(horizontal = 16.dp)
             .verticalScroll(rememberScrollState())
     ) {
-        PremiumScreenHeader("Reports", subtitle = "Open a report to drill in")
             // Export-PDF button kept - top-right utility, shared across detail
             // screens. PDF is generated against the active range below.
             Row(
-                Modifier.fillMaxWidth().padding(bottom = 8.dp),
-                Arrangement.End, Alignment.CenterVertically
+                Modifier.fillMaxWidth().padding(vertical = 16.dp),
+                Arrangement.SpaceBetween, Alignment.CenterVertically
             ) {
+                Text("Reports", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
                 val context = androidx.compose.ui.platform.LocalContext.current
                 val projectName = currentProject?.name ?: "Personal"
                 val periodLabel = if (selectedRange == "All Time") "All time"
                                   else "${fromDate.format(DateTimeFormatter.ofPattern("dd MMM yyyy"))} - ${toDate.format(DateTimeFormatter.ofPattern("dd MMM yyyy"))}"
-                Button(
+                OutlinedButton(
                     onClick = {
                         // C21 Stage 1 - standardized filename + identity row.
                         val file = app.fynlo.logic.ExportUtility.exportCacheFile(
@@ -195,7 +197,7 @@ fun ReportsHubScreen(
                 ) {
                     Icon(Icons.Default.PictureAsPdf, null, Modifier.size(16.dp))
                     Spacer(Modifier.width(4.dp))
-                    Text("Report PDF")
+                    Text("Export")
                 }
             }
 
@@ -230,29 +232,20 @@ fun ReportsHubScreen(
             val dpPrev      = if (totalDebt > 0) preview(totalDebt) else "Debt free"
             val dpPrevColor = if (totalDebt > 0) red else green
 
-            LedgerMetricBand(
-                metrics = listOf(
-                    LedgerMetric("Net Worth", nwPrev, if (summary.netWorth >= 0) green else red),
-                    LedgerMetric("Profit", plPrev, plPrevColor),
-                    LedgerMetric("Flow", mfPrev, MaterialTheme.colorScheme.onSurface),
-                ),
-                modifier = Modifier.padding(bottom = 18.dp),
-            )
-
-            ReportGroup(title = "Business health", count = "2") {
-                LedgerRow(
+            ReportGroup(title = "Income and spending", count = "2") {
+                PersonalReportRow(
                     icon = Icons.AutoMirrored.Filled.List,
                     title = "Profit & Loss",
-                    subtitle = "Income, expenses, and net profit for the selected period.",
+                    subtitle = "Income less expenses",
                     value = plPrev,
                     iconTint = green,
                     valueColor = plPrevColor,
                     onClick = onNavigateToPL,
                 )
-                LedgerRow(
+                PersonalReportRow(
                     icon = Icons.Default.DateRange,
                     title = "Monthly Summary",
-                    subtitle = "High-level movement by category for this month.",
+                    subtitle = "This month's categories",
                     value = msPrev,
                     iconTint = blue,
                     valueColor = msPrevColor,
@@ -261,19 +254,19 @@ fun ReportsHubScreen(
             }
 
             ReportGroup(title = "Wealth", count = "2") {
-                LedgerRow(
+                PersonalReportRow(
                     icon = Icons.AutoMirrored.Filled.TrendingUp,
                     title = "Net Worth",
-                    subtitle = "Assets, debts, investments, and trend history.",
+                    subtitle = "Assets and debts over time",
                     value = nwPrev,
                     iconTint = blue,
                     valueColor = if (summary.netWorth >= 0) green else red,
                     onClick = onNavigateToNetWorth,
                 )
-                LedgerRow(
+                PersonalReportRow(
                     icon = Icons.Default.AccountBalance,
                     title = "Interest Income",
-                    subtitle = "Collected interest from lending and finance activity.",
+                    subtitle = "Interest collected",
                     value = intPrev,
                     iconTint = green,
                     valueColor = green,
@@ -282,10 +275,10 @@ fun ReportsHubScreen(
             }
 
             ReportGroup(title = "Cash movement", count = "1") {
-                LedgerRow(
+                PersonalReportRow(
                     icon = Icons.Default.SwapHoriz,
                     title = "Money Flow",
-                    subtitle = "Inflow, outflow, and transfer activity.",
+                    subtitle = "Money in, out, and transfers",
                     value = mfPrev,
                     iconTint = Carbon500,
                     valueColor = MaterialTheme.colorScheme.onSurface,
@@ -293,8 +286,12 @@ fun ReportsHubScreen(
                 )
             }
 
-            ReportGroup(title = "Loans and debt", count = "2") {
-                LedgerRow(
+            TextButton(onClick = { showPlanning = !showPlanning }, modifier = Modifier.fillMaxWidth()) {
+                Text("Planning tools", modifier = Modifier.weight(1f), color = MaterialTheme.colorScheme.onSurface)
+                Icon(if (showPlanning) Icons.Default.ExpandLess else Icons.Default.ExpandMore, null)
+            }
+            if (showPlanning) ReportGroup(title = "Loans and debt", count = "2") {
+                PersonalReportRow(
                     icon = Icons.Default.Schedule,
                     title = "Debt Payoff",
                     subtitle = "Outstanding debt and payoff planning.",
@@ -303,7 +300,7 @@ fun ReportsHubScreen(
                     valueColor = dpPrevColor,
                     onClick = onNavigateToDebtPayoff,
                 )
-                LedgerRow(
+                PersonalReportRow(
                     icon = Icons.Default.Calculate,
                     title = "EMI Calculator",
                     subtitle = "Estimate EMI, interest, and repayment schedule.",
@@ -326,7 +323,33 @@ private fun ReportGroup(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Column(Modifier.fillMaxWidth().padding(bottom = 18.dp)) {
-        LedgerSectionTitle(title = title, count = count, modifier = Modifier.padding(bottom = 8.dp))
-        Column(verticalArrangement = Arrangement.spacedBy(9.dp), content = content)
+        Text(title, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(vertical = 8.dp))
+        Column(content = content)
     }
+}
+
+@Composable
+private fun PersonalReportRow(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    title: String,
+    subtitle: String,
+    value: String,
+    iconTint: Color,
+    valueColor: Color,
+    onClick: () -> Unit,
+) {
+    Column(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 14.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Icon(icon, null, Modifier.size(22.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            Column(Modifier.weight(1f)) {
+                Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(title, Modifier.weight(1f), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface)
+                    Text(value, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, color = valueColor)
+                }
+                Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            Icon(Icons.Default.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
 }
