@@ -582,7 +582,7 @@ class MoneyActionIdempotencyDataIntegrityTest {
         assertEquals(10_000.0, breakdown.unclearInterest, 0.0001)
         assertEquals(breakdown.accrued, breakdown.due, 0.0001)
         assertEquals(
-            InterestEngine.calcIntAccrued(1_000_000.0, 24.0, "2026-02-01", "Simple Interest", asOf = "2026-07-01"),
+            99_287.67, // Paise ledger: inclusive Feb 1 to Jul 1, no sub-paise display amount.
             InterestPolicy.accruedForBorrower(corrected, asOf = "2026-07-01"),
             0.0001,
         )
@@ -629,7 +629,7 @@ class MoneyActionIdempotencyDataIntegrityTest {
         assertEquals(1_000.0, breakdown.unclearInterest, 0.0001)
         assertEquals(breakdown.accrued, breakdown.due, 0.0001)
         assertEquals(
-            InterestEngine.calcIntAccrued(125_500.0, 24.0, "2026-04-22", "Simple Interest", asOf = "2026-07-01"),
+            5_858.95, // Same paise precision as the snapshot and payment preview.
             InterestPolicy.accruedForBorrower(corrected, asOf = "2026-07-01"),
             0.0001,
         )

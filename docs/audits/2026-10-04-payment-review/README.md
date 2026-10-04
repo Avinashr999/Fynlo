@@ -2,6 +2,58 @@
 
 ## Status and scope
 
+### Phone delivery follow-up
+
+Both personal APKs installed in place as 3.3.23 / 263 on 2026-10-04.
+Physical-phone read-only smoke covered statements, payment previews, the
+restricted history editor, restart and Book check. All four focused synthetic
+UI tests passed on the phone. No real payment or financial edit was submitted.
+Before/after backups confirm all production financial tables are identical;
+SQLite integrity checks pass. One cloud deletion timestamp refreshed, and the
+empty developer app added an automatic snapshot. No Fynlo crash observed.
+Book check shows zero serious issues and two existing waiver reviews, not
+silently repaired. Owner authorized commit/push; no public-release AAB.
+
+## Fix follow-up: 3.3.23 / 263
+
+All six findings below now have code fixes and regular regression coverage:
+
+- Repayment history edits preserve the payment row and all money fields. Only
+  description/notes can be edited there; financial edits are rejected before
+  any write. The UI shows the same restriction. Both repository implementations
+  check the current transaction before saving; undo is covered too.
+- Personal simple-interest replay uses outstanding principal from the day after
+  principal is paid. Flat-rate engine/EMI formulas are unchanged.
+- Due-date stop caps accrual only; later payments still reduce what is owed.
+- Zero-principal saved splits are respected by the policy AND Room aggregate
+  queries, including penalty-only rows. Unknown mixed amounts are not assumed
+  to be principal by the principal helpers.
+- Frozen interest, including zero, is respected by borrower breakdowns,
+  snapshots, payment previews and settlement quotes after its effective date.
+- As-of filtering covers principal, interest and settled-period selection;
+  payment-form period labels use the selected date. Explicit empty/future-only
+  history never falls back to stale cached paid totals. The legacy API without
+  supplied payment history remains distinct.
+
+`app/src/test/java/app/fynlo/logic/PaymentReviewRegressionTest.kt` now contains
+the former failing policy reproductions plus boundary cases. The history-edit
+reproduction and cash/history/undo/Room checks are regular tests in
+`PaymentResplitV330DataIntegrityTest`. No known-failure tests remain parked
+outside the ordinary suite for these six findings.
+
+Final verification: **590 unit tests pass**, zero failures/errors/skips. Both
+prod/dev APKs and the Android test APK build successfully. **Four emulator UI
+tests pass**, covering both repayment-note editors and both interest-only
+payment forms. The isolated emulator had network disabled; no owner data was
+used. The original 10 failures are now passing regular regression cases.
+
+No owner-phone installation, historical
+repair, migration, account balance write, commit/push or AAB in this fix request.
+Derived interest totals may change where the old code overcharged interest;
+that is not a change to saved payments or cash balances.
+
+## Original review (before fixes)
+
 The approved 3.3.22 / 262 payment-purpose and stale-cloud-import fixes are ready
 to commit. This additional review found **six unresolved defects**. Do not treat
 the existing passing unit suite as proof that the entire accounting system is
@@ -12,7 +64,7 @@ Reviewed borrower/debt snapshots, payment replay, transaction-history editing,
 the payment sync changes and the approved repair helper. This is not an
 exhaustive security, performance, investment, transfer, or whole-app UI audit.
 
-## Confirmed findings (all open)
+## Confirmed findings (open at original review, addressed above)
 
 ### P1 - Editing repayment history discards the saved purpose
 
@@ -87,11 +139,9 @@ Temporary tests were run with `:app:testProdDebugUnitTest`, selecting
 expected correctness assertions, confirming the findings above. The history-edit
 test was rerun with principal asserted before ID: expected 0, actual 88.22.
 
-`ReviewDiagnosticTest.kt` in this folder preserves the nine pure policy tests.
-It is deliberately outside Gradle's ordinary test source set, not silently
-skipped or counted as passing. To reproduce, place it temporarily in
-`app/src/test/java/app/fynlo/logic/` and select its class. Promote each test to the
-regular regression suite when its associated defect is fixed.
+At review time, nine policy tests were kept outside the ordinary suite as
+`ReviewDiagnosticTest.kt`. They have now been moved into the regular test suite
+as `PaymentReviewRegressionTest.kt`; run that class to verify the fixes.
 
 For the tenth test, add this method temporarily to the existing
 `PaymentResplitV330DataIntegrityTest` (which supplies the in-memory repository and
@@ -117,7 +167,7 @@ fun `notes edit must preserve payment classification`() = runBlocking {
 }
 ```
 
-## Limits and next work
+## Original review limits and next work (historical)
 
 - These findings are not proof that every live account is affected. No fresh
   live account-by-account audit or correction was performed in this request.

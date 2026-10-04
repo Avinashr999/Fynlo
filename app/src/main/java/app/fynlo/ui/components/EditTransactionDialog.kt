@@ -17,6 +17,7 @@ import androidx.compose.ui.window.DialogProperties
 import app.fynlo.data.model.Transaction
 import app.fynlo.logic.CurrencyFormatter
 import app.fynlo.logic.DateUtils
+import app.fynlo.logic.isLinkedRepayment
 import app.fynlo.ui.theme.Emerald500
 import app.fynlo.ui.theme.SemanticRed
 import app.fynlo.ui.theme.TemplateSegmentedSelector
@@ -41,6 +42,28 @@ fun EditTransactionDialog(
     bankAccounts: List<String> = emptyList(),
     currencyCode: String = "INR",
 ) {
+    if (transaction.isLinkedRepayment()) {
+        var description by remember(transaction.id) { mutableStateOf(transaction.desc) }
+        var paymentNotes by remember(transaction.id) { mutableStateOf(transaction.notes) }
+        FormDialog(title = "Edit payment description", onDismiss = onDismiss) {
+            Text("The payment amount, purpose and account balances will stay unchanged.",
+                style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(Modifier.height(16.dp))
+            OutlinedTextField(value = description, onValueChange = { description = it },
+                label = { Text("Description") }, modifier = Modifier.fillMaxWidth())
+            Spacer(Modifier.height(8.dp))
+            OutlinedTextField(value = paymentNotes, onValueChange = { paymentNotes = it },
+                label = { Text("Notes") }, modifier = Modifier.fillMaxWidth())
+            Spacer(Modifier.height(16.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                TextButton(onClick = onDismiss) { Text("Cancel") }
+                Button(enabled = description != transaction.desc || paymentNotes != transaction.notes,
+                    onClick = { onConfirm(transaction.copy(desc = description, notes = paymentNotes,
+                        updatedAt = System.currentTimeMillis())) }) { Text("Save changes") }
+            }
+        }
+        return
+    }
     var amount   by remember { mutableStateOf(transaction.amount.toBigDecimal().stripTrailingZeros().toPlainString()) }
     var desc     by remember { mutableStateOf(transaction.desc) }
     var notes    by remember { mutableStateOf(transaction.notes) }

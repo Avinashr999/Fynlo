@@ -1,3 +1,16 @@
+## 2026-10-04 - Personal Phone Delivery, 3.3.23 / 263
+
+- Owner authorized both installations, smoke, commit and push. Production 3.3.23 / 263 and developer 3.3.23-dev / 263 installed in place after private backups. This supersedes the installation-pending note below. Personal use only: no Play release/AAB, reset or migration.
+- Read-only production Home, borrower/debt statements and payment previews, History safe edit and Settings/Book check verified; forms cancelled. Muhammed stays at 14,00,000 principal and 3,682 current interest. Restart preserves dashboard totals. Developer guest navigation/forms checked. Four synthetic UI tests pass on phone; no Fynlo crash observed.
+- All production financial rows and counts unchanged in before/after SQLite comparison; both databases pass integrity checks. Only an existing cloud deletion marker timestamp refreshed; developer added a normal startup snapshot. No repair script or real money submission. Private evidence remains outside Git.
+- Book check still has two review-only waiver findings, zero serious issues. Do not call this whole-app buglessness or a fresh cloud round-trip. See PROJECT_STATE_FOR_AI.md and design-qa.md for exact scope.
+
+## 2026-10-04 - Six Review Fixes, Personal APK 3.3.23 / 263
+
+- Implemented all six review fixes: safe receipt-note editing; remaining-principal simple interest; due-date accrual cutoff with late payments retained; zero-principal split handling in policy and Room totals; frozen interest; and consistent as-of filtering. Snapshots, breakdowns and payment previews share the paise policy. Flat-rate EMI calculator unchanged.
+- History financial edits are intentionally not allowed to recreate repayments. Its edit dialog now exposes description/notes only; payment rows/cash stay untouched, and stale edits are rejected. Both repository paths are covered.
+- Promoted all original failing diagnostics into the regular test suite and added boundary/data-integrity tests. Final verification: 590 prod unit tests pass with zero skips; prod/dev APKs and Android test APK build successfully. Four emulator UI tests pass (both receipt-note editors and both interest-only payment flows), with network disabled and no real records. This is not a public-release workflow: no AAB, DB migration, owner-phone install, commit or push in this fix request.
+
 ## 2026-10-04 - Commit and Review Follow-Up
 
 - Commit/push authorized for the verified 3.3.22 / 262 changes. No further runtime changes, version bump, installation or AAB requested by this review.

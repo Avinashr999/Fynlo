@@ -75,8 +75,8 @@ fun CollectPaymentDialog(
         InterestPolicy.borrowerSnapshot(borrower, payments, paymentAsOf)
     }
     val interestBreakdown = snapshot.interestBreakdown
-    val currentInterestStartDate = remember(borrower, payments) {
-        app.fynlo.logic.InterestPolicy.borrowerCurrentInterestStartDate(borrower, payments)
+    val currentInterestStartDate = remember(borrower, payments, paymentAsOf) {
+        app.fynlo.logic.InterestPolicy.borrowerCurrentInterestStartDate(borrower, payments.filter { it.date <= paymentAsOf })
     }
     val accruedInterest = interestBreakdown.accrued
     val interestOutstanding = snapshot.interestDue
@@ -607,8 +607,8 @@ fun PayDebtDialog(
         InterestPolicy.debtSnapshot(debt, payments, paymentAsOf)
     }
     val interestBreakdown = snapshot.interestBreakdown
-    val currentInterestStartDate = remember(debt, payments) {
-        app.fynlo.logic.InterestPolicy.debtCurrentInterestStartDate(debt, payments)
+    val currentInterestStartDate = remember(debt, payments, paymentAsOf) {
+        app.fynlo.logic.InterestPolicy.debtCurrentInterestStartDate(debt, payments.filter { it.date <= paymentAsOf })
     }
     val accruedInterest = interestBreakdown.accrued
     val interestOutstanding = snapshot.interestDue

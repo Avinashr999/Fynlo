@@ -57,6 +57,24 @@ class PaymentResplitV330DataIntegrityTest {
     }
 
     @Test
+    fun `notes edit must preserve payment classification`() = runBlocking {
+        seedLoan("Simple Interest")
+        val payment = pay("review-notes", "2026-02-03", 200.0).copy(type = "Interest Only", interest = 200.0,
+            interestAllocationType = InterestPolicy.OLD_PERIOD_INTEREST,
+            interestPeriodStartDate = "2026-01-01", interestPeriodEndDate = "2026-01-31")
+        repository.insertPaymentWithDest(payment, "Personal Cash", "personal")
+        val transaction = db.dao().getTransactionsByRef("loan").single { it.category == "Loan Repayment" }
+        val accounts = db.dao().getAllAccountsList()
+        val borrower = db.dao().getBorrowerById("loan")
+        val beforePayment = db.dao().getPaymentById(payment.id)
+        repository.editTransaction(transaction, transaction.copy(notes = "Receipt note corrected"))
+        assertEquals(beforePayment, db.dao().getPaymentsForLoanOnce("loan").single())
+        assertEquals(accounts, db.dao().getAllAccountsList())
+        assertEquals(borrower, db.dao().getBorrowerById("loan"))
+        assertEquals("Receipt note corrected", db.dao().getTransactionById(transaction.id)!!.notes)
+    }
+
+    @Test
     fun `deleting older reducing payment preserves later saved purpose`() = runBlocking {
         seedLoan("Reducing Balance")
         repository.insertPaymentWithDest(pay("p1", "2026-01-15", 500.0), "Personal Cash", "personal")
@@ -74,6 +92,72 @@ class PaymentResplitV330DataIntegrityTest {
         assertEquals(before.principal, b.paidPrincipal, 0.0001)
         assertEquals(before.interest, b.paidInterest, 0.0001)
         assertEquals(200.0, db.dao().getAccountById("acc")!!.balance, 0.0001)
+    }
+
+    @Test
+    fun `debt history notes and undo preserve payments journals and cash`() = runBlocking {
+        seedLoan("Simple Interest")
+        db.dao().insertDebt(Debt(id = "debt", name = "Test", amount = 10000.0, rate = 12.0,
+            date = "2026-01-01", intType = "Simple Interest"))
+        val payment = DebtPayment(id = "debt-interest", debtId = "debt", name = "Test", date = "2026-02-03",
+            type = "Interest Only", amount = 200.0, interest = 200.0,
+            interestAllocationType = InterestPolicy.OLD_PERIOD_INTEREST,
+            interestPeriodStartDate = "2026-01-01", interestPeriodEndDate = "2026-01-31")
+        repository.insertDebtPaymentWithSource(payment, "Personal Cash")
+        val transactions = db.dao().getAllTransactionsList()
+        val receipt = transactions.single { it.category == "Debt Repayment" }
+        val accounts = db.dao().getAllAccountsList()
+        val payments = db.dao().getDebtPaymentsForDebtOnce("debt")
+        val debt = db.dao().getDebtById("debt")
+        repository.editTransaction(receipt, receipt.copy(notes = "Updated reference"))
+        assertEquals(payments, db.dao().getDebtPaymentsForDebtOnce("debt"))
+        assertEquals(debt, db.dao().getDebtById("debt"))
+        assertEquals(accounts, db.dao().getAllAccountsList())
+        assertEquals(transactions.filter { it.id != receipt.id }, db.dao().getAllTransactionsList().filter { it.id != receipt.id })
+        assertTrue(repository.undoLastMoneyAction())
+        assertEquals(receipt, db.dao().getTransactionById(receipt.id)!!.copy(updatedAt = receipt.updatedAt))
+        assertEquals(payments, db.dao().getDebtPaymentsForDebtOnce("debt"))
+        assertEquals(accounts, db.dao().getAllAccountsList())
+    }
+
+    @Test
+    fun `history cannot change repayment money fields or hide it as a journal`() = runBlocking {
+        seedLoan("Simple Interest")
+        repository.insertPaymentWithDest(pay("p", "2026-01-10", 100.0).copy(type = "Interest Only", interest = 100.0), "Personal Cash")
+        val receipt = db.dao().getTransactionsByRef("loan").single { it.category == "Loan Repayment" }
+        val payments = db.dao().getPaymentsForLoanOnce("loan")
+        val accounts = db.dao().getAllAccountsList()
+        val mutations = listOf(receipt.copy(amount = 120.0), receipt.copy(date = "2026-01-11"),
+            receipt.copy(toAcct = "Other"), receipt.copy(category = "Salary"), receipt.copy(ref = "other"),
+            receipt.copy(tags = "journal_only"), receipt.copy(type = "Expense"))
+        for (changed in mutations) {
+            try { repository.editTransaction(receipt, changed); fail("Financial edit should require the original payment flow") }
+            catch (expected: IllegalArgumentException) { assertTrue(expected.message!!.contains("Only its description")) }
+        }
+        assertEquals(receipt, db.dao().getTransactionById(receipt.id))
+        assertEquals(payments, db.dao().getPaymentsForLoanOnce("loan"))
+        assertEquals(accounts, db.dao().getAllAccountsList())
+    }
+
+    @Test
+    fun `identical looking receipts and manager path do not rewrite either payment`() = runBlocking {
+        seedLoan("Simple Interest")
+        val payment = pay("p1", "2026-02-03", 200.0).copy(type = "Interest Only", interest = 200.0,
+            interestAllocationType = InterestPolicy.OLD_PERIOD_INTEREST,
+            interestPeriodStartDate = "2026-01-01", interestPeriodEndDate = "2026-01-31")
+        repository.insertPaymentWithDest(payment, "Personal Cash")
+        repository.insertPaymentWithDest(payment.copy(id = "p2"), "Personal Cash")
+        val before = db.dao().getPaymentsForLoanOnce("loan")
+        val accounts = db.dao().getAllAccountsList()
+        val context = RepositoryContext(db.dao(), db, FirestoreRepository(""), SyncManager("", db.dao()), this)
+        val manager = TransactionManager(context, RepositoryHelper(context))
+        val receipt = db.dao().getTransactionsByRef("loan").first { it.category == "Loan Repayment" }
+        manager.editTransaction(receipt, receipt.copy(notes = "Reference corrected"))
+        assertEquals(before, db.dao().getPaymentsForLoanOnce("loan"))
+        assertEquals(accounts, db.dao().getAllAccountsList())
+        try { manager.editTransaction(receipt, receipt.copy(notes = "Stale change")); fail("Stale edit was accepted") }
+        catch (expected: IllegalArgumentException) { assertTrue(expected.message!!.contains("Reopen")) }
+        assertEquals(before, db.dao().getPaymentsForLoanOnce("loan"))
     }
 
     @Test
@@ -111,6 +195,40 @@ class PaymentResplitV330DataIntegrityTest {
         assertEquals(debtRow, db.dao().getDebtPaymentById("d"))
         db.dao().insertRemoteDebtPaymentIfNewer(debtRow.copy(notes = "newer", updatedAt = 300L))
         assertEquals("newer", db.dao().getDebtPaymentById("d")!!.notes)
+    }
+
+    @Test
+    fun `cached borrower and debt totals preserve zero principal and explicit legacy principal`() = runBlocking {
+        seedLoan("Simple Interest")
+        val loan = db.dao().getBorrowerById("loan")!!
+        db.dao().insertDebt(Debt(id = "debt", name = "Test", amount = loan.amount, rate = loan.rate,
+            date = loan.date, intType = loan.intType))
+        val rows = listOf(
+            pay("interest-mixed", "2026-01-10", 100.0).copy(interest = 100.0),
+            pay("penalty", "2026-01-10", 50.0).copy(penaltyPaise = 5000L),
+            pay("legacy-principal", "2026-01-10", 200.0).copy(type = "Principal Only"),
+            pay("ambiguous", "2026-01-10", 10.0),
+            pay("zero-split", "2026-01-10", 20.0).copy(type = "Principal Only", interest = 20.0),
+        )
+        rows.forEach { p ->
+            db.dao().insertPayment(p)
+            db.dao().insertDebtPayment(DebtPayment(id = p.id, debtId = "debt", name = p.name, date = p.date,
+                type = p.type, amount = p.amount, principal = p.principal, interest = p.interest, penaltyPaise = p.penaltyPaise))
+        }
+        val accounts = db.dao().getAllAccountsList()
+        repeat(2) {
+            db.dao().rebuildBorrowerPaidFromPayments()
+            db.dao().rebuildDebtPaidFromDebtPayments()
+        }
+        val borrower = db.dao().getBorrowerById("loan")!!
+        val debt = db.dao().getDebtById("debt")!!
+        assertEquals(200.0, borrower.paidPrincipal, 0.0)
+        assertEquals(rows.sumOf { InterestPolicy.borrowerPrincipalAmount(it) }, borrower.paidPrincipal, 0.0)
+        assertEquals(120.0, borrower.paidInterest, 0.0)
+        assertEquals(borrower.paidPrincipal, debt.paidPrincipal, 0.0)
+        assertEquals(borrower.paidInterest, debt.paidInterest, 0.0)
+        assertEquals(rows, db.dao().getPaymentsForLoanOnce("loan"))
+        assertEquals(accounts, db.dao().getAllAccountsList())
     }
 
     @Test

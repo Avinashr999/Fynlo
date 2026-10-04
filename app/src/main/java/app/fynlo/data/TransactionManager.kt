@@ -91,6 +91,23 @@ internal class TransactionManager(
 
     suspend fun editTransaction(old: Transaction, newRaw: Transaction) {
         if (old.isGeneratedJournalEntry()) return
+        app.fynlo.logic.repaymentMetadataEdit(old, newRaw)?.let { metadata ->
+            helper.requireOpenDate(old.date, old.projectId)
+            val saved = metadata.copy(updatedAt = System.currentTimeMillis())
+            ctx.db.withTransaction {
+                require(ctx.dao.getTransactionById(old.id) == old) { "This entry changed. Reopen it before saving." }
+                ctx.dao.insertTransaction(saved)
+                helper.recordAudit(action = "EDIT", entityType = "transaction", entityId = saved.id,
+                    title = "Payment description updated", beforeValue = old.auditSummary(), afterValue = saved.auditSummary(),
+                    amountDelta = 0.0, projectId = saved.projectId,
+                    reason = "Description and notes only. Payment and account balances unchanged.")
+                helper.recordUndo(action = "EDIT", entityType = "transaction", entityId = saved.id,
+                    title = "Undo payment description", beforeJson = helper.undoJson.encodeToString(old),
+                    afterJson = helper.undoJson.encodeToString(saved), projectId = saved.projectId)
+            }
+            helper.sync { setTransaction(saved) }
+            return
+        }
         val new = TransactionValidator.sanitize(newRaw).withResolvedAccountIds()
         helper.requireOpenDate(old.date, old.projectId)
         helper.requireOpenDate(new.date, new.projectId)

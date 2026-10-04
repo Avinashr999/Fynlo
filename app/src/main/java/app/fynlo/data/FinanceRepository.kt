@@ -738,6 +738,23 @@ class FinanceRepository(
     }
     suspend fun editTransaction(old: Transaction, newRaw: Transaction) {
         if (old.isGeneratedJournalEntry()) return
+        app.fynlo.logic.repaymentMetadataEdit(old, newRaw)?.let { metadata ->
+            requireOpenDate(old.date, old.projectId)
+            val saved = metadata.copy(updatedAt = System.currentTimeMillis())
+            db.withTransaction {
+                require(dao.getTransactionById(old.id) == old) { "This entry changed. Reopen it before saving." }
+                dao.insertTransaction(saved)
+                recordAudit(action = "EDIT", entityType = "transaction", entityId = saved.id,
+                    title = "Payment description updated", beforeValue = old.auditSummary(), afterValue = saved.auditSummary(),
+                    amountDelta = 0.0, projectId = saved.projectId,
+                    reason = "Description and notes only. Payment and account balances unchanged.")
+                recordUndo(action = "EDIT", entityType = "transaction", entityId = saved.id,
+                    title = "Undo payment description", beforeJson = undoJson.encodeToString(old),
+                    afterJson = undoJson.encodeToString(saved), projectId = saved.projectId)
+            }
+            sync { setTransaction(saved) }
+            return
+        }
         // C03a Stage 2: scrub forbidden literal categories from the new
         // value before applying the edit. `old` is read-only — its
         // category is just used for the old-side Payment-row lookup and

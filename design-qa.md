@@ -1,5 +1,13 @@
 # Personal Ledger Design QA
 
+## 3.3.23 / 263 - Physical Phone Delivery
+
+- Samsung SM_S942B: both personal APKs updated in place with verified version/code after private backups. No uninstall/reset or financial submission.
+- Production Home/Loans/Muhammed/detail/payment preview, debt detail/payment preview, History receipt/detail/edit, Settings and Book check opened successfully. Muhammed remains principal 14,00,000, interest 3,682, total 14,03,682; debt preview agrees with its statement. Restarted Home totals remain stable.
+- Visually inspected dark-mode repayment history editor: readable explanation, description and notes only, disabled Save before changes, Cancel/Close available. Screenshot is private at C:/Users/user/.codex/tmp/fynlo-3.3.23-phone-qa/history-edit.png. Both real payment forms require purpose; no owner receipt was submitted.
+- Four synthetic UI tests passed on the physical phone: borrower/debt receipt-note editors and borrower/debt interest-only previous-month purpose. Test-only APK removed afterward. Developer guest mode shows Local only, empty Loans/Owed and functioning new-loan/new-debt forms; cancelled without saving. No Fynlo crash found.
+- Production financial tables identical before/after smoke, SQLite integrity OK; existing cloud deletion timestamp refreshed only. Developer added one automatic snapshot with financial tables still empty. Book check has 0 serious and 2 waiver reviews, left unchanged. Fresh auth/cloud round-trip and exhaustive every-account calculations are outside this smoke scope.
+
 ## 3.3.22 / 262 - Payment Purpose Safety
 
 - C01/C12 financial integrity and repayment clarity. Shared FormDialog/FynloChoiceDropdown retained; no new colors or dashboard panels. Both borrower/debt forms require Interest only, Principal only, or Interest and principal before saving. Editing the amount retains purpose. Interest-only offers a clearly named previous-month settlement option, with plain text stating principal stays unchanged.
@@ -107,3 +115,8 @@ Representative screenshots: `home-light.png`, `home-funded-light.png`, `home-fun
 The two phone files named `*-light.png` were captured in the phone's existing dark theme; their filenames are historical, not evidence of phone light-mode coverage.
 
 Smoke verification is not a claim that every dialog, tablet, extreme font size, money mutation, export or Google sign-in was retested. No cloud round-trip was repeated because cloud/auth implementation was unchanged. User visual acceptance is still required. No Play Store release or AAB; no commit/push requested in this task.
+## 2026-10-04 - 3.3.23 Repayment History Edit Safety
+
+- Linked loan/debt receipt editing now uses the existing FormDialog shell with Description and Notes only. Payment amount/date/purpose/account are not editable through history; explanatory text states that balances stay unchanged. Save remains disabled until text changes.
+- Pixel 6 read-only emulator, offline, synthetic callbacks only: RepaymentHistoryUiTest passes for borrower and debt receipts, asserting exactly two editable fields, no amount/date editors, initial disabled Save, and no financial-field changes in the saved callback. Existing PaymentPurposeUiTest also passes for both borrower/debt previous-month interest-only flows. Four tests total.
+- No owner-phone install, live financial mutation, broad visual redesign or live cloud test. Emulator assertions verify these forms, not an exhaustive visual review of every app screen.
