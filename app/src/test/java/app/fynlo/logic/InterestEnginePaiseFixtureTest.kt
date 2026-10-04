@@ -271,7 +271,7 @@ class InterestEnginePaiseFixtureTest {
                 loanId = b.id,
                 name = b.name,
                 date = "2026-01-15",
-                type = "Principal Only",
+                type = "Both",
                 amount = 500.0,
             ),
         )
@@ -293,7 +293,7 @@ class InterestEnginePaiseFixtureTest {
                 debtId = d.id,
                 name = d.name,
                 date = "2026-01-15",
-                type = "Principal Only",
+                type = "Both",
                 amount = 500.0,
             ),
         )

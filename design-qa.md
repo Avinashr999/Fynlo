@@ -1,5 +1,12 @@
 # Personal Ledger Design QA
 
+## 3.3.22 / 262 - Payment Purpose Safety
+
+- C01/C12 financial integrity and repayment clarity. Shared FormDialog/FynloChoiceDropdown retained; no new colors or dashboard panels. Both borrower/debt forms require Interest only, Principal only, or Interest and principal before saving. Editing the amount retains purpose. Interest-only offers a clearly named previous-month settlement option, with plain text stating principal stays unchanged.
+- Phone automated UI: PaymentPurposeUiTest OK (2 tests). Both forms rejected submit before purpose selection, then synthetic 29,000 previous-month interest saved principal 0 and correct period dates after amount editing. No owner receipt submitted by UI tests. Initial debt test selector matched the account field as well as Pay; narrowed to the monetary button and reran successfully.
+- Real production statement after approved repair/restart: principal 14,00,000, October 1-4 interest displayed 3,682, total 14,03,682. List/detail/expanded money trail agree. Screenshot inspected, private evidence at `C:/Users/user/.codex/tmp/fynlo-3.3.22-payment-audit/phone-mohammed-corrected.png`. Existing header truncation and rounded whole-rupee detail formatting were not redesigned in this financial fix.
+- 569 prod unit tests pass; prod/dev debug APKs build. Production installed 3.3.22 / 262; developer built only. Approved classification correction plus fresh-server verification passed; accounts unchanged and no duplicate financial rows. Test APK/payload removed from phone after checks. No production uninstall/reset, commit/push or AAB.
+
 ## 3.3.21 / 261 - Three Phone QA Follow-Ups
 
 - Date: 2026-10-03 (work began 2026-10-02). Partial clusters C12 loan clarity and C16 color semantics, plus guest-status presentation hotfix. Archetypes: shared Home toolbar and Dialog. Existing blue/neutral tokens retained; no new decorative components, no schema/migration, no changes to stored repayments or financial write paths. Interest breakdown boundary fix has explicit regression coverage.

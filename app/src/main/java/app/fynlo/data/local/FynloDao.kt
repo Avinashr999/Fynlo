@@ -115,6 +115,18 @@ interface FynloDao {
     @Query("SELECT * FROM payments WHERE id = :id LIMIT 1")
     suspend fun getPaymentById(id: String): Payment?
 
+    @androidx.room.Transaction
+    suspend fun insertRemotePaymentIfNewer(payment: Payment) {
+        val local = getPaymentById(payment.id)
+        if (local == null || payment.updatedAt > local.updatedAt) insertPayment(payment)
+    }
+
+    @androidx.room.Transaction
+    suspend fun insertRemoteDebtPaymentIfNewer(payment: DebtPayment) {
+        val local = getDebtPaymentById(payment.id)
+        if (local == null || payment.updatedAt > local.updatedAt) insertDebtPayment(payment)
+    }
+
     // ─── Debt Payments ────────────────────────────────────────────────────────
 
     @Query("SELECT * FROM debt_payments WHERE debtId = :debtId")

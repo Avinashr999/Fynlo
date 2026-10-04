@@ -500,7 +500,7 @@ class SyncManager(
                             rejectDeletedRemoteDoc("payments", doc)
                             return@runCatching
                         }
-                        dao.insertPayment(Payment(
+                        dao.insertRemotePaymentIfNewer(Payment(
                             id        = doc.id,
                             loanId    = doc.str("loanId"),
                             name      = doc.str("name"),
@@ -540,7 +540,7 @@ class SyncManager(
                             rejectDeletedRemoteDoc("debt_payments", doc)
                             return@runCatching
                         }
-                        dao.insertDebtPayment(DebtPayment(
+                        dao.insertRemoteDebtPaymentIfNewer(DebtPayment(
                             id        = doc.id,
                             debtId    = doc.str("debtId"),
                             name      = doc.str("name"),

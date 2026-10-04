@@ -233,13 +233,8 @@ class FinanceRepository(
         app.fynlo.logic.InterestPolicy.paymentDateError(startDate, paymentDate)?.let { throw PaymentDateException(it) }
     }
 
-    /**
-     * v3.3.0 — re-split every payment of a paise-method (Simple / Reducing /
-     * Compound) loan in date order so later rows stay correct after an
-     * earlier payment is deleted, undone, edited or back-dated. Only the
-     * principal / interest / type / penalty / engine-note fields change;
-     * amounts, dates and cash movements are never touched.
-     */
+    // Fill missing splits only. Existing financial classifications are immutable
+    // during replay; changing one requires an explicit correction and audit entry.
     private suspend fun resplitBorrowerPaymentsInDb(loanId: String) {
         val borrower = dao.getBorrowerById(loanId) ?: return
         if (!app.fynlo.logic.InterestPolicy.usesPaiseMethod(borrower.intType)) return
@@ -268,6 +263,53 @@ class FinanceRepository(
                 sync { setDebtPayment(updated) }
             }
         }
+    }
+
+    /** Explicit, compare-before-write repair. Never moves money or changes receipt rows. */
+    suspend fun correctBorrowerPaymentClassifications(expected: List<Payment>, corrected: List<Payment>) {
+        require(expected.isNotEmpty() && expected.size == corrected.size)
+        require(expected.map { it.id }.toSet().size == expected.size)
+        require(expected.map { it.loanId }.toSet().size == 1)
+        val desired = corrected.associateBy { it.id }
+        require(desired.keys == expected.map { it.id }.toSet())
+        val changed = mutableListOf<Payment>()
+        val loanId = expected.first().loanId
+        db.withTransaction {
+            requireNotNull(dao.getBorrowerById(loanId))
+            for (before in expected) {
+                val after = desired.getValue(before.id)
+                require(after == before.copy(type = after.type, principal = after.principal, interest = after.interest,
+                    interestAllocationType = after.interestAllocationType,
+                    interestPeriodStartDate = after.interestPeriodStartDate, interestPeriodEndDate = after.interestPeriodEndDate)) {
+                    "Only payment classification can be corrected here."
+                }
+                require(after.principal >= 0.0 && after.interest >= 0.0 &&
+                    app.fynlo.logic.InterestEngine.rupeesToPaise(after.amount) ==
+                    app.fynlo.logic.InterestEngine.rupeesToPaise(after.principal) +
+                    app.fynlo.logic.InterestEngine.rupeesToPaise(after.interest) + after.penaltyPaise + after.roundingPaise)
+                val current = requireNotNull(dao.getPaymentById(before.id))
+                if (current.copy(updatedAt = after.updatedAt) == after) continue
+                require(current == before) { "The payment changed. Review it again before correcting it." }
+                val saved = after.copy(updatedAt = System.currentTimeMillis())
+                dao.insertPayment(saved)
+                changed += saved
+                recordAudit(action = "CORRECTION", entityType = "payment", entityId = saved.id,
+                    title = "Payment purpose corrected: ${saved.name}",
+                    beforeValue = undoJson.encodeToString(before), afterValue = undoJson.encodeToString(saved),
+                    amountDelta = 0.0, projectId = saved.projectId,
+                    reason = "Confirmed interest period correction. Payment amount and account balance unchanged.")
+            }
+            if (changed.isNotEmpty()) {
+                val borrower = requireNotNull(dao.getBorrowerById(loanId))
+                val rows = dao.getPaymentsForLoanOnce(loanId).filter { it.date >= borrower.date }
+                val principal = rows.sumOf { app.fynlo.logic.InterestPolicy.borrowerPrincipalAmount(it) }
+                val interest = rows.sumOf { app.fynlo.logic.InterestPolicy.paymentInterestAmount(it) }
+                dao.insertBorrower(borrower.copy(paid = principal + interest, paidPrincipal = principal,
+                    paidInterest = interest, updatedAt = System.currentTimeMillis()))
+            }
+        }
+        changed.forEach { payment -> sync { setPayment(payment) } }
+        if (changed.isNotEmpty()) dao.getBorrowerById(loanId)?.let { borrower -> sync { setBorrower(borrower) } }
     }
 
     private suspend fun recordUndo(

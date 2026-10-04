@@ -1,3 +1,18 @@
+## 2026-10-04 - Commit and Review Follow-Up
+
+- Commit/push authorized for the verified 3.3.22 / 262 changes. No further runtime changes, version bump, installation or AAB requested by this review.
+- IMPORTANT: six additional accounting defects remain OPEN, confirmed by 10 failing synthetic diagnostic tests. History edits can reclassify repayments; simple-interest replay ignores principal reductions; due cutoff and interest freeze are bypassed in primary totals; zero-principal mixed rows are misread; future payments affect earlier snapshots. See `docs/audits/2026-10-04-payment-review/README.md` and its preserved reproductions. These are not part of the already-fixed new-payment issue; do not claim the app is bug-free.
+- Phone/owner records were untouched during this review. Existing passing tests are separate from the deliberately failing review reproductions.
+- Fresh pre-commit check: prod/dev Kotlin compilation and all 569 ordinary prod unit tests pass, zero skips. The 10 failing review diagnostics remain open findings, not passing regressions.
+
+## 2026-10-04 - Personal Payment Fix 3.3.22 / 262
+
+- Personal-use APK only; no Play/AAB workflow. Production installed in place and version confirmed. Developer build passes; no developer installation requested/performed this turn. No commit/push yet.
+- New payment used to reclassify already-confirmed older interest as principal. Borrower/debt save and replay now preserve explicit payment purpose and saved splits; interest-only/advance cannot spill to principal. Payment forms require purpose and offer a named previous-month settlement choice. No migration or bulk historical guessing.
+- Live verification also found stale cloud payment snapshots overwriting local corrections. Both payment down-sync paths now use an atomic newer-timestamp check. This is a bounded payment sync fix, not a claim of a full cloud-system audit.
+- Owner-approved, backed-up correction of four existing interest classifications completed. Local and server fields checked; repeated correction harmless. Restarted phone list/detail/money-trail agree at principal 14,00,000 and October 1-4 interest 3,682.19 (UI rounds to 3,682). No extra receipt/cash movement created.
+- 569 unit tests pass; both purpose UI tests pass on phone using synthetic records; approved repair test passes separately. Account balances unchanged; financial transaction fields/counts unchanged. Existing account-ID normalization filled one blank HDFC receipt ID only. Other borrowers/debts/investments unchanged; DB integrity checks pass. Private evidence stays outside Git. See PROJECT_STATE_FOR_AI.md for full scope.
+
 ## 2026-10-03 - Personal Follow-Up Fixes 3.3.21 / 261
 
 - Delivery follow-up: owner requested commit/push and install (not uninstall). Both debug builds/unit-test task rechecked successfully, 562 passing tests retained; both phone APKs updated in place again with versions/codes confirmed and launches accepted. No Fynlo crash observed. Approved pending design/fix changes and documentation are the commit scope; private backups/attachments/evidence are excluded. No public-release workflow or AAB.

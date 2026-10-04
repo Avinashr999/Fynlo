@@ -519,35 +519,26 @@ class InterestEngineV330Test {
             Payment(id = "p3", loanId = "L", name = "L", date = "2026-03-10", type = "Both", amount = 300.0, createdAt = 3),
         )
         val all = InterestPolicy.resplitBorrowerPayments(b, raw)
-        // Delete p1 → every later row must match a fresh engine replay without p1.
+        // Deleting p1 changes balances, not the recorded purpose of p2/p3.
         val after = InterestPolicy.resplitBorrowerPayments(b, all.filter { it.id != "p1" })
-        val method = InterestEngine.paiseMethodOrNull(intType)!!
-        var st = InterestEngine.openPaiseLoan(principal, bps, jan1, method, InterestEngine.compoundMonthsFor(freq))
-        for (row in after) {
-            st = InterestEngine.accruePaiseTo(st, LocalDate.parse(row.date).plusDays(1))
-            val (next, split) = InterestEngine.applyPaymentPaise(st, InterestEngine.rupeesToPaise(row.amount))
-            st = next
-            assertEquals(InterestEngine.paiseToRupees(split.towardInterest), row.interest, 0.0)
-            assertEquals(InterestEngine.paiseToRupees(split.towardPrincipal), row.principal, 0.0)
-        }
-        // ...and the old splits were genuinely different (so re-split mattered).
-        val oldP2 = all.single { it.id == "p2" }
-        val newP2 = after.single { it.id == "p2" }
-        assertNotEquals(oldP2.interest, newP2.interest, 0.0)
+        assertEquals(all.filter { it.id != "p1" }, after)
         // Re-split is idempotent.
         assertEquals(after, InterestPolicy.resplitBorrowerPayments(b, after))
         // Debt side re-splits identically.
         val d = Debt(id = "D", name = "D", amount = 10_000.0, rate = 12.0, date = "2026-01-01",
             intType = intType, compoundFrequency = freq)
         val dAfter = InterestPolicy.resplitDebtPayments(d, after.map {
-            DebtPayment(id = it.id, debtId = "D", name = "D", date = it.date, type = "Both", amount = it.amount, createdAt = it.createdAt)
+            DebtPayment(id = it.id, debtId = "D", name = "D", date = it.date, type = it.type, amount = it.amount,
+                principal = it.principal, interest = it.interest, interestAllocationType = it.interestAllocationType,
+                interestPeriodStartDate = it.interestPeriodStartDate, interestPeriodEndDate = it.interestPeriodEndDate,
+                penaltyPaise = it.penaltyPaise, roundingPaise = it.roundingPaise, createdAt = it.createdAt)
         })
         assertEquals(after.map { it.interest to it.principal }, dAfter.map { it.interest to it.principal })
     }
 
-    @Test fun `deleting older payment re-splits later payments reducing`() = resplitCase("Reducing Balance", "Monthly")
-    @Test fun `deleting older payment re-splits later payments compound monthly`() = resplitCase("Compound Interest", "Monthly")
-    @Test fun `deleting older payment re-splits later payments compound quarterly`() = resplitCase("Compound Interest", "Quarterly")
+    @Test fun `deleting older payment preserves later payments reducing`() = resplitCase("Reducing Balance", "Monthly")
+    @Test fun `deleting older payment preserves later payments compound monthly`() = resplitCase("Compound Interest", "Monthly")
+    @Test fun `deleting older payment preserves later payments compound quarterly`() = resplitCase("Compound Interest", "Quarterly")
 
     // ── Payment date validation ─────────────────────────────────────────────
 

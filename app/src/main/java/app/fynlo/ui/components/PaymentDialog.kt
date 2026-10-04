@@ -87,6 +87,7 @@ fun CollectPaymentDialog(
     var amountStr by remember { mutableStateOf("") }
     // When set, Amount tracks settlement/interest-only totals as the payment date changes.
     var leanAmountPreset by remember { mutableStateOf<String?>(null) } // "full" | "interest" | null
+    var paymentPurpose by remember { mutableStateOf<InterestPolicy.PaymentPurpose?>(null) }
     var principalStr by remember { mutableStateOf("") }
     var interestStr  by remember { mutableStateOf("") }
     var notes by remember { mutableStateOf("") }
@@ -100,7 +101,8 @@ fun CollectPaymentDialog(
     val interestVal  = interestStr.toDoubleOrNull()  ?: 0.0
     val amountVal    = amountStr.toDoubleOrNull() ?: 0.0
     val totalAmount  = if (usePaise) amountVal else principalVal + interestVal
-    val isValid      = totalAmount > 0.0
+    val isValid = totalAmount > 0.0 && (!usePaise || paymentPurpose != null) &&
+        (paymentPurpose != InterestPolicy.PaymentPurpose.PRINCIPAL_ONLY || totalAmount <= principalOutstanding)
     // Settlement date = payment date field: keep Full Settlement / Interest Only Amount in sync.
     androidx.compose.runtime.LaunchedEffect(usePaise, leanAmountPreset, paymentAsOf, totalOutstanding, interestOutstanding) {
         if (!usePaise || leanAmountPreset == null) return@LaunchedEffect
@@ -113,13 +115,14 @@ fun CollectPaymentDialog(
             }
         }
     }
-    val paisePreview = remember(usePaise, totalAmount, borrower, payments, paymentAsOf) {
-        if (usePaise && totalAmount > 0.0) {
+    val paisePreview = remember(usePaise, totalAmount, borrower, payments, paymentAsOf, paymentPurpose) {
+        if (usePaise && totalAmount > 0.0 && paymentPurpose != null) {
             InterestPolicy.previewBorrowerPaymentPaise(
                 borrower,
                 InterestEngine.rupeesToPaise(totalAmount),
                 paymentAsOf,
                 payments,
+                purpose = paymentPurpose!!,
             )
         } else null
     }
@@ -223,6 +226,7 @@ fun CollectPaymentDialog(
                         onClick = {
                             if (usePaise) {
                                 leanAmountPreset = "interest"
+                                paymentPurpose = InterestPolicy.PaymentPurpose.INTEREST_ONLY
                                 amountStr = CurrencyFormatter.wholeRupeesInput(interestOutstanding)
                             } else {
                                 interestStr  = CurrencyFormatter.wholeRupeesInput(interestOutstanding)
@@ -244,6 +248,7 @@ fun CollectPaymentDialog(
                         onClick = {
                             if (usePaise) {
                                 leanAmountPreset = "full"
+                                paymentPurpose = InterestPolicy.PaymentPurpose.AUTOMATIC
                                 amountStr = CurrencyFormatter.wholeRupeesInput(totalOutstanding)
                             } else {
                                 interestStr  = CurrencyFormatter.wholeRupeesInput(interestOutstanding)
@@ -269,6 +274,16 @@ fun CollectPaymentDialog(
                 Spacer(Modifier.height(8.dp))
 
                 if (usePaise) {
+                    FynloChoiceDropdown(
+                        label = "Payment for",
+                        options = InterestPolicy.PaymentPurpose.entries.map { it.label },
+                        selected = paymentPurpose?.label.orEmpty(),
+                        onPick = { label ->
+                            paymentPurpose = InterestPolicy.PaymentPurpose.entries.first { it.label == label }
+                            leanAmountPreset = null
+                        },
+                    )
+                    Spacer(Modifier.height(10.dp))
                     OutlinedTextField(
                         value = amountStr,
                         onValueChange = {
@@ -281,7 +296,7 @@ fun CollectPaymentDialog(
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         modifier = Modifier.fillMaxWidth(),
                         supportingText = {
-                            Text("Split is automatic: interest first, then principal. Settlement uses the selected payment date.")
+                            Text(paymentPurposeHelp(paymentPurpose, totalAmount, principalOutstanding))
                         },
                     )
                 } else {
@@ -379,7 +394,8 @@ fun CollectPaymentDialog(
                                     color = Emerald500,
                                 )
                             }
-                            Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
+                            if (paymentPurpose != InterestPolicy.PaymentPurpose.INTEREST_ONLY ||
+                                interestAllocationType in setOf(InterestPolicy.CURRENT_PERIOD_INTEREST, InterestPolicy.ADVANCE_INTEREST)) Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
                                 Text("Remaining outstanding after", style = MaterialTheme.typography.bodySmall)
                                 Text(
                                     CurrencyFormatter.detail(InterestEngine.paiseToRupees(remainingAfter), currencyCode, locale),
@@ -392,13 +408,18 @@ fun CollectPaymentDialog(
                 Spacer(Modifier.height(12.dp))
 
                 // -- Destination account --------------------------------------
-                // Lean v1 auto-allocates interest→principal; skip legacy period picker.
+                if (usePaise && paymentPurpose == InterestPolicy.PaymentPurpose.INTEREST_ONLY) {
+                    InterestPeriodSelector(interestAllocationType, { interestAllocationType = it; leanAmountPreset = null },
+                        currentInterestStartDate, false, paymentAsOf)
+                    Spacer(Modifier.height(12.dp))
+                }
                 if (!usePaise && interestVal > 0.0) {
                     InterestPeriodSelector(
                         selected = interestAllocationType,
                         onSelected = { interestAllocationType = it },
                         currentStartDate = currentInterestStartDate,
                         isDebt = false,
+                        paymentDate = paymentAsOf,
                     )
                     Spacer(Modifier.height(10.dp))
                     InterestImpactPreview(
@@ -499,15 +520,16 @@ fun CollectPaymentDialog(
                                     InterestEngine.rupeesToPaise(totalAmount),
                                     asOf,
                                     payments,
+                                    purpose = paymentPurpose!!,
                                 )
                             } else null
                             val finalPrincipal = split?.let { InterestEngine.paiseToRupees(it.towardPrincipal) } ?: principalVal
                             val finalInterest = split?.let { InterestEngine.paiseToRupees(it.towardInterest) } ?: interestVal
-                            val interestPeriod = if (usePaise) {
-                                borrower.date to asOf
-                            } else {
+                            val selectedAllocation = if (usePaise && paymentPurpose != InterestPolicy.PaymentPurpose.INTEREST_ONLY)
+                                InterestPolicy.CURRENT_PERIOD_INTEREST else interestAllocationType
+                            val interestPeriod = run {
                                 InterestPolicy.periodRangeFor(
-                                    interestAllocationType,
+                                    selectedAllocation,
                                     currentInterestStartDate,
                                     asOf,
                                 )
@@ -528,11 +550,7 @@ fun CollectPaymentDialog(
                                 interest  = finalInterest,
                                 interestPeriodStartDate = interestPeriod.first,
                                 interestPeriodEndDate = interestPeriod.second,
-                                interestAllocationType = if (usePaise) {
-                                    if (finalInterest > 0.0) InterestPolicy.CURRENT_PERIOD_INTEREST else InterestPolicy.PRINCIPAL_REPAYMENT
-                                } else {
-                                    InterestPolicy.allocationFor(finalPrincipal, finalInterest, interestAllocationType)
-                                },
+                                interestAllocationType = InterestPolicy.allocationFor(finalPrincipal, finalInterest, selectedAllocation),
                                 notes     = split?.let { InterestPolicy.notesWithEngineTags(notes, it) } ?: notes,
                                 penaltyPaise = split?.penaltyPaise ?: 0L,
                                 roundingPaise = split?.roundingPaise ?: 0L,
@@ -599,6 +617,7 @@ fun PayDebtDialog(
 
     var amountStr by remember { mutableStateOf("") }
     var leanAmountPreset by remember { mutableStateOf<String?>(null) } // "full" | "interest" | null
+    var paymentPurpose by remember { mutableStateOf<InterestPolicy.PaymentPurpose?>(null) }
     var principalStr by remember { mutableStateOf("") }
     var interestStr  by remember { mutableStateOf("") }
     var notes    by remember { mutableStateOf("") }
@@ -613,7 +632,8 @@ fun PayDebtDialog(
     val interestVal  = interestStr.toDoubleOrNull()  ?: 0.0
     val amountVal    = amountStr.toDoubleOrNull() ?: 0.0
     val totalAmount  = if (usePaise) amountVal else principalVal + interestVal
-    val isValid      = totalAmount > 0.0
+    val isValid = totalAmount > 0.0 && (!usePaise || paymentPurpose != null) &&
+        (paymentPurpose != InterestPolicy.PaymentPurpose.PRINCIPAL_ONLY || totalAmount <= principalOutstanding)
     androidx.compose.runtime.LaunchedEffect(usePaise, leanAmountPreset, paymentAsOf, totalOutstanding, interestOutstanding) {
         if (!usePaise || leanAmountPreset == null) return@LaunchedEffect
         when (leanAmountPreset) {
@@ -625,13 +645,14 @@ fun PayDebtDialog(
             }
         }
     }
-    val paisePreview = remember(usePaise, totalAmount, debt, payments, paymentAsOf) {
-        if (usePaise && totalAmount > 0.0) {
+    val paisePreview = remember(usePaise, totalAmount, debt, payments, paymentAsOf, paymentPurpose) {
+        if (usePaise && totalAmount > 0.0 && paymentPurpose != null) {
             InterestPolicy.previewDebtPaymentPaise(
                 debt,
                 InterestEngine.rupeesToPaise(totalAmount),
                 paymentAsOf,
                 payments,
+                purpose = paymentPurpose!!,
             )
         } else null
     }
@@ -728,7 +749,8 @@ fun PayDebtDialog(
                 if (debt.rate > 0 && interestOutstanding > 0) {
                     FilledTonalButton(onClick = {
                         if (usePaise) {
-                            leanAmountPreset = "interest"
+                                leanAmountPreset = "interest"
+                                paymentPurpose = InterestPolicy.PaymentPurpose.INTEREST_ONLY
                             amountStr = CurrencyFormatter.wholeRupeesInput(interestOutstanding)
                         } else {
                             interestStr = CurrencyFormatter.wholeRupeesInput(interestOutstanding); principalStr = ""
@@ -744,7 +766,8 @@ fun PayDebtDialog(
                 if (totalOutstanding > 0) {
                     Button(onClick = {
                         if (usePaise) {
-                            leanAmountPreset = "full"
+                                leanAmountPreset = "full"
+                                paymentPurpose = InterestPolicy.PaymentPurpose.AUTOMATIC
                             amountStr = CurrencyFormatter.wholeRupeesInput(totalOutstanding)
                         } else {
                             interestStr  = CurrencyFormatter.wholeRupeesInput(interestOutstanding)
@@ -768,6 +791,16 @@ fun PayDebtDialog(
                 Spacer(Modifier.height(8.dp))
 
                 if (usePaise) {
+                    FynloChoiceDropdown(
+                        label = "Payment for",
+                        options = InterestPolicy.PaymentPurpose.entries.map { it.label },
+                        selected = paymentPurpose?.label.orEmpty(),
+                        onPick = { label ->
+                            paymentPurpose = InterestPolicy.PaymentPurpose.entries.first { it.label == label }
+                            leanAmountPreset = null
+                        },
+                    )
+                    Spacer(Modifier.height(10.dp))
                     OutlinedTextField(
                         value = amountStr,
                         onValueChange = {
@@ -780,7 +813,7 @@ fun PayDebtDialog(
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         modifier = Modifier.fillMaxWidth(),
                         supportingText = {
-                            Text("Split is automatic: interest first, then principal. Settlement uses the selected payment date.")
+                            Text(paymentPurposeHelp(paymentPurpose, totalAmount, principalOutstanding))
                         },
                     )
                 } else {
@@ -858,7 +891,8 @@ fun PayDebtDialog(
                                     color = Emerald500,
                                 )
                             }
-                            Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
+                            if (paymentPurpose != InterestPolicy.PaymentPurpose.INTEREST_ONLY ||
+                                interestAllocationType in setOf(InterestPolicy.CURRENT_PERIOD_INTEREST, InterestPolicy.ADVANCE_INTEREST)) Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
                                 Text("Remaining outstanding after", style = MaterialTheme.typography.bodySmall)
                                 Text(
                                     CurrencyFormatter.detail(InterestEngine.paiseToRupees(remainingAfter), currencyCode, locale),
@@ -870,12 +904,18 @@ fun PayDebtDialog(
                 }
                 Spacer(Modifier.height(12.dp))
 
+                if (usePaise && paymentPurpose == InterestPolicy.PaymentPurpose.INTEREST_ONLY) {
+                    InterestPeriodSelector(interestAllocationType, { interestAllocationType = it; leanAmountPreset = null },
+                        currentInterestStartDate, true, paymentAsOf)
+                    Spacer(Modifier.height(12.dp))
+                }
                 if (!usePaise && interestVal > 0.0) {
                     InterestPeriodSelector(
                         selected = interestAllocationType,
                         onSelected = { interestAllocationType = it },
                         currentStartDate = currentInterestStartDate,
                         isDebt = true,
+                        paymentDate = paymentAsOf,
                     )
                     Spacer(Modifier.height(10.dp))
                     InterestImpactPreview(
@@ -968,15 +1008,16 @@ fun PayDebtDialog(
                                     InterestEngine.rupeesToPaise(totalAmount),
                                     asOf,
                                     payments,
+                                    purpose = paymentPurpose!!,
                                 )
                             } else null
                             val finalPrincipal = split?.let { InterestEngine.paiseToRupees(it.towardPrincipal) } ?: principalVal
                             val finalInterest = split?.let { InterestEngine.paiseToRupees(it.towardInterest) } ?: interestVal
-                            val interestPeriod = if (usePaise) {
-                                debt.date to asOf
-                            } else {
+                            val selectedAllocation = if (usePaise && paymentPurpose != InterestPolicy.PaymentPurpose.INTEREST_ONLY)
+                                InterestPolicy.CURRENT_PERIOD_INTEREST else interestAllocationType
+                            val interestPeriod = run {
                                 InterestPolicy.periodRangeFor(
-                                    interestAllocationType,
+                                    selectedAllocation,
                                     currentInterestStartDate,
                                     asOf,
                                 )
@@ -997,11 +1038,7 @@ fun PayDebtDialog(
                                 interest  = finalInterest,
                                 interestPeriodStartDate = interestPeriod.first,
                                 interestPeriodEndDate = interestPeriod.second,
-                                interestAllocationType = if (usePaise) {
-                                    if (finalInterest > 0.0) InterestPolicy.CURRENT_PERIOD_INTEREST else InterestPolicy.PRINCIPAL_REPAYMENT
-                                } else {
-                                    InterestPolicy.allocationFor(finalPrincipal, finalInterest, interestAllocationType)
-                                },
+                                interestAllocationType = InterestPolicy.allocationFor(finalPrincipal, finalInterest, selectedAllocation),
                                 notes     = split?.let { InterestPolicy.notesWithEngineTags(notes, it) } ?: notes,
                                 penaltyPaise = split?.penaltyPaise ?: 0L,
                                 roundingPaise = split?.roundingPaise ?: 0L,
@@ -1032,46 +1069,38 @@ fun PayDebtDialog(
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
+private fun paymentPurposeHelp(purpose: InterestPolicy.PaymentPurpose?, amount: Double, principal: Double): String =
+    when (purpose) {
+        InterestPolicy.PaymentPurpose.INTEREST_ONLY -> "The whole amount is interest. Principal will not change."
+        InterestPolicy.PaymentPurpose.PRINCIPAL_ONLY -> if (amount > principal)
+            "This exceeds the remaining principal. Reduce the amount." else "Only principal will reduce. Unpaid interest remains due."
+        InterestPolicy.PaymentPurpose.AUTOMATIC -> "Pays interest due first, then reduces principal. Check the amounts below."
+        null -> "Choose what this payment is for before saving."
+    }
+
 @Composable
 private fun InterestPeriodSelector(
     selected: String,
     onSelected: (String) -> Unit,
     currentStartDate: String,
     isDebt: Boolean,
+    paymentDate: String,
 ) {
+    val previousMonth = java.time.LocalDate.parse(paymentDate).minusMonths(1)
+        .format(java.time.format.DateTimeFormatter.ofPattern("MMMM yyyy"))
     val options = listOf(
-        InterestPolicy.CURRENT_PERIOD_INTEREST to "This loan period",
-        InterestPolicy.OLD_PERIOD_INTEREST to "Older interest",
+        InterestPolicy.CURRENT_PERIOD_INTEREST to "Current interest",
+        InterestPolicy.OLD_PERIOD_INTEREST to "$previousMonth interest (settled)",
         InterestPolicy.ADVANCE_INTEREST to "Paid in advance",
-        InterestPolicy.EXTRA_INTEREST to "Extra note",
+        InterestPolicy.EXTRA_INTEREST to "Extra interest",
     )
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(
-            "Which interest is this?",
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        FlowRow(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            options.forEach { (value, label) ->
-                FilterChip(
-                    selected = selected == value,
-                    onClick = { onSelected(value) },
-                    label = { Text(label) },
-                    colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = MaterialTheme.colorScheme.primary,
-                        selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
-                    ),
-                )
-            }
-        }
+        FynloChoiceDropdown(label = "Interest for", options = options.map { it.second },
+            selected = options.firstOrNull { it.first == selected }?.second.orEmpty(),
+            onPick = { label -> onSelected(options.first { it.second == label }.first) })
         val subject = if (isDebt) "debt" else "loan"
         val help = when (selected) {
-            InterestPolicy.OLD_PERIOD_INTEREST -> "Keeps this for an older period. It will not reduce interest due from ${DateUtils.formatToDisplay(currentStartDate)}."
+            InterestPolicy.OLD_PERIOD_INTEREST -> "Marks $previousMonth interest as settled. Interest continues from the first of this month. Principal stays unchanged."
             InterestPolicy.ADVANCE_INTEREST -> "Saves this as interest paid in advance for this $subject. Interest due stays zero until time catches up."
             InterestPolicy.EXTRA_INTEREST -> "Saves this as an extra interest note. It will not reduce interest due now."
             else -> "Uses this against interest due from ${DateUtils.formatToDisplay(currentStartDate)}."
