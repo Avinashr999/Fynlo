@@ -1,3 +1,16 @@
+## 2026-10-04 - Personal History Capture Fix, 3.3.24 / 264
+
+- Confirmed net-worth history could save partial nonzero UI totals at startup. Replaced UI-cache capture with an atomic complete local-ledger read and a shared dashboard/history totals calculation. Waits for project selection and refuses same-date cross-project overwrite. Interest rules unchanged.
+- Removed unreliable cash-flow-only history backfill; existing past snapshots kept with a clear uncertainty notice. No migration or guessed historical repair. On installation, current-day capture can refresh that day's history, not retrospectively certify all past days.
+- Both waiver notices reviewed against saved records and remain review-only: two-day capped borrower period with a large historic waiver; fully repaid debt with a waiver exceeding remaining interest. No financial records changed. Prior reconciliation notes are included in this authorized commit/push.
+- Personal APK version 3.3.24 / 264. No AAB, phone install or new cloud test requested/performed. Audit details and final verification in PROJECT_STATE_FOR_AI.md and docs/audits/2026-10-04-net-worth-history-and-waivers.md.
+- Verification: 598 unit tests pass with zero failures/errors/skips; production and developer APK builds pass, metadata verified. New version not phone-smoked/installed in this task.
+
+## 2026-10-04 - Read-Only Net Worth Reconciliation
+
+- Same-data/same-date comparison of 3.3.22 and 3.3.23 reproduces 17,949,863.20 -> 17,794,055.28: borrower interest -191,069.15, debt interest -35,261.23, net worth -155,807.92. Saved principal, cash/accounts and investment values unchanged. This is calculated interest correction, not lost financial rows.
+- Main driver is an existing borrower record with start 2024-01-01, due 2024-01-02, interest cutoff enabled and a large saved waiver. Owner must confirm those terms; no date/waiver repair was authorized or performed. See PROJECT_STATE_FOR_AI.md for per-record details. Temporary comparison sources removed; no new app build/version, phone write, commit/push or AAB for this read-only question.
+
 ## 2026-10-04 - Personal Phone Delivery, 3.3.23 / 263
 
 - Owner authorized both installations, smoke, commit and push. Production 3.3.23 / 263 and developer 3.3.23-dev / 263 installed in place after private backups. This supersedes the installation-pending note below. Personal use only: no Play release/AAB, reset or migration.

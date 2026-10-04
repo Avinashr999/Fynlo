@@ -327,7 +327,10 @@ fun MainNavigation(viewModel: FinanceViewModel) {
     // Auto-log recurring transactions once on each app session start
     androidx.compose.runtime.LaunchedEffect(Unit) {
         viewModel.triggerDueRecurring()
-        viewModel.saveSnapshotNow()
+    }
+
+    androidx.compose.runtime.LaunchedEffect(navProject?.id) {
+        if (navProject != null) viewModel.saveSnapshotNow()
     }
 
     if (showInvestmentDialog) {

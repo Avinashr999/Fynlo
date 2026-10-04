@@ -9,25 +9,20 @@ import app.fynlo.data.model.Investment
 import app.fynlo.data.model.InvestmentValuation
 import app.fynlo.data.model.Payment
 import app.fynlo.data.model.Transaction
-import app.fynlo.data.model.NetWorthSnapshot
 import app.fynlo.logic.isGeneratedJournalEntry
 import app.fynlo.logic.isSpendingExpense
 import app.fynlo.logic.isOperatingCashEntry
-import app.fynlo.logic.NetWorthSnapshotSafety
+import app.fynlo.logic.NetWorthTotals
 import app.fynlo.logic.InterestPolicy
 import app.fynlo.logic.CagrCalculator
 import app.fynlo.logic.XirrCalculator
-import app.fynlo.logic.DebtLiabilityCalculator
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.flow.filter
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
@@ -68,21 +63,15 @@ class FinancialAnalyticsDelegate(
         fun debtSnapshot(debt: Debt, asOf: String = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))) =
             InterestPolicy.debtSnapshot(debt, paymentsByDebt[debt.id].orEmpty(), asOf)
 
-        val totalCashVal     = accts.sumOf { it.balance }
-        val totalInvestVal   = invs.sumOf { it.currentVal }
+        val balanceSheet = NetWorthTotals.calculate(accts, invs, brws, dbts, loanPayments, debtPaymentRows, ctx.today())
+        val totalCashVal = balanceSheet.totalCash
+        val totalInvestVal = balanceSheet.totalInvestments
 
         val activeBrws = brws.filter { it.status != "WrittenOff" }
 
-        val totalReceivables = activeBrws.sumOf { b ->
-            borrowerSnapshot(b).totalReceivable
-        }
-
-        val totalInterestLoans = activeBrws.filter { it.rate > 0 }.sumOf { b ->
-            borrowerSnapshot(b).totalReceivable
-        }
-        val totalHandLoans = activeBrws.filter { it.rate <= 0 }.sumOf { b ->
-            borrowerSnapshot(b).principalOutstanding
-        }
+        val totalReceivables = balanceSheet.totalReceivables
+        val totalInterestLoans = balanceSheet.totalInterestLoans
+        val totalHandLoans = balanceSheet.totalHandLoans
 
         val invTypeMap = invs.groupBy { it.type }
             .mapValues { it.value.sumOf { inv -> inv.currentVal } }
@@ -95,13 +84,9 @@ class FinancialAnalyticsDelegate(
             b.name to borrowerSnapshot(b).principalOutstanding
         }
 
-        val totalAssets       = totalCashVal + totalInvestVal + totalInterestLoans + totalHandLoans
-        val debtLiabilities = dbts.map { debt ->
-            val snapshot = debtSnapshot(debt)
-            DebtLiabilityCalculator.Liability(principal = snapshot.principalOutstanding, interest = snapshot.interestDue)
-        }
-        val totalDebtPrincipal = debtLiabilities.sumOf { it.principal }
-        val totalDebtInterest  = debtLiabilities.sumOf { it.interest }
+        val totalAssets = balanceSheet.totalAssets
+        val totalDebtPrincipal = balanceSheet.totalDebtPrincipal
+        val totalDebtInterest = balanceSheet.totalDebtInterest
         val cashTrans     = trans.filter { it.isOperatingCashEntry() }
         val totalExpenses = cashTrans.filter { it.type.lowercase() == "expense" }.sumOf { it.amount }
         val totalIncome   = cashTrans.filter { it.type.lowercase() == "income"  }.sumOf { it.amount }
@@ -113,7 +98,7 @@ class FinancialAnalyticsDelegate(
         val interestBearing = activeBrws.filter { it.rate > 0 }
         val avgYield       = if (interestBearing.isNotEmpty()) interestBearing.map { it.rate }.average() else 0.0
 
-        val net            = totalAssets - (totalDebtPrincipal + totalDebtInterest)
+        val net = balanceSheet.netWorth
         val accountsMap    = accts.associate { it.name to it.balance }
 
         val todayDate = LocalDate.now()
@@ -216,115 +201,22 @@ class FinancialAnalyticsDelegate(
         )
     }.stateIn(ctx.scope, SharingStarted.Eagerly, FinancialSummary())
 
-    init {
-        repairNetWorthHistoryPlaceholdersAfterLedgerLoad()
-    }
-
-    private fun repairNetWorthHistoryPlaceholdersAfterLedgerLoad() {
-        ctx.scope.launch(Dispatchers.IO) {
-            val readyFlow: kotlinx.coroutines.flow.Flow<Pair<Boolean, FinancialSummary>> = combine(
-                combine(accountsFlow, transactionsFlow, borrowersFlow) { accountRows, transactionRows, borrowerRows ->
-                    accountRows.isNotEmpty() || transactionRows.isNotEmpty() || borrowerRows.isNotEmpty()
-                },
-                combine(debtsFlow, investmentsFlow) { debtRows, investmentRows ->
-                    debtRows.isNotEmpty() || investmentRows.isNotEmpty()
-                },
-                financialSummary,
-            ) { hasPrimaryLedgerData, hasPortfolioData, loadedSummary ->
-                (hasPrimaryLedgerData || hasPortfolioData) to loadedSummary
-            }
-            val result: Pair<Boolean, FinancialSummary> = readyFlow
-                .filter { it.first && !NetWorthSnapshotSafety.shouldSkipSave(it.second, hasLedgerData = true) }
-                .first()
-            val summary = result.second
-
-            ctx.repository.deleteEmptyNetWorthSnapshots(ctx.currentProjectId())
-            saveNetWorthSnapshot(summary)
-        }
-    }
-
     fun getNetWorthSnapshots() = ctx.repository.getNetWorthSnapshots(ctx.currentProjectId())
 
     fun saveSnapshotNow() {
+        val projectId = ctx.currentProjectId()
+        val date = ctx.today()
         ctx.scope.launch(Dispatchers.IO) {
-            val s = financialSummary.value
-            val hasLedgerData = accountsFlow.value.isNotEmpty() ||
-                transactionsFlow.value.isNotEmpty() ||
-                borrowersFlow.value.isNotEmpty() ||
-                debtsFlow.value.isNotEmpty() ||
-                investmentsFlow.value.isNotEmpty()
-            if (hasLedgerData) ctx.repository.deleteEmptyNetWorthSnapshots(ctx.currentProjectId())
-            if (NetWorthSnapshotSafety.shouldSkipSave(s, hasLedgerData)) return@launch
-            saveNetWorthSnapshot(s)
-        }
-    }
-
-    private suspend fun saveNetWorthSnapshot(s: FinancialSummary) {
-        ctx.repository.saveNetWorthSnapshot(
-            NetWorthSnapshot(
-                date             = ctx.today(),
-                netWorth         = s.netWorth,
-                totalAssets      = s.totalAssets,
-                totalLiabilities = s.totalDebtPrincipal + s.totalDebtInterest,
-                projectId        = ctx.currentProjectId()
-            )
-        )
-    }
-
-    fun backfillNetWorthHistory(onDone: (Int) -> Unit = {}) {
-        ctx.scope.launch(Dispatchers.IO) {
-            val txns = transactionsFlow.value
-            if (txns.isEmpty()) {
-                withContext(Dispatchers.Main) { onDone(0) }
-                return@launch
-            }
-            val financingCats = setOf(
-                "Debt Received", "Debt Repayment", "Lending",
-                "Loan Recovery", "Loan Repayment", "Investment", "Investment Returns"
-            )
-            val cashTxns = txns.filter { !it.isGeneratedJournalEntry() && it.category !in financingCats }
-            if (cashTxns.isEmpty()) {
-                withContext(Dispatchers.Main) { onDone(0) }
-                return@launch
-            }
-            val fmt    = DateTimeFormatter.ofPattern("yyyy-MM-dd")
-            val today  = LocalDate.now()
-            val currentNW = financialSummary.value.netWorth
-            val pid = ctx.currentProjectId()
-            ctx.repository.deleteEmptyNetWorthSnapshots(pid)
-            val existingDates = ctx.repository.getNetWorthSnapshots(pid).first()
-                .filterNot(NetWorthSnapshotSafety::isEmptyPlaceholder)
-                .map { it.date }
-                .toSet()
-            val earliest = runCatching { LocalDate.parse(cashTxns.minOf { it.date }) }.getOrNull() ?: run {
-                withContext(Dispatchers.Main) { onDone(0) }
-                return@launch
-            }
-            var ym    = java.time.YearMonth.from(earliest)
-            val endYm = java.time.YearMonth.from(today).minusMonths(1)
-            var added = 0
-            while (!ym.isAfter(endYm)) {
-                val monthEnd = ym.atEndOfMonth().format(fmt)
-                if (monthEnd !in existingDates) {
-                    val cashFlowSince = cashTxns
-                        .filter { it.date > monthEnd }
-                        .sumOf { if (it.type.equals("income", true)) it.amount else -it.amount }
-                    val approxNW = currentNW - cashFlowSince
-                    ctx.repository.saveNetWorthSnapshot(
-                        NetWorthSnapshot(
-                            date             = monthEnd,
-                            netWorth         = approxNW,
-                            totalAssets      = approxNW.coerceAtLeast(0.0),
-                            totalLiabilities = 0.0,
-                            projectId        = pid,
-                            createdAt        = System.currentTimeMillis()
-                        )
-                    )
-                    added++
+            try {
+                // Read every input within one Room transaction, never a partially loaded UI summary.
+                ctx.repository.captureNetWorthSnapshot(projectId, date)
+            } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                kotlinx.coroutines.withContext(Dispatchers.Main) {
+                    ctx.showFeedback("History could not be saved. Existing history has been kept. Please try again.")
                 }
-                ym = ym.plusMonths(1)
             }
-            withContext(Dispatchers.Main) { onDone(added) }
         }
     }
 }

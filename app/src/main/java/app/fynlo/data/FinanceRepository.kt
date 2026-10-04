@@ -3458,7 +3458,30 @@ class FinanceRepository(
      * so every device gets correct projectIds, not the legacy empty/"personal" ones.
      */
     fun getNetWorthSnapshots(pid: String) = dao.getNetWorthSnapshots(pid)
-    suspend fun saveNetWorthSnapshot(s: app.fynlo.data.model.NetWorthSnapshot) = dao.insertNetWorthSnapshot(s)
+    suspend fun captureNetWorthSnapshot(projectId: String, date: String): NetWorthSnapshot = db.withTransaction {
+        val pid = projectId.ifBlank { "personal" }
+        val previous = dao.getNetWorthSnapshotForDate(date)
+        // The legacy table keys by date alone. Never replace another project's history.
+        require(previous == null || ProjectScope.belongsToSelectedProject(previous.projectId, pid)) {
+            "Today's history belongs to another ledger. Its saved history has been kept."
+        }
+        fun belongs(id: String) = ProjectScope.belongsToSelectedProject(id, pid)
+        val totals = app.fynlo.logic.NetWorthTotals.calculate(
+            accounts = dao.getAllAccountsList().filter { belongs(it.projectId) },
+            investments = dao.getSnapshotInvestments().filter { belongs(it.projectId) },
+            borrowers = dao.getSnapshotBorrowers().filter { belongs(it.projectId) },
+            debts = dao.getSnapshotDebts().filter { belongs(it.projectId) },
+            payments = dao.getSnapshotPayments(),
+            debtPayments = dao.getSnapshotDebtPayments(),
+            asOf = date,
+        )
+        require(listOf(totals.netWorth, totals.totalAssets, totals.totalDebtPrincipal, totals.totalDebtInterest).all { it.isFinite() }) {
+            "History could not be saved because a total needs review."
+        }
+        NetWorthSnapshot(date = date, netWorth = totals.netWorth, totalAssets = totals.totalAssets,
+            totalLiabilities = totals.totalDebtPrincipal + totals.totalDebtInterest, projectId = pid,
+            createdAt = System.currentTimeMillis()).also { dao.insertNetWorthSnapshot(it) }
+    }
     suspend fun deleteEmptyNetWorthSnapshots(pid: String): Int = dao.deleteEmptyNetWorthSnapshots(pid)
 
     fun getAllRecurringTransactions() = dao.getAllRecurringTransactions()

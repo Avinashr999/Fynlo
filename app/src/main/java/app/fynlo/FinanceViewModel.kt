@@ -259,8 +259,9 @@ class FinanceViewModel @Inject constructor(
     val expenseAnalytics = financialAnalyticsDelegate.expenseAnalytics
     val financialSummary = financialAnalyticsDelegate.financialSummary
     fun getNetWorthSnapshots() = financialAnalyticsDelegate.getNetWorthSnapshots()
-    fun saveSnapshotNow() = financialAnalyticsDelegate.saveSnapshotNow()
-    fun backfillNetWorthHistory(onDone: (Int) -> Unit = {}) = financialAnalyticsDelegate.backfillNetWorthHistory(onDone)
+    fun saveSnapshotNow() {
+        if (currentProjectId.value.isNotBlank()) financialAnalyticsDelegate.saveSnapshotNow()
+    }
 
     val exportDelegate = ExportDelegate(ctx, accounts, transactions, borrowers, debts, investments, people, budgets, goals, payments, debtPayments, financialSummary, auditEvents, currentProject)
     fun exportAuditTrailCsv() = exportDelegate.exportAuditTrailCsv()

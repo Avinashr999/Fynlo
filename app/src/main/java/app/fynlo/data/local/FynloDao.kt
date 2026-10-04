@@ -420,6 +420,24 @@ interface FynloDao {
     suspend fun getAllRecurringTransactionsOnce(): List<app.fynlo.data.model.RecurringTransaction>
 
     // ─── Net Worth Snapshots ──────────────────────────────────────────────────
+    @Query("SELECT * FROM borrowers")
+    suspend fun getSnapshotBorrowers(): List<Borrower>
+
+    @Query("SELECT * FROM debts")
+    suspend fun getSnapshotDebts(): List<Debt>
+
+    @Query("SELECT * FROM investments")
+    suspend fun getSnapshotInvestments(): List<Investment>
+
+    @Query("SELECT * FROM payments")
+    suspend fun getSnapshotPayments(): List<Payment>
+
+    @Query("SELECT * FROM debt_payments")
+    suspend fun getSnapshotDebtPayments(): List<DebtPayment>
+
+    @Query("SELECT * FROM net_worth_snapshots WHERE date = :date LIMIT 1")
+    suspend fun getNetWorthSnapshotForDate(date: String): app.fynlo.data.model.NetWorthSnapshot?
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertNetWorthSnapshot(s: app.fynlo.data.model.NetWorthSnapshot)
 

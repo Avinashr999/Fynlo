@@ -1,5 +1,10 @@
 # Personal Ledger Design QA
 
+## 3.3.24 / 264 - Honest Net-Worth History
+
+- Removed the approximate Backfill action and its stale empty-state instructions. Historical comparisons now say saved totals rather than asserting real gains/losses. One plain notice explains older incomplete data and calculation corrections; all existing historical rows remain accessible. Shared layout/theme unchanged.
+- Current-day capture no longer uses a partially loaded UI summary. No phone installation or visual smoke in this task; compilation/build checks and repository/calculation tests are recorded in PROJECT_STATE_FOR_AI.md. Do not claim older history was reconstructed or the two waiver records were corrected.
+
 ## 3.3.23 / 263 - Physical Phone Delivery
 
 - Samsung SM_S942B: both personal APKs updated in place with verified version/code after private backups. No uninstall/reset or financial submission.

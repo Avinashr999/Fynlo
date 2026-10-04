@@ -18,18 +18,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ShowChart
-import androidx.compose.material.icons.filled.History
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -61,7 +56,9 @@ fun NetWorthHistoryScreen(viewModel: FinanceViewModel) {
     val currencyCode = currentProject?.currency ?: "INR"
     val locale = LocalLocale.current.platformLocale
 
-    LaunchedEffect(summary.netWorth) { viewModel.saveSnapshotNow() }
+    LaunchedEffect(currentProject?.id, summary.netWorth, summary.totalAssets, summary.totalDebtPrincipal, summary.totalDebtInterest) {
+        viewModel.saveSnapshotNow()
+    }
 
     val sorted = snapshots.sortedBy { it.date }
     val currentSnapshot = sorted.lastOrNull()
@@ -70,11 +67,8 @@ fun NetWorthHistoryScreen(viewModel: FinanceViewModel) {
         currentSnapshot.netWorth - previousSnapshot.netWorth
     } else null
 
-    var backfillResult by remember { mutableStateOf<String?>(null) }
-    var backfillBusy by remember { mutableStateOf(false) }
-
     Column(modifier = Modifier.fillMaxSize()) {
-        PremiumScreenHeader("Net Worth History", subtitle = "Clear trend of your total wealth")
+        PremiumScreenHeader("Net Worth History", subtitle = "Current totals and saved history")
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -100,36 +94,11 @@ fun NetWorthHistoryScreen(viewModel: FinanceViewModel) {
 
             Spacer(Modifier.height(12.dp))
 
-            OutlinedButton(
-                onClick = {
-                    backfillBusy = true
-                    backfillResult = null
-                    viewModel.backfillNetWorthHistory { added ->
-                        backfillBusy = false
-                        backfillResult = when (added) {
-                            0 -> "Already up to date - no months to backfill."
-                            1 -> "Added 1 month-end snapshot from history."
-                            else -> "Added $added month-end snapshots from history."
-                        }
-                    }
-                },
-                enabled = !backfillBusy,
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
-            ) {
-                Icon(Icons.Default.History, null, Modifier.size(16.dp))
-                Spacer(Modifier.width(6.dp))
-                Text(if (backfillBusy) "Backfilling..." else "Backfill from history")
-            }
-
-            backfillResult?.let {
-                Text(
-                    it,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 6.dp),
-                )
-            }
+            Text(
+                "Older saved totals may be incomplete. Differences can include calculation corrections, not just money movement. Past totals are kept for reference, not rebuilt from estimates.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
 
             Spacer(Modifier.height(16.dp))
 
@@ -263,7 +232,7 @@ private fun NetWorthHeroCard(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Text(
-            "History is a trend view. Account balances change only from saved money entries.",
+            "Saved totals are separate from your account transaction history.",
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(top = 6.dp),
@@ -305,7 +274,7 @@ private fun NetWorthHeroCard(
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                 )
                 Text(
-                    "Backfill month-end snapshots from your transactions to see the trend right away.",
+                    "New daily totals are saved when you open your ledger. Earlier dates are not estimated.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,
@@ -325,12 +294,12 @@ private fun NetWorthLatestChangeCard(
     val positive = (change ?: 0.0) >= 0.0
     val title = when {
         change == null -> "Waiting for another snapshot"
-        change > 0.0 -> "Net worth increased"
-        change < 0.0 -> "Net worth decreased"
+        change > 0.0 -> "Saved total is higher"
+        change < 0.0 -> "Saved total is lower"
         else -> "No change from last snapshot"
     }
     val detail = if (change == null || previousDate == null) {
-        "Save another snapshot to compare movement clearly."
+        "Another saved total is needed for comparison."
     } else {
         "Compared with ${DateUtils.formatToDisplay(previousDate)}"
     }
@@ -393,19 +362,19 @@ private fun NetWorthCalloutRow(
 
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         NetWorthCallout(
-            label = "1-Month",
+            label = "1-month saved",
             value = signedPct(current, oneMonthAgo),
             valueColor = changeColor(current, oneMonthAgo),
             modifier = Modifier.weight(1f),
         )
         NetWorthCallout(
-            label = "6-Month",
+            label = "6-month saved",
             value = signedPct(current, sixMonthAgo),
             valueColor = changeColor(current, sixMonthAgo),
             modifier = Modifier.weight(1f),
         )
         NetWorthCallout(
-            label = "Highest",
+            label = "Highest saved",
             value = CurrencyFormatter.listRow(allTimeHigh, currencyCode, locale),
             valueColor = Emerald500,
             modifier = Modifier.weight(1f),
