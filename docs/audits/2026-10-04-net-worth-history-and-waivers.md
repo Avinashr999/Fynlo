@@ -91,3 +91,18 @@ the series must not be treated as audited financial history.
 - No new phone installation, visual smoke, live repair or cloud round-trip
   in this task. Old history cannot be certified from current rows alone;
   dated backups or other contemporaneous evidence would be needed.
+
+## Authorized installation follow-up
+
+- Both apps installed in place and verified as 3.3.24 / 264 and
+  3.3.24-dev / 264 after fresh private backups. Production Home/history and
+  restart, plus developer guest Home/history, passed scoped phone checks.
+- Production today's snapshot changed from accounts-only 4,797,275.74 to
+  net worth 17,794,055.28, assets 19,847,188.12, liabilities 2,053,132.84,
+  with a nonzero capture timestamp. All other 28 snapshots are identical.
+- Before/after database integrity is OK in both apps. Financial tables are
+  unchanged; only today's production snapshot and an existing deletion-marker
+  timestamp changed. Developer tables unchanged. No Fynlo crash observed.
+- No waiver or payment classification changed. No historical reconstruction,
+  fresh cloud round-trip, uninstall, reset or AAB. Private evidence is under
+  C:/Users/user/.codex/tmp/fynlo-3.3.24-phone-qa/ and excluded from Git.

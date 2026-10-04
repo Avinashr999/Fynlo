@@ -1,5 +1,12 @@
 # Personal Ledger Design QA
 
+## 3.3.24 / 264 - Physical Phone Verification
+
+- Both APKs installed in place on Samsung SM_S942B with versions confirmed after private backups. Production Home, Net worth history and restart checked; developer guest Home and history checked. No financial form submissions or Fynlo crash observed. Production returned to Home.
+- History screenshot inspected at C:/Users/user/.codex/tmp/fynlo-3.3.24-phone-qa/history.png (private). No Backfill action; saved-total labels and incomplete-history notice visible. Current history total agrees with Home after normal whole-rupee display rounding; the database stores the exact 17,794,055.28.
+- Today's snapshot alone changed to the full balance sheet; older 28 rows preserved. Large displayed historic differences still reflect incomplete old snapshots and must not be presented as proven investment returns or cash movement. Existing repeated history heading and hero styling were not redesigned in this install-only task.
+- All financial rows unchanged in before/after comparison, both SQLite integrity checks pass. Developer tables unchanged. One production deletion-marker timestamp refreshed normally. Prior full suite 598 passes; build/test tasks rechecked up-to-date. Two waiver reviews remain unchanged; no fresh sign-in/cloud round-trip or exhaustive screen audit claimed.
+
 ## 3.3.24 / 264 - Honest Net-Worth History
 
 - Removed the approximate Backfill action and its stale empty-state instructions. Historical comparisons now say saved totals rather than asserting real gains/losses. One plain notice explains older incomplete data and calculation corrections; all existing historical rows remain accessible. Shared layout/theme unchanged.

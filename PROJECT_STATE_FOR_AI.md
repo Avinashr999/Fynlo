@@ -1,3 +1,11 @@
+## 2026-10-04 - 3.3.24 Phone Installation Follow-Up
+
+- Owner authorized install, commit and push. Code was already pushed as a1cd7977e50710f3ebad99c3ea540d817cfcff08; this follow-up records delivery only. Both apps updated in place after fresh private database/preferences/files backups. Installed metadata confirms production 3.3.24 / 264 and developer 3.3.24-dev / 264. No uninstall, data clear, migration, financial repair or AAB.
+- Production Home and Net worth history opened, and restart retained net worth 17,794,055.28, assets 19,847,188.12 and liabilities 2,053,132.84. Today's saved snapshot now contains those same complete values and a capture timestamp, replacing the previous accounts-only 4,797,275.74 row. All other 28 historical snapshots are identical; no guessed backfill. Saved-total comparisons can still look large because old incomplete rows remain, and are not certified actual gains/losses.
+- Before/after SQLite integrity checks pass for both apps. All production accounts (6), borrowers (30), payments (21), debts (8), debt payments (3), transactions (181), investments (17), valuations, audit and undo rows are unchanged. Apart from today's snapshot, only one existing remote deletion marker timestamp refreshed; no marker added/deleted. Developer database tables are entirely unchanged.
+- Developer guest entry, Local only state, empty Home and existing history opened successfully. No Fynlo crash in device crash buffer. Production returned to Home. No real payment submitted, waiver changed, fresh auth or cloud round-trip performed; the two waiver reviews remain as documented below.
+- Build/unit-test tasks rechecked successfully (up-to-date, not a second fresh 598-test run); prior full 598-test pass remains the fresh suite evidence. Private before/after archives and history screenshot: C:/Users/user/.codex/tmp/fynlo-3.3.24-phone-qa/ (never Git). No new runtime changes or version bump in this notes-only follow-up.
+
 ## 2026-10-04 - History Capture Fix and Waiver Review, 3.3.24 / 264
 
 - Owner requested history accuracy check, review of two waiver notices, and commit/push including the previously uncommitted reconciliation notes. Review used the private 3.3.23 backup; no live phone data touched. See docs/audits/2026-10-04-net-worth-history-and-waivers.md.

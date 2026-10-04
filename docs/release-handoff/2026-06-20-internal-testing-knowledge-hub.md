@@ -1,3 +1,10 @@
+## 2026-10-04 - Personal Installation Verified, 3.3.24 / 264
+
+- Both production and developer APKs installed in place after private backups, version/code verified. This supersedes the installation-pending note below. No Play Store release/AAB, uninstall or reset; personal use only.
+- Production Home/history/restart verified: today's snapshot now matches net worth 17,794,055.28, assets 19,847,188.12 and liabilities 2,053,132.84. Older 28 snapshots are unchanged, not retroactively repaired or certified. History explains saved-total comparisons may include corrections rather than money movement.
+- Both databases pass integrity checks. All financial records unchanged; only production today's snapshot and one existing cloud deletion marker timestamp changed. Developer guest Home/history and Local only state work, with no database changes. No Fynlo crash observed. Production returned to Home.
+- Build/test tasks rechecked successfully using up-to-date results; prior fresh suite has 598 passes. Two waiver reviews remain, no fresh cloud round-trip or financial submission claimed. Code already pushed as a1cd7977; authorized follow-up commit contains verification notes only. Private evidence excluded from Git.
+
 ## 2026-10-04 - Personal History Capture Fix, 3.3.24 / 264
 
 - Confirmed net-worth history could save partial nonzero UI totals at startup. Replaced UI-cache capture with an atomic complete local-ledger read and a shared dashboard/history totals calculation. Waits for project selection and refuses same-date cross-project overwrite. Interest rules unchanged.
