@@ -442,7 +442,10 @@ interface FynloDao {
     suspend fun insertNetWorthSnapshot(s: app.fynlo.data.model.NetWorthSnapshot)
 
     @Query("SELECT * FROM net_worth_snapshots WHERE projectId = :pid ORDER BY date DESC LIMIT :limit")
-    fun getNetWorthSnapshots(pid: String, limit: Int = 90): kotlinx.coroutines.flow.Flow<List<app.fynlo.data.model.NetWorthSnapshot>>
+    fun getNetWorthSnapshots(pid: String, limit: Int = -1): kotlinx.coroutines.flow.Flow<List<app.fynlo.data.model.NetWorthSnapshot>>
+
+    @Query("SELECT * FROM net_worth_snapshots ORDER BY date")
+    suspend fun getAllNetWorthSnapshotsList(): List<app.fynlo.data.model.NetWorthSnapshot>
 
     @Query("SELECT * FROM net_worth_snapshots WHERE projectId = :pid ORDER BY date DESC")
     suspend fun getNetWorthSnapshotsOnce(pid: String): List<app.fynlo.data.model.NetWorthSnapshot>

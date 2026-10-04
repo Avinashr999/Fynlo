@@ -21,10 +21,14 @@ import androidx.compose.material.icons.automirrored.filled.ShowChart
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -40,6 +44,7 @@ import app.fynlo.FinanceViewModel
 import app.fynlo.logic.CurrencyFormatter
 import app.fynlo.logic.DateUtils
 import app.fynlo.logic.pluralize
+import app.fynlo.logic.NetWorthHistoryPolicy
 import app.fynlo.ui.theme.Emerald500
 import app.fynlo.ui.theme.PremiumCard
 import app.fynlo.ui.theme.PremiumScreenHeader
@@ -50,9 +55,10 @@ import java.util.Locale
 
 @Composable
 fun NetWorthHistoryScreen(viewModel: FinanceViewModel) {
-    val snapshots by viewModel.getNetWorthSnapshots().collectAsState(initial = emptyList())
     val summary by viewModel.financialSummary.collectAsState()
     val currentProject by viewModel.currentProject.collectAsState()
+    val historyFlow = remember(viewModel, currentProject?.id) { viewModel.getAllNetWorthHistory() }
+    val snapshots by historyFlow.collectAsState(initial = emptyList())
     val currencyCode = currentProject?.currency ?: "INR"
     val locale = LocalLocale.current.platformLocale
 
@@ -60,7 +66,8 @@ fun NetWorthHistoryScreen(viewModel: FinanceViewModel) {
         viewModel.saveSnapshotNow()
     }
 
-    val sorted = snapshots.sortedBy { it.date }
+    val sorted = NetWorthHistoryPolicy.trusted(snapshots)
+    var showOriginals by remember { mutableStateOf(false) }
     val currentSnapshot = sorted.lastOrNull()
     val previousSnapshot = sorted.dropLast(1).lastOrNull()
     val changeFromPrevious = if (currentSnapshot != null && previousSnapshot != null) {
@@ -95,7 +102,7 @@ fun NetWorthHistoryScreen(viewModel: FinanceViewModel) {
             Spacer(Modifier.height(12.dp))
 
             Text(
-                "Older saved totals may be incomplete. Differences can include calculation corrections, not just money movement. Past totals are kept for reference, not rebuilt from estimates.",
+                "Only complete totals are compared. Unavailable dates are not estimated. Changes in net worth are not the same as income or investment returns.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -114,32 +121,72 @@ fun NetWorthHistoryScreen(viewModel: FinanceViewModel) {
 
                 NetWorthCalloutRow(
                     sorted = sorted.map { it.date to it.netWorth },
-                    current = summary.netWorth,
+                    current = NetWorthHistoryPolicy.at(sorted, LocalDate.now())?.netWorth,
                     currencyCode = currencyCode,
                     locale = locale,
                 )
 
                 Spacer(Modifier.height(16.dp))
 
-                Text(
-                    "Recent history",
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                )
-                Spacer(Modifier.height(8.dp))
-                sorted.reversed().take(10).forEachIndexed { reverseIndex, snap ->
-                    val originalIndex = sorted.lastIndex - reverseIndex
-                    val prev = sorted.getOrNull(originalIndex - 1)
+            }
+
+            Text("Daily history", style = MaterialTheme.typography.titleMedium)
+            Text("Last 30 days", style = MaterialTheme.typography.bodySmall)
+            Spacer(Modifier.height(8.dp))
+            (0L..29L).forEach { daysAgo ->
+                val day = LocalDate.now().minusDays(daysAgo)
+                val snap = NetWorthHistoryPolicy.at(sorted, day)
+                if (snap != null) {
                     NetWorthSnapshotCard(
                         date = snap.date,
                         netWorth = snap.netWorth,
-                        change = prev?.let { snap.netWorth - it.netWorth },
+                        change = NetWorthHistoryPolicy.change(sorted, day.minusDays(1), day),
                         currencyCode = currencyCode,
                         locale = locale,
                     )
-                    Spacer(Modifier.height(8.dp))
+                    if (snap.captureSource == NetWorthHistoryPolicy.RECOVERED) {
+                        Text("Recovered from dated backup", style = MaterialTheme.typography.labelSmall)
+                    }
+                } else {
+                    Row(Modifier.fillMaxWidth().padding(vertical = 10.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text(DateUtils.formatToDisplay(day.toString()))
+                        Text("Unavailable", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
                 }
+                Spacer(Modifier.height(8.dp))
             }
 
+            TextButton(onClick = { showOriginals = !showOriginals }) {
+                Text(if (showOriginals) "Hide saved records" else "Saved records and original history")
+            }
+            if (showOriginals) {
+                Text("Unverified originals are preserved for reference and are never used in comparisons.",
+                    style = MaterialTheme.typography.bodySmall)
+                snapshots.sortedByDescending { it.date }.forEach { row ->
+                    Column(Modifier.fillMaxWidth().padding(vertical = 10.dp)) {
+                        Text(DateUtils.formatToDisplay(row.date), fontWeight = FontWeight.SemiBold)
+                        Text(if (NetWorthHistoryPolicy.isTrusted(row))
+                            "${CurrencyFormatter.exact(row.netWorth, currencyCode, locale)} - complete total"
+                        else "Unavailable - original saved total is unverified")
+                        if (!NetWorthHistoryPolicy.isTrusted(row)) {
+                            Text("Original: ${CurrencyFormatter.exact(row.netWorth, currencyCode, locale)}",
+                                style = MaterialTheme.typography.bodySmall)
+                        }
+                        if (row.originalSnapshotJson.isNotBlank()) {
+                            val original = runCatching {
+                                kotlinx.serialization.json.Json.decodeFromString<app.fynlo.data.model.NetWorthSnapshot>(row.originalSnapshotJson)
+                            }.getOrNull()
+                            Text(original?.let { "Preserved original (unverified): ${CurrencyFormatter.exact(it.netWorth, currencyCode, locale)}" }
+                                ?: "Original record preserved", style = MaterialTheme.typography.bodySmall)
+                        }
+                        if (NetWorthHistoryPolicy.isTrusted(row)) {
+                            Text(if (row.captureSource == NetWorthHistoryPolicy.RECOVERED)
+                                "Source: backup dated ${DateUtils.formatToDisplay(row.date)}"
+                            else "Saved from complete records", style = MaterialTheme.typography.labelSmall)
+                        }
+                    }
+                }
+            }
             Spacer(Modifier.height(48.dp))
         }
     }
@@ -195,7 +242,7 @@ private fun NetWorthCompositionRow(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Text(
-            CurrencyFormatter.listRow(value, currencyCode, locale),
+            CurrencyFormatter.exact(value, currencyCode, locale),
             style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.ExtraBold),
             color = color,
         )
@@ -222,8 +269,8 @@ private fun NetWorthHeroCard(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Text(
-            CurrencyFormatter.hero(netWorth, currencyCode, locale),
-            style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.ExtraBold),
+            CurrencyFormatter.exact(netWorth, currencyCode, locale),
+            style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold),
             color = if (netWorth >= 0) Emerald500 else SemanticRed,
         )
         Text(
@@ -304,12 +351,11 @@ private fun NetWorthLatestChangeCard(
         "Compared with ${DateUtils.formatToDisplay(previousDate)}"
     }
     PremiumCard {
-        Row(
+        Column(
             Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Column(Modifier.weight(1f)) {
+            Column {
                 Text(
                     title,
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
@@ -322,7 +368,7 @@ private fun NetWorthLatestChangeCard(
             }
             if (change != null) {
                 Text(
-                    (if (positive) "+" else "") + CurrencyFormatter.listRow(change, currencyCode, locale),
+                    (if (positive) "+" else "") + CurrencyFormatter.exact(change, currencyCode, locale),
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.ExtraBold),
                     color = if (positive) Emerald500 else SemanticRed,
                 )
@@ -334,14 +380,14 @@ private fun NetWorthLatestChangeCard(
 @Composable
 private fun NetWorthCalloutRow(
     sorted: List<Pair<String, Double>>,
-    current: Double,
+    current: Double?,
     currencyCode: String,
     locale: Locale,
 ) {
     val today = LocalDate.now()
     val nwAt: (LocalDate) -> Double? = { target ->
         sorted.lastOrNull {
-            runCatching { LocalDate.parse(it.first) <= target }.getOrDefault(false)
+            it.first == target.toString()
         }?.second
     }
     val oneMonthAgo = nwAt(today.minusMonths(1))
@@ -349,18 +395,19 @@ private fun NetWorthCalloutRow(
     val allTimeHigh = sorted.maxOf { it.second }
     val neutralColor = MaterialTheme.colorScheme.onSurfaceVariant
 
-    fun signedPct(now: Double, then: Double?): String {
-        if (then == null) return "Need more data"
+    fun signedPct(now: Double?, then: Double?): String {
+        if (then == null || now == null) return "Unavailable"
         if (then == 0.0) return "No base"
         val pct = (now - then) / kotlin.math.abs(then) * 100
         val sign = if (pct >= 0) "+" else ""
         return "$sign${String.format(locale, "%.1f", pct)}%"
     }
 
-    fun changeColor(now: Double, then: Double?): Color =
-        if (then == null) neutralColor else if (now >= then) Emerald500 else SemanticRed
+    fun changeColor(now: Double?, then: Double?): Color =
+        if (then == null || now == null) neutralColor else if (now >= then) Emerald500 else SemanticRed
 
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+      Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         NetWorthCallout(
             label = "1-month saved",
             value = signedPct(current, oneMonthAgo),
@@ -373,11 +420,12 @@ private fun NetWorthCalloutRow(
             valueColor = changeColor(current, sixMonthAgo),
             modifier = Modifier.weight(1f),
         )
+      }
         NetWorthCallout(
             label = "Highest saved",
-            value = CurrencyFormatter.listRow(allTimeHigh, currencyCode, locale),
+            value = CurrencyFormatter.exact(allTimeHigh, currencyCode, locale),
             valueColor = Emerald500,
-            modifier = Modifier.weight(1f),
+            modifier = Modifier.fillMaxWidth(),
         )
     }
 }
@@ -392,7 +440,7 @@ private fun NetWorthSnapshotCard(
 ) {
     val positive = (change ?: 0.0) >= 0.0
     val movement = when {
-        change == null -> "First saved point"
+        change == null -> "Previous day unavailable"
         change > 0.0 -> "Up from previous"
         change < 0.0 -> "Down from previous"
         else -> "No change from previous"
@@ -416,12 +464,12 @@ private fun NetWorthSnapshotCard(
             }
             Column(horizontalAlignment = Alignment.End) {
                 Text(
-                    CurrencyFormatter.listRow(netWorth, currencyCode, locale),
+                    CurrencyFormatter.exact(netWorth, currencyCode, locale),
                     style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.ExtraBold),
                 )
                 if (change != null) {
                     Text(
-                        (if (positive) "+" else "") + CurrencyFormatter.listRow(change, currencyCode, locale),
+                        (if (positive) "+" else "") + CurrencyFormatter.exact(change, currencyCode, locale),
                         style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
                         color = if (positive) Emerald500 else SemanticRed,
                     )
@@ -442,24 +490,20 @@ private fun NetWorthLineChart(
     Canvas(modifier = Modifier.fillMaxWidth().height(180.dp)) {
         val n = snapshots.size
         if (n < 2) return@Canvas
-        val pts = snapshots.mapIndexed { i, (_, nw) ->
-            val x = i.toFloat() / (n - 1) * size.width
+        val firstDay = LocalDate.parse(snapshots.first().first).toEpochDay()
+        val span = (LocalDate.parse(snapshots.last().first).toEpochDay() - firstDay).coerceAtLeast(1)
+        val pts = snapshots.map { (date, nw) ->
+            val x = (LocalDate.parse(date).toEpochDay() - firstDay).toFloat() / span * size.width
             val y = (size.height - ((nw - minV) / range * size.height).toFloat())
                 .coerceIn(0f, size.height)
             Offset(x, y)
         }
-        val fill = Path().apply {
-            moveTo(pts.first().x, size.height)
-            pts.forEach { lineTo(it.x, it.y) }
-            lineTo(pts.last().x, size.height)
-            close()
+        // Gaps have no connecting line: no implied values on unsaved dates.
+        pts.zipWithNext().forEachIndexed { index, (a, b) ->
+            if (LocalDate.parse(snapshots[index].first).plusDays(1).toString() == snapshots[index + 1].first) {
+                drawLine(lineColor, a, b, strokeWidth = 3.dp.toPx())
+            }
         }
-        drawPath(fill, lineColor.copy(alpha = 0.15f))
-        val line = Path().apply {
-            moveTo(pts.first().x, pts.first().y)
-            pts.drop(1).forEach { lineTo(it.x, it.y) }
-        }
-        drawPath(line, lineColor, style = Stroke(3.dp.toPx()))
         pts.forEach { drawCircle(lineColor, 3.dp.toPx(), it) }
     }
 }

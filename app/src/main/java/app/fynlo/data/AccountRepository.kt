@@ -7,6 +7,7 @@ import app.fynlo.data.remote.FirestoreRepository
 import com.google.firebase.crashlytics.FirebaseCrashlytics
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 
 
@@ -51,7 +52,7 @@ class AccountRepository constructor(
     }
 
     fun getNetWorthSnapshots(pid: String): Flow<List<NetWorthSnapshot>> =
-        dao.getNetWorthSnapshots(pid)
+        dao.getNetWorthSnapshots(pid).map { app.fynlo.logic.NetWorthHistoryPolicy.trusted(it) }
 
     suspend fun insertNetWorthSnapshot(snapshot: NetWorthSnapshot) = withContext(Dispatchers.IO) {
         recordOnFail("insertNetWorthSnapshot") { dao.insertNetWorthSnapshot(snapshot) }

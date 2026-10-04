@@ -1,5 +1,12 @@
 # Personal Ledger Design QA
 
+## 3.3.25 / 265 - Evidence-Backed History
+
+- History uses complete/recovered points only for chart, highest value and comparisons. Missing monthly baseline dates say Unavailable. The last 30 daily dates explicitly mark gaps; chart lines never bridge unsaved days. Original saved rows remain in an expandable archive, with recovered labels and preserved old values.
+- Full rupees/paise replace Cr/K abbreviations on this history screen. Latest change uses a vertical layout; monthly comparisons share a row, highest value has full width. Source hash/policy stays in stored metadata, with plain backup-date text in the archive.
+- Production phone visually checked: current 17,794,055.28, October 2 recovered 17,786,625.03, October 3 unavailable, one/six month unavailable; archive shows September 27 recovered 17,771,508.31 and both original values. No overlapping monetary text in the checked phone layout. Screenshot private at C:/Users/user/.codex/tmp/fynlo-3.3.25-history-qa/history.png (before final source-label-only adjustment).
+- 607 unit tests pass, both APKs built/installed; history-only phone recovery and idempotent replay pass. Financial records unchanged in post-recovery DB comparison. No full PDF visual export, all-device accessibility sweep, or fresh cloud round-trip claimed. Existing header/hero styling outside the requested history integrity work was not redesigned.
+
 ## 3.3.24 / 264 - Physical Phone Verification
 
 - Both APKs installed in place on Samsung SM_S942B with versions confirmed after private backups. Production Home, Net worth history and restart checked; developer guest Home and history checked. No financial form submissions or Fynlo crash observed. Production returned to Home.
@@ -132,3 +139,12 @@ Smoke verification is not a claim that every dialog, tablet, extreme font size, 
 - Linked loan/debt receipt editing now uses the existing FormDialog shell with Description and Notes only. Payment amount/date/purpose/account are not editable through history; explanatory text states that balances stay unchanged. Save remains disabled until text changes.
 - Pixel 6 read-only emulator, offline, synthetic callbacks only: RepaymentHistoryUiTest passes for borrower and debt receipts, asserting exactly two editable fields, no amount/date editors, initial disabled Save, and no financial-field changes in the saved callback. Existing PaymentPurposeUiTest also passes for both borrower/debt previous-month interest-only flows. Four tests total.
 - No owner-phone install, live financial mutation, broad visual redesign or live cloud test. Emulator assertions verify these forms, not an exhaustive visual review of every app screen.
+## Final 3.3.25 Phone Verification
+
+- Production restart retains the September 27 / October 2 recovered points and
+  today's complete total; current net worth remains 17,794,055.28.
+- Developer guest history displays its empty state, not old unverified totals.
+- Final before/after comparison confirms all financial tables unchanged and both
+  databases healthy. No Fynlo crash found in the inspected crash buffer.
+- Observed existing developer guest startup delay while checking cloud backup;
+  it resolves to empty Home. Not changed by the history recovery work.

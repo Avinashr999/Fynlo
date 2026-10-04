@@ -14,6 +14,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import androidx.room.withTransaction
@@ -3457,7 +3458,30 @@ class FinanceRepository(
      * After normalizeLegacyProjectIds runs, push ALL collections to Firestore
      * so every device gets correct projectIds, not the legacy empty/"personal" ones.
      */
-    fun getNetWorthSnapshots(pid: String) = dao.getNetWorthSnapshots(pid)
+    fun getNetWorthSnapshots(pid: String) = dao.getNetWorthSnapshots(pid).map {
+        app.fynlo.logic.NetWorthHistoryPolicy.trusted(it)
+    }
+    fun getAllNetWorthHistory(pid: String) = dao.getNetWorthSnapshots(pid)
+    suspend fun recoverNetWorthHistory(projectId: String, repairs: List<NetWorthHistoryRepair>) = db.withTransaction {
+        require(repairs.map { it.recovered.date }.distinct().size == repairs.size)
+        for (repair in repairs) {
+            val recovered = repair.recovered
+            require(recovered.projectId == projectId &&
+                recovered.captureSource == app.fynlo.logic.NetWorthHistoryPolicy.RECOVERED &&
+                app.fynlo.logic.NetWorthHistoryPolicy.isTrusted(recovered))
+            require(!java.time.LocalDate.parse(recovered.date).isAfter(java.time.LocalDate.now()))
+            val old = dao.getNetWorthSnapshotForDate(recovered.date)
+            val original = old?.originalSnapshotJson?.takeIf { it.isNotBlank() }
+                ?: old?.let { Json.encodeToString(it) }.orEmpty()
+            val replacement = recovered.copy(originalSnapshotJson = original)
+            if (old == replacement) continue
+            require(old == repair.expectedOriginal) { "Saved history changed. Review the recovery again." }
+            require(old == null || (old.projectId == projectId && !app.fynlo.logic.NetWorthHistoryPolicy.isTrusted(old))) {
+                "A complete total or another ledger's history must not be replaced."
+            }
+            dao.insertNetWorthSnapshot(replacement)
+        }
+    }
     suspend fun captureNetWorthSnapshot(projectId: String, date: String): NetWorthSnapshot = db.withTransaction {
         val pid = projectId.ifBlank { "personal" }
         val previous = dao.getNetWorthSnapshotForDate(date)
@@ -3480,7 +3504,13 @@ class FinanceRepository(
         }
         NetWorthSnapshot(date = date, netWorth = totals.netWorth, totalAssets = totals.totalAssets,
             totalLiabilities = totals.totalDebtPrincipal + totals.totalDebtInterest, projectId = pid,
-            createdAt = System.currentTimeMillis()).also { dao.insertNetWorthSnapshot(it) }
+            createdAt = System.currentTimeMillis(),
+            captureSource = app.fynlo.logic.NetWorthHistoryPolicy.LIVE,
+            sourceReference = "Complete local ledger; app ${app.fynlo.BuildConfig.VERSION_NAME}",
+            originalSnapshotJson = previous?.originalSnapshotJson?.takeIf { it.isNotEmpty() }
+                ?: previous?.takeUnless { app.fynlo.logic.NetWorthHistoryPolicy.isTrusted(it) }
+                    ?.let { Json.encodeToString(it) }.orEmpty(),
+        ).also { dao.insertNetWorthSnapshot(it) }
     }
     suspend fun deleteEmptyNetWorthSnapshots(pid: String): Int = dao.deleteEmptyNetWorthSnapshots(pid)
 
@@ -3728,6 +3758,7 @@ class FinanceRepository(
             recurringTransactions = dao.getAllRecurringTransactionsOnce(),
             monthlyCloses         = dao.getAllMonthlyCloses().first(),
             proofAttachments      = dao.getAllProofAttachments().first(),
+            netWorthSnapshots     = dao.getAllNetWorthSnapshotsList(),
         )
         val hash = BackupIntegrity.computeHash(draft)
         return Json.encodeToString(draft.copy(contentHash = hash))
@@ -3766,6 +3797,8 @@ class FinanceRepository(
         // bump, not on restore-replace.
         val data = sanitizeLegacyCashName(raw)
         db.withTransaction {
+            dao.deleteAllNetWorthSnapshots()
+            data.netWorthSnapshots.forEach { dao.insertNetWorthSnapshot(it) }
             // Clear everything first so a restore is a true replace, not a merge.
             dao.deleteAllAccounts(); dao.deleteAllTransactions(); dao.deleteAllBorrowers()
             dao.deleteAllInvestments(); dao.deleteAllDebts(); dao.deleteAllPeople(); dao.deleteAllProjects()

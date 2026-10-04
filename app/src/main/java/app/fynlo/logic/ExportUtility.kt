@@ -518,14 +518,14 @@ object ExportUtility {
         snapshots: List<NetWorthSnapshot>,
         currencyCode: String,
     ) {
-        val sorted = snapshots.sortedBy { it.date }
+        val sorted = NetWorthHistoryPolicy.trusted(snapshots)
         checkBreak(88f)
         canvas().drawText("Net Worth Trend", MARGIN, y, bodyPaint(COLOR_PRIMARY, 12f, true))
         y += CHART_PANEL_TITLE_H
 
         if (sorted.size < 2) {
             canvas().drawText(
-                "Not enough snapshots yet — open the app a few more days, or use the in-app Backfill action.",
+                "Complete history unavailable. Missing dates are not estimated.",
                 MARGIN, y + 12f, bodyPaint(COLOR_GRAY, 9f)
             )
             y += 28f
@@ -552,25 +552,20 @@ object ExportUtility {
             canvas().drawText(fmt(label, currencyCode), MARGIN, yy + 3f, bodyPaint(COLOR_GRAY, 7f))
         }
 
-        val points = sorted.mapIndexed { i, s ->
-            val xx = chartLeft + (i.toFloat() / (sorted.size - 1)) * chartW
+        val firstDay = java.time.LocalDate.parse(sorted.first().date).toEpochDay()
+        val span = (java.time.LocalDate.parse(sorted.last().date).toEpochDay() - firstDay).coerceAtLeast(1)
+        val points = sorted.map { s ->
+            val xx = chartLeft + ((java.time.LocalDate.parse(s.date).toEpochDay() - firstDay).toFloat() / span) * chartW
             val yy = chartBottom - ((s.netWorth - minNW) / range * chartH).toFloat()
             xx to yy.coerceIn(chartTop, chartBottom)
         }
-        // Area fill under the line
-        val fillPath = android.graphics.Path().apply {
-            moveTo(points.first().first, chartBottom)
-            points.forEach { (xx, yy) -> lineTo(xx, yy) }
-            lineTo(points.last().first, chartBottom); close()
-        }
-        canvas().drawPath(
-            fillPath,
-            Paint().apply { color = Color.argb(40, 5, 150, 105); style = Paint.Style.FILL; isAntiAlias = true }
-        )
-        // Line itself
+        // Do not draw invented values across unavailable dates.
         val linePath = android.graphics.Path().apply {
             moveTo(points.first().first, points.first().second)
-            points.drop(1).forEach { (xx, yy) -> lineTo(xx, yy) }
+            points.drop(1).forEachIndexed { index, (xx, yy) ->
+                if (java.time.LocalDate.parse(sorted[index].date).plusDays(1).toString() == sorted[index + 1].date) lineTo(xx, yy)
+                else moveTo(xx, yy)
+            }
         }
         canvas().drawPath(
             linePath,
@@ -579,6 +574,7 @@ object ExportUtility {
                 strokeWidth = 2f; isAntiAlias = true; strokeCap = Paint.Cap.ROUND
             }
         )
+        points.forEach { (xx, yy) -> canvas().drawCircle(xx, yy, 2f, Paint().apply { color = COLOR_PRIMARY }) }
         // Endpoint date labels.
         canvas().drawText(sorted.first().date, chartLeft, chartBottom + 12f, bodyPaint(COLOR_GRAY, 7f))
         val lastLabel = sorted.last().date

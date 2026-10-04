@@ -90,7 +90,7 @@ class Migration31To32JvmTest {
     fun `migrate 31 to 32 keeps every row and applies defaults`() = runBlocking {
         createV31()
         val room = Room.databaseBuilder(ctx, FynloDatabase::class.java, dbName)
-            .addMigrations(MIGRATION_31_32)
+            .addMigrations(MIGRATION_31_32, MIGRATION_32_33)
             .allowMainThreadQueries()
             .build()
         try {

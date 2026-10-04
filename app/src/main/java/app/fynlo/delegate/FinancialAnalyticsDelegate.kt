@@ -202,6 +202,7 @@ class FinancialAnalyticsDelegate(
     }.stateIn(ctx.scope, SharingStarted.Eagerly, FinancialSummary())
 
     fun getNetWorthSnapshots() = ctx.repository.getNetWorthSnapshots(ctx.currentProjectId())
+    fun getAllNetWorthHistory() = ctx.repository.getAllNetWorthHistory(ctx.currentProjectId())
 
     fun saveSnapshotNow() {
         val projectId = ctx.currentProjectId()

@@ -1,3 +1,15 @@
+## 2026-10-04 - Personal History Recovery, 3.3.25 / 265
+
+- Two evidence-backed past totals reconstructed/imported: September 27 = 17,771,508.31; October 2 = 17,786,625.03. October 4 = 17,794,055.28 remains the normal complete capture. Originals preserved; 26 other legacy points remain unverified, excluded from trends. Missing dates are unavailable, not estimated. The assessment-only limitation below is superseded within this evidence scope.
+- Room 33 adds history provenance/originals only; backup format 3 carries them with backward-compatible v2 hashing. PDF and UI comparisons exclude unverified data, exact monthly baselines required, full money amounts displayed. No financial table changes, waiver correction, cloud/auth change or Play release/AAB.
+- Both apps installed in place as 3.3.25 / 265. 607 unit tests pass and both APKs build. Production history-only recovery guard and repeated apply pass; private payload/test APK removed. Audit and preservation evidence in docs/audits/2026-10-04-history-recovery.md and PROJECT_STATE_FOR_AI.md. No commit/push yet in this request.
+
+## 2026-10-04 - Waivers Accepted; Historical Recovery Not Yet Performed
+
+- Owner confirms the two waivers are intentional and correct; no further owner review requested for those records. Do not alter them. Existing in-app notices have not been suppressed by this documentation update.
+- Incomplete old net-worth snapshots are an app capture/backfill defect, not the owner's fault. Dated backups exist as recovery candidates but have not been validated for historical reconstruction. Restoring a whole backup would risk current records and can restore the same bad history.
+- Proposed follow-up: evidence-backed isolated reconstruction with before/after approval, plus separation of unverified legacy totals from trusted trend statistics. Preserve originals and leave unsupported dates unknown. This remains a proposal; no runtime/data changes, version bump, installation, commit or push in this assessment.
+
 ## 2026-10-04 - Personal Installation Verified, 3.3.24 / 264
 
 - Both production and developer APKs installed in place after private backups, version/code verified. This supersedes the installation-pending note below. No Play Store release/AAB, uninstall or reset; personal use only.
@@ -1722,3 +1734,8 @@ Phone smoke still recommended before a new AAB:
 - This prevents the earlier pattern where header, Money trail, hub cards, and dialogs could each calculate loan truth differently.
 - Version bumped to `versionName 3.3.7`, `versionCode 247`.
 - No database migration, account balance mutation, Firestore repair, Play Store action, or AAB build in this pass.
+## 2026-10-04 - Personal History Recovery Git Handoff
+
+Owner authorized commit/push of verified 3.3.25 / 265 history recovery. Both apps
+were already installed and checked; no new AAB or public-release work requested.
+Private databases, phone backups and attachments remain outside the commit.

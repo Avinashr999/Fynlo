@@ -31,11 +31,19 @@ import app.fynlo.data.model.FlowTemplate
         ProofAttachment::class,
         SyncConflict::class
     ],
-    version = 32,
+    version = 33,
     exportSchema = true
 )
 abstract class FynloDatabase : RoomDatabase() {
     abstract fun dao(): FynloDao
+}
+
+val MIGRATION_32_33 = object : Migration(32, 33) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE net_worth_snapshots ADD COLUMN captureSource TEXT NOT NULL DEFAULT 'LEGACY'")
+        db.execSQL("ALTER TABLE net_worth_snapshots ADD COLUMN sourceReference TEXT NOT NULL DEFAULT ''")
+        db.execSQL("ALTER TABLE net_worth_snapshots ADD COLUMN originalSnapshotJson TEXT NOT NULL DEFAULT ''")
+    }
 }
 /**
  * v3.3.0 — additive only (ALTER TABLE ADD COLUMN, no rewrites, no deletes):

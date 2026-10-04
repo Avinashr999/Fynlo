@@ -9,6 +9,8 @@ import app.fynlo.data.remote.FirestoreRepository
 import app.fynlo.data.remote.SyncManager
 import com.google.firebase.FirebaseApp
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
@@ -99,5 +101,39 @@ class NetWorthCaptureDataIntegrityTest {
         assertEquals(5000.0, saved.totalAssets, 0.0)
         assertEquals(5000.0, saved.totalLiabilities, 0.0)
         assertEquals(oldZero, db.dao().getNetWorthSnapshotForDate(oldZero.date))
+    }
+
+    @Test fun `recovery preserves original history and financial rows and is idempotent`() = runBlocking {
+        seed()
+        val old = NetWorthSnapshot("2026-01-09", 1000.0, 1000.0, 0.0)
+        db.dao().insertNetWorthSnapshot(old)
+        val before = repository.getAllDataAsJson()
+        val recovered = old.copy(netWorth = 8045.0, totalAssets = 13090.0, totalLiabilities = 5045.0,
+            createdAt = 1, captureSource = app.fynlo.logic.NetWorthHistoryPolicy.RECOVERED,
+            sourceReference = "Dated backup with validated hash")
+        repeat(2) { repository.recoverNetWorthHistory("personal", listOf(NetWorthHistoryRepair(recovered, old))) }
+        val saved = db.dao().getNetWorthSnapshotForDate(old.date)!!
+        assertEquals(old, Json.decodeFromString<NetWorthSnapshot>(saved.originalSnapshotJson))
+        val originalBackup = Json.decodeFromString<BackupData>(before)
+        val after = Json.decodeFromString<BackupData>(repository.getAllDataAsJson())
+        assertEquals(originalBackup.copy(netWorthSnapshots = emptyList(), contentHash = "", exportedAt = ""),
+            after.copy(netWorthSnapshots = emptyList(), contentHash = "", exportedAt = ""))
+        assertEquals(1, db.dao().getAllNetWorthSnapshotsList().size)
+        assertEquals(saved, Json.decodeFromString<BackupData>(repository.getAllDataAsJson()).netWorthSnapshots.single())
+    }
+
+    @Test fun `stale recovery before-image rolls back all history writes`() = runBlocking {
+        val first = NetWorthSnapshot("2026-01-08", 1.0, 1.0)
+        val second = first.copy(date = "2026-01-09")
+        db.dao().insertNetWorthSnapshot(first)
+        db.dao().insertNetWorthSnapshot(second)
+        fun repaired(row: NetWorthSnapshot) = row.copy(createdAt = 1,
+            captureSource = app.fynlo.logic.NetWorthHistoryPolicy.RECOVERED, sourceReference = "dated backup")
+        try {
+            repository.recoverNetWorthHistory("personal", listOf(NetWorthHistoryRepair(repaired(first), first),
+                NetWorthHistoryRepair(repaired(second), second.copy(netWorth = 2.0))))
+            fail("Stale input must fail")
+        } catch (_: IllegalArgumentException) { }
+        assertEquals(listOf(first, second), db.dao().getAllNetWorthSnapshotsList())
     }
 }

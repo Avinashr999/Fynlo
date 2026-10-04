@@ -259,6 +259,7 @@ class FinanceViewModel @Inject constructor(
     val expenseAnalytics = financialAnalyticsDelegate.expenseAnalytics
     val financialSummary = financialAnalyticsDelegate.financialSummary
     fun getNetWorthSnapshots() = financialAnalyticsDelegate.getNetWorthSnapshots()
+    fun getAllNetWorthHistory() = financialAnalyticsDelegate.getAllNetWorthHistory()
     fun saveSnapshotNow() {
         if (currentProjectId.value.isNotBlank()) financialAnalyticsDelegate.saveSnapshotNow()
     }

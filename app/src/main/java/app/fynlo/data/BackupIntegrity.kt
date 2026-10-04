@@ -30,7 +30,7 @@ object BackupIntegrity {
      * (default values for existing fields don't need a bump because old
      * backups still decode cleanly).
      */
-    const val CURRENT_SCHEMA_VERSION = 2
+    const val CURRENT_SCHEMA_VERSION = 3
 
     /**
      * Computes the canonical SHA-256 hash of [data] for the purposes of

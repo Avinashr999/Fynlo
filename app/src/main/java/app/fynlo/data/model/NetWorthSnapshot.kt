@@ -2,7 +2,10 @@
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import androidx.room.ColumnInfo
+import kotlinx.serialization.Serializable
 
+@Serializable
 @Entity(tableName = "net_worth_snapshots")
 data class NetWorthSnapshot(
     @PrimaryKey val date: String = "",   // yyyy-MM-dd
@@ -11,4 +14,7 @@ data class NetWorthSnapshot(
     val totalLiabilities: Double = 0.0,
     val projectId: String = "personal",
     val createdAt: Long = 0L,            // added v16→v17 (C03a Stage 2; UX_AUDIT §C03 item #2 — backfilled from `date` since this entity has no `updatedAt`)
+    @ColumnInfo(defaultValue = "'LEGACY'") val captureSource: String = "LEGACY",
+    @ColumnInfo(defaultValue = "''") val sourceReference: String = "",
+    @ColumnInfo(defaultValue = "''") val originalSnapshotJson: String = "",
 )

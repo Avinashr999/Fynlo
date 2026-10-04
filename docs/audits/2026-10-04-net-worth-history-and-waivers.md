@@ -1,5 +1,25 @@
 # Net-worth history and waiver review
 
+## Owner decision and recovery follow-up
+
+The owner subsequently confirmed both waivers are correct and intentional.
+Their data review is accepted; earlier requests below to confirm those terms
+are superseded. No waiver or financial record should be changed on that basis.
+Existing in-app warning visibility has not been changed by this confirmation.
+
+Read-only follow-up located September 27 database copies and recent install
+backups as recovery candidates. Their existence is not proof of correct past
+totals: they can contain the same incomplete history and earlier accounting
+defects. Recovery must validate dated source records and known corrections in
+an isolated copy, with an explicit before/after proposal before live writes.
+No historical total has been reconstructed or applied in this follow-up.
+
+The proposed UI follow-up is to separate legacy/unverified history from
+trusted trend calculations while preserving original rows. Current 3.3.24
+still compares saved totals with a warning; it does not yet exclude legacy
+rows from chart/high-low/percentage comparisons. Missing dates must stay
+unknown unless supported by evidence, never populated with estimates.
+
 ## Scope and evidence
 
 Reviewed the private 2026-10-04 post-install database backup from 3.3.23,

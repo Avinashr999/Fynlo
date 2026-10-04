@@ -13,6 +13,9 @@ import kotlinx.serialization.Serializable
  *        backups produced by 3.2.0 and earlier read with all metadata
  *        defaults (empty strings). Restore is accepted unconditionally
  *        for backwards compatibility.
+ *   v3 - includes net-worth history provenance and preserved originals.
+ *        Empty new fields are omitted, retaining legacy v2 canonical hashes.
+ *
  *   v2 — post-C03a; metadata (`appVersion`, `exportedAt`, `userId`,
  *        `deviceName`) is populated at export time, and a SHA-256
  *        `contentHash` is computed over the canonical JSON form
@@ -63,4 +66,5 @@ data class BackupData(
     val recurringTransactions: List<RecurringTransaction> = emptyList(),
     val monthlyCloses: List<MonthlyClose> = emptyList(),
     val proofAttachments: List<ProofAttachment> = emptyList(),
+    val netWorthSnapshots: List<NetWorthSnapshot> = emptyList(),
 )

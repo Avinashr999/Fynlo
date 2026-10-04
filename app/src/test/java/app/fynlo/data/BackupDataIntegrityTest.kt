@@ -34,6 +34,22 @@ import org.junit.Test
  */
 class BackupDataIntegrityTest {
 
+    @Test fun `legacy v2 canonical shape does not acquire new empty history fields`() {
+        val encoded = Json.encodeToString(BackupData(schemaVersion = 2))
+        assertEquals("{\"schemaVersion\":2}", encoded)
+    }
+
+    @Test fun `history originals survive v3 backup and tampering invalidates its hash`() {
+        val history = app.fynlo.data.model.NetWorthSnapshot(date = "2026-01-01", originalSnapshotJson = "{\"netWorth\":123}")
+        val data = BackupData(schemaVersion = 3, netWorthSnapshots = listOf(history))
+        val signed = data.copy(contentHash = BackupIntegrity.computeHash(data))
+        val restored = Json.decodeFromString<BackupData>(Json.encodeToString(signed))
+        assertEquals(listOf(history), restored.netWorthSnapshots)
+        assertEquals(BackupIntegrity.Check.Ok, BackupIntegrity.check(restored))
+        assertEquals(BackupIntegrity.Check.HashMismatch,
+            BackupIntegrity.check(restored.copy(netWorthSnapshots = listOf(history.copy(netWorth = 99.0)))))
+    }
+
     /** A small but non-trivial fixture so JSON serialization actually has content. */
     private fun fixture(seed: String = "alpha") = BackupData(
         schemaVersion = 2,

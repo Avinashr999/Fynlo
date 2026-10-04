@@ -261,6 +261,7 @@ internal class BackupSyncManager(
             recurringTransactions = ctx.dao.getAllRecurringTransactionsOnce(),
             monthlyCloses         = ctx.dao.getAllMonthlyCloses().first(),
             proofAttachments      = ctx.dao.getAllProofAttachments().first(),
+            netWorthSnapshots     = ctx.dao.getAllNetWorthSnapshotsList(),
         )
         val hash = BackupIntegrity.computeHash(draft)
         return Json.encodeToString(draft.copy(contentHash = hash))
@@ -281,6 +282,8 @@ internal class BackupSyncManager(
         }
         val data = sanitizeLegacyCashName(raw)
         ctx.db.withTransaction {
+            ctx.dao.deleteAllNetWorthSnapshots()
+            data.netWorthSnapshots.forEach { ctx.dao.insertNetWorthSnapshot(it) }
             ctx.dao.deleteAllAccounts(); ctx.dao.deleteAllTransactions(); ctx.dao.deleteAllBorrowers()
             ctx.dao.deleteAllInvestments(); ctx.dao.deleteAllDebts(); ctx.dao.deleteAllPeople(); ctx.dao.deleteAllProjects()
             ctx.dao.deleteAllPayments(); ctx.dao.deleteAllDebtPayments(); ctx.dao.deleteAllBudgets(); ctx.dao.deleteAllGoals()
